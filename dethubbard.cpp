@@ -87,24 +87,93 @@ nummat DetHubbard::computePropagator(num scalar, nummat matrix) {
 }
 
 
-
-nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, DetHubbard::Spin spinComponent) {
+inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
+		const nummat& arbitraryAuxfield) {
 	using namespace arma;
 
 	assert(n2 > n1);
 	assert(n2 <= m);
 	assert(n1 >= 0);
 
-	int sign = static_cast<int>(spinComponent);
+	int sign = static_cast<int>(spinz);
 
-	nummat B = diagmat(exp(sign * alpha * auxfield.col(n2 - 1))) * proptmat;
+	nummat B = diagmat(exp(sign * alpha * arbitraryAuxfield.col(n2 - 1))) * proptmat;
 
 	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
-		B *= diagmat(exp(sign * alpha * auxfield.col(n - 1))) * proptmat;
+		B *= diagmat(exp(sign * alpha * arbitraryAuxfield.col(n - 1))) * proptmat;
 	}
 
 	return B;
 }
+
+inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz) {
+	return computeBmat(n2, n1, spinz);
+}
+
+inline nummat DetHubbard::computeGreenFunction(
+		const nummat& bTau0, const nummat& bBetaTau) {
+	return arma::inv(arma::eye(N,N) + bTau0 * bBetaTau);
+}
+
+inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
+		Spin spinz) {
+	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
+			computeBmat(m, timeslice, spinz));
+}
+
+
+void DetHubbard::computeAllGreenFunctions() {
+	auto compute = [this](Spin spinz, numcube& green) {
+		for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+			green.slice(timeslice) = computeGreenFunction(timeslice, spinz);
+		}
+	};
+	compute(Spin::Up,   greenfctUp);
+	compute(Spin::Down, greenfctDown);
+}
+
+num DetHubbard::weightRatioGeneric(const nummat& auxfieldBefore,
+		const nummat& auxfieldAfter) {
+	using namespace arma;
+	return det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldAfter)) *
+		   det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldAfter)) /
+			(det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldBefore)) *
+			 det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore)));
+}
+
+inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
+	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
+	return (1 + exp(-2 * alpha * auxfield(timeslice, site)) *
+			(1 - greenfctUp(site,site,timeslice)))
+			*
+		   (1 + exp(+2 * alpha * auxfield(timeslice, site)) *
+			(1 - greenfctDown(site,site,timeslice)));
+}
+
+inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
+	auto update = [N, site](nummat& green, num expfactor) {
+		const nummat& greenOld = green;		//reference
+		nummat greenNew = green;			//copy
+		const nummat oneMinusGreenOld = arma::eye(N,N) - greenOld;
+		num divisor = 1 + expfactor * (1 - greenOld(site, site));
+		for (unsigned y = 0; y < N; ++y) {
+			for (unsigned x = 0; x < N; ++x) {
+				greenNew(x, y) -=  greenOld(x, site) * expfactor *
+						oneMinusGreenOld(site, y) / divisor;
+			}
+		}
+	};
+
+	update(greenfctUp.slice(timeslice),   exp(-2 * alpha * auxfield(timeslice, site)));
+	update(greenfctDown.slice(timeslice), exp(+2 * alpha * auxfield(timeslice, site)));
+}
+
+
+
+
+
+
+
 
 
 

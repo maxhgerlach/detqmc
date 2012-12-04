@@ -31,6 +31,8 @@
 typedef double num;
 typedef arma::Col<num> numvec;
 typedef arma::Mat<num> nummat;
+typedef arma::Cube<num> numcube;
+typedef arma::Mat<int> intmat;
 typedef arma::Mat<unsigned> tableSites;
 
 class DetHubbard {
@@ -63,15 +65,19 @@ protected:
 	// related propagator e ** (-dtau * tmat)
 	nummat proptmat;
 
-
-	//the following varies during the course of the simulation
+	//the following quantities vary during the course of the simulation
 
 	//Auxiliary field represented by Ising spins, N entries of +/- 1.
 	//There is one auxiliary field for each imaginary time slice. One time slice
 	//corresponds to one column of the matrix. The time slices in auxfield are
 	//indexed from 0 to m-1.
-	nummat auxfield;
+	intmat auxfield;
 
+	//Equal imaginary time Green function
+	//slices indexed n=0..m-1 correspond to time slices at dtau*n,
+	//which are then indexed by sites in row and collumn.
+	//One cube for each value of spinz.
+	numcube greenfctUp, greenfctDown;
 
 	void createNeighborTable();
 	unsigned coordsToSite(const std::vector<unsigned>& coords);
@@ -89,7 +95,40 @@ protected:
 	//So n1, n2 run from 0 to m.
 	// e^{-dtau T} = proptmat
 	//where the V(s_n) are computed for either the up or down Hubbard spins
-	nummat computeBmat(unsigned n2, unsigned n1, Spin spinComponent);
+	nummat computeBmat(unsigned n2, unsigned n1, Spin spinz);
+	//calculate the B matrix for an arbitrary auxiliary field that need not match
+	//the current one
+	nummat computeBmat(unsigned n2, unsigned n1, Spin spinz,
+			const nummat& arbitraryAuxfield);
+
+	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
+	//for the current aux field
+	nummat computeGreenFunction(const nummat& bTau0, const nummat& bBetaTau);
+	//Calculate the Green function from scratch for the given timeslice index
+	//(tau = dtau * timeslice) for spin up or down
+	nummat computeGreenFunction(unsigned timeslice, Spin spinz);
+
+	//Calculate all entries of greenfctUp, greenfctDown from scratch for the
+	//current aux field configuration.
+	void computeAllGreenFunctions();
+
+	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before{beta,0)]
+	//by brute force
+	num weightRatioGeneric(const nummat& auxfieldBefore,
+			const nummat& auxfieldAfter);
+
+	//ratio of weighting determinants if a single auxiliary field
+	//spin (at site in timeslice) is flipped from the current configuration.
+	//use pre-stored Green functions.
+	//formula independent of system size or number of time slices, in this form
+	//specific to the Hubbard model
+	num weightRatioSingleFlip(unsigned site, unsigned timeslice);
+
+
+	//Update the stored Green function matrices to reflect the state after
+	//the auxiliary field spin at site in timeslice has been flipped. This
+	//function expects this->auxfield to be in the stae before the flip.
+	void updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice);
 };
 
 #endif /* DETHUBBARD_H_ */
