@@ -14,7 +14,7 @@
  *
  * Parameters
  *   t -- hopping energy
- *   U -- interaction energy
+ *   U -- potential energy
  *   mu -- chemical potential
  *   L -- linear spatial extent
  *   d -- spatial dimension
@@ -26,6 +26,7 @@
  */
 
 #include <vector>
+#include <string>
 #include <armadillo>
 
 typedef double num;
@@ -41,6 +42,20 @@ public:
 			unsigned m);
 	virtual ~DetHubbard();
 
+	//perform measurements of all observables
+    void measure();
+    //get values of observables normalized by system size:
+    //obs corresponds to an observable additional to the energy
+    //if values of obsIndex > 0 are supported, we measure multiple, different
+    //observables (up to obsIndex == getNumberOfObservables() - 1 )
+    unsigned getNumberOfObservables() const;
+    num obsNormalized(unsigned obsIndex = 0) const;
+    virtual std::string getObservableName(unsigned obsIndex = 0) const;
+    virtual std::string getObservableShort(unsigned obsIndex = 0) const;
+
+
+    void updateUnstabilized();
+
 	enum class Spin: int {Up = +1, Down = -1};
 protected:
 	//parameters:
@@ -49,6 +64,7 @@ protected:
 	num mu;
 	unsigned L;
 	unsigned d;
+	unsigned latticeCoordination;      // 2 * d
 	unsigned N;   // L ** d
 	num beta;
 	unsigned m;
@@ -61,11 +77,14 @@ protected:
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down
+	//TODO: no need to store tmat
 	nummat tmat;
 	// related propagator e ** (-dtau * tmat)
 	nummat proptmat;
 
+
 	//the following quantities vary during the course of the simulation
+
 
 	//Auxiliary field represented by Ising spins, N entries of +/- 1.
 	//There is one auxiliary field for each imaginary time slice. One time slice
@@ -75,12 +94,30 @@ protected:
 
 	//Equal imaginary time Green function
 	//slices indexed n=0..m-1 correspond to time slices at dtau*n,
-	//which are then indexed by sites in row and collumn.
+	//which are then indexed by sites in row and column.
 	//One cube for each value of spinz.
-	numcube greenfctUp, greenfctDown;
+	numcube gUp, gDn;
+
+
+	//observables, values for the current auxiliary field; averaged over aux. field
+	num occUp;          //occupation spin up
+	num occDn;          //occupation spin down
+	num occTotal;	    //total occupation
+	num eKinetic;		//energy -t \sum_<i,j>,\sigma c^+_i,\sigma c_j,\sigma
+	                    //       -mu \sum_j,\sigma n_j\sigma
+	num ePotential;		//energy U \sum_i (n_i,up - 0.5) (n_i,down - 0.5)
+	num eTotal;			//total energy
+
+
+	//multiple observable handling
+	std::vector<std::string> obsNames;
+    std::vector<std::string> obsShorts;
+    std::vector<num*> obsValPointers;			//pointers to variables updated in measure()
+    unsigned obsCount;
+
 
 	void createNeighborTable();
-	unsigned coordsToSite(const std::vector<unsigned>& coords);
+	unsigned coordsToSite(const std::vector<unsigned>& coords) const;
 
 
 	void setupTmat();
@@ -112,7 +149,7 @@ protected:
 	//current aux field configuration.
 	void computeAllGreenFunctions();
 
-	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before{beta,0)]
+	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
 	//by brute force
 	num weightRatioGeneric(const nummat& auxfieldBefore,
 			const nummat& auxfieldAfter);
@@ -127,7 +164,7 @@ protected:
 
 	//Update the stored Green function matrices to reflect the state after
 	//the auxiliary field spin at site in timeslice has been flipped. This
-	//function expects this->auxfield to be in the stae before the flip.
+	//function expects this->auxfield to be in the state before the flip.
 	void updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice);
 };
 

@@ -8,27 +8,102 @@
 #include <vector>
 #include <cmath>
 #include <cassert>
+#include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#include "exceptions.h"
 #include "dethubbard.h"
 
-using namespace std;
 
 DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
-		t(t), U(U), mu(mu), L(L), d(d), N(static_cast<unsigned>(pow(L,d))),
+		t(t), U(U), mu(mu), L(L), d(d),
+		latticeCoordination(2*d), N(static_cast<unsigned>(std::pow(L,d))),
 		beta(beta), m(m), dtau(beta/m),
-		alpha(acosh(exp(dtau * U * 0.5))),
+		alpha(std::acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(2*d, N),			//coordination number: 2*d
 		tmat(N, N), proptmat(N,N),
-		auxfield(N, m)    //m columns of N rows
+		auxfield(N, m),              //m columns of N rows
+		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
+		obsNames(), obsShorts(), obsValPointers(), obsCount(0)
 {
 	createNeighborTable();
 	setupTmat();
+	using namespace boost::assign;
+	obsNames += "occupation spin up", "occupation spin down", "total occupation",
+			"kinetic energy", "potential energy", "total energy";
+	obsShorts += "nUp", "nDown", "n", "e_t", "e_U", "e";
+	obsValPointers += &occUp, &occDn, &occTotal, &eKinetic, &ePotential, &eTotal;
+	assert(obsNames.size() == obsShorts.size());
+	assert(obsNames.size() == obsValPointers.size());
+	obsCount = obsNames.size();
 }
 
 DetHubbard::~DetHubbard() {
-	// TODO Auto-generated destructor stub
 }
 
-inline unsigned DetHubbard::coordsToSite(const std::vector<unsigned>& coords) {
+
+void DetHubbard::measure() {
+	//used to measure occupation:
+	num sum_GiiUp = 0;
+	num sum_GiiDn = 0;
+	//used to measure kinetic energy:
+	num sum_GneighUp = 0;
+	num sum_GneighDn = 0;
+	//used to measure potential energy:
+	num sum_GiiUpDn = 0;
+	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+		for (unsigned site = 0; site < N; ++site) {
+			//use diagonal elements of Green functions:
+			sum_GiiUp += gUp(site, site, timeslice);
+			sum_GiiDn += gDn(site, site, timeslice);
+			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
+			//use nearest neighbor elements of Green functions:
+			for (unsigned neighIndex = 0; neighIndex < latticeCoordination; ++neighIndex) {
+				unsigned neigh = nearestNeigbors(neighIndex, site);
+				sum_GneighUp += gUp(site, neigh, timeslice);
+				sum_GneighDn += gDn(site, neigh, timeslice);
+			}
+		}
+	}
+	occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
+	occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
+	occTotal = occUp + occDn;
+	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
+	//Note: potential energy term included in kinetic energy:
+	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) + mu * occTotal;
+	eTotal = eKinetic + ePotential;
+}
+
+
+unsigned DetHubbard::getNumberOfObservables() const {
+	return obsCount;
+}
+
+num DetHubbard::obsNormalized(unsigned obsIndex) const {
+	if (obsIndex < obsCount) {
+		return *(obsValPointers[obsIndex]);
+	} else {
+		throw WrongObsIndex(obsIndex);
+	}
+}
+
+std::string DetHubbard::getObservableName(unsigned obsIndex) const {
+	if (obsIndex < obsCount) {
+		return obsNames[obsIndex];
+	} else {
+		throw WrongObsIndex(obsIndex);
+	}
+}
+
+std::string DetHubbard::getObservableShort(unsigned obsIndex) const {
+	if (obsIndex < obsCount) {
+		return obsShorts[obsIndex];
+	} else {
+		throw WrongObsIndex(obsIndex);
+	}
+}
+
+
+
+inline unsigned DetHubbard::coordsToSite(const std::vector<unsigned>& coords) const {
     const unsigned dimensions = coords.size();
     int site = 0;
     for (unsigned dim = 0; dim < dimensions; ++dim) {
@@ -38,6 +113,7 @@ inline unsigned DetHubbard::coordsToSite(const std::vector<unsigned>& coords) {
 }
 
 void DetHubbard::createNeighborTable() {
+	using std::pow; using std::floor;
 	nearestNeigbors.resize(2*d, N);
     std::vector<unsigned> curCoords(d);     //holds the x, y, z coordinate components of the current site
     std::vector<unsigned> newCoords(d);     //newly calculated coords of the neighbor
@@ -117,6 +193,7 @@ inline nummat DetHubbard::computeGreenFunction(
 
 inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 		Spin spinz) {
+	//TODO: should use stored B-matrices
 	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
 			computeBmat(m, timeslice, spinz));
 }
@@ -128,8 +205,8 @@ void DetHubbard::computeAllGreenFunctions() {
 			green.slice(timeslice) = computeGreenFunction(timeslice, spinz);
 		}
 	};
-	compute(Spin::Up,   greenfctUp);
-	compute(Spin::Down, greenfctDown);
+	compute(Spin::Up,   gUp);
+	compute(Spin::Down, gDn);
 }
 
 num DetHubbard::weightRatioGeneric(const nummat& auxfieldBefore,
@@ -143,11 +220,14 @@ num DetHubbard::weightRatioGeneric(const nummat& auxfieldBefore,
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (1 + exp(-2 * alpha * auxfield(timeslice, site)) *
-			(1 - greenfctUp(site,site,timeslice)))
+	return (1 + std::exp(-2 * alpha * auxfield(timeslice, site)) *
+			(1 - gUp(site,site,timeslice)))
 			*
-		   (1 + exp(+2 * alpha * auxfield(timeslice, site)) *
-			(1 - greenfctDown(site,site,timeslice)));
+		   (1 + std::exp(+2 * alpha * auxfield(timeslice, site)) *
+			(1 - gDn(site,site,timeslice)));
+}
+
+void DetHubbard::updateUnstabilized() {
 }
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
@@ -164,8 +244,8 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 		}
 	};
 
-	update(greenfctUp.slice(timeslice),   exp(-2 * alpha * auxfield(timeslice, site)));
-	update(greenfctDown.slice(timeslice), exp(+2 * alpha * auxfield(timeslice, site)));
+	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(timeslice, site)));
+	update(gDn.slice(timeslice), std::exp(+2 * alpha * auxfield(timeslice, site)));
 }
 
 
