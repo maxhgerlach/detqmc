@@ -9,16 +9,18 @@
 #include <cmath>
 #include <cassert>
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#include "tools.h"
 #include "exceptions.h"
 #include "rngwrapper.h"
 #include "dethubbard.h"
 
+//using std::acosh;    //Intel compiler chokes with std::acosh
 
 DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
 		t(t), U(U), mu(mu), L(L), d(d),
-		latticeCoordination(2*d), N(static_cast<unsigned>(std::pow(L,d))),
+		latticeCoordination(2*d), N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(beta), m(m), dtau(beta/m),
-		alpha(std::acosh(std::exp(dtau * U * 0.5))),
+		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(2*d, N),			//coordination number: 2*d
 		tmat(N, N), proptmat(N,N),
 		auxfield(N, m),              //m columns of N rows
@@ -121,21 +123,21 @@ inline unsigned DetHubbard::coordsToSite(const std::vector<unsigned>& coords) co
     const unsigned dimensions = coords.size();
     int site = 0;
     for (unsigned dim = 0; dim < dimensions; ++dim) {
-        site += coords[dim] * (unsigned)pow(L, dim);
+        site += coords[dim] * uint_pow(L, dim);
     }
     return site;
 }
 
 void DetHubbard::createNeighborTable() {
-	using std::pow; using std::floor;
+	using std::floor;
 	nearestNeigbors.resize(2*d, N);
     std::vector<unsigned> curCoords(d);     //holds the x, y, z coordinate components of the current site
     std::vector<unsigned> newCoords(d);     //newly calculated coords of the neighbor
     for (unsigned site = 0; site < N; ++site) {
         int reducedSite = site;
         for (int dim = d - 1; dim >= 0; --dim) {
-            curCoords[dim] = floor(reducedSite / (unsigned)pow(L, dim));
-            reducedSite -= curCoords[dim] * (unsigned)pow(L, dim);
+            curCoords[dim] = floor(reducedSite / uint_pow(L, dim));
+            reducedSite -= curCoords[dim] * uint_pow(L, dim);
         }
         assert(reducedSite == 0);
         for (unsigned dim = 0; dim < d; ++dim) {
@@ -243,7 +245,7 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
-	auto update = [N, site](nummat& green, num expfactor) {
+	auto update = [this, site](nummat& green, num expfactor) {
 		const nummat& greenOld = green;		//reference
 		nummat greenNew = green;			//copy
 		const nummat oneMinusGreenOld = arma::eye(N,N) - greenOld;

@@ -19,6 +19,15 @@
 #include <algorithm>
 #include <cstdlib>
 
+//only use with small numbers!
+inline unsigned uint_pow(unsigned base, unsigned exponent) {
+    unsigned result = 1;
+    for (unsigned times = 0; times < exponent; ++times) {
+        result *= base;
+    }
+    return result;
+} 
+
 template<typename T> inline
 std::string numToString(T i) {
     std::stringstream s;
