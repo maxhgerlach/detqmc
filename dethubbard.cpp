@@ -10,6 +10,7 @@
 #include <cassert>
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
 #include "exceptions.h"
+#include "rngwrapper.h"
 #include "dethubbard.h"
 
 
@@ -26,7 +27,7 @@ DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, u
 {
 	createNeighborTable();
 	setupTmat();
-	using namespace boost::assign;
+	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupation spin up", "occupation spin down", "total occupation",
 			"kinetic energy", "potential energy", "total energy";
 	obsShorts += "nUp", "nDown", "n", "e_t", "e_U", "e";
@@ -39,6 +40,19 @@ DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, u
 DetHubbard::~DetHubbard() {
 }
 
+void DetHubbard::sweepSimple() {
+	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+		gUp.slice(timeslice) = computeGreenFunction(timeslice, Spin::Up);
+		gDn.slice(timeslice) = computeGreenFunction(timeslice, Spin::Down);
+		for (unsigned site = 0; site < N; ++site) {
+			num ratio =  weightRatioSingleFlip(site, timeslice);
+			//Metropolis
+			if (ratio > 1 or rng.rand01() < ratio) {
+				updateGreenFunctionsAfterFlip(site, timeslice);
+			}
+		}
+	}
+}
 
 void DetHubbard::measure() {
 	//used to measure occupation:
@@ -67,7 +81,7 @@ void DetHubbard::measure() {
 	occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
 	occTotal = occUp + occDn;
 	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
-	//Note: potential energy term included in kinetic energy:
+	//Note: chemical potential term included in kinetic energy:
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) + mu * occTotal;
 	eTotal = eKinetic + ePotential;
 }
@@ -193,7 +207,7 @@ inline nummat DetHubbard::computeGreenFunction(
 
 inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 		Spin spinz) {
-	//TODO: should use stored B-matrices
+	//TODO: should use stored B-matrices, for the timeslices that have not changed
 	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
 			computeBmat(m, timeslice, spinz));
 }
@@ -227,8 +241,6 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 			(1 - gDn(site,site,timeslice)));
 }
 
-void DetHubbard::updateUnstabilized() {
-}
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
 	auto update = [N, site](nummat& green, num expfactor) {

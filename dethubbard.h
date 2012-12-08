@@ -53,8 +53,9 @@ public:
     virtual std::string getObservableName(unsigned obsIndex = 0) const;
     virtual std::string getObservableShort(unsigned obsIndex = 0) const;
 
-
-    void updateUnstabilized();
+    //perform a sweep updating the auxiliary field with costly recomputations
+    //of Green functions from scratch
+    void sweepSimple();
 
 	enum class Spin: int {Up = +1, Down = -1};
 protected:
