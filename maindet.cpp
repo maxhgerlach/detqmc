@@ -11,7 +11,9 @@
 #include <fstream>
 #include <string>
 #include <tuple>
+#include "git-revision.h"
 #include "detqmc.h"
+
 
 
 //Parse command line and configuration file to configure the parameters of our simulation.
@@ -34,7 +36,7 @@ std::tuple<bool,Params> configureSimulation(int argc, char **argv) {
 			;
 	po::options_description configOptions("Model and simulation parameters, specify via command line or config file");
 	configOptions.add_options()
-			("model", po::value<string>(&par.model)->default_value("hubbard"))
+			("model", po::value<string>(&par.model)->default_value("hubbard"), "model to be simulated")
 			("t", po::value<num>(&par.t), "hopping energy")
 			("U", po::value<num>(&par.U), "potential energy")
 			("mu", po::value<num>(&par.mu), "chemical potential")
@@ -44,8 +46,12 @@ std::tuple<bool,Params> configureSimulation(int argc, char **argv) {
 			("m", po::value<unsigned>(&par.m), "number of imaginary time discretization levels (beta = m*dtau)")
 			;
 	po::variables_map vm;
+
 	//parse command line
-	po::store(po::command_line_parser(argc, argv).options(genericOptions).options(configOptions).run(), vm);
+	po::options_description cmdlineOptions;
+	cmdlineOptions.add(genericOptions).add(configOptions);
+	po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
+
 	//parse config file, options specified there have lower precedence
 	std::ifstream ifsConf(confFileName);
 	po::store(po::parse_config_file(ifsConf, configOptions), vm);
@@ -53,6 +59,15 @@ std::tuple<bool,Params> configureSimulation(int argc, char **argv) {
 	using std::cout; using std::endl;
 	if (vm.count("help")) {
 		cout << "Usage:" << endl << endl << genericOptions << endl << configOptions << endl;
+		runSimulation = false;
+	}
+	if (vm.count("version")) {
+		cout << "git revision hash: " << GIT_REVISION_HASH << endl
+			 << "build host: " << HOST_NAME << endl
+			 << "build date: " << BUILD_DATE << endl
+			 << "build time: " << BUILD_TIME << endl
+			 << "cppflags: " << CPPFLAGS << endl
+			 << "cxxflags: " << CXXFLAGS << endl;
 		runSimulation = false;
 	}
 
