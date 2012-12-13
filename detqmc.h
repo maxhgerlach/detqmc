@@ -27,7 +27,8 @@ protected:
 	ModelParams parsmodel;
 	MCParams parsmc;
 	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
-	std::vector<std::unique_ptr<ObservableHandler>> obsHandlers;
+	typedef std::unique_ptr<ObservableHandler> ObsPtr;
+	std::vector<ObsPtr> obsHandlers;
 };
 
 

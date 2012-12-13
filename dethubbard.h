@@ -29,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <armadillo>
+#include "parameters.h"
 
 typedef arma::Col<num> numvec;
 typedef arma::Mat<num> nummat;

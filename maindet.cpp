@@ -63,7 +63,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	mcOptions.add_options()
 			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
 			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
-			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks), "number of jackknife blocks for error estimation")
+			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
 			;
 	po::variables_map vm;
 
