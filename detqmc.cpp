@@ -11,8 +11,12 @@
 
 
 
-DetQMC::DetQMC(const Params& par) {
-
+DetQMC::DetQMC(const ModelParams& parsmodel, const MCParams& parsmc) :
+		parsmodel(parsmodel), parsmc(parsmc)
+{
+	if (parsmodel.model == "hubbard") {
+		replica = createDetHubbard(parsmodel);
+	}
 }
 
 DetQMC::~DetQMC() {

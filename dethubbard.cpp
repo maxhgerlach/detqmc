@@ -13,8 +13,17 @@
 #include "exceptions.h"
 #include "rngwrapper.h"
 #include "dethubbard.h"
+#include "parameters.h"
 
 //using std::acosh;    //Intel compiler chokes with std::acosh
+
+
+std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars) {
+	return std::unique_ptr<DetHubbard>(new DetHubbard(
+			pars.t, pars.U, pars.mu, pars.L, pars.d, pars.beta, pars.m)	);
+}
+
+
 
 DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
 		t(t), U(U), mu(mu), L(L), d(d),
@@ -261,6 +270,8 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(timeslice, site)));
 	update(gDn.slice(timeslice), std::exp(+2 * alpha * auxfield(timeslice, site)));
 }
+
+
 
 
 

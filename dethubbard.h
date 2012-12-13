@@ -25,6 +25,7 @@
  *
  */
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <armadillo>
@@ -36,8 +37,20 @@ typedef arma::Cube<num> numcube;
 typedef arma::Mat<int> intmat;
 typedef arma::Mat<unsigned> tableSites;
 
+struct ModelParams;			//definition in parameters.h
+class DetHubbard;		//defined below in this file
+
+//factory function to init DetHubbard from parameter struct
+//
+//(in the future: possibly create such factories for different models)
+//If we had delegate constructors already, this would not be necessary
+std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars);
+
 class DetHubbard {
 public:
+	//init by specifying all simulation parameters individually via
+	//this constructor, or pass them collected in one struct Params
+	//to the "factory" function ::createDetHubbard() declared above
 	DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta,
 			unsigned m);
 	virtual ~DetHubbard();

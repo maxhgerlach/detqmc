@@ -10,30 +10,27 @@
 #ifndef DETQMC_H_
 #define DETQMC_H_
 
+#include <vector>
+#include <memory>
+#include "parameters.h"
 #include "dethubbard.h"
+#include "observablehandler.h"
 
-struct Params;       //definition given below in this file
+
 
 // Class handling the simulation
 class DetQMC {
 public:
-	//init from command line
-	DetQMC(const Params& par);
+	DetQMC(const ModelParams& parsmodel, const MCParams& parsmc);
 	virtual ~DetQMC();
 protected:
+	ModelParams parsmodel;
+	MCParams parsmc;
+	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
+	std::vector<std::unique_ptr<ObservableHandler>> obsHandlers;
 };
 
-// Struct representing simulation parameters
-struct Params {
-	std::string model;
-	num t;
-	num U;
-	num mu;
-	unsigned L;
-	unsigned d;
-	num beta;
-	unsigned m;
-};
+
 
 
 
