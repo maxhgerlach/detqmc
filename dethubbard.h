@@ -30,7 +30,6 @@
 #include <string>
 #include <armadillo>
 
-typedef double num;
 typedef arma::Col<num> numvec;
 typedef arma::Mat<num> nummat;
 typedef arma::Cube<num> numcube;

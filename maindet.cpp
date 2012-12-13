@@ -38,6 +38,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	namespace po = boost::program_options;
 	using std::string;
 	string confFileName;
+
 	po::options_description genericOptions("Generic options, command line only");
 	genericOptions.add_options()
 			("version,v", "print version information (git hash, build date) and exit")
@@ -45,6 +46,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("conf,c", po::value<string>(&confFileName)->default_value("simulation.conf"),
 					"specify configuration file to be used; settings in there will be overridden by command line arguments")
 			;
+
 	po::options_description modelOptions("Model parameters, specify via command line or config file");
 	modelOptions.add_options()
 			("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "model to be simulated")
@@ -56,6 +58,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("beta", po::value<num>(&modelpar.beta), "inverse temperature (in units of 1/t, kB=1)")
 			("m", po::value<unsigned>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau)")
 			;
+
 	po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
 	mcOptions.add_options()
 			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
@@ -99,7 +102,7 @@ int main(int argc, char **argv) {
 	std::tie(runSimulation, parmodel, parmc) = configureSimulation(argc, argv);
 
 	if (runSimulation) {
-		DetQMC simulation(parmodel);
+		DetQMC simulation(parmodel, parmc);
 	}
 
 	return 0;
