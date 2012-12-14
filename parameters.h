@@ -10,9 +10,9 @@
 
 #include <string>
 
-//Collect various structs defining various parameters.
-//Passing around these reduces code duplication somewhat, and reduces errors caused by passing
-//values to the wrong (positional) constructor argument.
+// Collect various structs defining various parameters.
+// Passing around these reduces code duplication somewhat, and reduces errors caused by passing
+// values to the wrong (positional) constructor argument.
 
 typedef double num;		//possibility to switch to single precision if ever desired
 
@@ -35,6 +35,8 @@ struct MCParams {
 	unsigned thermalization;	// number of warm-up sweeps allowed before equilibrium is assumed
 	unsigned jkBlocks;			// number of jackknife blocks for error estimation
 	bool timeseries;			// if true, write time series of individual measurements to disk
+	unsigned measureInterval;	// take measurements every measureInterval sweeps
+	unsigned saveInterval;		// write measurements to disk every saveInterval sweeps
 };
 
 

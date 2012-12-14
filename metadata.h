@@ -36,7 +36,8 @@ std::string metadataToString(const MetadataMap& meta,
 //additional block of comment lines gets written out first with "##" added
 //before each line
 void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
-        const std::string& leadingCommentsBlock = "");
+        const std::string& leadingCommentsBlock = "",
+        bool appendToEndOfFile = false);
 
 
 

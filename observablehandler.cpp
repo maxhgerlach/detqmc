@@ -11,9 +11,10 @@
 
 ObservableHandler::ObservableHandler(const std::string& observableName,
 		const MCParams& simulationParameters,
-		const MetadataMap& metadataToStore)
+		const MetadataMap& metadataToStoreModel,
+		const MetadataMap& metadataToStoreMC)
 	: name(observableName), mcparams(simulationParameters),
-	  meta(metadataToStore),
+	  metaModel(metadataToStoreModel), metaMC(metadataToStoreMC),
 	  jkBlockCount(mcparams.jkBlocks),
 	  jkBlockSizeSweeps(mcparams.sweeps / jkBlockCount),
 	  lastSweepLogged(0), countValues(0),
@@ -25,7 +26,8 @@ ObservableHandler::ObservableHandler(const std::string& observableName,
 		storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
 				new DoubleVectorWriterSuccessive(filename));
 		storage->addHeaderText("Timeseries for observable " + observableName);
-		storage->addMetadataMap(meta);
+		storage->addMetadataMap(metaModel);
+		storage->addMetadataMap(metaMC);
 		storage->addMeta("observable", observableName);
 		storage->writeHeader();
 	}
@@ -79,7 +81,7 @@ void ObservableHandler::outputTimeseries() {
 	}
 }
 
-void outputResults(const std::vector<ObservableHandler>& obsHandlers) {
+void outputResults(const std::vector<std::unique_ptr<ObservableHandler>>& obsHandlers) {
 	typedef std::map<std::string, num> StringNumMap;
 	typedef std::shared_ptr<StringNumMap> StringNumMapPtr;
 	typedef DataMapWriter<std::string, num> StringNumWriter;
@@ -88,8 +90,8 @@ void outputResults(const std::vector<ObservableHandler>& obsHandlers) {
 	StringNumMapPtr errors(new StringNumMap);
 	for (auto p = obsHandlers.cbegin(); p != obsHandlers.cend(); ++p) {
 		num val, err;
-		std::tie(val, err) = p->evaluateJackknife();
-		std::string obsname = p->name;
+		std::tie(val, err) = (*p)->evaluateJackknife();
+		std::string obsname = (*p)->name;
 		(*values)[obsname] = val;
 		(*errors)[obsname] = err;
 	}
@@ -97,7 +99,8 @@ void outputResults(const std::vector<ObservableHandler>& obsHandlers) {
 	output.setData(values);
 	output.setErrors(errors);
 	output.addHeaderText("Monte Carlo results for observable expectation values");
-	output.addMetadataMap(obsHandlers.begin()->meta);
+	output.addMetadataMap((*obsHandlers.begin())->metaModel);
+	output.addMetadataMap((*obsHandlers.begin())->metaMC);
 	output.addMeta("key", "observable");
 	output.addHeaderText("observable\t value \t error");
 	output.writeToFile("results.values");

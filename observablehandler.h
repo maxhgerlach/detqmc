@@ -25,7 +25,8 @@ class ObservableHandler {
 public:
 	ObservableHandler(const std::string& observableName,
 			const MCParams& simulationParameters,
-			const MetadataMap& metadataToStore);
+			const MetadataMap& metadataToStoreModel,
+			const MetadataMap& metadataToStoreMC);
 	virtual ~ObservableHandler();
 
 	// Log a newly measured observable value, pass the number of the current sweep.
@@ -41,11 +42,11 @@ public:
 	//data written to file from memory
 	void outputTimeseries();
 
-	friend void ::outputResults(const std::vector<ObservableHandler>& obsHandlerso);
+	friend void ::outputResults(const std::vector<std::unique_ptr<ObservableHandler>>& obsHandlers);
 protected:
 	std::string name;
 	MCParams mcparams;
-	MetadataMap meta;
+	MetadataMap metaModel, metaMC;
 	unsigned jkBlockCount;
 	unsigned jkBlockSizeSweeps;
 
@@ -62,7 +63,7 @@ protected:
 
 //Write expectation values and error bars for all observables to a file
 //take metadata to store from the first entry in obsHandlers
-void outputResults(const std::vector<ObservableHandler>& obsHandlers);
+void outputResults(const std::vector<std::unique_ptr<ObservableHandler>>& obsHandlers);
 
 
 #endif /* OBSERVABLEHANDLER_H_ */

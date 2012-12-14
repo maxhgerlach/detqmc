@@ -60,7 +60,8 @@ MetadataMap readOnlyMetadata(const std::string & filename) {
 }
 
 void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
-        const std::string& leadingCommentsBlock) {
+        const std::string& leadingCommentsBlock,
+        bool appendToEndOfFile) {
     std::string comments = leadingCommentsBlock;
     //add "##" characters
     comments.insert(0, "##");
@@ -75,6 +76,10 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
     }
     if (*comments.rbegin() != '\n') {
         comments.append("\n");
+    }
+    std::ios::open_mode openMode = std::ios::out;
+    if (appendToEndOfFile) {
+    	openMode |= std::ios::ate;
     }
     std::ofstream outFile(filename.c_str());
     outFile << comments;

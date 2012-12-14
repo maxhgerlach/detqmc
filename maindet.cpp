@@ -7,23 +7,14 @@
 
 
 #include <boost/program_options.hpp>
+#include <boost/version.hpp>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <tuple>
 #include "git-revision.h"
+#include "metadata.h"
 #include "detqmc.h"
-
-
-void printVersionInfo() {
-	using std::cout; using std::endl;
-	cout << "git revision hash: " << GIT_REVISION_HASH << endl
-		 << "build host: " << HOST_NAME << endl
-		 << "build date: " << BUILD_DATE << endl
-		 << "build time: " << BUILD_TIME << endl
-		 << "cppflags: " << CPPFLAGS << endl
-		 << "cxxflags: " << CXXFLAGS << endl;
-}
 
 
 //Parse command line and configuration file to configure the parameters of our simulation.
@@ -65,6 +56,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
 			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
 			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
+			("measureInterval", po::value<unsigned>(&mcpar.measureInterval), "take measurements every [arg] sweeps")
+			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps")
 			;
 	po::variables_map vm;
 
@@ -88,7 +81,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 		runSimulation = false;
 	}
 	if (vm.count("version")) {
-		printVersionInfo();
+		cout << metadataToString(collectVersionInfo());
 		runSimulation = false;
 	}
 
