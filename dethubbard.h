@@ -30,6 +30,7 @@
 #include <string>
 #include <armadillo>
 #include "parameters.h"
+#include "metadata.h"
 
 typedef arma::Col<num> numvec;
 typedef arma::Mat<num> nummat;
@@ -54,6 +55,10 @@ public:
 	DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta,
 			unsigned m);
 	virtual ~DetHubbard();
+
+	//Create a MetadataMap describing the parameters of the
+	//simulated model
+	MetadataMap prepareModelMetadataMap();
 
 	//perform measurements of all observables
     void measure();

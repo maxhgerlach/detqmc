@@ -64,6 +64,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
 			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
 			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
+			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
 			;
 	po::variables_map vm;
 

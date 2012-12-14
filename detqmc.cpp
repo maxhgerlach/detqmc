@@ -18,9 +18,10 @@ DetQMC::DetQMC(const ModelParams& parsmodel, const MCParams& parsmc) :
 		replica = createDetHubbard(parsmodel);
 	}
 
+	modelMeta = replica->prepareModelMetadataMap();
 	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfObservables(); ++obsIndex) {
 		obsHandlers.push_back(ObsPtr(
-				new ObservableHandler(replica->getObservableName(obsIndex), parsmc)));
+				new ObservableHandler(replica->getObservableName(obsIndex), parsmc, modelMeta)));
 	}
 }
 

@@ -29,18 +29,6 @@ MetadataMap parseMetadataBlock(std::string& lines) {
     for (bpt::ptree::const_iterator p = pt.begin(); p != pt.end(); ++p) {
     	meta[p->first] = p->second.data();
     }
-
-
-
-
-//    typedef dlib::config_reader::kernel_1a CR;
-//    CR cr(linesStream);
-//    std::vector<string> keys;
-//    cr.get_keys(keys);
-//    for (unsigned i = 0; i < keys.size(); ++i)
-//        meta[keys[i]] = cr[keys[i]];
-//    return meta;
-
     return meta;
 }
 

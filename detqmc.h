@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <memory>
+#include "metadata.h"
 #include "parameters.h"
 #include "dethubbard.h"
 #include "observablehandler.h"
@@ -26,6 +27,7 @@ public:
 protected:
 	ModelParams parsmodel;
 	MCParams parsmc;
+	MetadataMap modelMeta;
 	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
 	typedef std::unique_ptr<ObservableHandler> ObsPtr;
 	std::vector<ObsPtr> obsHandlers;

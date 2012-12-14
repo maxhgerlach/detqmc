@@ -51,6 +51,22 @@ DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, u
 DetHubbard::~DetHubbard() {
 }
 
+
+MetadataMap DetHubbard::prepareModelMetadataMap() {
+	MetadataMap meta;
+	meta["model"] = "hubbard";
+	meta["t"] = numToString(t);
+	meta["U"] = numToString(U);
+	meta["mu"] = numToString(mu);
+	meta["L"] = numToString(L);
+	meta["d"] = numToString(d);
+	meta["N"] = numToString(N);
+	meta["beta"] = numToString(beta);
+	meta["m"] = numToString(m);
+	meta["dtau"] = numToString(dtau);
+	return meta;
+}
+
 void DetHubbard::sweepSimple() {
 	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
 		gUp.slice(timeslice) = computeGreenFunction(timeslice, Spin::Up);
@@ -251,7 +267,6 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 		   (1 + std::exp(+2 * alpha * auxfield(timeslice, site)) *
 			(1 - gDn(site,site,timeslice)));
 }
-
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
 	auto update = [this, site](nummat& green, num expfactor) {

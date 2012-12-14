@@ -34,6 +34,7 @@ struct MCParams {
 	unsigned sweeps;			// number of sweeps used for measurements
 	unsigned thermalization;	// number of warm-up sweeps allowed before equilibrium is assumed
 	unsigned jkBlocks;			// number of jackknife blocks for error estimation
+	bool timeseries;			// if true, write time series of individual measurements to disk
 };
 
 
