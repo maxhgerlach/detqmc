@@ -9,10 +9,16 @@
 #define PARAMETERS_H_
 
 #include <string>
+#include <set>
 
 // Collect various structs defining various parameters.
 // Passing around these reduces code duplication somewhat, and reduces errors caused by passing
 // values to the wrong (positional) constructor argument.
+
+// The set specified included in each struct contains string representations
+// of all parameters actually specified.  This allows throwing an exception
+// at the appropriate point in the program if a parameter is missing.
+//TODO: Find a more elegant solution.
 
 typedef double num;		//possibility to switch to single precision if ever desired
 
@@ -26,6 +32,7 @@ struct ModelParams {
 	unsigned d;
 	num beta;
 	unsigned m;
+	std::set<std::string> specified;
 };
 
 
@@ -37,6 +44,8 @@ struct MCParams {
 	bool timeseries;			// if true, write time series of individual measurements to disk
 	unsigned measureInterval;	// take measurements every measureInterval sweeps
 	unsigned saveInterval;		// write measurements to disk every saveInterval sweeps
+
+	std::set<std::string> specified;
 };
 
 

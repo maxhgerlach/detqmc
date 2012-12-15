@@ -139,6 +139,7 @@ protected:
 	unsigned coordsToSite(const std::vector<unsigned>& coords) const;
 
 
+	void setupRandomAuxfield();
 	void setupTmat();
 
 

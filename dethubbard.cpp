@@ -19,6 +19,16 @@
 
 
 std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars) {
+	//check parameters
+	using namespace boost::assign;
+	std::vector<std::string> neededModelPars;
+	neededModelPars += "t", "U", "mu", "L", "d", "beta", "m";
+	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
+		if (pars.specified.count(*p) == 0) {
+			throw ParameterMissing(*p);
+		}
+	}
+
 	return std::unique_ptr<DetHubbard>(new DetHubbard(
 			pars.t, pars.U, pars.mu, pars.L, pars.d, pars.beta, pars.m)	);
 }
@@ -37,6 +47,7 @@ DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, u
 		obsNames(), obsShorts(), obsValPointers(), obsCount(0)
 {
 	createNeighborTable();
+	setupRandomAuxfield();
 	setupTmat();
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupation spin up", "occupation spin down", "total occupation",
@@ -178,6 +189,18 @@ void DetHubbard::createNeighborTable() {
     }
 }
 
+
+void DetHubbard::setupRandomAuxfield() {
+	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+		for (unsigned site = 0; site < N; ++site) {
+			if (rng.rand01() <= 0.5) {
+				auxfield(site, timeslice) = +1;
+			} else {
+				auxfield(site, timeslice) = -1;
+			}
+		}
+	}
+}
 
 void DetHubbard::setupTmat() {
 	tmat = -mu * arma::eye(N, N);

@@ -51,14 +51,16 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			;
 
 	po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
+	mcpar.saveInterval = 0;
 	mcOptions.add_options()
 			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
 			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
 			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
 			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
-			("measureInterval", po::value<unsigned>(&mcpar.measureInterval), "take measurements every [arg] sweeps")
-			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps")
+			("measureInterval", po::value<unsigned>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
+			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
 			;
+
 	po::variables_map vm;
 
 	//parse command line
@@ -72,6 +74,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	std::ifstream ifsConf(confFileName);
 	po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
 
+	po::notify(vm);
+
 	using std::cout; using std::endl;
 	if (vm.count("help")) {
 		cout << "Usage:" << endl << endl
@@ -84,6 +88,20 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 		cout << metadataToString(collectVersionInfo());
 		runSimulation = false;
 	}
+
+	//record which options have been specified
+	auto record = [vm](const po::options_description& optDesc,
+			std::set<std::string>& set) {
+		auto opts = optDesc.options();
+		for (auto p = opts.begin(); p != opts.end(); ++p) {
+			const std::string& o = (*p)->long_name();
+			if (vm.count(o)) {
+				set.insert(o);
+			}
+		}
+	};
+	record(modelOptions, modelpar.specified);
+	record(mcOptions, mcpar.specified);
 
 	return std::make_tuple(runSimulation, modelpar, mcpar);
 }

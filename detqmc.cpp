@@ -6,16 +6,35 @@
  */
 
 
+#include <boost/assign/std/vector.hpp>
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "tools.h"
 #include "git-revision.h"
+#include "exceptions.h"
 
 
 
-DetQMC::DetQMC(const ModelParams& parsmodel, const MCParams& parsmc) :
-		parsmodel(parsmodel), parsmc(parsmc), sweepsDone(0)
+DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
+		parsmodel(parsmodel_), parsmc(parsmc_), sweepsDone(0)
 {
+	//TODO: RNG seed!
+	//check parameters
+	if (parsmodel.specified.count("model") == 0) {
+		throw ParameterMissing("model");
+	}
+	using namespace boost::assign;
+	std::vector<std::string> neededMCPars;
+	neededMCPars += "sweeps", "thermalization", "jkBlocks", "timeseries", "measureInterval";
+	for (auto p = neededMCPars.cbegin(); p != neededMCPars.cend(); ++p) {
+		if (parsmc.specified.count(*p) == 0) {
+			throw ParameterMissing(*p);
+		}
+	}
+	if (parsmc.specified.count("saveInterval") == 0) {
+		parsmc.saveInterval = parsmc.sweeps;		//only save at end
+	}
+
 	if (parsmodel.model == "hubbard") {
 		replica = createDetHubbard(parsmodel);
 	}
