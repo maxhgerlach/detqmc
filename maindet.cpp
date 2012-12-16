@@ -68,6 +68,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions);
 	po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
 
+	po::notify(vm);
+
 	//parse config file, options specified there have lower precedence
 	po::options_description confFileOptions;
 	confFileOptions.add(modelOptions).add(mcOptions);
@@ -115,6 +117,7 @@ int main(int argc, char **argv) {
 
 	if (runSimulation) {
 		DetQMC simulation(parmodel, parmc);
+		simulation.run();
 	}
 
 	return 0;

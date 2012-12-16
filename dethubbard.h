@@ -156,7 +156,7 @@ protected:
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
 	nummat computeBmat(unsigned n2, unsigned n1, Spin spinz,
-			const nummat& arbitraryAuxfield);
+			const intmat& arbitraryAuxfield);
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 	//for the current aux field
@@ -171,8 +171,8 @@ protected:
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
 	//by brute force
-	num weightRatioGeneric(const nummat& auxfieldBefore,
-			const nummat& auxfieldAfter);
+	num weightRatioGeneric(const intmat& auxfieldBefore,
+			const intmat& auxfieldAfter);
 
 	//ratio of weighting determinants if a single auxiliary field
 	//spin (at site in timeslice) is flipped from the current configuration.

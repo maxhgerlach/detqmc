@@ -66,6 +66,7 @@ DetHubbard::~DetHubbard() {
 MetadataMap DetHubbard::prepareModelMetadataMap() {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
+	//TODO: simplify the following with a macro...
 	meta["t"] = numToString(t);
 	meta["U"] = numToString(U);
 	meta["mu"] = numToString(mu);
@@ -180,11 +181,11 @@ void DetHubbard::createNeighborTable() {
         	//neighbor in + direction, periodic
         	newCoords = curCoords;
         	newCoords[dim] = (newCoords[dim] + 1) % L;
-        	nearestNeigbors(dim * 2, N) = coordsToSite(newCoords);
+        	nearestNeigbors(dim * 2, site) = coordsToSite(newCoords);
         	//neighbor in - direction, periodic
         	newCoords = curCoords;
         	newCoords[dim] = (newCoords[dim] - 1 + L) % L;
-        	nearestNeigbors(dim * 2 + 1, N) = coordsToSite(newCoords);
+        	nearestNeigbors(dim * 2 + 1, site) = coordsToSite(newCoords);
         }
     }
 }
@@ -228,12 +229,12 @@ nummat DetHubbard::computePropagator(num scalar, nummat matrix) {
 
 
 inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
-		const nummat& arbitraryAuxfield) {
+		const intmat& arbitraryAuxfield) {
 	using namespace arma;
 
 	assert(n2 > n1);
 	assert(n2 <= m);
-	assert(n1 >= 0);
+	//assert(n1 >= 0);
 
 	int sign = static_cast<int>(spinz);
 
@@ -247,7 +248,7 @@ inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
 }
 
 inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz) {
-	return computeBmat(n2, n1, spinz);
+	return computeBmat(n2, n1, spinz, auxfield);
 }
 
 inline nummat DetHubbard::computeGreenFunction(
@@ -273,8 +274,8 @@ void DetHubbard::computeAllGreenFunctions() {
 	compute(Spin::Down, gDn);
 }
 
-num DetHubbard::weightRatioGeneric(const nummat& auxfieldBefore,
-		const nummat& auxfieldAfter) {
+num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
+		const intmat& auxfieldAfter) {
 	using namespace arma;
 	return det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldAfter)) *
 		   det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldAfter)) /
