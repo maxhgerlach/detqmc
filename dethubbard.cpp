@@ -18,7 +18,7 @@
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
-std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars) {
+std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, const ModelParams& pars) {
 	//check parameters
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
@@ -29,13 +29,15 @@ std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars) {
 		}
 	}
 
-	return std::unique_ptr<DetHubbard>(new DetHubbard(
+	return std::unique_ptr<DetHubbard>(new DetHubbard(rng,
 			pars.t, pars.U, pars.mu, pars.L, pars.d, pars.beta, pars.m)	);
 }
 
 
 
-DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
+DetHubbard::DetHubbard(RngWrapper& rng_,
+		num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
+		rng(rng_),
 		t(t), U(U), mu(mu), L(L), d(d),
 		latticeCoordination(2*d), N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(beta), m(m), dtau(beta/m),

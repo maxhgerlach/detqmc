@@ -16,6 +16,7 @@
 #include "parameters.h"
 #include "dethubbard.h"
 #include "observablehandler.h"
+#include "rngwrapper.h"
 
 
 
@@ -39,6 +40,7 @@ protected:
 	MCParams parsmc;
 	MetadataMap modelMeta;
 	MetadataMap mcMeta;
+	RngWrapper rng;
 	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
 	typedef std::unique_ptr<ObservableHandler> ObsPtr;
 	std::vector<ObsPtr> obsHandlers;

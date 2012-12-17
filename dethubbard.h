@@ -29,6 +29,7 @@
 #include <vector>
 #include <string>
 #include <armadillo>
+#include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"
 
@@ -45,14 +46,15 @@ class DetHubbard;		//defined below in this file
 //
 //(in the future: possibly create such factories for different models)
 //If we had delegate constructors already, this would not be necessary
-std::unique_ptr<DetHubbard> createDetHubbard(const ModelParams& pars);
+std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, const ModelParams& pars);
 
 class DetHubbard {
 public:
 	//init by specifying all simulation parameters individually via
 	//this constructor, or pass them collected in one struct Params
-	//to the "factory" function ::createDetHubbard() declared above
-	DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta,
+	//to the "factory" function ::createDetHubbard() declared above.
+	//Give a reference to the RNG instance to be used
+	DetHubbard(RngWrapper& rng, num t, num U, num mu, unsigned L, unsigned d, num beta,
 			unsigned m);
 	virtual ~DetHubbard();
 
@@ -77,6 +79,7 @@ public:
 
 	enum class Spin: int {Up = +1, Down = -1};
 protected:
+	RngWrapper& rng;
 	//parameters:
 	num t;
 	num U;

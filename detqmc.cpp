@@ -6,7 +6,8 @@
  */
 
 
-#include <boost/assign/std/vector.hpp>
+#include <ctime>
+#include "boost/assign/std/vector.hpp"
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "tools.h"
@@ -19,7 +20,6 @@ using std::endl;
 DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		parsmodel(parsmodel_), parsmc(parsmc_), sweepsDone(0)
 {
-	//TODO: RNG seed!
 	//check parameters
 	if (parsmodel.specified.count("model") == 0) {
 		throw ParameterMissing("model");
@@ -36,8 +36,14 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		parsmc.saveInterval = parsmc.sweeps;		//only save at end
 	}
 
+	if (parsmc.specified.count("rngSeed") == 0) {
+		cout << "No rng seed specified, will use std::time(0)" << endl;
+		parsmc.rngSeed = std::time(0);
+	}
+	rng = RngWrapper(parsmc.rngSeed);
+
 	if (parsmodel.model == "hubbard") {
-		replica = createDetHubbard(parsmodel);
+		replica = createDetHubbard(rng, parsmodel);
 	}
 
 	modelMeta = replica->prepareModelMetadataMap();
@@ -98,6 +104,7 @@ MetadataMap DetQMC::prepareMCMetadataMap() {
 	META_INSERT(jkBlocks);
 	META_INSERT(measureInterval);
 	META_INSERT(saveInterval);
+	META_INSERT(rngSeed);
 #undef META_INSERT
 	meta["timeseries"] = (parsmc.timeseries ? "true" : "false");
 	return meta;

@@ -25,12 +25,10 @@ class RngWrapper {
     int processIndex;
     dsfmt_t dsfmt;
 public:
-    RngWrapper() : seed(0), processIndex(0) {}
+    RngWrapper(unsigned long seed_ = 0, int processIndex_ = 0);
     virtual ~RngWrapper() {}
 
     std::string getName();
-
-    void init(unsigned long seed_, int processIndex_ = 0);
 
     //return a floating point random number from (0, 1)
     double rand01() {
@@ -47,7 +45,5 @@ public:
     void saveState();
     void loadState();
 };
-
-extern RngWrapper rng;
 
 #endif /* RNGWRAPPER_H_ */

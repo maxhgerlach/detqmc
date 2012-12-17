@@ -44,6 +44,7 @@ struct MCParams {
 	bool timeseries;			// if true, write time series of individual measurements to disk
 	unsigned measureInterval;	// take measurements every measureInterval sweeps
 	unsigned saveInterval;		// write measurements to disk every saveInterval sweeps
+	unsigned long rngSeed;		// seed for random number generator
 
 	std::set<std::string> specified;
 };

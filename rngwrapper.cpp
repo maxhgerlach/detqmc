@@ -23,9 +23,8 @@ std::string RngWrapper::getName() {
 	return "DSFMT " + numToString(DSFMT_MEXP);
 }
 
-void RngWrapper::init(unsigned long seed_, int processIndex_) {
-	seed = seed_;
-	processIndex = processIndex_;
+RngWrapper::RngWrapper(unsigned long seed_, int processIndex_)
+		: seed(seed_), processIndex(processIndex_) {
 	//dSFMT
 	//TODO: use full seed
 
@@ -61,5 +60,3 @@ void RngWrapper::loadState() {
 	}
 	fclose(F);
 }
-
-RngWrapper rng;

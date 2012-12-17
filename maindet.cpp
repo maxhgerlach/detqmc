@@ -59,6 +59,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
 			("measureInterval", po::value<unsigned>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
 			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
+			("seed", po::value<unsigned long>(&mcpar.rngSeed), "seed for pseudo random number generator")
 			;
 
 	po::variables_map vm;
