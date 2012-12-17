@@ -50,8 +50,8 @@ DetHubbard::DetHubbard(num t, num U, num mu, unsigned L, unsigned d, num beta, u
 	setupRandomAuxfield();
 	setupTmat();
 	using namespace boost::assign;         // bring operator+=() into scope
-	obsNames += "occupation spin up", "occupation spin down", "total occupation",
-			"kinetic energy", "potential energy", "total energy";
+	obsNames += "occupationSpinUp", "occupationSpinDown", "totalOccupation",
+			"kineticEnergy", "potentialEnergy", "totalEnergy";
 	obsShorts += "nUp", "nDown", "n", "e_t", "e_U", "e";
 	obsValPointers += &occUp, &occDn, &occTotal, &eKinetic, &ePotential, &eTotal;
 	assert(obsNames.size() == obsShorts.size());
