@@ -35,6 +35,9 @@ public:
 	void insertValue(num value, unsigned curSweep);
 
 	//return [mean value, error] at end of simulation
+	//if jkBlockCount <= 1, only estimate an error (using variance()) if the whole
+	//timeseries is in memory
+	//
 	//return [mean value, 0] if this is called earlier
 	std::tuple<num,num> evaluateJackknife() const;
 

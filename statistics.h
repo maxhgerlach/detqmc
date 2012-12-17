@@ -12,6 +12,19 @@
 #include <vector>
 #include <tuple>
 
+template<typename T>
+T variance(const std::vector<T>& numbers, T meanValue, int N = 0) {
+	using std::pow;
+    if (N == 0) {
+        N = numbers.size();
+    }
+    T sum = 0;
+    for (int i = 0; i < N; ++i) {
+        sum += pow(numbers[i] - meanValue, 2);
+    }
+    return sum / (N-1);
+}
+
 //Take a vector of block values, calculate their average and estimate
 //their error using standard jackknife
 //return a tuple [average, error]

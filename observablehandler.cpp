@@ -56,18 +56,25 @@ std::tuple<num, num> ObservableHandler::evaluateJackknife() const {
 	num mean = total / countValues;
 	num error = 0;
 	if (lastSweepLogged == mcparams.sweeps) {
-		//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished
-		//perform jackknife analysis
-		unsigned jkBlockSizeSamples = countValues / jkBlockCount;
-		unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
-		if (jkBlockCount == 1) {
-			jkTotalSamples = countValues;       //would be zero otherwise
+		//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished.
+		//we can only calculate an error estimate if we have multiple jackknife blocks, or by
+		//considering the naive variance estimate of the timeseries, the whole timeseries stored
+		//in memory
+		if (jkBlockCount <= 1) {
+			if (timeseriesBuffer.size() == countValues) {
+				error = variance(timeseriesBuffer, mean);
+			} else {
+				error = 0;
+			}
+		} else {
+			unsigned jkBlockSizeSamples = countValues / jkBlockCount;
+			unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
+			std::vector<num> jkBlockAverages = jkBlockValues;	//copy
+			for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
+				jkBlockAverages[jb] /= jkTotalSamples;
+			}
+			error = jackknife(jkBlockAverages, mean);
 		}
-		std::vector<num> jkBlockAverages = jkBlockValues;	//copy
-		for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
-			jkBlockAverages[jb] /= jkTotalSamples;
-		}
-		error = jackknife(jkBlockAverages, mean);
 	}
 	return std::make_tuple(mean, error);
 }
