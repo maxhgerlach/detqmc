@@ -6,8 +6,8 @@
  */
 
 
-#include <boost/program_options.hpp>
-#include <boost/version.hpp>
+#include "boost/program_options.hpp"
+#include "boost/version.hpp"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -75,10 +75,12 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	confFileOptions.add(modelOptions).add(mcOptions);
 	std::ifstream ifsConf(confFileName);
 	po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
-
 	po::notify(vm);
 
 	using std::cout; using std::endl;
+	cout << "Configuration options additional to command line parameters will be taken from file "
+		 << confFileName << " if it exists." << endl;
+
 	if (vm.count("help")) {
 		cout << "Usage:" << endl << endl
 			 << genericOptions << endl

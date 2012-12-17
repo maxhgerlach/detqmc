@@ -13,7 +13,8 @@
 #include "git-revision.h"
 #include "exceptions.h"
 
-
+using std::cout;
+using std::endl;
 
 DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		parsmodel(parsmodel_), parsmc(parsmc_), sweepsDone(0)
@@ -46,6 +47,9 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 				new ObservableHandler(replica->getObservableName(obsIndex), parsmc,
 						modelMeta, mcMeta)));
 	}
+
+	cout << "\nSimulation initialized, parameters: " << endl;
+	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
 
 
@@ -55,16 +59,21 @@ DetQMC::~DetQMC() {
 
 void DetQMC::run() {
 	thermalize(parsmc.thermalization);
+	cout << "Starting measurements for " << parsmc.sweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < parsmc.sweeps; sw += parsmc.saveInterval) {
 		measure(parsmc.saveInterval, parsmc.measureInterval);
+		cout << "  " << sw + parsmc.saveInterval << " ... saving results ...";
 		saveResults();
+		cout << endl;
 	}
 }
 
 void DetQMC::thermalize(unsigned numSweeps) {
+	cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
 		replica->sweepSimple();
 	}
+	cout << endl;
 }
 
 void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
