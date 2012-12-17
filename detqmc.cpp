@@ -72,6 +72,7 @@ void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 		replica->sweepSimple();
 		++sweepsDone;
 		if (sw % measureInterval == 0) {
+			replica->measure();
 			//TODO: can this for loop be expressed in a more elegant and terse way?
 			for (unsigned oi = 0; oi < replica->getNumberOfObservables(); ++oi) {
 				obsHandlers[oi]->insertValue(replica->obsNormalized(oi), sweepsDone);
