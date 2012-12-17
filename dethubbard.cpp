@@ -66,16 +66,17 @@ DetHubbard::~DetHubbard() {
 MetadataMap DetHubbard::prepareModelMetadataMap() {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
-	//TODO: simplify the following with a macro...
-	meta["t"] = numToString(t);
-	meta["U"] = numToString(U);
-	meta["mu"] = numToString(mu);
-	meta["L"] = numToString(L);
-	meta["d"] = numToString(d);
-	meta["N"] = numToString(N);
-	meta["beta"] = numToString(beta);
-	meta["m"] = numToString(m);
-	meta["dtau"] = numToString(dtau);
+#define META_INSERT(VAR) meta[#VAR] = numToString(VAR)
+	META_INSERT(t);
+	META_INSERT(U);
+	META_INSERT(mu);
+	META_INSERT(L);
+	META_INSERT(d);
+	META_INSERT(N);
+	META_INSERT(beta);
+	META_INSERT(m);
+	META_INSERT(dtau);
+#undef META_INSERT
 	return meta;
 }
 

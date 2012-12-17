@@ -83,11 +83,13 @@ void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 
 MetadataMap DetQMC::prepareMCMetadataMap() {
 	MetadataMap meta;
-	meta["sweeps"] = numToString(parsmc.sweeps);
-	meta["thermalization"] = numToString(parsmc.thermalization);
-	meta["jkBlocks"] = numToString(parsmc.jkBlocks);
-	meta["measureInterval"] = numToString(parsmc.measureInterval);
-	meta["saveInterval"] = numToString(parsmc.saveInterval);
+#define META_INSERT(VAR) meta[#VAR] = numToString(parsmc.VAR)
+	META_INSERT(sweeps);
+	META_INSERT(thermalization);
+	META_INSERT(jkBlocks);
+	META_INSERT(measureInterval);
+	META_INSERT(saveInterval);
+#undef META_INSERT
 	meta["timeseries"] = (parsmc.timeseries ? "true" : "false");
 	return meta;
 }
