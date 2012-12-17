@@ -100,7 +100,7 @@ void DetQMC::saveResults() {
 	std::string commonInfoFilename = "info.dat";
 	writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
 			"Collected innformation about this determinantal quantum Monte Carlo simulation",
-			true);
+			false);
 	writeOnlyMetaData(commonInfoFilename, modelMeta,
 			"Model parameters:",
 			true);

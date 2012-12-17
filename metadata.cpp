@@ -77,13 +77,20 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
     if (*comments.rbegin() != '\n') {
         comments.append("\n");
     }
-    std::ios::open_mode openMode = std::ios::out;
+//    auto openMode = std::ios::out;
+//    if (appendToEndOfFile) {
+//    	openMode |= std::ios::ate;
+//    }
+//    std::ofstream outFile(filename.c_str(), openMode);
+    std::ofstream outFile;
     if (appendToEndOfFile) {
-    	openMode |= std::ios::ate;
+    	outFile.open(filename.c_str(), std::ios::app);
+    } else {
+    	outFile.open(filename.c_str(), std::ios::out);
     }
-    std::ofstream outFile(filename.c_str());
     outFile << comments;
-    outFile << metadataToString(meta, "#");
+    outFile << metadataToString(meta, "# ");
+    outFile.flush();
 }
 
 

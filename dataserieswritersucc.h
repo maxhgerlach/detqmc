@@ -94,7 +94,7 @@ addMeta(const std::string& key, ValueType val) {
 template <class Container>
 void DataSeriesWriterSuccessive<Container>::
 addMetadataMap(const MetadataMap& meta) {
-    header += metadataToString(meta, "#");
+    header += metadataToString(meta, "# ");
 }
 
 

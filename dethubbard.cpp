@@ -232,6 +232,10 @@ inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
 		const intmat& arbitraryAuxfield) {
 	using namespace arma;
 
+	if (n2 == n1) {
+		return eye(N, N);
+	}
+
 	assert(n2 > n1);
 	assert(n2 <= m);
 	//assert(n1 >= 0);
@@ -285,10 +289,10 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (1 + std::exp(-2 * alpha * auxfield(timeslice, site)) *
+	return (1 + std::exp(-2 * alpha * auxfield(site, timeslice)) *
 			(1 - gUp(site,site,timeslice)))
 			*
-		   (1 + std::exp(+2 * alpha * auxfield(timeslice, site)) *
+		   (1 + std::exp(+2 * alpha * auxfield(site, timeslice)) *
 			(1 - gDn(site,site,timeslice)));
 }
 
@@ -306,8 +310,8 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 		}
 	};
 
-	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(timeslice, site)));
-	update(gDn.slice(timeslice), std::exp(+2 * alpha * auxfield(timeslice, site)));
+	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(site, timeslice)));
+	update(gDn.slice(timeslice), std::exp(+2 * alpha * auxfield(site, timeslice)));
 }
 
 

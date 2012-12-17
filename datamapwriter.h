@@ -96,7 +96,7 @@ void DataMapWriter<Key,Value>::addMeta(const std::string& key, ValueType val) {
 
 template <typename Key, typename Value>
 void DataMapWriter<Key,Value>::addMetadataMap(const MetadataMap& meta) {
-    header += metadataToString(meta, "#");
+    header += metadataToString(meta, "# ");
 }
 
 
