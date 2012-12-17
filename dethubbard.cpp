@@ -50,6 +50,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 {
 	createNeighborTable();
 	setupRandomAuxfield();
+//	auxfield.print(std::cout);
 	setupTmat();
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
@@ -88,8 +89,10 @@ void DetHubbard::sweepSimple() {
 		gDn.slice(timeslice) = computeGreenFunction(timeslice, Spin::Down);
 		for (unsigned site = 0; site < N; ++site) {
 			num ratio =  weightRatioSingleFlip(site, timeslice);
+//			std::cout << ratio << '\n';
 			//Metropolis
 			if (ratio > 1 or rng.rand01() < ratio) {
+//				std::cout << "acc" << '\n';
 				updateGreenFunctionsAfterFlip(site, timeslice);
 			}
 		}
@@ -311,6 +314,7 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 						oneMinusGreenOld(site, y) / divisor;
 			}
 		}
+		green = greenNew;
 	};
 
 	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(site, timeslice)));
