@@ -52,6 +52,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupRandomAuxfield();
 //	auxfield.print(std::cout);
 	setupTmat();
+	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";

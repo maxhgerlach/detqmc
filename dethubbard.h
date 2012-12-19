@@ -12,6 +12,9 @@
  * Determinantal Quantum Monte Carlo (FTQMC) for a standard single-band
  * Hubbard model on a periodic hypercube
  *
+ * H_t = -t \sum_{<i,j>,sigma} c^+_{i,sigma} c^_{j,sigma} + h.c. - mu \sum_j (n_{j,up} + n_{j,down})
+ * H_U = U \sum_j (n_{j,up} - 0.5) * (n_{j,down} - 0.5)
+ *
  * Parameters
  *   t -- hopping energy
  *   U -- potential energy
