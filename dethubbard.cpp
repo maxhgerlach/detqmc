@@ -39,7 +39,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 		num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
 		rng(rng_),
 		t(t), U(U), mu(mu), L(L), d(d),
-		latticeCoordination(2*d), N(static_cast<unsigned>(uint_pow(L,d))),
+		z(2*d), N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(beta), m(m), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(2*d, N),			//coordination number: 2*d
@@ -123,7 +123,7 @@ void DetHubbard::measure() {
 			sum_GiiDn += gDn(site, site, timeslice);
 			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
 			//use nearest neighbor elements of Green functions:
-			for (unsigned neighIndex = 0; neighIndex < latticeCoordination; ++neighIndex) {
+			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
 				unsigned neigh = nearestNeigbors(neighIndex, site);
 				sum_GneighUp += gUp(site, neigh, timeslice);
 				sum_GneighDn += gDn(site, neigh, timeslice);
@@ -302,11 +302,12 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 }
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
+	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (std::exp(-2 * alpha * auxfield(site, timeslice)) - 1) *
+	return (exp(-2 * alpha * auxfield(site, timeslice)) - 1) *
 			(1 - gUp(site,site,timeslice))
 			*
-		   (std::exp(+2 * alpha * auxfield(site, timeslice)) - 1) *
+		   (exp(+2 * alpha * auxfield(site, timeslice)) - 1) *
 			(1 - gDn(site,site,timeslice));
 }
 

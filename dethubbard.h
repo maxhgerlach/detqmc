@@ -86,7 +86,7 @@ protected:
 	num mu;
 	unsigned L;
 	unsigned d;
-	unsigned latticeCoordination;      // 2 * d
+	unsigned z;   // lattice coordination number, 2 * d
 	unsigned N;   // L ** d
 	num beta;
 	unsigned m;
