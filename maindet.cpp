@@ -79,8 +79,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	po::notify(vm);
 
 	using std::cout; using std::endl;
-	cout << "Configuration options additional to command line parameters will be taken from file "
-		 << confFileName << " if it exists." << endl;
+	cout << "Assume config file " << confFileName << endl;
 
 	if (vm.count("help")) {
 		cout << "Usage:" << endl << endl
@@ -113,6 +112,10 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 
 
 int main(int argc, char **argv) {
+	std::cout << "Build info:\n"
+		<< metadataToString(collectVersionInfo())
+		<< "\n";
+
 	ModelParams parmodel;
 	MCParams parmc;
 	bool runSimulation;

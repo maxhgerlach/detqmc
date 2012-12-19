@@ -304,11 +304,11 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (exp(-2 * alpha * auxfield(site, timeslice)) - 1) *
-			(1 - gUp(site,site,timeslice))
+	return (1 + (exp(-2 * alpha * auxfield(site, timeslice)) - 1) *
+			(1 - gUp(site,site,timeslice)))
 			*
-		   (exp(+2 * alpha * auxfield(site, timeslice)) - 1) *
-			(1 - gDn(site,site,timeslice));
+		   (1 + (exp(+2 * alpha * auxfield(site, timeslice)) - 1) *
+			(1 - gDn(site,site,timeslice)));
 }
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
