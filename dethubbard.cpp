@@ -95,6 +95,9 @@ void DetHubbard::sweepSimple() {
 			//DEBUG: comparison of weight ratio calculation
 			intmat newAuxfield = auxfield;
 			newAuxfield(site, timeslice - 1) *= -1;
+//			auxfield.print(std::cout);
+//			std::cout << std::endl;
+//			newAuxfield.print(std::cout);
 			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
 			std::cout << ratio << " vs. " << refRatio << std::endl;
 
@@ -102,7 +105,8 @@ void DetHubbard::sweepSimple() {
 			if (ratio > 1 or rng.rand01() < ratio) {
 //			if (refRatio > 1 or rng.rand01() < refRatio) {
 //				std::cout << "acc" << '\n';
-				updateGreenFunctionsAfterFlip(site, timeslice);
+//				updateGreenFunctionsAfterFlip(site, timeslice);
+				auxfield = newAuxfield;
 			}
 		}
 	}
@@ -309,17 +313,19 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 	num weightBeforeDown = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore));
 	num ratioDown = weightAfterDown / weightBeforeDown;
 
+//	std::cout << weightAfterUp << " " << weightBeforeUp << " " << weightAfterDown << " " << weightBeforeDown << "\n";
+
 	return ratioUp * ratioDown;
 }
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (1 + (exp(-2 * alpha * auxfield(site, timeslice - 1)) - 1) *
-			    (1 - gUp(site,site,timeslice - 1)))
-			*
-		   (1 + (exp(+2 * alpha * auxfield(site, timeslice - 1)) - 1) *
-			    (1 - gDn(site,site,timeslice - 1)));
+	num ratioUp   = 1 + (exp(-2 * alpha * auxfield(site, timeslice-1)) - 1) *
+			            (1 - gUp(site,site, timeslice-1));
+	num ratioDown = 1 + (exp(+2 * alpha * auxfield(site, timeslice-1)) - 1) *
+			            (1 - gDn(site,site, timeslice-1));
+	return ratioUp * ratioDown;
 }
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
