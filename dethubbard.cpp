@@ -262,13 +262,27 @@ inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
 
 	int sign = static_cast<int>(spinz);
 
-	nummat B = diagmat(exp(sign * alpha * arbitraryAuxfield.col(n2 - 1))) * proptmat;
+	//Propagator using the HS-field potential for the given timeslice
+	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> nummat {
+		return proptmat * diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice - 1)));
+		//changed order!
+	};
+
+	nummat B = singleTimeslicePropagator(n2);
 
 	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
-		B *= diagmat(exp(sign * alpha * arbitraryAuxfield.col(n - 1))) * proptmat;
+		B *= singleTimeslicePropagator(n);
 	}
 
 	return B;
+
+//	nummat B = diagmat(exp(sign * alpha * arbitraryAuxfield.col(n2 - 1))) * proptmat;
+//
+//	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
+//		B *= diagmat(exp(sign * alpha * arbitraryAuxfield.col(n - 1))) * proptmat;
+//	}
+//
+//	return B;
 }
 
 inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz) {
@@ -283,9 +297,7 @@ inline nummat DetHubbard::computeGreenFunction(
 inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 		Spin spinz) {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
-//	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
-//			                    computeBmat(m, timeslice, spinz));
-	return computeGreenFunction(computeBmat(timeslice - 1, 0, spinz),     //added a -1
+	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
 			                    computeBmat(m, timeslice, spinz));
 }
 
