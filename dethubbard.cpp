@@ -300,10 +300,16 @@ void DetHubbard::computeAllGreenFunctions() {
 num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 		const intmat& auxfieldAfter) {
 	using namespace arma;
-	return det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldAfter)) *
-		   det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldAfter)) /
-			(det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldBefore)) *
-			 det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore)));
+
+	num weightAfterUp  = det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldAfter));
+	num weightBeforeUp = det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldBefore));
+	num ratioUp = weightAfterUp / weightBeforeUp;
+
+	num weightAfterDown  = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldAfter));
+	num weightBeforeDown = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore));
+	num ratioDown = weightAfterDown / weightBeforeDown;
+
+	return ratioUp * ratioDown;
 }
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
