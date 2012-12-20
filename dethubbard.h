@@ -114,13 +114,14 @@ protected:
 	//Auxiliary field represented by Ising spins, N entries of +/- 1.
 	//There is one auxiliary field for each imaginary time slice. One time slice
 	//corresponds to one column of the matrix. The time slices in auxfield are
-	//indexed from 0 to m-1.
+	//indexed from 0 to m-1. So auxfield.col(n) refers to the timeslice dtau*(n+1).
 	intmat auxfield;
 
 	//Equal imaginary time Green function
-	//slices indexed n=0..m-1 correspond to time slices at dtau*n,
+	//slices indexed n=0..m-1 correspond to time slices at dtau*(n+1),
 	//which are then indexed by sites in row and column.
 	//One cube for each value of spinz.
+	//The Green functions for n=0 are equal to those for n=m.
 	numcube gUp, gDn;
 
 

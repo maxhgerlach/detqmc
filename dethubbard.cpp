@@ -52,7 +52,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupRandomAuxfield();
 //	auxfield.print(std::cout);
 	setupTmat();
-	tmat.print(std::cout);
+//	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
@@ -85,16 +85,16 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 }
 
 void DetHubbard::sweepSimple() {
-	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
-		gUp.slice(timeslice) = computeGreenFunction(timeslice, Spin::Up);
-		gDn.slice(timeslice) = computeGreenFunction(timeslice, Spin::Down);
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		gUp.slice(timeslice - 1) = computeGreenFunction(timeslice, Spin::Up);
+		gDn.slice(timeslice - 1) = computeGreenFunction(timeslice, Spin::Down);
 		for (unsigned site = 0; site < N; ++site) {
 			num ratio =  weightRatioSingleFlip(site, timeslice);
 //			std::cout << ratio << '\n';
 
 			//DEBUG: comparison of weight ratio calculation
 			intmat newAuxfield = auxfield;
-			newAuxfield(site, timeslice) *= -1;
+			newAuxfield(site, timeslice - 1) *= -1;
 			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
 			std::cout << ratio << " vs. " << refRatio << std::endl;
 
@@ -117,17 +117,17 @@ void DetHubbard::measure() {
 	num sum_GneighDn = 0;
 	//used to measure potential energy:
 	num sum_GiiUpDn = 0;
-	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
-			sum_GiiUp += gUp(site, site, timeslice);
-			sum_GiiDn += gDn(site, site, timeslice);
-			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
+			sum_GiiUp += gUp(site, site, timeslice - 1);
+			sum_GiiDn += gDn(site, site, timeslice - 1);
+			sum_GiiUpDn += gUp(site, site, timeslice - 1) * gDn(site, site, timeslice - 1);
 			//use nearest neighbor elements of Green functions:
 			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
 				unsigned neigh = nearestNeigbors(neighIndex, site);
-				sum_GneighUp += gUp(site, neigh, timeslice);
-				sum_GneighDn += gDn(site, neigh, timeslice);
+				sum_GneighUp += gUp(site, neigh, timeslice - 1);
+				sum_GneighDn += gDn(site, neigh, timeslice - 1);
 			}
 		}
 	}
@@ -207,12 +207,12 @@ void DetHubbard::createNeighborTable() {
 
 
 void DetHubbard::setupRandomAuxfield() {
-	for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			if (rng.rand01() <= 0.5) {
-				auxfield(site, timeslice) = +1;
+				auxfield(site, timeslice - 1) = +1;
 			} else {
-				auxfield(site, timeslice) = -1;
+				auxfield(site, timeslice - 1) = -1;
 			}
 		}
 	}
@@ -222,6 +222,7 @@ void DetHubbard::setupTmat() {
 	tmat = -mu * arma::eye(N, N);
 
 	for (unsigned site = 0; site < N; ++site) {
+		//hopping between nearest neighbors
 		for (auto p = nearestNeigbors.begin_col(site);
 				 p != nearestNeigbors.end_col(site); ++p) {
 			tmat(*p, site) -= t;
@@ -285,8 +286,11 @@ inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 
 void DetHubbard::computeAllGreenFunctions() {
 	auto compute = [this](Spin spinz, numcube& green) {
-		for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
-			green.slice(timeslice) = computeGreenFunction(timeslice, spinz);
+//		for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
+//			green.slice(timeslice) = computeGreenFunction(timeslice, spinz);
+//		}
+		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			green.slice(timeslice - 1) = computeGreenFunction(timeslice, spinz);
 		}
 	};
 	compute(Spin::Up,   gUp);
@@ -305,11 +309,11 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	return (1 + (exp(-2 * alpha * auxfield(site, timeslice)) - 1) *
-			(1 - gUp(site,site,timeslice)))
+	return (1 + (exp(-2 * alpha * auxfield(site, timeslice - 1)) - 1) *
+			    (1 - gUp(site,site,timeslice - 1)))
 			*
-		   (1 + (exp(+2 * alpha * auxfield(site, timeslice)) - 1) *
-			(1 - gDn(site,site,timeslice)));
+		   (1 + (exp(+2 * alpha * auxfield(site, timeslice - 1)) - 1) *
+			    (1 - gDn(site,site,timeslice - 1)));
 }
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
@@ -327,8 +331,8 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 		green = greenNew;
 	};
 
-	update(gUp.slice(timeslice), std::exp(-2 * alpha * auxfield(site, timeslice)));
-	update(gDn.slice(timeslice), std::exp(+2 * alpha * auxfield(site, timeslice)));
+	update(gUp.slice(timeslice - 1), std::exp(-2 * alpha * auxfield(site, timeslice - 1)));
+	update(gDn.slice(timeslice - 1), std::exp(+2 * alpha * auxfield(site, timeslice - 1)));
 }
 
 
