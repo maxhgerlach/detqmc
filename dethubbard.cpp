@@ -297,8 +297,10 @@ inline nummat DetHubbard::computeGreenFunction(
 inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 		Spin spinz) {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
-	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
-			                    computeBmat(m, timeslice, spinz));
+	return computeGreenFunction(computeBmat(timeslice - 1, 0, spinz),
+			                    computeBmat(m, timeslice - 1, spinz));
+//	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
+//			                    computeBmat(m, timeslice, spinz));
 }
 
 
