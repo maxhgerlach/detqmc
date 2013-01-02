@@ -229,9 +229,7 @@ void DetHubbard::setupTmat() {
 		//hopping between nearest neighbors
 		for (auto p = nearestNeigbors.begin_col(site);
 				 p != nearestNeigbors.end_col(site); ++p) {
-			//in the course of the simulation the half of t is substracted twice
-			//so that finally tmat(i,j) = -t, iff i,j are nearest neighbors
-			tmat(*p, site) -= 0.5 * t;
+			tmat(*p, site) -= t;
 		}
 	}
 
