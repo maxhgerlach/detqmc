@@ -52,7 +52,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupRandomAuxfield();
 //	auxfield.print(std::cout);
 	setupTmat();
-//	tmat.print(std::cout);
+	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
@@ -229,7 +229,9 @@ void DetHubbard::setupTmat() {
 		//hopping between nearest neighbors
 		for (auto p = nearestNeigbors.begin_col(site);
 				 p != nearestNeigbors.end_col(site); ++p) {
-			tmat(*p, site) -= t;
+			//in the course of the simulation the half of t is substracted twice
+			//so that finally tmat(i,j) = -t, iff i,j are nearest neighbors
+			tmat(*p, site) -= 0.5 * t;
 		}
 	}
 
