@@ -39,10 +39,11 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 		num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
 		rng(rng_),
 		t(t), U(U), mu(mu), L(L), d(d),
-		z(2*d), N(static_cast<unsigned>(uint_pow(L,d))),
+		z(2*d), //coordination number: 2*d
+		N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(beta), m(m), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
-		nearestNeigbors(2*d, N),			//coordination number: 2*d
+		nearestNeigbors(z, N),
 		tmat(N, N), proptmat(N,N),
 		auxfield(N, m),              //m columns of N rows
 		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
@@ -52,7 +53,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupRandomAuxfield();
 //	auxfield.print(std::cout);
 	setupTmat();
-	tmat.print(std::cout);
+//	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
@@ -86,28 +87,35 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 
 void DetHubbard::sweepSimple() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		gUp.slice(timeslice - 1) = computeGreenFunction(timeslice, Spin::Up);
-		gDn.slice(timeslice - 1) = computeGreenFunction(timeslice, Spin::Down);
-		for (unsigned site = 0; site < N; ++site) {
+		gUp.slice(timeslice-1) = computeGreenFunction(timeslice, Spin::Up);
+		gDn.slice(timeslice-1) = computeGreenFunction(timeslice, Spin::Down);
+		// picking sites linearly: system seemed to alternate between two configurations
+		// sweep after sweep
+//		for (unsigned site = 0; site < N; ++site) {
+		for (unsigned count = 0; count < N; ++count) {
+			unsigned site = rng.randInt(0, N-1);
+
 			num ratio =  weightRatioSingleFlip(site, timeslice);
-//			std::cout << ratio << '\n';
 
 			//DEBUG: comparison of weight ratio calculation
-			intmat newAuxfield = auxfield;
-			newAuxfield(site, timeslice - 1) *= -1;
-//			auxfield.print(std::cout);
-//			std::cout << std::endl;
-//			newAuxfield.print(std::cout);
-			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
-			std::cout << ratio << " vs. " << refRatio << std::endl;
+//			intmat newAuxfield = auxfield;
+//			newAuxfield(site, timeslice - 1) *= -1;
+//			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
+//			std::cout << ratio << " vs. " << refRatio << std::endl;
+
+			assert(ratio > 0);
 
 			//Metropolis
 			if (ratio > 1 or rng.rand01() < ratio) {
 //			if (refRatio > 1 or rng.rand01() < refRatio) {
 //				std::cout << "acc" << '\n';
-//				updateGreenFunctionsAfterFlip(site, timeslice);
-				auxfield = newAuxfield;
+//				auxfield = newAuxfield;
+				auxfield(site, timeslice-1) *= -1;
+				updateGreenFunctionsAfterFlip(site, timeslice);
 			}
+//			} else {
+//				std::cout << "no acc" << '\n';
+//			}
 		}
 	}
 }
@@ -264,8 +272,7 @@ inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
 
 	//Propagator using the HS-field potential for the given timeslice
 	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> nummat {
-		return proptmat * diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice - 1)));
-		//changed order!
+		return diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice-1))) * proptmat;
 	};
 
 	nummat B = singleTimeslicePropagator(n2);
@@ -297,18 +304,13 @@ inline nummat DetHubbard::computeGreenFunction(
 inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
 		Spin spinz) {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
-	return computeGreenFunction(computeBmat(timeslice - 1, 0, spinz),
-			                    computeBmat(m, timeslice - 1, spinz));
-//	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
-//			                    computeBmat(m, timeslice, spinz));
+	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
+			                    computeBmat(m, timeslice, spinz));
 }
 
 
 void DetHubbard::computeAllGreenFunctions() {
 	auto compute = [this](Spin spinz, numcube& green) {
-//		for (unsigned timeslice = 0; timeslice < m; ++timeslice) {
-//			green.slice(timeslice) = computeGreenFunction(timeslice, spinz);
-//		}
 		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 			green.slice(timeslice - 1) = computeGreenFunction(timeslice, spinz);
 		}
@@ -329,7 +331,7 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 	num weightBeforeDown = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore));
 	num ratioDown = weightAfterDown / weightBeforeDown;
 
-//	std::cout << weightAfterUp << " " << weightBeforeUp << " " << weightAfterDown << " " << weightBeforeDown << "\n";
+//	std::cout << weightafterup << " " << weightbeforeup << " " << weightafterdown << " " << weightbeforedown << "\n";
 
 	return ratioUp * ratioDown;
 }
@@ -337,10 +339,16 @@ num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
-	num ratioUp   = 1 + (exp(-2 * alpha * auxfield(site, timeslice-1)) - 1) *
-			            (1 - gUp(site,site, timeslice-1));
-	num ratioDown = 1 + (exp(+2 * alpha * auxfield(site, timeslice-1)) - 1) *
-			            (1 - gDn(site,site, timeslice-1));
+
+	//exponential factors
+	num expUp   = exp(-2 * alpha * auxfield(site, timeslice-1));
+	num expDown = exp( 2 * alpha * auxfield(site, timeslice-1));
+
+	num ratioUp   = 1 + (expUp   - 1) * (1 - gUp(site,site, timeslice-1));
+	num ratioDown = 1 + (expDown - 1) * (1 - gDn(site,site, timeslice-1));
+
+//	std::cout << ratioUp << " " << ratioDown << std::endl;
+
 	return ratioUp * ratioDown;
 }
 
@@ -349,28 +357,19 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 		const nummat& greenOld = green;		//reference
 		nummat greenNew = green;			//copy
 		const nummat oneMinusGreenOld = arma::eye(N,N) - greenOld;
-		num divisor = 1 + expfactor * (1 - greenOld(site, site));
+		num divisor = 1 + (expfactor - 1) * (1 - greenOld(site, site));
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {
-				greenNew(x, y) -=  greenOld(x, site) * expfactor *
+				greenNew(x, y) -=  greenOld(x, site) * (1 - expfactor) *
 						oneMinusGreenOld(site, y) / divisor;
 			}
 		}
 		green = greenNew;
 	};
 
-	update(gUp.slice(timeslice - 1), std::exp(-2 * alpha * auxfield(site, timeslice - 1)));
-	update(gDn.slice(timeslice - 1), std::exp(+2 * alpha * auxfield(site, timeslice - 1)));
+	update(gUp.slice(timeslice-1), std::exp(-2 * alpha * auxfield(site, timeslice-1)));
+	update(gDn.slice(timeslice-1), std::exp(+2 * alpha * auxfield(site, timeslice-1)));
 }
-
-
-
-
-
-
-
-
-
 
 
 
