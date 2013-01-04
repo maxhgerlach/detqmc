@@ -55,7 +55,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupTmat();
 //	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
-	obsNames += "occupationUp", "occupationDown", "totalOccupation", "localMoment"
+	obsNames += "occupationUp", "occupationDown", "totalOccupation", "localMoment",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
 	obsShorts += "nUp", "nDown", "n", "m^2", "e_t", "e_U", "e";
 	obsValPointers += &occUp, &occDn, &occTotal, &localMoment,
@@ -159,8 +159,9 @@ void DetHubbard::measure() {
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) + mu * occTotal;
 	eTotal = eKinetic + ePotential;
 
-	localMoment = 2 * ((1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUpSquared - sum_GiiDnSquared)
-			           - 1.0);
+	localMoment = 2 * ( (1.0 / (N*m)) * (2 * sum_GiiUp + 2 * sum_GiiDn
+			                             - sum_GiiUpDn - sum_GiiUpSquared - sum_GiiDnSquared)
+			           - 1.0 );
 }
 
 
