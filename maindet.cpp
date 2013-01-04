@@ -15,6 +15,7 @@
 #include "git-revision.h"
 #include "metadata.h"
 #include "detqmc.h"
+#include "exceptions.h"
 
 
 //Parse command line and configuration file to configure the parameters of our simulation.
@@ -47,6 +48,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("L", po::value<unsigned>(&modelpar.L), "linear spatial extent")
 			("d", po::value<unsigned>(&modelpar.d), "spatial dimension")
 			("beta", po::value<num>(&modelpar.beta), "inverse temperature (in units of 1/t, kB=1)")
+			("temp", po::value<num>(), "temperature (in units of t, kB=1)")
 			("m", po::value<unsigned>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau)")
 			;
 
@@ -68,7 +70,6 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	po::options_description cmdlineOptions;
 	cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions);
 	po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
-
 	po::notify(vm);
 
 	//parse config file, options specified there have lower precedence
@@ -91,6 +92,19 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	if (vm.count("version")) {
 		cout << metadataToString(collectVersionInfo());
 		runSimulation = false;
+	}
+
+	if (vm.count("temp")) {
+		if (vm.count("beta")) {
+			throw ConfigurationError("Specify either parameter temp or beta, not both");
+		} else {
+			//manually specify option beta, remove option temp
+			num beta = 1.0 / vm["temp"].as<num>();
+			vm.insert(std::make_pair("beta", po::variable_value(beta, false)));
+			modelpar.beta = beta;
+			vm.erase("temp");
+			po::notify(vm);
+		}
 	}
 
 	//record which options have been specified

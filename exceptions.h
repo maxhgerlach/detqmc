@@ -48,4 +48,15 @@ public:
 };
 
 
+class ConfigurationError : public std::exception {
+	std::string message;
+public:
+	ConfigurationError(const std::string& msg) : message(msg) {}
+	virtual ~ConfigurationError() throw () { }
+	virtual const char* what() const throw () {
+		return message.c_str();
+	}
+};
+
+
 #endif /* EXCEPTIONS_H_ */
