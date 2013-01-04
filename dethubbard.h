@@ -133,6 +133,7 @@ protected:
 	                    //       -mu \sum_j,\sigma n_j\sigma
 	num ePotential;		//energy U \sum_i (n_i,up - 0.5) (n_i,down - 0.5)
 	num eTotal;			//total energy
+	num localMoment;	//local Moment: <m^2> = <(nUp - nDown)^2>
 
 
 	//multiple observable handling
