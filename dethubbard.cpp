@@ -55,10 +55,11 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupTmat();
 //	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
-	obsNames += "occupationUp", "occupationDown", "totalOccupation", "localMoment",
+	obsNames += "occupationUp", "occupationDown", "totalOccupation",
+			"doubleOccupation", "localMoment",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
-	obsShorts += "nUp", "nDown", "n", "m^2", "e_t", "e_U", "e";
-	obsValPointers += &occUp, &occDn, &occTotal, &localMoment,
+	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e";
+	obsValPointers += &occUp, &occDn, &occTotal, &occDouble, &localMoment,
 			&eKinetic, &ePotential, &eTotal;
 	assert(obsNames.size() == obsShorts.size());
 	assert(obsNames.size() == obsValPointers.size());
@@ -122,7 +123,6 @@ void DetHubbard::sweepSimple() {
 }
 
 void DetHubbard::measure() {
-	using std::pow;
 	//used to measure occupation:
 	num sum_GiiUp = 0;
 	num sum_GiiDn = 0;
@@ -131,17 +131,12 @@ void DetHubbard::measure() {
 	num sum_GneighDn = 0;
 	//used to measure potential energy:
 	num sum_GiiUpDn = 0;
-	//used to measure local moment
-	num sum_GiiUpSquared = 0;
-	num sum_GiiDnSquared = 0;
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
 			sum_GiiUp += gUp(site, site, timeslice - 1);
 			sum_GiiDn += gDn(site, site, timeslice - 1);
 			sum_GiiUpDn += gUp(site, site, timeslice - 1) * gDn(site, site, timeslice - 1);
-			sum_GiiUpSquared += pow(gUp(site, site, timeslice - 1), 2);
-			sum_GiiDnSquared += pow(gDn(site, site, timeslice - 1), 2);
 			//use nearest neighbor elements of Green functions:
 			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
 				unsigned neigh = nearestNeigbors(neighIndex, site);
@@ -154,14 +149,13 @@ void DetHubbard::measure() {
 	occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
 	occTotal = occUp + occDn;
 
+	occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+	localMoment = occTotal - 2*occDouble;
+
 	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
 	//Note: chemical potential term included in kinetic energy:
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) + mu * occTotal;
 	eTotal = eKinetic + ePotential;
-
-	localMoment = 2 * ( (1.0 / (N*m)) * (2 * sum_GiiUp + 2 * sum_GiiDn
-			                             - sum_GiiUpDn - sum_GiiUpSquared - sum_GiiDnSquared)
-			           - 1.0 );
 }
 
 
