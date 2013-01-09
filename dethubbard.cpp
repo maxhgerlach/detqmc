@@ -44,7 +44,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 		beta(beta), m(m), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(z, N),
-		tmat(N, N), proptmat(N,N),
+		proptmat(N,N),
 		auxfield(N, m),              //m columns of N rows
 		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
 		obsNames(), obsShorts(), obsValPointers(), obsCount(0)
@@ -52,7 +52,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	createNeighborTable();
 	setupRandomAuxfield();
 //	auxfield.print(std::cout);
-	setupTmat();
+	setupPropTmat();
 //	tmat.print(std::cout);
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
@@ -89,8 +89,8 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 
 void DetHubbard::sweepSimple() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		gUp.slice(timeslice-1) = computeGreenFunction(timeslice, Spin::Up);
-		gDn.slice(timeslice-1) = computeGreenFunction(timeslice, Spin::Down);
+		gUp.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Up);
+		gDn.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Down);
 		// picking sites linearly: system seemed to alternate between two configurations
 		// sweep after sweep
 //		for (unsigned site = 0; site < N; ++site) {
@@ -236,8 +236,8 @@ void DetHubbard::setupRandomAuxfield() {
 	}
 }
 
-void DetHubbard::setupTmat() {
-	tmat = -mu * arma::eye(N, N);
+void DetHubbard::setupPropTmat() {
+	nummat tmat = -mu * arma::eye(N, N);
 
 	for (unsigned site = 0; site < N; ++site) {
 		//hopping between nearest neighbors
@@ -248,6 +248,37 @@ void DetHubbard::setupTmat() {
 	}
 
 	proptmat = computePropagator(dtau, tmat);
+}
+
+void DetHubbard::setupUdVStorage() {
+	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
+		auto svd = [](const nummat& mat) -> UdV {
+			UdV res;
+			arma::svd(res.U, res.d, res.V, mat, "standard");
+			return res;
+		};
+
+		storage = std::vector<UdV>(m + 1);
+
+		storage[0].U = arma::eye(N,N);
+		storage[0].d = arma::ones(N);
+		storage[0].V = arma::eye(N,N);
+		storage[1] = svd(computeBmatNaive(1, 0, spinz));
+
+		for (unsigned k = 1; k <= m - 1; ++k) {
+			const nummat& U_k = storage[k].U;
+			const nummat& d_k = storage[k].d;
+			const nummat& V_k = storage[k].V;
+			nummat B_kp1 = computeBmatNaive(k + 1, k, spinz);
+			UdV UdV_temp = svd((B_kp1 * U_k) * arma::diagmat(d_k));
+			storage[k+1].U = UdV_temp.U;
+			storage[k+1].d = UdV_temp.d;
+			storage[k+1].V = UdV_temp.V * V_k;
+		}
+	};
+
+	setup(UdVStorageUp, Spin::Up);
+	setup(UdVStorageDn, Spin::Down);
 }
 
 
@@ -262,7 +293,7 @@ nummat DetHubbard::computePropagator(num scalar, nummat matrix) {
 }
 
 
-inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
+inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 		const intmat& arbitraryAuxfield) {
 	using namespace arma;
 
@@ -288,53 +319,35 @@ inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz,
 	}
 
 	return B;
-
-//	nummat B = diagmat(exp(sign * alpha * arbitraryAuxfield.col(n2 - 1))) * proptmat;
-//
-//	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
-//		B *= diagmat(exp(sign * alpha * arbitraryAuxfield.col(n - 1))) * proptmat;
-//	}
-//
-//	return B;
 }
 
-inline nummat DetHubbard::computeBmat(unsigned n2, unsigned n1, Spin spinz) {
-	return computeBmat(n2, n1, spinz, auxfield);
+inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz) {
+	return computeBmatNaive(n2, n1, spinz, auxfield);
 }
 
-inline nummat DetHubbard::computeGreenFunction(
+inline nummat DetHubbard::computeGreenFunctionNaive(
 		const nummat& bTau0, const nummat& bBetaTau) {
 	return arma::inv(arma::eye(N,N) + bTau0 * bBetaTau);
 }
 
-inline nummat DetHubbard::computeGreenFunction(unsigned timeslice,
+inline nummat DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
 		Spin spinz) {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
-	return computeGreenFunction(computeBmat(timeslice, 0, spinz),
-			                    computeBmat(m, timeslice, spinz));
+	return computeGreenFunctionNaive(computeBmatNaive(timeslice, 0, spinz),
+			                    computeBmatNaive(m, timeslice, spinz));
 }
 
 
-void DetHubbard::computeAllGreenFunctions() {
-	auto compute = [this](Spin spinz, numcube& green) {
-		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			green.slice(timeslice - 1) = computeGreenFunction(timeslice, spinz);
-		}
-	};
-	compute(Spin::Up,   gUp);
-	compute(Spin::Down, gDn);
-}
-
-num DetHubbard::weightRatioGeneric(const intmat& auxfieldBefore,
+num DetHubbard::weightRatioGenericNaive(const intmat& auxfieldBefore,
 		const intmat& auxfieldAfter) {
 	using namespace arma;
 
-	num weightAfterUp  = det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldAfter));
-	num weightBeforeUp = det(eye(N,N) + computeBmat(m, 0, Spin::Up, auxfieldBefore));
+	num weightAfterUp  = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Up, auxfieldAfter));
+	num weightBeforeUp = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Up, auxfieldBefore));
 	num ratioUp = weightAfterUp / weightBeforeUp;
 
-	num weightAfterDown  = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldAfter));
-	num weightBeforeDown = det(eye(N,N) + computeBmat(m, 0, Spin::Down, auxfieldBefore));
+	num weightAfterDown  = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Down, auxfieldAfter));
+	num weightBeforeDown = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Down, auxfieldBefore));
 	num ratioDown = weightAfterDown / weightBeforeDown;
 
 //	std::cout << weightafterup << " " << weightbeforeup << " " << weightafterdown << " " << weightbeforedown << "\n";
@@ -373,8 +386,9 @@ inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned ti
 		green = greenNew;
 	};
 
-	update(gUp.slice(timeslice-1), std::exp(-2 * alpha * auxfield(site, timeslice-1)));
-	update(gDn.slice(timeslice-1), std::exp(+2 * alpha * auxfield(site, timeslice-1)));
+	using std::exp;
+	update(gUp.slice(timeslice-1), exp(-2 * alpha * auxfield(site, timeslice-1)));
+	update(gDn.slice(timeslice-1), exp(+2 * alpha * auxfield(site, timeslice-1)));
 }
 
 

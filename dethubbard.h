@@ -31,6 +31,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <tuple>
 #include <armadillo>
 #include "rngwrapper.h"
 #include "parameters.h"
@@ -101,10 +102,8 @@ protected:
 	tableSites nearestNeigbors;
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
-	//for spin up or spin down
-	//TODO: no need to store tmat
-	nummat tmat;
-	// related propagator e ** (-dtau * tmat)
+	//for spin up or spin down -- tmat
+	// related propagator e ** (-dtau * tmat):
 	nummat proptmat;
 
 
@@ -123,6 +122,20 @@ protected:
 	//One cube for each value of spinz.
 	//The Green functions for n=0 are equal to those for n=m.
 	numcube gUp, gDn;
+	
+	//matrices used in the computation of B-matrices with singular value decomposition.
+	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, orthogonal matrix)
+	//Initialize at beginning of simulation by member function setupUdVStorage()
+	struct UdV {
+		nummat U;
+		numvec d;
+		nummat V;
+	};
+	//typedef std::unique_ptr<UdV> UdVptr;
+	//The UdV-instances in UdVStorage will not move around much after setup, so storing
+	//the (rather big) objects in the vector is fine
+	std::vector<UdV> UdVStorageUp;
+	std::vector<UdV> UdVStorageDn;
 
 
 	//observables, values for the current auxiliary field; averaged over aux. field
@@ -149,38 +162,38 @@ protected:
 
 
 	void setupRandomAuxfield();
-	void setupTmat();
+	void setupPropTmat();
+	void setupUdVStorage();
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
 	nummat computePropagator(num scalar, nummat matrix);
 
 	//given the current auxiliary fields {s_n}, compute the matrix
-	//  B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}
+	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}
 	// n2 = tau_2 / m > tau_1 / m = n1
 	//So n1, n2 run from 0 to m.
 	// e^{-dtau T} = proptmat
-	//where the V(s_n) are computed for either the up or down Hubbard spins
-	nummat computeBmat(unsigned n2, unsigned n1, Spin spinz);
+	//Here the V(s_n) are computed for either the up or down Hubbard spins.
+	//These functions naively multiply the matrices, which can be unstable.
+	nummat computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz);
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
-	nummat computeBmat(unsigned n2, unsigned n1, Spin spinz,
+	nummat computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 			const intmat& arbitraryAuxfield);
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
-	//for the current aux field
-	nummat computeGreenFunction(const nummat& bTau0, const nummat& bBetaTau);
+	//for the current aux field.
+	//These functions perform a naive matrix product and inversion.
+	nummat computeGreenFunctionNaive(const nummat& bTau0, const nummat& bBetaTau);
 	//Calculate the Green function from scratch for the given timeslice index
 	//(tau = dtau * timeslice) for spin up or down
-	nummat computeGreenFunction(unsigned timeslice, Spin spinz);
+	nummat computeGreenFunctionNaive(unsigned timeslice, Spin spinz);
 
-	//Calculate all entries of greenfctUp, greenfctDown from scratch for the
-	//current aux field configuration.
-	void computeAllGreenFunctions();
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
-	//by brute force
-	num weightRatioGeneric(const intmat& auxfieldBefore,
+	//by brute force and naively computed B-matrices
+	num weightRatioGenericNaive(const intmat& auxfieldBefore,
 			const intmat& auxfieldAfter);
 
 	//ratio of weighting determinants if a single auxiliary field
