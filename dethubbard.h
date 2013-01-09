@@ -81,6 +81,10 @@ public:
     //of Green functions from scratch
     void sweepSimple();
 
+    //perform a sweep as suggested in the text by Assaad with stable computation
+    //of Green functions, alternate between sweeping up and down in imaginary time
+    void sweep();
+
 	enum class Spin: int {Up = +1, Down = -1};
 protected:
 	RngWrapper& rng;
@@ -131,11 +135,16 @@ protected:
 		numvec d;
 		nummat V;
 	};
+	UdV eye_UdV;	// U = d = V = 1
+	UdV svd(const nummat& mat);				//wraps arma::svd()
 	//typedef std::unique_ptr<UdV> UdVptr;
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
 	std::vector<UdV> UdVStorageUp;
 	std::vector<UdV> UdVStorageDn;
+
+	enum class SweepDirection: int {Up = 1, Down = -1};
+	SweepDirection lastSweepDir;
 
 
 	//observables, values for the current auxiliary field; averaged over aux. field
@@ -208,6 +217,15 @@ protected:
 	//the auxiliary field spin at site in timeslice has been flipped. This
 	//function expects this->auxfield to be in the state before the flip.
 	void updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice);
+
+	//update the HS auxiliary field and the green function in the single timeslice
+	void updateInSlice(unsigned timeslice);
+
+	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
+	//calculate a tuple of four NxN matrices (a,b,c,d) with
+	// a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)
+	typedef std::tuple<nummat,nummat,nummat,nummat> nummat4;
+	nummat4 greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
 };
 
 #endif /* DETHUBBARD_H_ */

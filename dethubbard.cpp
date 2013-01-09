@@ -51,9 +51,13 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 {
 	createNeighborTable();
 	setupRandomAuxfield();
-//	auxfield.print(std::cout);
 	setupPropTmat();
-//	tmat.print(std::cout);
+	setupUdVStorage();
+	eye_UdV.U = arma::eye(N,N);
+	eye_UdV.d = arma::ones(N);
+	eye_UdV.V = arma::eye(N,N);
+	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
+
 	using namespace boost::assign;         // bring operator+=() into scope
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"doubleOccupation", "localMoment",
@@ -87,38 +91,129 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 	return meta;
 }
 
+void DetHubbard::updateInSlice(unsigned timeslice) {
+	// picking sites linearly: system seemed to alternate between two configurations
+	// sweep after sweep
+//	for (unsigned site = 0; site < N; ++site) {
+	for (unsigned count = 0; count < N; ++count) {
+		unsigned site = rng.randInt(0, N-1);
+
+		num ratio =  weightRatioSingleFlip(site, timeslice);
+
+		//DEBUG: comparison of weight ratio calculation
+		//			intmat newAuxfield = auxfield;
+		//			newAuxfield(site, timeslice - 1) *= -1;
+		//			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
+		//			std::cout << ratio << " vs. " << refRatio << std::endl;
+
+		assert(ratio > 0);
+
+		//Metropolis
+		if (ratio > 1 or rng.rand01() < ratio) {
+			//			if (refRatio > 1 or rng.rand01() < refRatio) {
+			//				std::cout << "acc" << '\n';
+			//				auxfield = newAuxfield;
+			auxfield(site, timeslice-1) *= -1;
+			updateGreenFunctionsAfterFlip(site, timeslice);
+		}
+	}
+}
+
+
 void DetHubbard::sweepSimple() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		gUp.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Up);
 		gDn.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Down);
-		// picking sites linearly: system seemed to alternate between two configurations
-		// sweep after sweep
-//		for (unsigned site = 0; site < N; ++site) {
-		for (unsigned count = 0; count < N; ++count) {
-			unsigned site = rng.randInt(0, N-1);
+		updateInSlice(timeslice);
+	}
+}
 
-			num ratio =  weightRatioSingleFlip(site, timeslice);
+DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
+	UdV res;
+	arma::svd(res.U, res.d, res.V, mat, "standard");
+	return res;
+}
 
-			//DEBUG: comparison of weight ratio calculation
-//			intmat newAuxfield = auxfield;
-//			newAuxfield(site, timeslice - 1) *= -1;
-//			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
-//			std::cout << ratio << " vs. " << refRatio << std::endl;
+DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+	//TODO get Ul vs Vl in order
+	const nummat& Ul = UdV_l.U;   //!
+	const numvec& dl = UdV_l.d;
+	const nummat& Vl = UdV_l.V;   //!
+	const nummat& Ur = UdV_r.U;
+	const numvec& dr = UdV_r.d;
+	const nummat& Vr = UdV_r.V;
 
-			assert(ratio > 0);
+	//submatrix view helpers for 2*N x 2*N matrices
+	auto upleft = [N](nummat& m) {
+		return m.submat(0,0, N-1,N-1);
+	};
+	auto upright = [N](nummat& m) {
+		return m.submat(0,N, N-1,2*N-1);
+	};
+	auto downleft = [N](nummat& m) {
+		return m.submat(N,0, 2*N-1,N-1);
+	};
+	auto downright = [N](nummat& m) {
+		return m.submat(N,N, 2*N-1,2*N-1);
+	};
 
-			//Metropolis
-			if (ratio > 1 or rng.rand01() < ratio) {
-//			if (refRatio > 1 or rng.rand01() < refRatio) {
-//				std::cout << "acc" << '\n';
-//				auxfield = newAuxfield;
-				auxfield(site, timeslice-1) *= -1;
-				updateGreenFunctionsAfterFlip(site, timeslice);
-			}
-//			} else {
-//				std::cout << "no acc" << '\n';
-//			}
+	nummat temp(2*N,2*N);
+	upleft(temp)    = arma::inv(Vr * Vl);
+	upright(temp)   = arma::diagmat(dl);
+	downleft(temp)  = arma::diagmat(-dr);
+	downright(temp) = arma::inv(Ul * Ur);
+	UdV tempUdV = svd(temp);
+
+	nummat left(2*N,2*N);
+	upleft(left) = arma::inv(Vr);
+	upright(left).zeros();
+	downleft(left).zeros();
+	downright(left) = arma::inv(Ul);
+
+	nummat right(2*N,2*N);
+	upleft(right) = arma::inv(Vl);
+	upright(right).zeros();
+	downleft(right).zeros();
+	downright(right) = arma::inv(Ur);
+
+	nummat result = (left * arma::inv(tempUdV.U)) * arma::diagmat(1.0 / tempUdV.d)
+					* (arma::inv(tempUdV.U) * right);
+	return nummat4(upleft(result), upright(result),
+				   downleft(result), downright(result));
+}
+
+
+void DetHubbard::sweep() {
+	using std::tie; using std::ignore; using std::get;
+	if (lastSweepDir == SweepDirection::Up) {
+		gUp.slice(m - 1) = get<0>(greenFromUdV(eye_UdV, UdVStorageUp[m]));
+		gDn.slice(m - 1) = get<0>(greenFromUdV(eye_UdV, UdVStorageDn[m]));
+		UdVStorageUp[m] = eye_UdV;
+		UdVStorageDn[m] = eye_UdV;
+		for (unsigned k = m; k >= 1; --k) {
+			updateInSlice(k);
+
+			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
+					                       numcube& green, Spin spinz) {
+				nummat BkUp = computeBmatNaive(k, k - 1, spinz);
+				const nummat& Uk = storage[k].U;
+				const nummat& dk = storage[k].d;
+				const nummat& Vk = storage[k].V;
+				UdV UdV_temp = svd(arma::diagmat(dk) * (Vk * BkUp));
+				UdV_temp.U = Uk * UdV_temp.U;
+
+				if (k - 1 > 0) {      //TODO: this if handled correctly?
+					green.slice(k - 1 - 1) = get<0>(greenFromUdV(UdV_temp, storage[k - 1]));
+				}
+
+				storage[k - 1] = UdV_temp;
+			};
+			advanceDownGreen(k, UdVStorageUp, gUp, Spin::Up);
+			advanceDownGreen(k, UdVStorageDn, gDn, Spin::Down);
 		}
+		lastSweepDir = SweepDirection::Down;
+	} else if (lastSweepDir == SweepDirection::Down) {
+
 	}
 }
 
@@ -250,14 +345,9 @@ void DetHubbard::setupPropTmat() {
 	proptmat = computePropagator(dtau, tmat);
 }
 
+
 void DetHubbard::setupUdVStorage() {
 	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
-		auto svd = [](const nummat& mat) -> UdV {
-			UdV res;
-			arma::svd(res.U, res.d, res.V, mat, "standard");
-			return res;
-		};
-
 		storage = std::vector<UdV>(m + 1);
 
 		storage[0].U = arma::eye(N,N);
