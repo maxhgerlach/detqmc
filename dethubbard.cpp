@@ -196,19 +196,27 @@ void DetHubbard::sweep() {
 			updateInSlice(k);
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                       numcube& green, Spin spinz) {
-				nummat Bk = computeBmatNaive(k, k - 1, spinz);
-				const nummat& Uk = storage[k].U;
-				const nummat& dk = storage[k].d;
-				const nummat& Vk = storage[k].V;
-				UdV UdV_temp = svd(arma::diagmat(dk) * (Vk * Bk));
-				UdV_temp.U = Uk * UdV_temp.U;
+				nummat B_k = computeBmatNaive(k, k - 1, spinz);
+
+				//U_k, d_k, V_k correspond to B(beta,k*tau) [set in the last step]
+				const nummat& U_k = storage[k].U;
+				const nummat& d_k = storage[k].d;
+				const nummat& V_k = storage[k].V;
+
+				//UdV_L will correspond to B(beta,(k-1)*tau)
+				UdV UdV_L = svd(arma::diagmat(d_k) * (V_k * B_k));
+				UdV_L.U = U_k * UdV_L.U;
+
+				//UdV_R corresonds to B((k-1)*tau,0) [set in last sweep]
+				const UdV& UdV_R = storage[k - 1];
 
 				if (k - 1 > 0) {      //TODO: this if handled correctly?
-					green.slice(k - 1 - 1) = get<3>(greenFromUdV(UdV_temp, storage[k - 1]));
+					green.slice(k - 1 - 1) = get<3>(greenFromUdV(UdV_L, UdV_R));
 				}
 
-				storage[k - 1] = UdV_temp;
+				storage[k - 1] = UdV_L;
 			};
+
 			advanceDownGreen(k, UdVStorageUp, gUp, Spin::Up);
 			advanceDownGreen(k, UdVStorageDn, gDn, Spin::Down);
 		}
@@ -246,6 +254,7 @@ void DetHubbard::sweep() {
 			advanceUpGreen(k, UdVStorageDn, gDn, Spin::Down);
 			updateInSlice(k + 1);
 		}
+		lastSweepDir = SweepDirection::Up;
 	}
 }
 
@@ -258,6 +267,8 @@ void DetHubbard::measure() {
 	num sum_GneighDn = 0;
 	//used to measure potential energy:
 	num sum_GiiUpDn = 0;
+	//FORMULA-TEST
+	num sum_doubleoccupancy = 0;
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
@@ -270,13 +281,19 @@ void DetHubbard::measure() {
 				sum_GneighUp += gUp(site, neigh, timeslice - 1);
 				sum_GneighDn += gDn(site, neigh, timeslice - 1);
 			}
+			//FORMULA-TEST
+			sum_doubleoccupancy += (1 - gUp(site,site, timeslice - 1))
+								 * (1 - gDn(site,site, timeslice - 1));
 		}
 	}
 	occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
 	occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
 	occTotal = occUp + occDn;
 
-	occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+	//FORMULA-TEST
+	//occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+	occDouble = (1.0 / (N*m)) * sum_doubleoccupancy;
+
 	localMoment = occTotal - 2*occDouble;
 
 	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
