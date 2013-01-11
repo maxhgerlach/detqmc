@@ -129,9 +129,11 @@ void DetHubbard::sweepSimple() {
 }
 
 DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
-	UdV res;
-	arma::svd(res.U, res.d, res.V, mat, "standard");
-	return res;
+	UdV result;
+	nummat V_transpose;
+	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+	result.V = V_transpose.t();
+	return result;
 }
 
 DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
