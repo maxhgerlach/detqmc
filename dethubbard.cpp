@@ -132,12 +132,12 @@ DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
 	UdV result;
 	nummat V_transpose;
 	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-	result.V = V_transpose.t();
+	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
 	return result;
 }
 
 DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
-	//TODO get Ul vs Vl in order; strange labeling due to writeup in the notes
+	//Ul vs Vl to be compatible to labeling in the notes
 	const nummat& Ul = UdV_l.V;   //!
 	const numvec& dl = UdV_l.d;
 	const nummat& Vl = UdV_l.U;   //!
@@ -178,7 +178,7 @@ DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r)
 	downleft(right).zeros();
 	downright(right) = arma::inv(Ur);
 
-	nummat result = (left * arma::inv(tempUdV.U)) * arma::diagmat(1.0 / tempUdV.d)
+	nummat result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
 					* (arma::inv(tempUdV.U) * right);
 	return nummat4(upleft(result), upright(result),
 				   downleft(result), downright(result));
