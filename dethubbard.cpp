@@ -135,10 +135,10 @@ DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
 }
 
 DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
-	//TODO get Ul vs Vl in order
-	const nummat& Ul = UdV_l.U;   //!
+	//TODO get Ul vs Vl in order; strange labeling due to writeup in the notes
+	const nummat& Ul = UdV_l.V;   //!
 	const numvec& dl = UdV_l.d;
-	const nummat& Vl = UdV_l.V;   //!
+	const nummat& Vl = UdV_l.U;   //!
 	const nummat& Ur = UdV_r.U;
 	const numvec& dr = UdV_r.d;
 	const nummat& Vr = UdV_r.V;
@@ -186,24 +186,23 @@ DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r)
 void DetHubbard::sweep() {
 	using std::tie; using std::ignore; using std::get;
 	if (lastSweepDir == SweepDirection::Up) {
-		gUp.slice(m - 1) = get<0>(greenFromUdV(eye_UdV, UdVStorageUp[m]));
-		gDn.slice(m - 1) = get<0>(greenFromUdV(eye_UdV, UdVStorageDn[m]));
+		gUp.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageUp[m]));
+		gDn.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageDn[m]));
 		UdVStorageUp[m] = eye_UdV;
 		UdVStorageDn[m] = eye_UdV;
 		for (unsigned k = m; k >= 1; --k) {
 			updateInSlice(k);
-
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                       numcube& green, Spin spinz) {
-				nummat BkUp = computeBmatNaive(k, k - 1, spinz);
+				nummat Bk = computeBmatNaive(k, k - 1, spinz);
 				const nummat& Uk = storage[k].U;
 				const nummat& dk = storage[k].d;
 				const nummat& Vk = storage[k].V;
-				UdV UdV_temp = svd(arma::diagmat(dk) * (Vk * BkUp));
+				UdV UdV_temp = svd(arma::diagmat(dk) * (Vk * Bk));
 				UdV_temp.U = Uk * UdV_temp.U;
 
 				if (k - 1 > 0) {      //TODO: this if handled correctly?
-					green.slice(k - 1 - 1) = get<0>(greenFromUdV(UdV_temp, storage[k - 1]));
+					green.slice(k - 1 - 1) = get<3>(greenFromUdV(UdV_temp, storage[k - 1]));
 				}
 
 				storage[k - 1] = UdV_temp;
@@ -213,7 +212,38 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
+		//The Green function at tau=0 is equal to that at tau=beta.
+		//Here we compute it for tau=0 and store it in the slice for tau=beta.
+//		gUp.slice(m - 1) = get<3>(greenFromUdV(UdVStorageUp[0], eye_UdV));     //necessary?
+//		gUp.slice(m - 1) = get<3>(greenFromUdV(UdVStorageDn[0], eye_UdV));
+		//proceed like Assaad
+		UdVStorageUp[0] = eye_UdV;
+		UdVStorageDn[0] = eye_UdV;
+		for (unsigned k = 0; k <= m - 1; ++k) {
+			auto advanceUpGreen = [this](unsigned k, std::vector<UdV>& storage,
+					                     numcube& green, Spin spinz) {
+				nummat B_kp1 = computeBmatNaive(k + 1, k, spinz);
 
+				//The following is B(beta, (k+1) tau), valid from the last sweep
+				const UdV& UdV_kp1 = storage[k + 1];
+
+				//from the last step the following are B(k*tau, 0):
+				const nummat& U_k = storage[k].U;
+				const nummat& d_k = storage[k].d;
+				const nummat& V_k = storage[k].V;
+
+				//UdV_temp will be the new B((k+1)*tau, 0):
+				UdV UdV_temp = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
+				UdV_temp.V *= V_k;
+
+				green.slice(k + 1 - 1) = get<3>(greenFromUdV(UdV_kp1, UdV_temp));
+
+				storage[k + 1] = UdV_temp;
+			};
+			advanceUpGreen(k, UdVStorageUp, gUp, Spin::Up);
+			advanceUpGreen(k, UdVStorageDn, gDn, Spin::Down);
+			updateInSlice(k + 1);
+		}
 	}
 }
 
@@ -350,9 +380,7 @@ void DetHubbard::setupUdVStorage() {
 	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
 		storage = std::vector<UdV>(m + 1);
 
-		storage[0].U = arma::eye(N,N);
-		storage[0].d = arma::ones(N);
-		storage[0].V = arma::eye(N,N);
+		storage[0] = eye_UdV;
 		storage[1] = svd(computeBmatNaive(1, 0, spinz));
 
 		for (unsigned k = 1; k <= m - 1; ++k) {
