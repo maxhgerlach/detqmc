@@ -137,7 +137,7 @@ DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
 }
 
 DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
-	//Ul vs Vl to be compatible to labeling in the notes
+	//Ul vs Vl to be compatible with labeling in the notes
 	const nummat& Ul = UdV_l.V;   //!
 	const numvec& dl = UdV_l.d;
 	const nummat& Vl = UdV_l.U;   //!
@@ -267,8 +267,8 @@ void DetHubbard::measure() {
 	num sum_GneighDn = 0;
 	//used to measure potential energy:
 	num sum_GiiUpDn = 0;
-	//FORMULA-TEST
-	num sum_doubleoccupancy = 0;
+	//FORMULA-TEST -- made no difference
+	//num sum_doubleoccupancy = 0;
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
@@ -281,18 +281,19 @@ void DetHubbard::measure() {
 				sum_GneighUp += gUp(site, neigh, timeslice - 1);
 				sum_GneighDn += gDn(site, neigh, timeslice - 1);
 			}
-			//FORMULA-TEST
-			sum_doubleoccupancy += (1 - gUp(site,site, timeslice - 1))
-								 * (1 - gDn(site,site, timeslice - 1));
+			//FORMULA-TEST -- made no difference
+//			sum_doubleoccupancy += (1 - gUp(site,site, timeslice - 1))
+//								 * (1 - gDn(site,site, timeslice - 1));
 		}
 	}
 	occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
 	occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
 	occTotal = occUp + occDn;
 
-	//FORMULA-TEST
-	//occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
-	occDouble = (1.0 / (N*m)) * sum_doubleoccupancy;
+	//FORMULA-TEST -- made no difference
+	//occDouble = (1.0 / (N*m)) * sum_doubleoccupancy;
+	occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+
 
 	localMoment = occTotal - 2*occDouble;
 
@@ -404,7 +405,7 @@ void DetHubbard::setupUdVStorage() {
 
 		for (unsigned k = 1; k <= m - 1; ++k) {
 			const nummat& U_k = storage[k].U;
-			const nummat& d_k = storage[k].d;
+			const numvec& d_k = storage[k].d;
 			const nummat& V_k = storage[k].V;
 			nummat B_kp1 = computeBmatNaive(k + 1, k, spinz);
 			UdV UdV_temp = svd((B_kp1 * U_k) * arma::diagmat(d_k));
