@@ -128,9 +128,9 @@ void DetHubbard::sweepSimple() {
 	}
 }
 
-DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
+DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-	nummat V_transpose;
+	MatNum V_transpose;
 	arma::svd(result.U, result.d, V_transpose, mat, "standard");
 	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
 	return result;
@@ -138,47 +138,47 @@ DetHubbard::UdV DetHubbard::svd(const nummat& mat) {
 
 DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
 	//Ul vs Vl to be compatible with labeling in the notes
-	const nummat& Ul = UdV_l.V;   //!
-	const numvec& dl = UdV_l.d;
-	const nummat& Vl = UdV_l.U;   //!
-	const nummat& Ur = UdV_r.U;
-	const numvec& dr = UdV_r.d;
-	const nummat& Vr = UdV_r.V;
+	const MatNum& Ul = UdV_l.V;   //!
+	const VecNum& dl = UdV_l.d;
+	const MatNum& Vl = UdV_l.U;   //!
+	const MatNum& Ur = UdV_r.U;
+	const VecNum& dr = UdV_r.d;
+	const MatNum& Vr = UdV_r.V;
 
 	//submatrix view helpers for 2*N x 2*N matrices
-	auto upleft = [N](nummat& m) {
+	auto upleft = [N](MatNum& m) {
 		return m.submat(0,0, N-1,N-1);
 	};
-	auto upright = [N](nummat& m) {
+	auto upright = [N](MatNum& m) {
 		return m.submat(0,N, N-1,2*N-1);
 	};
-	auto downleft = [N](nummat& m) {
+	auto downleft = [N](MatNum& m) {
 		return m.submat(N,0, 2*N-1,N-1);
 	};
-	auto downright = [N](nummat& m) {
+	auto downright = [N](MatNum& m) {
 		return m.submat(N,N, 2*N-1,2*N-1);
 	};
 
-	nummat temp(2*N,2*N);
+	MatNum temp(2*N,2*N);
 	upleft(temp)    = arma::inv(Vr * Vl);
 	upright(temp)   = arma::diagmat(dl);
 	downleft(temp)  = arma::diagmat(-dr);
 	downright(temp) = arma::inv(Ul * Ur);
 	UdV tempUdV = svd(temp);
 
-	nummat left(2*N,2*N);
+	MatNum left(2*N,2*N);
 	upleft(left) = arma::inv(Vr);
 	upright(left).zeros();
 	downleft(left).zeros();
 	downright(left) = arma::inv(Ul);
 
-	nummat right(2*N,2*N);
+	MatNum right(2*N,2*N);
 	upleft(right) = arma::inv(Vl);
 	upright(right).zeros();
 	downleft(right).zeros();
 	downright(right) = arma::inv(Ur);
 
-	nummat result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
+	MatNum result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
 					* (arma::inv(tempUdV.U) * right);
 	return nummat4(upleft(result), upright(result),
 				   downleft(result), downright(result));
@@ -195,13 +195,13 @@ void DetHubbard::sweep() {
 		for (unsigned k = m; k >= 1; --k) {
 			updateInSlice(k);
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
-					                       numcube& green, Spin spinz) {
-				nummat B_k = computeBmatNaive(k, k - 1, spinz);
+					                       CubeNum& green, Spin spinz) {
+				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 
 				//U_k, d_k, V_k correspond to B(beta,k*tau) [set in the last step]
-				const nummat& U_k = storage[k].U;
-				const nummat& d_k = storage[k].d;
-				const nummat& V_k = storage[k].V;
+				const MatNum& U_k = storage[k].U;
+				const MatNum& d_k = storage[k].d;
+				const MatNum& V_k = storage[k].V;
 
 				//UdV_L will correspond to B(beta,(k-1)*tau)
 				UdV UdV_L = svd(arma::diagmat(d_k) * (V_k * B_k));
@@ -231,16 +231,16 @@ void DetHubbard::sweep() {
 		UdVStorageDn[0] = eye_UdV;
 		for (unsigned k = 0; k <= m - 1; ++k) {
 			auto advanceUpGreen = [this](unsigned k, std::vector<UdV>& storage,
-					                     numcube& green, Spin spinz) {
-				nummat B_kp1 = computeBmatNaive(k + 1, k, spinz);
+					                     CubeNum& green, Spin spinz) {
+				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 
 				//The following is B(beta, (k+1) tau), valid from the last sweep
 				const UdV& UdV_kp1 = storage[k + 1];
 
 				//from the last step the following are B(k*tau, 0):
-				const nummat& U_k = storage[k].U;
-				const nummat& d_k = storage[k].d;
-				const nummat& V_k = storage[k].V;
+				const MatNum& U_k = storage[k].U;
+				const MatNum& d_k = storage[k].d;
+				const MatNum& V_k = storage[k].V;
 
 				//UdV_temp will be the new B((k+1)*tau, 0):
 				UdV UdV_temp = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
@@ -382,7 +382,7 @@ void DetHubbard::setupRandomAuxfield() {
 }
 
 void DetHubbard::setupPropTmat() {
-	nummat tmat = -mu * arma::eye(N, N);
+	MatNum tmat = -mu * arma::eye(N, N);
 
 	for (unsigned site = 0; site < N; ++site) {
 		//hopping between nearest neighbors
@@ -404,10 +404,10 @@ void DetHubbard::setupUdVStorage() {
 		storage[1] = svd(computeBmatNaive(1, 0, spinz));
 
 		for (unsigned k = 1; k <= m - 1; ++k) {
-			const nummat& U_k = storage[k].U;
-			const numvec& d_k = storage[k].d;
-			const nummat& V_k = storage[k].V;
-			nummat B_kp1 = computeBmatNaive(k + 1, k, spinz);
+			const MatNum& U_k = storage[k].U;
+			const VecNum& d_k = storage[k].d;
+			const MatNum& V_k = storage[k].V;
+			MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 			UdV UdV_temp = svd((B_kp1 * U_k) * arma::diagmat(d_k));
 			storage[k+1].U = UdV_temp.U;
 			storage[k+1].d = UdV_temp.d;
@@ -420,19 +420,19 @@ void DetHubbard::setupUdVStorage() {
 }
 
 
-nummat DetHubbard::computePropagator(num scalar, nummat matrix) {
+MatNum DetHubbard::computePropagator(num scalar, MatNum matrix) {
 	using namespace arma;
 
-	numvec eigval;
-	nummat eigvec;
+	VecNum eigval;
+	MatNum eigvec;
 	eig_sym(eigval, eigvec, matrix);
 
 	return eigvec * diagmat(exp(-scalar * eigval)) * trans(eigvec);
 }
 
 
-inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
-		const intmat& arbitraryAuxfield) {
+inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
+		const MatInt& arbitraryAuxfield) {
 	using namespace arma;
 
 	if (n2 == n1) {
@@ -446,11 +446,11 @@ inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 	int sign = static_cast<int>(spinz);
 
 	//Propagator using the HS-field potential for the given timeslice
-	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> nummat {
+	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> MatNum {
 		return diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice-1))) * proptmat;
 	};
 
-	nummat B = singleTimeslicePropagator(n2);
+	MatNum B = singleTimeslicePropagator(n2);
 
 	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
 		B *= singleTimeslicePropagator(n);
@@ -459,16 +459,16 @@ inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 	return B;
 }
 
-inline nummat DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz) {
+inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz) {
 	return computeBmatNaive(n2, n1, spinz, auxfield);
 }
 
-inline nummat DetHubbard::computeGreenFunctionNaive(
-		const nummat& bTau0, const nummat& bBetaTau) {
+inline MatNum DetHubbard::computeGreenFunctionNaive(
+		const MatNum& bTau0, const MatNum& bBetaTau) {
 	return arma::inv(arma::eye(N,N) + bTau0 * bBetaTau);
 }
 
-inline nummat DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
+inline MatNum DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
 		Spin spinz) {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
 	return computeGreenFunctionNaive(computeBmatNaive(timeslice, 0, spinz),
@@ -476,8 +476,8 @@ inline nummat DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
 }
 
 
-num DetHubbard::weightRatioGenericNaive(const intmat& auxfieldBefore,
-		const intmat& auxfieldAfter) {
+num DetHubbard::weightRatioGenericNaive(const MatInt& auxfieldBefore,
+		const MatInt& auxfieldAfter) {
 	using namespace arma;
 
 	num weightAfterUp  = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Up, auxfieldAfter));
@@ -510,10 +510,10 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 }
 
 inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
-	auto update = [this, site](nummat& green, num expfactor) {
-		const nummat& greenOld = green;		//reference
-		nummat greenNew = green;			//copy
-		const nummat oneMinusGreenOld = arma::eye(N,N) - greenOld;
+	auto update = [this, site](MatNum& green, num expfactor) {
+		const MatNum& greenOld = green;		//reference
+		MatNum greenNew = green;			//copy
+		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
 		num divisor = 1 + (expfactor - 1) * (1 - greenOld(site, site));
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {

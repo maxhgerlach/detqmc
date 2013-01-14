@@ -37,10 +37,10 @@
 #include "parameters.h"
 #include "metadata.h"
 
-typedef arma::Col<num> numvec;
-typedef arma::Mat<num> nummat;
-typedef arma::Cube<num> numcube;
-typedef arma::Mat<int> intmat;
+typedef arma::Col<num> VecNum;
+typedef arma::Mat<num> MatNum;
+typedef arma::Cube<num> CubeNum;
+typedef arma::Mat<int> MatInt;
 typedef arma::Mat<unsigned> tableSites;
 
 struct ModelParams;			//definition in parameters.h
@@ -108,7 +108,7 @@ protected:
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down -- tmat
 	// related propagator e ** (-dtau * tmat):
-	nummat proptmat;
+	MatNum proptmat;
 
 
 	//the following quantities vary during the course of the simulation
@@ -118,25 +118,25 @@ protected:
 	//There is one auxiliary field for each imaginary time slice. One time slice
 	//corresponds to one column of the matrix. The time slices in auxfield are
 	//indexed from 0 to m-1. So auxfield.col(n) refers to the timeslice dtau*(n+1).
-	intmat auxfield;
+	MatInt auxfield;
 
 	//Equal imaginary time Green function
 	//slices indexed n=0..m-1 correspond to time slices at dtau*(n+1),
 	//which are then indexed by sites in row and column.
 	//One cube for each value of spinz.
 	//The Green functions for n=0 are equal to those for n=m.
-	numcube gUp, gDn;
+	CubeNum gUp, gDn;
 	
 	//matrices used in the computation of B-matrices with singular value decomposition.
 	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, orthogonal matrix)
 	//Initialize at beginning of simulation by member function setupUdVStorage()
 	struct UdV {
-		nummat U;
-		numvec d;
-		nummat V;
+		MatNum U;
+		VecNum d;
+		MatNum V;
 	};
 	UdV eye_UdV;	// U = d = V = 1
-	UdV svd(const nummat& mat);				//wraps arma::svd()
+	UdV svd(const MatNum& mat);				//wraps arma::svd()
 	//typedef std::unique_ptr<UdV> UdVptr;
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
@@ -176,7 +176,7 @@ protected:
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
-	nummat computePropagator(num scalar, nummat matrix);
+	MatNum computePropagator(num scalar, MatNum matrix);
 
 	//given the current auxiliary fields {s_n}, compute the matrix
 	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}
@@ -185,25 +185,25 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	nummat computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz);
+	MatNum computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz);
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
-	nummat computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
-			const intmat& arbitraryAuxfield);
+	MatNum computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
+			const MatInt& arbitraryAuxfield);
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 	//for the current aux field.
 	//These functions perform a naive matrix product and inversion.
-	nummat computeGreenFunctionNaive(const nummat& bTau0, const nummat& bBetaTau);
+	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau);
 	//Calculate the Green function from scratch for the given timeslice index
 	//(tau = dtau * timeslice) for spin up or down
-	nummat computeGreenFunctionNaive(unsigned timeslice, Spin spinz);
+	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz);
 
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
 	//by brute force and naively computed B-matrices
-	num weightRatioGenericNaive(const intmat& auxfieldBefore,
-			const intmat& auxfieldAfter);
+	num weightRatioGenericNaive(const MatInt& auxfieldBefore,
+			const MatInt& auxfieldAfter);
 
 	//ratio of weighting determinants if a single auxiliary field
 	//spin (at site in timeslice) is flipped from the current configuration.
@@ -224,7 +224,7 @@ protected:
 	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
 	//calculate a tuple of four NxN matrices (a,b,c,d) with
 	// a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)
-	typedef std::tuple<nummat,nummat,nummat,nummat> nummat4;
+	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> nummat4;
 	nummat4 greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
 };
 
