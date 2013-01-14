@@ -499,8 +499,9 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
 
 	//exponential factors
-	num expUp   = exp( 2 * alpha * auxfield(site, timeslice-1));
-	num expDown = exp(-2 * alpha * auxfield(site, timeslice-1));
+	//results again do not seem to for the location of the -sign
+	num expUp   = exp(-2 * alpha * auxfield(site, timeslice-1));
+	num expDown = exp( 2 * alpha * auxfield(site, timeslice-1));
 
 	num ratioUp   = 1 + (expUp   - 1) * (1 - gUp(site,site, timeslice-1));
 	num ratioDown = 1 + (expDown - 1) * (1 - gDn(site,site, timeslice-1));
