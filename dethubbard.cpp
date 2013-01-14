@@ -130,9 +130,12 @@ void DetHubbard::sweepSimple() {
 
 DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-	MatNum V_transpose;
-	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+//	MatNum V_transpose;
+//	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+//	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+	result.U = mat;
+	result.d = arma::ones(N);
+	result.V = arma::eye(N,N);
 	return result;
 }
 
@@ -146,22 +149,22 @@ DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r)
 	const MatNum& Vr = UdV_r.V;
 
 	//submatrix view helpers for 2*N x 2*N matrices
-//	auto upleft = [N](MatNum& m) {
-//		return m.submat(0,0, N-1,N-1);
-//	};
-//	auto upright = [N](MatNum& m) {
-//		return m.submat(0,N, N-1,2*N-1);
-//	};
-//	auto downleft = [N](MatNum& m) {
-//		return m.submat(N,0, 2*N-1,N-1);
-//	};
-//	auto downright = [N](MatNum& m) {
-//		return m.submat(N,N, 2*N-1,2*N-1);
-//	};
-#define upleft(m) m.submat(0,0, N-1,N-1)
-#define upright(m) m.submat(0,N, N-1,2*N-1)
-#define downleft(m) m.submat(N,0, 2*N-1,N-1)
-#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
+	//#define upleft(m) m.submat(0,0, N-1,N-1)
+	//#define upright(m) m.submat(0,N, N-1,2*N-1)
+	//#define downleft(m) m.submat(N,0, 2*N-1,N-1)
+	//#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
+	auto upleft = [N](MatNum& m) {
+		return m.submat(0,0, N-1,N-1);
+	};
+	auto upright = [N](MatNum& m) {
+		return m.submat(0,N, N-1,2*N-1);
+	};
+	auto downleft = [N](MatNum& m) {
+		return m.submat(N,0, 2*N-1,N-1);
+	};
+	auto downright = [N](MatNum& m) {
+		return m.submat(N,N, 2*N-1,2*N-1);
+	};
 
 	MatNum temp(2*N,2*N);
 	upleft(temp)    = arma::inv(Vr * Vl);
