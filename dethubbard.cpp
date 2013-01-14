@@ -448,7 +448,7 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 	//Propagator using the HS-field potential for the given timeslice
 	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> MatNum {
 		//it does not seem to play a role whether we have a factor of sign or -sign !
-		return diagmat(exp(5 * sign * alpha * arbitraryAuxfield.col(timeslice-1))) * proptmat;
+		return diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice-1))) * proptmat;
 	};
 
 	MatNum B = singleTimeslicePropagator(n2);
