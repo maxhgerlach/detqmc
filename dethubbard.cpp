@@ -188,26 +188,31 @@ DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r)
 void DetHubbard::sweep() {
 	using std::tie; using std::ignore; using std::get;
 	if (lastSweepDir == SweepDirection::Up) {
+		//to compute green function for timeslice tau=beta:
+		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
+		//The latter is given in storage slice m from the last sweep.
 		gUp.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageUp[m]));
 		gDn.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageDn[m]));
+
 		UdVStorageUp[m] = eye_UdV;
 		UdVStorageDn[m] = eye_UdV;
 		for (unsigned k = m; k >= 1; --k) {
 			updateInSlice(k);
+			//update the green function in timeslice k-1:
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                       CubeNum& green, Spin spinz) {
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 
 				//U_k, d_k, V_k correspond to B(beta,k*tau) [set in the last step]
 				const MatNum& U_k = storage[k].U;
-				const MatNum& d_k = storage[k].d;
+				const VecNum& d_k = storage[k].d;
 				const MatNum& V_k = storage[k].V;
 
 				//UdV_L will correspond to B(beta,(k-1)*tau)
 				UdV UdV_L = svd(arma::diagmat(d_k) * (V_k * B_k));
 				UdV_L.U = U_k * UdV_L.U;
 
-				//UdV_R corresonds to B((k-1)*tau,0) [set in last sweep]
+				//UdV_R corresponds to B((k-1)*tau,0) [set in last sweep]
 				const UdV& UdV_R = storage[k - 1];
 
 				if (k - 1 > 0) {      //TODO: this if handled correctly?
@@ -216,7 +221,6 @@ void DetHubbard::sweep() {
 
 				storage[k - 1] = UdV_L;
 			};
-
 			advanceDownGreen(k, UdVStorageUp, gUp, Spin::Up);
 			advanceDownGreen(k, UdVStorageDn, gDn, Spin::Down);
 		}
@@ -230,6 +234,7 @@ void DetHubbard::sweep() {
 		UdVStorageUp[0] = eye_UdV;
 		UdVStorageDn[0] = eye_UdV;
 		for (unsigned k = 0; k <= m - 1; ++k) {
+			//update the green function in timeslice k+1
 			auto advanceUpGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                     CubeNum& green, Spin spinz) {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
@@ -239,7 +244,7 @@ void DetHubbard::sweep() {
 
 				//from the last step the following are B(k*tau, 0):
 				const MatNum& U_k = storage[k].U;
-				const MatNum& d_k = storage[k].d;
+				const VecNum& d_k = storage[k].d;
 				const MatNum& V_k = storage[k].V;
 
 				//UdV_temp will be the new B((k+1)*tau, 0):
@@ -417,6 +422,8 @@ void DetHubbard::setupUdVStorage() {
 
 	setup(UdVStorageUp, Spin::Up);
 	setup(UdVStorageDn, Spin::Down);
+
+	lastSweepDir = SweepDirection::Up;
 }
 
 
