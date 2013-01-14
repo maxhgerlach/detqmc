@@ -216,7 +216,7 @@ protected:
 	//Update the stored Green function matrices to reflect the state after
 	//the auxiliary field spin at site in timeslice has been flipped. This
 	//function expects this->auxfield to be in the state before the flip.
-	void updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice);
+	void updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice);
 
 	//update the HS auxiliary field and the green function in the single timeslice
 	void updateInSlice(unsigned timeslice);

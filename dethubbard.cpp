@@ -114,7 +114,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 			//				std::cout << "acc" << '\n';
 			//				auxfield = newAuxfield;
 			auxfield(site, timeslice-1) *= -1;
-			updateGreenFunctionsAfterFlip(site, timeslice);
+			updateGreenFunctionAfterFlip(site, timeslice);
 		}
 	}
 }
@@ -499,8 +499,8 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
 
 	//exponential factors
-	num expUp   = exp(-2 * alpha * auxfield(site, timeslice-1));
-	num expDown = exp( 2 * alpha * auxfield(site, timeslice-1));
+	num expUp   = exp( 2 * alpha * auxfield(site, timeslice-1));
+	num expDown = exp(-2 * alpha * auxfield(site, timeslice-1));
 
 	num ratioUp   = 1 + (expUp   - 1) * (1 - gUp(site,site, timeslice-1));
 	num ratioDown = 1 + (expDown - 1) * (1 - gDn(site,site, timeslice-1));
@@ -510,7 +510,7 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 	return ratioUp * ratioDown;
 }
 
-inline void DetHubbard::updateGreenFunctionsAfterFlip(unsigned site, unsigned timeslice) {
+inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice) {
 	auto update = [this, site](MatNum& green, num expfactor) {
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
