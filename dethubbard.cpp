@@ -557,8 +557,11 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 		num greenFactor = deltaSite / divisor;
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {
-				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
-						oneMinusGreenOld(site, y);
+//				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
+//						oneMinusGreenOld(site, y);
+				//experimental index swap
+				greenNew(x, y) -=  greenOld(site, y) * greenFactor *
+						oneMinusGreenOld(x, site);
 			}
 		}
 		green = greenNew;
