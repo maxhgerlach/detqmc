@@ -47,7 +47,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 		proptmat(N,N),
 		auxfield(N, m),              //m columns of N rows
 		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
-		obsNames(), obsShorts(), obsValPointers(), obsCount(0)
+		obsNames(), obsShorts(), obsValRefs(), obsCount(0)
 {
 	createNeighborTable();
 	setupRandomAuxfield();
@@ -63,10 +63,11 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 			"doubleOccupation", "localMoment",
 			"kineticEnergy", "potentialEnergy", "totalEnergy";
 	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e";
-	obsValPointers += &occUp, &occDn, &occTotal, &occDouble, &localMoment,
-			&eKinetic, &ePotential, &eTotal;
+	using std::cref;
+	obsValRefs += cref(occUp), cref(occDn), cref(occTotal), cref(occDouble), cref(localMoment),
+			cref(eKinetic), cref(ePotential), cref(eTotal);
 	assert(obsNames.size() == obsShorts.size());
-	assert(obsNames.size() == obsValPointers.size());
+	assert(obsNames.size() == obsValRefs.size());
 	obsCount = obsNames.size();
 }
 
@@ -343,7 +344,7 @@ unsigned DetHubbard::getNumberOfObservables() const {
 
 num DetHubbard::obsNormalized(unsigned obsIndex) const {
 	if (obsIndex < obsCount) {
-		return *(obsValPointers[obsIndex]);
+		return obsValRefs[obsIndex];
 	} else {
 		throw WrongObsIndex(obsIndex);
 	}

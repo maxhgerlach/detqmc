@@ -28,6 +28,7 @@
  *
  */
 
+#include <utility>
 #include <memory>
 #include <vector>
 #include <string>
@@ -162,7 +163,8 @@ protected:
 	//multiple observable handling
 	std::vector<std::string> obsNames;
     std::vector<std::string> obsShorts;
-    std::vector<num*> obsValPointers;			//pointers to variables updated in measure()
+    //references to variables updated in measure():
+    std::vector<std::reference_wrapper<const num>> obsValRefs;
     unsigned obsCount;
 
 
