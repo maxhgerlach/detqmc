@@ -130,66 +130,87 @@ void DetHubbard::sweepSimple() {
 
 DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-//	MatNum V_transpose;
-//	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-//	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
-	result.U = mat;
-	result.d = arma::ones(N);
-	result.V = arma::eye(N,N);
+	MatNum V_transpose;
+	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+//	result.U = mat;
+//	result.d = arma::ones(N);
+//	result.V = arma::eye(N,N);
 	return result;
 }
 
-DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
-	//Ul vs Vl to be compatible with labeling in the notes
-	const MatNum& Ul = UdV_l.V;   //!
-	const VecNum& dl = UdV_l.d;
-	const MatNum& Vl = UdV_l.U;   //!
-	const MatNum& Ur = UdV_r.U;
-	const VecNum& dr = UdV_r.d;
-	const MatNum& Vr = UdV_r.V;
+//DetHubbard::nummat4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+//	//Ul vs Vl to be compatible with labeling in the notes
+//	const MatNum& Ul = UdV_l.V;   //!
+//	const VecNum& dl = UdV_l.d;
+//	const MatNum& Vl = UdV_l.U;   //!
+//	const MatNum& Ur = UdV_r.U;
+//	const VecNum& dr = UdV_r.d;
+//	const MatNum& Vr = UdV_r.V;
+//
+//	//submatrix view helpers for 2*N x 2*N matrices
+//	//#define upleft(m) m.submat(0,0, N-1,N-1)
+//	//#define upright(m) m.submat(0,N, N-1,2*N-1)
+//	//#define downleft(m) m.submat(N,0, 2*N-1,N-1)
+//	//#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
+//	auto upleft = [N](MatNum& m) {
+//		return m.submat(0,0, N-1,N-1);
+//	};
+//	auto upright = [N](MatNum& m) {
+//		return m.submat(0,N, N-1,2*N-1);
+//	};
+//	auto downleft = [N](MatNum& m) {
+//		return m.submat(N,0, 2*N-1,N-1);
+//	};
+//	auto downright = [N](MatNum& m) {
+//		return m.submat(N,N, 2*N-1,2*N-1);
+//	};
+//
+//	MatNum temp(2*N,2*N);
+//	upleft(temp)    = arma::inv(Vr * Vl);
+//	upright(temp)   = arma::diagmat(dl);
+//	downleft(temp)  = arma::diagmat(-dr);
+//	downright(temp) = arma::inv(Ul * Ur);
+//	UdV tempUdV = svd(temp);
+//
+//	MatNum left(2*N,2*N);
+//	upleft(left) = arma::inv(Vr);
+//	upright(left).zeros();
+//	downleft(left).zeros();
+//	downright(left) = arma::inv(Ul);
+//
+//	MatNum right(2*N,2*N);
+//	upleft(right) = arma::inv(Vl);
+//	upright(right).zeros();
+//	downleft(right).zeros();
+//	downright(right) = arma::inv(Ur);
+//
+//	MatNum result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
+//					* (arma::inv(tempUdV.U) * right);
+//	return nummat4(upleft(result), upright(result),
+//				   downleft(result), downright(result));
+//}
 
-	//submatrix view helpers for 2*N x 2*N matrices
-	//#define upleft(m) m.submat(0,0, N-1,N-1)
-	//#define upright(m) m.submat(0,N, N-1,2*N-1)
-	//#define downleft(m) m.submat(N,0, 2*N-1,N-1)
-	//#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
-	auto upleft = [N](MatNum& m) {
-		return m.submat(0,0, N-1,N-1);
-	};
-	auto upright = [N](MatNum& m) {
-		return m.submat(0,N, N-1,2*N-1);
-	};
-	auto downleft = [N](MatNum& m) {
-		return m.submat(N,0, 2*N-1,N-1);
-	};
-	auto downright = [N](MatNum& m) {
-		return m.submat(N,N, 2*N-1,2*N-1);
-	};
+DetHubbard::MatNum4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+	//variable names changed according to labeling in names
+	const MatNum& V_l = UdV_l.U;   //!
+	const VecNum& d_l = UdV_l.d;
+	const MatNum& U_l = UdV_l.V;   //!
+	const MatNum& U_r = UdV_r.U;
+	const VecNum& d_r = UdV_r.d;
+	const MatNum& V_r = UdV_r.V;
 
-	MatNum temp(2*N,2*N);
-	upleft(temp)    = arma::inv(Vr * Vl);
-	upright(temp)   = arma::diagmat(dl);
-	downleft(temp)  = arma::diagmat(-dr);
-	downright(temp) = arma::inv(Ul * Ur);
-	UdV tempUdV = svd(temp);
+	//check if alternative method for stable calculation works better:
 
-	MatNum left(2*N,2*N);
-	upleft(left) = arma::inv(Vr);
-	upright(left).zeros();
-	downleft(left).zeros();
-	downright(left) = arma::inv(Ul);
+	using arma::inv; using arma::diagmat; using arma::eye;
 
-	MatNum right(2*N,2*N);
-	upleft(right) = arma::inv(Vl);
-	upright(right).zeros();
-	downleft(right).zeros();
-	downright(right) = arma::inv(Ur);
+	UdV UdV_temp = svd( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
 
-	MatNum result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
-					* (arma::inv(tempUdV.U) * right);
-	return nummat4(upleft(result), upright(result),
-				   downleft(result), downright(result));
+	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+
+	return MatNum4(eye(N,N), eye(N,N), eye(N,N), green);
 }
+
 
 
 void DetHubbard::sweep() {
