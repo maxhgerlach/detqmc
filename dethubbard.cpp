@@ -552,11 +552,13 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
 		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
-		num divisor = 1 + (expfactor - 1) * (1 - greenOld(site, site));
+		num deltaSite = expfactor - 1;
+		num divisor = 1 + deltaSite * oneMinusGreenOld(site, site);
+		num greenFactor = deltaSite / divisor;
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {
-				greenNew(x, y) -=  greenOld(x, site) * (1 - expfactor) *
-						oneMinusGreenOld(site, y) / divisor;
+				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
+						oneMinusGreenOld(site, y);
 			}
 		}
 		green = greenNew;
