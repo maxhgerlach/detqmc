@@ -41,7 +41,9 @@
 typedef arma::Col<num> VecNum;
 typedef arma::Mat<num> MatNum;
 typedef arma::Cube<num> CubeNum;
+
 typedef arma::Mat<int> MatInt;
+
 typedef arma::Mat<unsigned> tableSites;
 
 struct ModelParams;			//definition in parameters.h
@@ -178,7 +180,7 @@ protected:
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
-	MatNum computePropagator(num scalar, MatNum matrix);
+	MatNum computePropagator(num scalar, const MatNum& matrix);
 
 	//given the current auxiliary fields {s_n}, compute the matrix
 	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}

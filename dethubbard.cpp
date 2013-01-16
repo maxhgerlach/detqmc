@@ -18,6 +18,17 @@
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
+void debugSaveMatrix(const MatNum& matrix, const std::string& basename) {
+	matrix.save(basename + ".csv", arma::csv_ascii);
+	matrix.save(basename + ".txt", arma::arma_ascii);
+}
+
+void debugSaveMatrix(const MatInt& matrix, const std::string& basename) {
+	matrix.save(basename + ".csv", arma::csv_ascii);
+	matrix.save(basename + ".txt", arma::arma_ascii);
+}
+
+
 std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, const ModelParams& pars) {
 	//check parameters
 	using namespace boost::assign;
@@ -88,6 +99,7 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 	META_INSERT(beta);
 	META_INSERT(m);
 	META_INSERT(dtau);
+	META_INSERT(alpha);
 #undef META_INSERT
 	return meta;
 }
@@ -230,7 +242,10 @@ void DetHubbard::sweep() {
 			//update the green function in timeslice k-1:
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                       CubeNum& green, Spin spinz) {
+//				debugSaveMatrix(auxfield, "auxfield");
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
+//				debugSaveMatrix(B_k, "b_" + numToString(k) + "_" + numToString(k - 1) + "_s"
+//						+ numToString(int(spinz)));
 
 				//U_k, d_k, V_k correspond to B(beta,k*tau) [set in the last step]
 				const MatNum& U_k = storage[k].U;
@@ -456,7 +471,7 @@ void DetHubbard::setupUdVStorage() {
 }
 
 
-MatNum DetHubbard::computePropagator(num scalar, MatNum matrix) {
+MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) {
 	using namespace arma;
 
 	VecNum eigval;
@@ -483,8 +498,10 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 
 	//Propagator using the HS-field potential for the given timeslice
 	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> MatNum {
-		//it does not seem to play a role whether we have a factor of sign or -sign !
-		return diagmat(exp(sign * alpha * arbitraryAuxfield.col(timeslice-1))) * proptmat;
+		//the cast with conv_to is necessary here, else everything would result in integers!
+		//-- an Armadillo bug IMHO
+		return diagmat(exp(sign * alpha *
+				conv_to<VecNum>::from(arbitraryAuxfield.col(timeslice-1)))) * proptmat;
 	};
 
 	MatNum B = singleTimeslicePropagator(n2);
@@ -549,6 +566,7 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 
 inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice) {
 	auto update = [this, site](MatNum& green, num expfactor) {
+		//green.print(std::cout);
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
 		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
@@ -568,7 +586,12 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 	};
 
 	using std::exp;
+//	MatNum g1 = gUp.slice(timeslice-1);
 	update(gUp.slice(timeslice-1), exp(-2 * alpha * auxfield(site, timeslice-1)));
+//	MatNum g2 = gUp.slice(timeslice-1);
+//	MatNum diff = g2 - g1;
+//	diff.print(std::cout);
+//	std::cout << std::endl;
 	update(gDn.slice(timeslice-1), exp(+2 * alpha * auxfield(site, timeslice-1)));
 }
 
