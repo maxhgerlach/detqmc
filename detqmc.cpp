@@ -50,7 +50,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	mcMeta = prepareMCMetadataMap();
 	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfObservables(); ++obsIndex) {
 		obsHandlers.push_back(ObsPtr(
-				new ObservableHandler(replica->getObservableName(obsIndex), parsmc,
+				new ScalarObservableHandler(replica->getObservableName(obsIndex), parsmc,
 						modelMeta, mcMeta)));
 	}
 

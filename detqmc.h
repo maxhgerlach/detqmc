@@ -42,7 +42,7 @@ protected:
 	MetadataMap mcMeta;
 	RngWrapper rng;
 	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
-	typedef std::unique_ptr<ObservableHandler> ObsPtr;
+	typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
 	std::vector<ObsPtr> obsHandlers;
 	unsigned sweepsDone;						//Measurement sweeps done
 
