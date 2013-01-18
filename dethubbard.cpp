@@ -343,10 +343,11 @@ void DetHubbard::measure() {
 	//occDouble = (1.0 / (N*m)) * sum_doubleoccupancy;
 	occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
 
-
 	localMoment = occTotal - 2*occDouble;
 
-	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
+//	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
+	ePotential = U * ( 0.25 + (1.0 / (N*m)) * (sum_GiiUpDn - 0.5 * (sum_GiiUp + sum_GiiDn)) );
+
 	//Note: chemical potential term included in kinetic energy:
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) + mu * occTotal;
 	eTotal = eKinetic + ePotential;
