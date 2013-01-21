@@ -55,7 +55,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	}
 	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfVectorObservables(); ++obsIndex) {
 		vecObsHandlers.push_back(VecObsPtr(
-				new VectorObservableHandler(replica->getObservableName(obsIndex), parsmc,
+				new VectorObservableHandler(replica->getVectorObservableName(obsIndex), parsmc,
 						modelMeta, mcMeta, replica->getSystemN())));
 	}
 
