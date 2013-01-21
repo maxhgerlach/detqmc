@@ -80,6 +80,13 @@ public:
     virtual std::string getObservableName(unsigned obsIndex = 0) const;
     virtual std::string getObservableShort(unsigned obsIndex = 0) const;
 
+    //the same for vector observables
+    unsigned getNumberOfVectorObservables() const;
+    VecNum vectorObsNormalized(unsigned obsIndex = 0) const;
+    virtual std::string getVectorObservableName(unsigned obsIndex = 0) const;
+    virtual std::string getVectorObservableShort(unsigned obsIndex = 0) const;
+
+
     //perform a sweep updating the auxiliary field with costly recomputations
     //of Green functions from scratch
     void sweepSimple();
@@ -161,6 +168,9 @@ protected:
 	num occDouble;		//double occupation < nUp * nDown >
 	num localMoment;	//local Moment: <m^2> = <(nUp - nDown)^2>
 
+	//the same for vector observables, averaged over timeslices with the current auxiliary field
+	VecNum zcorr;		//correlation function of magnetization density at site 0 with all other sites, z component
+
 
 	//multiple observable handling
 	std::vector<std::string> obsNames;
@@ -169,6 +179,11 @@ protected:
     std::vector<std::reference_wrapper<const num>> obsValRefs;
     unsigned obsCount;
 
+    std::vector<std::string> vecObsNames;
+    std::vector<std::string> vecObsShorts;
+    //references to variables updated in measure():
+    std::vector<std::reference_wrapper<const VecNum>> vecObsValRefs;
+    unsigned vecObsCount;
 
 	void createNeighborTable();
 	unsigned coordsToSite(const std::vector<unsigned>& coords) const;

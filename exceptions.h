@@ -14,10 +14,11 @@
 
 class WrongObsIndex : public std::exception {
 	int oi;
+	bool vec;
 public:
-	WrongObsIndex(int obsIndex) : oi(obsIndex) {}
+	WrongObsIndex(int obsIndex, bool vector=false) : oi(obsIndex), vec(vector) {}
     virtual const char* what() const throw () {
-        return ("Observable index " + numToString(oi) +
+        return ((vec ? "Vector " : "") + std::string("Observable index ") + numToString(oi) +
         		" not supported").c_str();
     }
 };
