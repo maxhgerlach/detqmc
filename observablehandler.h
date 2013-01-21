@@ -74,7 +74,7 @@ public:
 			if (jkBlockCount > 1) {
 				unsigned jkBlockSizeSamples = countValues / jkBlockCount;
 				unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
-				std::vector<num> jkBlockAverages = jkBlockValues;	//copy
+				std::vector<ObsType> jkBlockAverages = jkBlockValues;	//copy
 				for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 					jkBlockAverages[jb] /= jkTotalSamples;
 				}
@@ -176,9 +176,17 @@ public:
 			unsigned vectorSize)
 		: ObservableHandlerCommon<arma::Col<num>>(observableName,
 				simulationParameters, metadataToStoreModel, metadataToStoreMC,
-				arma::zeros<arma::Col<num>>(vectorSize))
+				arma::zeros<arma::Col<num>>(vectorSize)),
+		  vsize(vectorSize)
 	{
 	}
+	unsigned getVectorSize() {
+		return vsize;
+	}
+	friend void ::outputResults(
+			const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
+protected:
+	unsigned vsize;
 };
 
 
@@ -186,6 +194,9 @@ public:
 //Write expectation values and error bars for all observables to a file
 //take metadata to store from the first entry in obsHandlers
 void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandler>>& obsHandlers);
+
+//write the results for each vector observable into a seperate file
+void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
 
 
 #endif /* OBSERVABLEHANDLER_H_ */
