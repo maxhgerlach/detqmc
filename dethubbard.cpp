@@ -161,6 +161,10 @@ DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	return result;
 }
 
+unsigned DetHubbard::getSystemN() const {
+	return N;
+}
+
 DetHubbard::MatNum4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
 	//Ul vs Vl to be compatible with labeling in the notes
 	const MatNum& Ul = UdV_l.V;   //!
@@ -413,7 +417,7 @@ unsigned DetHubbard::getNumberOfVectorObservables() const {
 	return vecObsCount;
 }
 
-VecNum DetHubbard::vectorObsNormalized(unsigned vecObsIndex) const {
+VecNum DetHubbard::vecObsNormalized(unsigned vecObsIndex) const {
 	if (vecObsIndex < vecObsCount) {
 		return vecObsValRefs[vecObsIndex];
 	} else {

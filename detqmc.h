@@ -48,7 +48,7 @@ protected:
 	std::vector<VecObsPtr> vecObsHandlers;
 	unsigned sweepsDone;						//Measurement sweeps done
 
-	MetadataMap prepareMCMetadataMap();
+	MetadataMap prepareMCMetadataMap() const;
 };
 
 

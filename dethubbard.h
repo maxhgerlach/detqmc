@@ -65,12 +65,15 @@ public:
 			unsigned m);
 	virtual ~DetHubbard();
 
+	unsigned getSystemN() const;
+
 	//Create a MetadataMap describing the parameters of the
 	//simulated model
 	MetadataMap prepareModelMetadataMap();
 
 	//perform measurements of all observables
     void measure();
+
     //get values of observables normalized by system size:
     //obs corresponds to an observable additional to the energy
     //if values of obsIndex > 0 are supported, we measure multiple, different
@@ -82,7 +85,7 @@ public:
 
     //the same for vector observables
     unsigned getNumberOfVectorObservables() const;
-    VecNum vectorObsNormalized(unsigned obsIndex = 0) const;
+    VecNum vecObsNormalized(unsigned obsIndex = 0) const;
     virtual std::string getVectorObservableName(unsigned obsIndex = 0) const;
     virtual std::string getVectorObservableShort(unsigned obsIndex = 0) const;
 

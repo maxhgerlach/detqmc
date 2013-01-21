@@ -53,6 +53,12 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 				new ScalarObservableHandler(replica->getObservableName(obsIndex), parsmc,
 						modelMeta, mcMeta)));
 	}
+	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfVectorObservables(); ++obsIndex) {
+		vecObsHandlers.push_back(VecObsPtr(
+				new VectorObservableHandler(replica->getObservableName(obsIndex), parsmc,
+						modelMeta, mcMeta, replica->getSystemN())));
+	}
+
 
 	cout << "\nSimulation initialized, parameters: " << endl;
 	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
@@ -94,11 +100,15 @@ void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 			for (unsigned oi = 0; oi < replica->getNumberOfObservables(); ++oi) {
 				obsHandlers[oi]->insertValue(replica->obsNormalized(oi), sweepsDone);
 			}
+			for (unsigned oi = 0; oi < replica->getNumberOfVectorObservables(); ++oi) {
+				vecObsHandlers[oi]->insertValue(replica->vecObsNormalized(oi), sweepsDone);
+			}
 		}
 	}
 }
 
-MetadataMap DetQMC::prepareMCMetadataMap() {
+
+MetadataMap DetQMC::prepareMCMetadataMap() const {
 	MetadataMap meta;
 #define META_INSERT(VAR) meta[#VAR] = numToString(parsmc.VAR)
 	META_INSERT(sweeps);
@@ -118,6 +128,7 @@ void DetQMC::saveResults() {
 	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
 		(*p)->outputTimeseries();
 	}
+	outputResults(vecObsHandlers);
 	std::string commonInfoFilename = "info.dat";
 	writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
 			"Collected innformation about this determinantal quantum Monte Carlo simulation",
