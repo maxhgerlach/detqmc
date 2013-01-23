@@ -626,7 +626,6 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 
 inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice) {
 	auto update = [this, site](MatNum& green, num expfactor) {
-		//green.print(std::cout);
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
 		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
@@ -646,12 +645,7 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 	};
 
 	using std::exp;
-//	MatNum g1 = gUp.slice(timeslice-1);
 	update(gUp.slice(timeslice-1), exp(-2 * alpha * auxfield(site, timeslice-1)));
-//	MatNum g2 = gUp.slice(timeslice-1);
-//	MatNum diff = g2 - g1;
-//	diff.print(std::cout);
-//	std::cout << std::endl;
 	update(gDn.slice(timeslice-1), exp(+2 * alpha * auxfield(site, timeslice-1)));
 }
 
