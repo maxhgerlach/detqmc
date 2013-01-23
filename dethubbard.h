@@ -140,6 +140,13 @@ protected:
 	//The Green functions for n=0 are equal to those for n=m.
 	CubeNum gUp, gDn;
 	
+	//Imaginary time displaced Green function, tau > 0
+	// "forward" corresponds to G(tau, 0)
+	// "backward" corresponds to G(0, tau)
+	//the indexing works the same way as for the equal time case
+	CubeNum gFwdUp, gFwdDn;
+	CubeNum gBwdUp, gBwdDn;
+
 	//matrices used in the computation of B-matrices with singular value decomposition.
 	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, orthogonal matrix)
 	//Initialize at beginning of simulation by member function setupUdVStorage()
@@ -246,6 +253,8 @@ protected:
 	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
 	//calculate a tuple of four NxN matrices (a,b,c,d) with
 	// a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)
+	//b is the backward time-displaced Green function; c the forward time-
+	//displaced Green function; d is the equal-time Green function
 	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
 	MatNum4 greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
 };

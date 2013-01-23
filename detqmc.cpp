@@ -59,7 +59,6 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 						modelMeta, mcMeta, replica->getSystemN())));
 	}
 
-
 	cout << "\nSimulation initialized, parameters: " << endl;
 	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }

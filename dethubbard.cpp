@@ -58,6 +58,8 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 		proptmat(N,N),
 		auxfield(N, m),              //m columns of N rows
 		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
+		gFwdUp(N,N,m), gFwdDn(N,N,m),
+		gBwdUp(N,N,m), gBwdDn(N,N,m),
 		obsNames(), obsShorts(), obsValRefs(), obsCount(0)
 {
 	createNeighborTable();
@@ -245,8 +247,10 @@ void DetHubbard::sweep() {
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
-		gUp.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageUp[m]));
-		gDn.slice(m - 1) = get<3>(greenFromUdV(eye_UdV, UdVStorageDn[m]));
+		tie(ignore, gBwdUp.slice(m - 1), gFwdUp.slice(m - 1), gUp.slice(m - 1)) =
+				greenFromUdV(eye_UdV, UdVStorageUp[m]);
+		tie(ignore, gBwdDn.slice(m - 1), gFwdDn.slice(m - 1), gDn.slice(m - 1)) =
+				greenFromUdV(eye_UdV, UdVStorageDn[m]);
 
 		UdVStorageUp[m] = eye_UdV;
 		UdVStorageDn[m] = eye_UdV;
@@ -254,7 +258,8 @@ void DetHubbard::sweep() {
 			updateInSlice(k);
 			//update the green function in timeslice k-1:
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
-					                       CubeNum& green, Spin spinz) {
+					                       CubeNum& green, CubeNum& greenFwd,
+					                       CubeNum& greenBwd, Spin spinz) {
 //				debugSaveMatrix(auxfield, "auxfield");
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 //				debugSaveMatrix(B_k, "b_" + numToString(k) + "_" + numToString(k - 1) + "_s"
@@ -273,13 +278,15 @@ void DetHubbard::sweep() {
 				const UdV& UdV_R = storage[k - 1];
 
 				if (k - 1 > 0) {      //TODO: this if handled correctly?
-					green.slice(k - 1 - 1) = get<3>(greenFromUdV(UdV_L, UdV_R));
+					unsigned next = k - 1 - 1;
+					tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
+							greenFromUdV(UdV_L, UdV_R);
 				}
 
 				storage[k - 1] = UdV_L;
 			};
-			advanceDownGreen(k, UdVStorageUp, gUp, Spin::Up);
-			advanceDownGreen(k, UdVStorageDn, gDn, Spin::Down);
+			advanceDownGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceDownGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
@@ -293,7 +300,8 @@ void DetHubbard::sweep() {
 		for (unsigned k = 0; k <= m - 1; ++k) {
 			//update the green function in timeslice k+1
 			auto advanceUpGreen = [this](unsigned k, std::vector<UdV>& storage,
-					                     CubeNum& green, Spin spinz) {
+											CubeNum& green, CubeNum& greenFwd,
+											CubeNum& greenBwd, Spin spinz) {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 
 				//The following is B(beta, (k+1) tau), valid from the last sweep
@@ -308,12 +316,14 @@ void DetHubbard::sweep() {
 				UdV UdV_temp = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
 				UdV_temp.V *= V_k;
 
-				green.slice(k + 1 - 1) = get<3>(greenFromUdV(UdV_kp1, UdV_temp));
+				unsigned next = k + 1 - 1;
+				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
+						greenFromUdV(UdV_kp1, UdV_temp);
 
 				storage[k + 1] = UdV_temp;
 			};
-			advanceUpGreen(k, UdVStorageUp, gUp, Spin::Up);
-			advanceUpGreen(k, UdVStorageDn, gDn, Spin::Down);
+			advanceUpGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceUpGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 			updateInSlice(k + 1);
 		}
 		lastSweepDir = SweepDirection::Up;
