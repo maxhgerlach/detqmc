@@ -75,10 +75,10 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	using std::cref;
 	obsNames += "occupationUp", "occupationDown", "totalOccupation",
 			"doubleOccupation", "localMoment",
-			"kineticEnergy", "potentialEnergy", "totalEnergy";
-	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e";
+			"kineticEnergy", "potentialEnergy", "totalEnergy", "susceptibilityQ0";
+	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e", "chi_q0";
 	obsValRefs += cref(occUp), cref(occDn), cref(occTotal), cref(occDouble), cref(localMoment),
-			cref(eKinetic), cref(ePotential), cref(eTotal);
+			cref(eKinetic), cref(ePotential), cref(eTotal), cref(suscq0);
 	assert(obsNames.size() == obsShorts.size());
 	assert(obsNames.size() == obsValRefs.size());
 	obsCount = obsNames.size();
@@ -374,6 +374,31 @@ void DetHubbard::measure() {
 	//Note: chemical potential term included in kinetic energy:
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) - mu * occTotal;
 	eTotal = eKinetic + ePotential;
+
+	//susceptibility
+	auto sumTrace = [m](const CubeNum& green) {
+		num sum = 0;
+		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			sum += arma::trace(green.slice(timeslice - 1));
+		}
+		return sum;
+	};
+	num sumTrGreenUp = sumTrace(gUp);
+	num sumTrGreenDn = sumTrace(gDn);
+	auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
+		num sum = 0;
+		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			sum += arma::trace(green1.slice(timeslice - 1) * green2.slice(timeslice - 1));
+		}
+		return sum;
+	};
+	num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
+	num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
+	num trGreenUp_0 = arma::trace(gUp.slice(m - 1));			//g(beta) = g(0)
+	num trGreenDn_0 = arma::trace(gDn.slice(m - 1));
+	suscq0 = dtau * (  (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
+					 - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
+					);
 
 	// vector observables
 	zcorr.zeros();

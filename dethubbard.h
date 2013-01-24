@@ -177,6 +177,7 @@ protected:
 	num eTotal;			//total energy
 	num occDouble;		//double occupation < nUp * nDown >
 	num localMoment;	//local Moment: <m^2> = <(nUp - nDown)^2>
+	num suscq0;			//q=0 susceptibility of z component of magnetization (nUp - nDown)
 
 	//the same for vector observables, averaged over timeslices with the current auxiliary field
 	VecNum zcorr;		//correlation function of magnetization density at site 0 with all other sites, z component
