@@ -669,11 +669,12 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 		num greenFactor = deltaSite / divisor;
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {
-//				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
-//						oneMinusGreenOld(site, y);
-				//experimental index swap
-				greenNew(x, y) -=  greenOld(site, y) * greenFactor *
-						oneMinusGreenOld(x, site);
+				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
+						oneMinusGreenOld(site, y);
+
+				//experimental index swap below -- this seemed to be the choice in Santos 2003
+//				greenNew(x, y) -=  greenOld(site, y) * greenFactor *
+//						oneMinusGreenOld(x, site);
 			}
 		}
 		green = greenNew;
