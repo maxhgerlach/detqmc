@@ -135,7 +135,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 			//				std::cout << "acc" << '\n';
 			//				auxfield = newAuxfield;
 
-			updateGreenFunctionAfterFlip(site, timeslice);
+			updateGreenFunctionWithFlip(site, timeslice);
 			auxfield(site, timeslice-1) *= -1;
 		}
 	}
@@ -165,7 +165,8 @@ unsigned DetHubbard::getSystemN() const {
 	return N;
 }
 
-DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r) {
+DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
+		const UdV& UdV_l, const UdV& UdV_r) const {
 	//Ul vs Vl to be compatible with labeling in the notes
 	const MatNum& Ul = UdV_l.V;   //!
 	const VecNum& dl = UdV_l.d;
@@ -217,7 +218,7 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(const UdV& UdV_l, con
 				   downleft(result), downright(result));
 }
 
-MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
 	//variable names changed according to labeling in names
 	const MatNum& V_l = UdV_l.U;   //!
 	const VecNum& d_l = UdV_l.d;
@@ -239,9 +240,29 @@ MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
 
 
 
+void DetHubbard::debugCheckBeforeSweepDown() {
+	std::cout << "up: ";
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		UdV udv = UdVStorageUp[timeslice];
+		MatNum diff = computeBmatNaive(timeslice, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+		std::cout << diff.max() << " ";
+	}
+	std::cout << "\n";
+	std::cout << "down: ";
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		UdV udv = UdVStorageDn[timeslice];
+		MatNum diff = computeBmatNaive(timeslice, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+		std::cout << diff.max() << " ";
+	}
+	std::cout << "\n\n";
+}
+
+
+
 void DetHubbard::sweep() {
 	using std::tie; using std::ignore; using std::get;
 	if (lastSweepDir == SweepDirection::Up) {
+		debugCheckBeforeSweepDown();
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
@@ -569,7 +590,7 @@ void DetHubbard::setupUdVStorage() {
 }
 
 
-MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) {
+MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) const {
 	using namespace arma;
 
 	VecNum eigval;
@@ -581,7 +602,7 @@ MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) {
 
 
 inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
-		const MatInt& arbitraryAuxfield) {
+		const MatInt& arbitraryAuxfield) const {
 	using namespace arma;
 
 	if (n2 == n1) {
@@ -611,17 +632,17 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 	return B;
 }
 
-inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz) {
+inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz) const {
 	return computeBmatNaive(n2, n1, spinz, auxfield);
 }
 
 inline MatNum DetHubbard::computeGreenFunctionNaive(
-		const MatNum& bTau0, const MatNum& bBetaTau) {
+		const MatNum& bTau0, const MatNum& bBetaTau) const {
 	return arma::inv(arma::eye(N,N) + bTau0 * bBetaTau);
 }
 
 inline MatNum DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
-		Spin spinz) {
+		Spin spinz) const {
 	//TODO: should use stored B-matrices, for the timeslices that have not changed
 	return computeGreenFunctionNaive(computeBmatNaive(timeslice, 0, spinz),
 			                    computeBmatNaive(m, timeslice, spinz));
@@ -629,7 +650,7 @@ inline MatNum DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
 
 
 num DetHubbard::weightRatioGenericNaive(const MatInt& auxfieldBefore,
-		const MatInt& auxfieldAfter) {
+		const MatInt& auxfieldAfter) const {
 	using namespace arma;
 
 	num weightAfterUp  = det(eye(N,N) + computeBmatNaive(m, 0, Spin::Up, auxfieldAfter));
@@ -645,7 +666,7 @@ num DetHubbard::weightRatioGenericNaive(const MatInt& auxfieldBefore,
 	return ratioUp * ratioDown;
 }
 
-inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) {
+inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) const {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
 
@@ -662,7 +683,7 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 	return ratioUp * ratioDown;
 }
 
-inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice) {
+inline void DetHubbard::updateGreenFunctionWithFlip(unsigned site, unsigned timeslice) {
 	auto update = [this, site](MatNum& green, num deltaSite) {
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy

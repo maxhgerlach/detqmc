@@ -156,7 +156,7 @@ protected:
 		MatNum V;
 	};
 	UdV eye_UdV;	// U = d = V = 1
-	UdV svd(const MatNum& mat);				//wraps arma::svd()
+	static UdV svd(const MatNum& mat);				//wraps arma::svd()
 	//typedef std::unique_ptr<UdV> UdVptr;
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
@@ -206,7 +206,7 @@ protected:
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
-	MatNum computePropagator(num scalar, const MatNum& matrix);
+	MatNum computePropagator(num scalar, const MatNum& matrix) const;
 
 	//given the current auxiliary fields {s_n}, compute the matrix
 	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}
@@ -215,38 +215,38 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	MatNum computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz);
+	MatNum computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz) const;
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
 	MatNum computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
-			const MatInt& arbitraryAuxfield);
+			const MatInt& arbitraryAuxfield) const;
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 	//for the current aux field.
 	//These functions perform a naive matrix product and inversion.
-	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau);
+	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau) const;
 	//Calculate the Green function from scratch for the given timeslice index
 	//(tau = dtau * timeslice) for spin up or down
-	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz);
+	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz) const;
 
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
 	//by brute force and naively computed B-matrices
 	num weightRatioGenericNaive(const MatInt& auxfieldBefore,
-			const MatInt& auxfieldAfter);
+			const MatInt& auxfieldAfter) const;
 
 	//ratio of weighting determinants if a single auxiliary field
 	//spin (at site in timeslice) is flipped from the current configuration.
 	//use pre-stored Green functions.
 	//formula independent of system size or number of time slices, in this form
 	//specific to the Hubbard model
-	num weightRatioSingleFlip(unsigned site, unsigned timeslice);
+	num weightRatioSingleFlip(unsigned site, unsigned timeslice) const;
 
 
 	//Update the stored Green function matrices to reflect the state after
 	//the auxiliary field spin at site in timeslice has been flipped. This
 	//function expects this->auxfield to be in the state before the flip.
-	void updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice);
+	void updateGreenFunctionWithFlip(unsigned site, unsigned timeslice);
 
 	//update the HS auxiliary field and the green function in the single timeslice
 	void updateInSlice(unsigned timeslice);
@@ -257,11 +257,14 @@ protected:
 	//b is the backward time-displaced Green function; c the forward time-
 	//displaced Green function; d is the equal-time Green function
 	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
-	MatNum4 greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r);
+	MatNum4 greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r) const;
 
 	//use a faster method that does not yield information about the time-displaced
 	//Green functions
-	MatNum greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
+	MatNum greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const;
+
+
+	void debugCheckBeforeSweepDown();
 };
 
 #endif /* DETHUBBARD_H_ */
