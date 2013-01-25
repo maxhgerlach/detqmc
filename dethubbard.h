@@ -257,7 +257,11 @@ protected:
 	//b is the backward time-displaced Green function; c the forward time-
 	//displaced Green function; d is the equal-time Green function
 	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
-	MatNum4 greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
+	MatNum4 greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r);
+
+	//use a faster method that does not yield information about the time-displaced
+	//Green functions
+	MatNum greenFromUdV(const UdV& UdV_l, const UdV& UdV_r);
 };
 
 #endif /* DETHUBBARD_H_ */

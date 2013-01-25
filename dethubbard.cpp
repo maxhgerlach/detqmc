@@ -155,12 +155,12 @@ void DetHubbard::sweepSimple() {
 
 DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-	MatNum V_transpose;
-	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
-//	result.U = mat;
-//	result.d = arma::ones(N);
-//	result.V = arma::eye(N,N);
+//	MatNum V_transpose;
+//	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+//	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+	result.U = mat;
+	result.d = arma::ones(N);
+	result.V = arma::eye(N,N);
 	return result;
 }
 
@@ -168,7 +168,7 @@ unsigned DetHubbard::getSystemN() const {
 	return N;
 }
 
-DetHubbard::MatNum4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r) {
 	//Ul vs Vl to be compatible with labeling in the notes
 	const MatNum& Ul = UdV_l.V;   //!
 	const VecNum& dl = UdV_l.d;
@@ -220,25 +220,25 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r)
 				   downleft(result), downright(result));
 }
 
-//DetHubbard::MatNum4 DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
-//	//variable names changed according to labeling in names
-//	const MatNum& V_l = UdV_l.U;   //!
-//	const VecNum& d_l = UdV_l.d;
-//	const MatNum& U_l = UdV_l.V;   //!
-//	const MatNum& U_r = UdV_r.U;
-//	const VecNum& d_r = UdV_r.d;
-//	const MatNum& V_r = UdV_r.V;
-//
-//	//check if alternative method for stable calculation works better:
-//
-//	using arma::inv; using arma::diagmat; using arma::eye;
-//
-//	UdV UdV_temp = svd( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
-//
-//	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
-//
-//	return MatNum4(eye(N,N), eye(N,N), eye(N,N), green);
-//}
+MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) {
+	//variable names changed according to labeling in names
+	const MatNum& V_l = UdV_l.U;   //!
+	const VecNum& d_l = UdV_l.d;
+	const MatNum& U_l = UdV_l.V;   //!
+	const MatNum& U_r = UdV_r.U;
+	const VecNum& d_r = UdV_r.d;
+	const MatNum& V_r = UdV_r.V;
+
+	//check if alternative method for stable calculation works better:
+
+	using arma::inv; using arma::diagmat; using arma::eye;
+
+	UdV UdV_temp = svd( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
+
+	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+
+	return green;
+}
 
 
 
@@ -249,9 +249,9 @@ void DetHubbard::sweep() {
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
 		tie(ignore, gBwdUp.slice(m - 1), gFwdUp.slice(m - 1), gUp.slice(m - 1)) =
-				greenFromUdV(eye_UdV, UdVStorageUp[m]);
+				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[m]);
 		tie(ignore, gBwdDn.slice(m - 1), gFwdDn.slice(m - 1), gDn.slice(m - 1)) =
-				greenFromUdV(eye_UdV, UdVStorageDn[m]);
+				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[m]);
 
 		UdVStorageUp[m] = eye_UdV;
 		UdVStorageDn[m] = eye_UdV;
@@ -281,7 +281,7 @@ void DetHubbard::sweep() {
 				if (k - 1 > 0) {      //TODO: this if handled correctly?
 					unsigned next = k - 1 - 1;
 					tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-							greenFromUdV(UdV_L, UdV_R);
+							greenFromUdV_timedisplaced(UdV_L, UdV_R);
 				}
 
 				storage[k - 1] = UdV_L;
@@ -319,7 +319,7 @@ void DetHubbard::sweep() {
 
 				unsigned next = k + 1 - 1;
 				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-						greenFromUdV(UdV_kp1, UdV_temp);
+						greenFromUdV_timedisplaced(UdV_kp1, UdV_temp);
 
 				storage[k + 1] = UdV_temp;
 			};
