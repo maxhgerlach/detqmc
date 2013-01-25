@@ -5,9 +5,10 @@
  *      Author: gerlach
  */
 
-
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
+#pragma GCC diagnostic warning "-Wunused-parameter"
 #include <iostream>
 #include <fstream>
 #include <string>
