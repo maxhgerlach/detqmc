@@ -241,6 +241,7 @@ MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
 
 
 void DetHubbard::debugCheckBeforeSweepDown() {
+	std::cout << "Before sweep down:\n";
 	std::cout << "up: ";
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		UdV udv = UdVStorageUp[timeslice];
@@ -252,6 +253,24 @@ void DetHubbard::debugCheckBeforeSweepDown() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		UdV udv = UdVStorageDn[timeslice];
 		MatNum diff = computeBmatNaive(timeslice, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+		std::cout << diff.max() << " ";
+	}
+	std::cout << "\n\n";
+}
+
+void DetHubbard::debugCheckBeforeSweepUp() {
+	std::cout << "Before sweep up:\n";
+	std::cout << "up: ";
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		UdV udv = UdVStorageUp[timeslice];
+		MatNum diff = computeBmatNaive(m, timeslice, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+		std::cout << diff.max() << " ";
+	}
+	std::cout << "\n";
+	std::cout << "down: ";
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		UdV udv = UdVStorageDn[timeslice];
+		MatNum diff = computeBmatNaive(m, timeslice, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n\n";
@@ -309,6 +328,7 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
+		debugCheckBeforeSweepUp();
 		//The Green function at tau=0 is equal to that at tau=beta.
 		//Here we compute it for tau=0 and store it in the slice for tau=beta.
 //		gUp.slice(m - 1) = get<3>(greenFromUdV(UdVStorageUp[0], eye_UdV));     //necessary?

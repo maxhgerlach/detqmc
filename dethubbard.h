@@ -263,8 +263,8 @@ protected:
 	//Green functions
 	MatNum greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const;
 
-
 	void debugCheckBeforeSweepDown();
+	void debugCheckBeforeSweepUp();
 };
 
 #endif /* DETHUBBARD_H_ */
