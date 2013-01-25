@@ -124,11 +124,11 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 
 		num ratio =  weightRatioSingleFlip(site, timeslice);
 
-		//DEBUG: comparison of weight ratio calculation
-		//			intmat newAuxfield = auxfield;
-		//			newAuxfield(site, timeslice - 1) *= -1;
-		//			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
-		//			std::cout << ratio << " vs. " << refRatio << std::endl;
+//		//DEBUG: comparison of weight ratio calculation
+//		MatInt newAuxfield = auxfield;
+//		newAuxfield(site, timeslice - 1) *= -1;
+//		num refRatio = weightRatioGenericNaive(auxfield, newAuxfield);
+//		std::cout << ratio << " vs. " << refRatio << std::endl;
 
 		assert(ratio > 0.0);
 
@@ -137,8 +137,10 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 			//			if (refRatio > 1 or rng.rand01() < refRatio) {
 			//				std::cout << "acc" << '\n';
 			//				auxfield = newAuxfield;
-			auxfield(site, timeslice-1) *= -1;
+
+			//DEBUG: swap order!
 			updateGreenFunctionAfterFlip(site, timeslice);
+			auxfield(site, timeslice-1) *= -1;
 		}
 	}
 }
@@ -340,7 +342,7 @@ void DetHubbard::measure() {
 	//used to measure potential energy:
 	num sum_GiiUpDn = 0;
 	//FORMULA-TEST -- made no difference
-	//num sum_doubleoccupancy = 0;
+//	num sum_doubleoccupancy = 0;
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
@@ -363,8 +365,9 @@ void DetHubbard::measure() {
 	occTotal = occUp + occDn;
 
 	//FORMULA-TEST -- made no difference
-	//occDouble = (1.0 / (N*m)) * sum_doubleoccupancy;
+//	std::cout << (1.0 / (N*m)) * sum_doubleoccupancy;
 	occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+//	std::cout << " vs. " << occDouble << std::endl;
 
 	localMoment = occTotal - 2*occDouble;
 
