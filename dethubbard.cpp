@@ -130,10 +130,10 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 		//			num refRatio = weightRatioGeneric(auxfield, newAuxfield);
 		//			std::cout << ratio << " vs. " << refRatio << std::endl;
 
-		assert(ratio > 0);
+		assert(ratio > 0.0);
 
 		//Metropolis
-		if (ratio > 1 or rng.rand01() < ratio) {
+		if (ratio > 1.0 or rng.rand01() < ratio) {
 			//			if (refRatio > 1 or rng.rand01() < refRatio) {
 			//				std::cout << "acc" << '\n';
 			//				auxfield = newAuxfield;
@@ -589,7 +589,7 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 	assert(n2 <= m);
 	//assert(n1 >= 0);
 
-	int sign = static_cast<int>(spinz);
+	num sign = num(int(spinz));
 
 	//Propagator using the HS-field potential for the given timeslice
 	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> MatNum {
@@ -648,11 +648,11 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 
 	//exponential factors
 	//results again do not seem to for the location of the -sign
-	num expUp   = exp(-2 * alpha * auxfield(site, timeslice-1));
-	num expDown = exp( 2 * alpha * auxfield(site, timeslice-1));
+	num expUp   = exp(-2.0 * alpha * num(auxfield(site, timeslice-1)));
+	num expDown = exp( 2.0 * alpha * num(auxfield(site, timeslice-1)));
 
-	num ratioUp   = 1 + (expUp   - 1) * (1 - gUp(site,site, timeslice-1));
-	num ratioDown = 1 + (expDown - 1) * (1 - gDn(site,site, timeslice-1));
+	num ratioUp   = 1.0 + (expUp   - 1.0) * (1.0 - gUp(site,site, timeslice-1));
+	num ratioDown = 1.0 + (expDown - 1.0) * (1.0 - gDn(site,site, timeslice-1));
 
 //	std::cout << ratioUp << " " << ratioDown << std::endl;
 
@@ -660,12 +660,11 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 }
 
 inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned timeslice) {
-	auto update = [this, site](MatNum& green, num expfactor) {
+	auto update = [this, site](MatNum& green, num deltaSite) {
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
 		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
-		num deltaSite = expfactor - 1;
-		num divisor = 1 + deltaSite * oneMinusGreenOld(site, site);
+		num divisor = 1.0 + deltaSite * oneMinusGreenOld(site, site);
 		num greenFactor = deltaSite / divisor;
 		for (unsigned y = 0; y < N; ++y) {
 			for (unsigned x = 0; x < N; ++x) {
@@ -681,8 +680,8 @@ inline void DetHubbard::updateGreenFunctionAfterFlip(unsigned site, unsigned tim
 	};
 
 	using std::exp;
-	update(gUp.slice(timeslice-1), exp(-2 * alpha * auxfield(site, timeslice-1)));
-	update(gDn.slice(timeslice-1), exp(+2 * alpha * auxfield(site, timeslice-1)));
+	update(gUp.slice(timeslice-1), exp(-2.0 * alpha * num(auxfield(site, timeslice-1))) - 1.0);
+	update(gDn.slice(timeslice-1), exp(+2.0 * alpha * num(auxfield(site, timeslice-1))) - 1.0);
 }
 
 
