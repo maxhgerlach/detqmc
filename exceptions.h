@@ -42,9 +42,10 @@ class ParameterWrong : public std::exception {
 public:
 	ParameterWrong(const std::string& par,
 			const ValType& val) : par(par), val(val) {}
+	virtual ~ParameterWrong() throw () { }
 	virtual const char* what() const throw () {
 		return ("Parameter " + par + " has incorrect value "
-				+ numToString(val));
+				+ numToString(val)).c_str();
 	}
 };
 

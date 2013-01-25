@@ -7,6 +7,7 @@
 
 
 #include <ctime>
+#include <functional>
 #include "boost/assign/std/vector.hpp"
 #include "detqmc.h"
 #include "dethubbard.h"
@@ -44,8 +45,25 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 
 	if (parsmodel.model == "hubbard") {
 		replica = createDetHubbard(rng, parsmodel);
+	} else {
+		throw ParameterWrong<std::string>("model", parsmodel.model);
 	}
 
+	if (parsmc.greenUpdateType == "simple") {
+		greenUpdateType = GreenUpdateType::Simple;
+	} else if (parsmc.greenUpdateType == "stabilized") {
+		greenUpdateType = GreenUpdateType::Stabilized;
+	} else {
+		throw ParameterWrong<std::string>("greenUpdateType", parsmc.greenUpdateType);
+	}
+
+	if (greenUpdateType == GreenUpdateType::Simple) {
+		sweepFunc = [this]() {replica->sweepSimple();};
+	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
+		sweepFunc = [this]() {replica->sweep();};
+	}
+
+	//prepare metadata
 	modelMeta = replica->prepareModelMetadataMap();
 	mcMeta = prepareMCMetadataMap();
 	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfObservables(); ++obsIndex) {
@@ -83,7 +101,8 @@ void DetQMC::thermalize(unsigned numSweeps) {
 	cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
 		//replica->sweepSimple();
-		replica->sweep();
+		//replica->sweep();
+		sweepFunc();
 	}
 	cout << endl;
 }
@@ -91,7 +110,8 @@ void DetQMC::thermalize(unsigned numSweeps) {
 void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
 		//replica->sweepSimple();
-		replica->sweep();
+		//replica->sweep();
+		sweepFunc();
 		++sweepsDone;
 		if (sw % measureInterval == 0) {
 			replica->measure();
@@ -110,6 +130,7 @@ void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 MetadataMap DetQMC::prepareMCMetadataMap() const {
 	MetadataMap meta;
 #define META_INSERT(VAR) meta[#VAR] = numToString(parsmc.VAR)
+	META_INSERT(greenUpdateType);
 	META_INSERT(sweeps);
 	META_INSERT(thermalization);
 	META_INSERT(jkBlocks);

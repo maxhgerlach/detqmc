@@ -46,6 +46,8 @@ struct MCParams {
 	unsigned saveInterval;		// write measurements to disk every saveInterval sweeps
 	unsigned long rngSeed;		// seed for random number generator
 
+	std::string greenUpdateType; 	//"simple" or "stabilized"
+
 	std::set<std::string> specified;
 };
 

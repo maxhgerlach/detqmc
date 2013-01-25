@@ -55,6 +55,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
 	mcpar.saveInterval = 0;
 	mcOptions.add_options()
+			("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
 			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
 			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
 			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")

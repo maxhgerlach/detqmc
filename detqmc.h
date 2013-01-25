@@ -11,6 +11,7 @@
 #define DETQMC_H_
 
 #include <vector>
+#include <functional>
 #include <memory>
 #include "metadata.h"
 #include "parameters.h"
@@ -36,6 +37,12 @@ public:
 
 	virtual ~DetQMC();
 protected:
+	enum class GreenUpdateType {Simple, Stabilized};
+	GreenUpdateType greenUpdateType;
+	std::function<void()> sweepFunc;	//the replica member function that will be called
+										//to perform a sweep (depending on greenUpdate).
+										//adds a function pointer layer
+
 	ModelParams parsmodel;
 	MCParams parsmc;
 	MetadataMap modelMeta;
