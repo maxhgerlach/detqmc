@@ -66,9 +66,6 @@ DetHubbard::DetHubbard(RngWrapper& rng_,
 	setupRandomAuxfield();
 	setupPropTmat();
 	setupUdVStorage();
-	eye_UdV.U = arma::eye(N,N);
-	eye_UdV.d = arma::ones(N);
-	eye_UdV.V = arma::eye(N,N);
 	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
 
 	using namespace boost::assign;         // bring operator+=() into scope
@@ -155,12 +152,12 @@ void DetHubbard::sweepSimple() {
 
 DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-//	MatNum V_transpose;
-//	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-//	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
-	result.U = mat;
-	result.d = arma::ones(N);
-	result.V = arma::eye(N,N);
+	MatNum V_transpose;
+	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+//	result.U = mat;
+//	result.d = arma::ones(N);
+//	result.V = arma::eye(N,N);
 	return result;
 }
 
@@ -543,6 +540,10 @@ void DetHubbard::setupPropTmat() {
 
 
 void DetHubbard::setupUdVStorage() {
+	eye_UdV.U = arma::eye(N,N);
+	eye_UdV.d = arma::ones(N);
+	eye_UdV.V = arma::eye(N,N);
+
 	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
 		storage = std::vector<UdV>(m + 1);
 
