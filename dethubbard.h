@@ -110,7 +110,7 @@ protected:
 	unsigned N;   // L ** d
 	num beta;		//inverse temperature
 	unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
-	unsigned s;	//separation of time slices where the Green-function is calculated from scratch
+	unsigned s;	//interval between time slices where the Green-function is calculated from scratch
 	unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
 	num dtau;     // beta / m
 	num alpha;    // cosh(alpha) = exp(dtau U / 2)
@@ -158,7 +158,6 @@ protected:
 	};
 	UdV eye_UdV;	// U = d = V = 1
 	static UdV svd(const MatNum& mat);				//wraps arma::svd()
-	//typedef std::unique_ptr<UdV> UdVptr;
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
 	std::vector<UdV> UdVStorageUp;

@@ -189,9 +189,6 @@ DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	MatNum V_transpose;
 	arma::svd(result.U, result.d, V_transpose, mat, "standard");
 	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
-//	result.U = mat;
-//	result.d = arma::ones(N);
-//	result.V = arma::eye(N,N);
 	return result;
 }
 
@@ -271,6 +268,35 @@ MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
 }
 
 
+void DetHubbard::setupUdVStorage() {
+	eye_UdV.U = arma::eye(N,N);
+	eye_UdV.d = arma::ones(N);
+	eye_UdV.V = arma::eye(N,N);
+
+	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
+		storage = std::vector<UdV>(n + 1);
+
+		storage[0] = eye_UdV;
+		storage[1] = svd(computeBmatNaive(s, 0, spinz));
+
+		for (unsigned l = 1; l <= n - 1; ++l) {
+			const MatNum& U_l = storage[l].U;
+			const VecNum& d_l = storage[l].d;
+			const MatNum& V_l = storage[l].V;
+			MatNum B_lp1 = computeBmatNaive(s*(l + 1), s*l, spinz);
+			UdV UdV_temp = svd((B_lp1 * U_l) * arma::diagmat(d_l));
+			storage[l+1].U = UdV_temp.U;
+			storage[l+1].d = UdV_temp.d;
+			storage[l+1].V = UdV_temp.V * V_l;
+		}
+	};
+
+	setup(UdVStorageUp, Spin::Up);
+	setup(UdVStorageDn, Spin::Down);
+
+	lastSweepDir = SweepDirection::Up;
+}
+
 
 void DetHubbard::debugCheckBeforeSweepDown() {
 	std::cout << "Before sweep down:\n";
@@ -318,110 +344,116 @@ void DetHubbard::sweep() {
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
 		tie(ignore, gBwdUp.slice(m - 1), gFwdUp.slice(m - 1), gUp.slice(m - 1)) =
-				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[m]);
+				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[n]);
 		tie(ignore, gBwdDn.slice(m - 1), gFwdDn.slice(m - 1), gDn.slice(m - 1)) =
-				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[m]);
+				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[n]);
 
-		UdVStorageUp[m] = eye_UdV;
-		UdVStorageDn[m] = eye_UdV;
-		for (unsigned k = m; k >= 1; --k) {
-			updateInSlice(k);
-			//compute the green function in timeslice k-1 from scratch with the help
+		UdVStorageUp[n] = eye_UdV;
+		UdVStorageDn[n] = eye_UdV;
+		for (unsigned l = n; l >= 1; --l) {
+			//compute the green function in timeslice s*(l-1) from scratch with the help
 			//of B-matrices computed before
-			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
+			auto advanceDownGreen = [this](unsigned l, std::vector<UdV>& storage,
 					                       CubeNum& green, CubeNum& greenFwd,
 					                       CubeNum& greenBwd, Spin spinz) -> void {
-//				debugSaveMatrix(auxfield, "auxfield");
-				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
-//				debugSaveMatrix(B_k, "b_" + numToString(k) + "_" + numToString(k - 1) + "_s"
-//						+ numToString(int(spinz)));
+				MatNum B_l = computeBmatNaive(s*l, s*(l - 1), spinz);
 
-				//U_k, d_k, V_k correspond to B(beta,k*tau) [set in the last step]
-				const MatNum& U_k = storage[k].U;
-				const VecNum& d_k = storage[k].d;
-				const MatNum& V_k = storage[k].V;
+				//U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
+				const MatNum& U_l = storage[l].U;
+				const VecNum& d_l = storage[l].d;
+				const MatNum& V_l = storage[l].V;
 
-				//UdV_L will correspond to B(beta,(k-1)*tau)
-				UdV UdV_L = svd(arma::diagmat(d_k) * (V_k * B_k));
-				UdV_L.U = U_k * UdV_L.U;
+				//UdV_L will correspond to B(beta,(l-1)*s*dtau)
+				UdV UdV_L = svd(arma::diagmat(d_l) * (V_l * B_l));
+				UdV_L.U = U_l * UdV_L.U;
 
-				//UdV_R corresponds to B((k-1)*tau,0) [set in last sweep]
-				const UdV& UdV_R = storage[k - 1];
+				//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
+				const UdV& UdV_R = storage[l - 1];
 
-				if (k - 1 > 0) {      //TODO: this if handled correctly?
-					unsigned next = k - 1 - 1;
+				if (l - 1 > 0) {      //TODO: this if handled correctly?
+					unsigned next = s * (l - 1) - 1;
 					tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 							greenFromUdV_timedisplaced(UdV_L, UdV_R);
 				}
 
-				storage[k - 1] = UdV_L;
+				storage[l - 1] = UdV_L;
 			};
 			//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
 			auto wrapDownGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 				green.slice(k - 1 - 1) = arma::inv(B_k) * green.slice(k - 1) * B_k;
 			};
-			advanceDownGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-			advanceDownGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+			for (unsigned k = l*s; k > (l-1)*s; --k) {
+				updateInSlice(k - 1);
+				wrapDownGreen(k, gUp, Spin::Up);
+				wrapDownGreen(k, gDn, Spin::Down);
+			}
+			updateInSlice((l-1)*s);
+			advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
 //		debugCheckBeforeSweepUp();
 		//The Green function at tau=0 is equal to that at tau=beta.
 		//Here we compute it for tau=0 and store it in the slice for tau=beta.
-//		gUp.slice(m - 1) = get<3>(greenFromUdV(UdVStorageUp[0], eye_UdV));     //necessary?
-//		gUp.slice(m - 1) = get<3>(greenFromUdV(UdVStorageDn[0], eye_UdV));
 		//proceed like Assaad
 		UdVStorageUp[0] = eye_UdV;
 		UdVStorageDn[0] = eye_UdV;
-		for (unsigned k = 0; k <= m - 1; ++k) {
-			//update the green function in timeslice k+1
-			auto advanceUpGreen = [this](unsigned k, const std::vector<UdV>& storage,
+		for (unsigned l = 0; l <= n - 1; ++l) {
+			//update the green function in timeslice s*(l+1) from scratch with the help
+			//of B-matrices computed before
+			auto advanceUpGreen = [this](unsigned l, const std::vector<UdV>& storage,
 											CubeNum& green, CubeNum& greenFwd,
 											CubeNum& greenBwd, Spin spinz) -> void {
-				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
+				MatNum B_lp1 = computeBmatNaive(s*(l + 1), s*l, spinz);
 
-				//The following is B(beta, (k+1) tau), valid from the last sweep
-				const UdV& UdV_kp1 = storage[k + 1];
+				//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
+				const UdV& UdV_lp1 = storage[l + 1];
 
-				//from the last step the following are B(k*tau, 0):
-				const MatNum& U_k = storage[k].U;
-				const VecNum& d_k = storage[k].d;
-				const MatNum& V_k = storage[k].V;
+				//from the last step the following are B(l*s*dtau, 0):
+				const MatNum& U_l = storage[l].U;
+				const VecNum& d_l = storage[l].d;
+				const MatNum& V_l = storage[l].V;
 
-				//UdV_temp will be the new B((k+1)*tau, 0):
-				UdV UdV_temp = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
-				UdV_temp.V *= V_k;
+				//UdV_temp will be the new B((s+1)*l*tau, 0):
+				UdV UdV_temp = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
+				UdV_temp.V *= V_l;
 
-				unsigned next = k + 1 - 1;
+				unsigned next = s * (l + 1) - 1;
 				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-						greenFromUdV_timedisplaced(UdV_kp1, UdV_temp);
+						greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
 
-				//storage[k + 1] = UdV_temp;    //storage will be wrong after updateInSlice!
+				//storage[l + 1] = UdV_temp;    //storage will be wrong after updateInSlice!
 			};
-			//Given B(k*tau, 0) from the last step in the storage, compute
-			//B((k+1)*tau, 0) and put it into storage
-			auto updateAdvanceStorage = [this](unsigned k, std::vector<UdV>& storage,
+			//Given B(l*s*dtau, 0) from the last step in the storage, compute
+			//B((l+1)*s*dtau, 0) and put it into storage
+			auto updateAdvanceStorage = [this](unsigned l, std::vector<UdV>& storage,
 					Spin spinz) -> void {
-				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
-				//from the last step the following are B(k*tau, 0):
-				const MatNum& U_k = storage[k].U;
-				const VecNum& d_k = storage[k].d;
-				const MatNum& V_k = storage[k].V;
-				//the new B((k+1)*tau, 0):
-				storage[k+1] = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
-				storage[k+1].V *= V_k;
+				MatNum B_lp1 = computeBmatNaive(s*(l + 1), s*l, spinz);
+				//from the last step the following are B(l*s*dtau, 0):
+				const MatNum& U_l = storage[l].U;
+				const VecNum& d_l = storage[l].d;
+				const MatNum& V_l = storage[l].V;
+				//the new B((l+1)*s*dtau, 0):
+				storage[l+1] = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
+				storage[l+1].V *= V_l;
 			};
 			//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
 			auto wrapUpGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 				green.slice(k + 1 - 1) = B_kp1 * green.slice(k - 1) * arma::inv(B_kp1);
 			};
-			advanceUpGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-			advanceUpGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
-			updateInSlice(k + 1);
-			updateAdvanceStorage(k, UdVStorageUp, Spin::Up);
-			updateAdvanceStorage(k, UdVStorageDn, Spin::Down);
+			for (unsigned k = l*s; k < (l+1)*s; ++k) {
+				wrapUpGreen(k, gUp, Spin::Up);
+				wrapUpGreen(k, gDn, Spin::Down);
+				updateInSlice(k + 1);
+			}
+			advanceUpGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceUpGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+			updateInSlice(s*(l + 1));
+			updateAdvanceStorage(l, UdVStorageUp, Spin::Up);
+			updateAdvanceStorage(l, UdVStorageDn, Spin::Down);
 		}
 		lastSweepDir = SweepDirection::Up;
 	}
@@ -637,37 +669,6 @@ void DetHubbard::setupPropTmat() {
 	proptmat = computePropagator(dtau, tmat);
 }
 
-
-void DetHubbard::setupUdVStorage() {
-	eye_UdV.U = arma::eye(N,N);
-	eye_UdV.d = arma::ones(N);
-	eye_UdV.V = arma::eye(N,N);
-
-	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
-		storage = std::vector<UdV>(m + 1);
-
-		storage[0] = eye_UdV;
-		storage[1] = svd(computeBmatNaive(1, 0, spinz));
-
-		for (unsigned k = 1; k <= m - 1; ++k) {
-			const MatNum& U_k = storage[k].U;
-			const VecNum& d_k = storage[k].d;
-			const MatNum& V_k = storage[k].V;
-			MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
-			UdV UdV_temp = svd((B_kp1 * U_k) * arma::diagmat(d_k));
-			storage[k+1].U = UdV_temp.U;
-			storage[k+1].d = UdV_temp.d;
-			storage[k+1].V = UdV_temp.V * V_k;
-		}
-	};
-
-	setup(UdVStorageUp, Spin::Up);
-	setup(UdVStorageDn, Spin::Down);
-
-	lastSweepDir = SweepDirection::Up;
-}
-
-
 MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) const {
 	using namespace arma;
 
@@ -679,16 +680,16 @@ MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) const {
 }
 
 
-inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
+inline MatNum DetHubbard::computeBmatNaive(unsigned k2, unsigned k1, Spin spinz,
 		const MatInt& arbitraryAuxfield) const {
 	using namespace arma;
 
-	if (n2 == n1) {
+	if (k2 == k1) {
 		return eye(N, N);
 	}
 
-	assert(n2 > n1);
-	assert(n2 <= m);
+	assert(k2 > k1);
+	assert(k2 <= m);
 	//assert(n1 >= 0);
 
 	num sign = num(int(spinz));
@@ -701,10 +702,10 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
 				conv_to<VecNum>::from(arbitraryAuxfield.col(timeslice-1)))) * proptmat;
 	};
 
-	MatNum B = singleTimeslicePropagator(n2);
+	MatNum B = singleTimeslicePropagator(k2);
 
-	for (unsigned n = n2 - 1; n >= n1 + 1; --n) {
-		B *= singleTimeslicePropagator(n);
+	for (unsigned k = k2 - 1; k >= k1 + 1; --k) {
+		B *= singleTimeslicePropagator(k);
 	}
 
 	return B;
