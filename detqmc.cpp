@@ -69,7 +69,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 				+ " does not match number of sweeps " + numToString(parsmc.sweeps));
 	}
 	if ((parsmc.measureInterval > parsmc.sweeps) or
-		(parsmc.measureInterval % parsmc.sweeps != 0)) {
+		(parsmc.sweeps % parsmc.measureInterval != 0)) {
 		throw ParameterWrong("Measurement interval " + numToString(parsmc.measureInterval)
 				+ " ill-chosen for number of sweeps " + numToString(parsmc.sweeps));
 	}
