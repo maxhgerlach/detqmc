@@ -46,7 +46,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	if (parsmodel.model == "hubbard") {
 		replica = createDetHubbard(rng, parsmodel);
 	} else {
-		throw ParameterWrong<std::string>("model", parsmodel.model);
+		throw ParameterWrong("model", parsmodel.model);
 	}
 
 	if (parsmc.greenUpdateType == "simple") {
@@ -54,13 +54,19 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	} else if (parsmc.greenUpdateType == "stabilized") {
 		greenUpdateType = GreenUpdateType::Stabilized;
 	} else {
-		throw ParameterWrong<std::string>("greenUpdateType", parsmc.greenUpdateType);
+		throw ParameterWrong("greenUpdateType", parsmc.greenUpdateType);
 	}
 
 	if (greenUpdateType == GreenUpdateType::Simple) {
 		sweepFunc = [this]() {replica->sweepSimple();};
 	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
 		sweepFunc = [this]() {replica->sweep();};
+	}
+
+	//some parameter consistency checking:
+	if (parsmc.sweeps % parsmc.jkBlocks != 0) {
+		throw ParameterWrong("Number of jackknife blocks " + numToString(parsmc.jkBlocks)
+				+ " does not match number of sweeps " + numToString(parsmc.sweeps));
 	}
 
 	//prepare metadata

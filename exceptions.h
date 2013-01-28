@@ -35,17 +35,19 @@ public:
 };
 
 
-template <typename ValType>
 class ParameterWrong : public std::exception {
-	std::string par;
-	ValType val;
+	std::string message;
 public:
-	ParameterWrong(const std::string& par,
-			const ValType& val) : par(par), val(val) {}
+	template <typename ValType>
+	ParameterWrong(const std::string& par, const ValType& val) :
+			message("Parameter " + par + " has incorrect value "
+					+ numToString(val)) {
+	}
+	ParameterWrong(const std::string& msg) : message(msg) {
+	}
 	virtual ~ParameterWrong() throw () { }
 	virtual const char* what() const throw () {
-		return ("Parameter " + par + " has incorrect value "
-				+ numToString(val)).c_str();
+		return message.c_str();
 	}
 };
 
