@@ -50,7 +50,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("d", po::value<unsigned>(&modelpar.d), "spatial dimension")
 			("beta", po::value<num>(&modelpar.beta), "inverse temperature (in units of 1/t, kB=1)")
 			("temp", po::value<num>(), "temperature (in units of t, kB=1)")
-			("m", po::value<unsigned>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau)")
+			("dtau", po::value<num>(&modelpar.dtau), "imaginary time discretization step size (beta = m*dtau). Pass either this or m.")
+			("m", po::value<unsigned>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau). Pass either this or dtau.")
 			;
 
 	po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
