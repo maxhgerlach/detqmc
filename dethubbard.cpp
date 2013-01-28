@@ -303,10 +303,11 @@ void DetHubbard::sweep() {
 		UdVStorageDn[m] = eye_UdV;
 		for (unsigned k = m; k >= 1; --k) {
 			updateInSlice(k);
-			//update the green function in timeslice k-1:
+			//compute the green function in timeslice k-1 from scratch with the help
+			//of B-matrices computed before
 			auto advanceDownGreen = [this](unsigned k, std::vector<UdV>& storage,
 					                       CubeNum& green, CubeNum& greenFwd,
-					                       CubeNum& greenBwd, Spin spinz) {
+					                       CubeNum& greenBwd, Spin spinz) -> void {
 //				debugSaveMatrix(auxfield, "auxfield");
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 //				debugSaveMatrix(B_k, "b_" + numToString(k) + "_" + numToString(k - 1) + "_s"
@@ -332,6 +333,11 @@ void DetHubbard::sweep() {
 
 				storage[k - 1] = UdV_L;
 			};
+			//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
+			auto wrapDownGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
+				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
+				green.slice(k - 1 - 1) = arma::inv(B_k) * green.slice(k - 1) * B_k;
+			};
 			advanceDownGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
 			advanceDownGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		}
@@ -349,7 +355,7 @@ void DetHubbard::sweep() {
 			//update the green function in timeslice k+1
 			auto advanceUpGreen = [this](unsigned k, const std::vector<UdV>& storage,
 											CubeNum& green, CubeNum& greenFwd,
-											CubeNum& greenBwd, Spin spinz) {
+											CubeNum& greenBwd, Spin spinz) -> void {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 
 				//The following is B(beta, (k+1) tau), valid from the last sweep
@@ -373,7 +379,7 @@ void DetHubbard::sweep() {
 			//Given B(k*tau, 0) from the last step in the storage, compute
 			//B((k+1)*tau, 0) and put it into storage
 			auto updateAdvanceStorage = [this](unsigned k, std::vector<UdV>& storage,
-					Spin spinz) {
+					Spin spinz) -> void {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 				//from the last step the following are B(k*tau, 0):
 				const MatNum& U_k = storage[k].U;
@@ -382,6 +388,11 @@ void DetHubbard::sweep() {
 				//the new B((k+1)*tau, 0):
 				storage[k+1] = svd(((B_kp1 * U_k) * arma::diagmat(d_k)));
 				storage[k+1].V *= V_k;
+			};
+			//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
+			auto wrapUpGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
+				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
+				green.slice(k + 1 - 1) = B_kp1 * green.slice(k - 1) * arma::inv(B_kp1);
 			};
 			advanceUpGreen(k, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
 			advanceUpGreen(k, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
