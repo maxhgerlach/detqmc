@@ -39,7 +39,9 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 			throw ParameterMissing(*p);
 		}
 	}
-#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) and pars.x <= 0)
+
+	//check that only positive values are passed for certain parameters
+#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
 #define CHECK_POSITIVE(x) 	{  					  						\
 								IF_NOT_POSITIVE(x) {  					\
 									throw ParameterWrong(#x, pars.x);	\
@@ -53,14 +55,24 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	CHECK_POSITIVE(dtau);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
-	//special handling to allow passing either 'm' or 'dtau', but not both
+
+	//Special handling to allow passing either 'm' or 'dtau', but not both.
+	//Also check that 's' is set correctly.
 	if (pars.specified.count("dtau") != 0) {
 		if (pars.specified.count("m")) {
 			throw ParameterWrong("Only specify one of the parameters m and dtau");
 		}
-		pars.m = unsigned(std::ceil(pars.beta / pars.dtau));
+		if (pars.s * pars.dtau > pars.beta) {
+			throw ParameterWrong("Parameters are incompatible: s * dtau > beta !");
+		}
+		unsigned n = unsigned(std::ceil(pars.beta / (pars.s * pars.dtau)));
+		pars.m = pars.s * n;
 	} else if (pars.specified.count("m") == 0) {
 		throw ParameterMissing("m");
+	}
+	if (pars.m % pars.s != 0) {
+		throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
+				+ " do not agree.");
 	}
 
 	return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
@@ -73,7 +85,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
 		z(2*d), //coordination number: 2*d
 		N(static_cast<unsigned>(uint_pow(L,d))),
-		beta(pars.beta), m(pars.m), s(pars.s), dtau(beta/m),
+		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(z, N),
 		proptmat(N,N),
@@ -241,15 +253,13 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
 }
 
 MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
-	//variable names changed according to labeling in names
+	//variable names changed according to labeling in notes
 	const MatNum& V_l = UdV_l.U;   //!
 	const VecNum& d_l = UdV_l.d;
 	const MatNum& U_l = UdV_l.V;   //!
 	const MatNum& U_r = UdV_r.U;
 	const VecNum& d_r = UdV_r.d;
 	const MatNum& V_r = UdV_r.V;
-
-	//check if alternative method for stable calculation works better:
 
 	using arma::inv; using arma::diagmat; using arma::eye;
 

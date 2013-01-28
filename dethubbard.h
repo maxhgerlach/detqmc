@@ -101,16 +101,17 @@ public:
 protected:
 	RngWrapper& rng;
 	//parameters:
-	num t;
-	num U;
-	num mu;
-	unsigned L;
-	unsigned d;
+	num t;			//hopping energy scale
+	num U;			//interaction energy scale
+	num mu;			//chemical potential
+	unsigned L;	//linear lattice size
+	unsigned d;	//spatial dimension of lattice
 	unsigned z;   // lattice coordination number, 2 * d
 	unsigned N;   // L ** d
-	num beta;
-	unsigned m;
-	unsigned s;
+	num beta;		//inverse temperature
+	unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
+	unsigned s;	//separation of time slices where the Green-function is calculated from scratch
+	unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
 	num dtau;     // beta / m
 	num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
