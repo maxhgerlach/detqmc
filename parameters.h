@@ -31,7 +31,8 @@ struct ModelParams {
 	unsigned L;
 	unsigned d;
 	num beta;
-	unsigned m;
+	unsigned m;		//either specify number of timeslices 'm'
+	num dtau;			//or timeslice separation 'dtau'
 	std::set<std::string> specified;
 };
 

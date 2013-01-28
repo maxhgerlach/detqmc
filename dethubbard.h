@@ -53,7 +53,7 @@ class DetHubbard;		//defined below in this file
 //
 //(in the future: possibly create such factories for different models)
 //If we had delegate constructors already, this would not be necessary
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, const ModelParams& pars);
+std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
 class DetHubbard {
 public:

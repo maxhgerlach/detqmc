@@ -29,18 +29,27 @@ void debugSaveMatrix(const MatInt& matrix, const std::string& basename) {
 }
 
 
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, const ModelParams& pars) {
-	//check parameters
+std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) {
+	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "t", "U", "mu", "L", "d", "beta", "m";
+	neededModelPars += "t", "U", "mu", "L", "d", "beta";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
 		}
 	}
+	//special handling to allow passing either 'm' or 'dtau', but not both
+	if (pars.specified.count("dtau") != 0) {
+		if (pars.specified.count("m")) {
+			throw ParameterWrong("Only specify one of the parameters m and dtau");
+		}
+		pars.m = unsigned(std::ceil(pars.beta / pars.dtau));
+	} else if (pars.specified.count("m") == 0) {
+		throw ParameterMissing("m");
+	}
 
-	return std::unique_ptr<DetHubbard>(new DetHubbard(rng,
+	return std::unique_ptr<DetHubbard>( new DetHubbard(rng,
 			pars.t, pars.U, pars.mu, pars.L, pars.d, pars.beta, pars.m)	);
 }
 
