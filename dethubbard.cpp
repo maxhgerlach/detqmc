@@ -33,12 +33,26 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "t", "U", "mu", "L", "d", "beta";
+	neededModelPars += "t", "U", "mu", "L", "d", "beta", "s";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
 		}
 	}
+#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) and pars.x <= 0)
+#define CHECK_POSITIVE(x) 	{  					  						\
+								IF_NOT_POSITIVE(x) {  					\
+									throw ParameterWrong(#x, pars.x);	\
+								}										\
+							}
+	CHECK_POSITIVE(L);
+	CHECK_POSITIVE(d);
+	CHECK_POSITIVE(beta);
+	CHECK_POSITIVE(m);
+	CHECK_POSITIVE(s);
+	CHECK_POSITIVE(dtau);
+#undef CHECK_POSITIVE
+#undef IF_NOT_POSITIVE
 	//special handling to allow passing either 'm' or 'dtau', but not both
 	if (pars.specified.count("dtau") != 0) {
 		if (pars.specified.count("m")) {
@@ -49,19 +63,17 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 		throw ParameterMissing("m");
 	}
 
-	return std::unique_ptr<DetHubbard>( new DetHubbard(rng,
-			pars.t, pars.U, pars.mu, pars.L, pars.d, pars.beta, pars.m)	);
+	return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
 }
 
 
 
-DetHubbard::DetHubbard(RngWrapper& rng_,
-		num t, num U, num mu, unsigned L, unsigned d, num beta, unsigned m) :
+DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		rng(rng_),
-		t(t), U(U), mu(mu), L(L), d(d),
+		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
 		z(2*d), //coordination number: 2*d
 		N(static_cast<unsigned>(uint_pow(L,d))),
-		beta(beta), m(m), dtau(beta/m),
+		beta(pars.beta), m(pars.m), s(pars.s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(z, N),
 		proptmat(N,N),
@@ -106,7 +118,7 @@ DetHubbard::~DetHubbard() {
 MetadataMap DetHubbard::prepareModelMetadataMap() {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
-#define META_INSERT(VAR) meta[#VAR] = numToString(VAR)
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(t);
 	META_INSERT(U);
 	META_INSERT(mu);
@@ -116,6 +128,7 @@ MetadataMap DetHubbard::prepareModelMetadataMap() {
 	META_INSERT(beta);
 	META_INSERT(m);
 	META_INSERT(dtau);
+	META_INSERT(s);
 	META_INSERT(alpha);
 #undef META_INSERT
 	return meta;

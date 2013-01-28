@@ -52,17 +52,16 @@ class DetHubbard;		//defined below in this file
 //factory function to init DetHubbard from parameter struct
 //
 //(in the future: possibly create such factories for different models)
-//If we had delegate constructors already, this would not be necessary
+//will do parameter checking etc
 std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
 class DetHubbard {
-public:
-	//init by specifying all simulation parameters individually via
-	//this constructor, or pass them collected in one struct Params
-	//to the "factory" function ::createDetHubbard() declared above.
+private:
+	//only initialize with the "factory" function ::createDetHubbard() declared above.
 	//Give a reference to the RNG instance to be used
-	DetHubbard(RngWrapper& rng, num t, num U, num mu, unsigned L, unsigned d, num beta,
-			unsigned m);
+	DetHubbard(RngWrapper& rng, const ModelParams& pars);
+public:
+	friend std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 	virtual ~DetHubbard();
 
 	unsigned getSystemN() const;
@@ -111,6 +110,7 @@ protected:
 	unsigned N;   // L ** d
 	num beta;
 	unsigned m;
+	unsigned s;
 	num dtau;     // beta / m
 	num alpha;    // cosh(alpha) = exp(dtau U / 2)
 

@@ -33,6 +33,8 @@ struct ModelParams {
 	num beta;
 	unsigned m;		//either specify number of timeslices 'm'
 	num dtau;			//or timeslice separation 'dtau'
+	unsigned s;		//separation of timeslices where the Green function is calculated
+						//from scratch
 	std::set<std::string> specified;
 };
 
