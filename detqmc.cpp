@@ -68,6 +68,11 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		throw ParameterWrong("Number of jackknife blocks " + numToString(parsmc.jkBlocks)
 				+ " does not match number of sweeps " + numToString(parsmc.sweeps));
 	}
+	if ((parsmc.measureInterval > parsmc.sweeps) or
+		(parsmc.measureInterval % parsmc.sweeps != 0)) {
+		throw ParameterWrong("Measurement interval " + numToString(parsmc.measureInterval)
+				+ " ill-chosen for number of sweeps " + numToString(parsmc.sweeps));
+	}
 
 	//prepare metadata
 	modelMeta = replica->prepareModelMetadataMap();
