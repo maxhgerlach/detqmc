@@ -387,16 +387,27 @@ void DetHubbard::sweep() {
 			}
 			if (l > 1) {
 				updateInSlice((l-1)*s);
-				advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-				advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 			}
+			//TODO: this will also compute the Green function at k=0, which technically is not necessary
+			//but sensible for the following sweep up
+			//TODO: alternatively just copy the k=m Green function to k=0
+			advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
 //		debugCheckBeforeSweepUp();
-		//The Green function at tau=0 is equal to that at tau=beta.
-		//Here we compute it for tau=0 and store it in the slice for tau=beta.
-		//proceed like Assaad
+		//We need to have computed the Green function for time slice k=0 so that the first
+		//wrap-up step is correct.
+//		const UdV& udv_L_up = UdVStorageUp[0];   //TODO: storage[0] indeed correct?
+//		const UdV& udv_R_up = eye_UdV;
+//		tie(ignore, gBwdUp.slice(0), gFwdUp.slice(0), gUp.slice(0)) =
+//				greenFromUdV_timedisplaced(udv_L_up, udv_R_up);
+//		const UdV& udv_L_dn = UdVStorageDn[0];   //TODO: storage[0] indeed correct?
+//		const UdV& udv_R_dn = eye_UdV;
+//		tie(ignore, gBwdDn.slice(0), gFwdDn.slice(0), gDn.slice(0)) =
+//				greenFromUdV_timedisplaced(udv_L_dn, udv_R_dn);
+		//set storage at k=0 to unity for the upcoming sweep:
 		UdVStorageUp[0] = eye_UdV;
 		UdVStorageDn[0] = eye_UdV;
 		for (unsigned l = 0; l <= n - 1; ++l) {
