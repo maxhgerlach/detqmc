@@ -89,10 +89,10 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(z, N),
 		proptmat(N,N),
-		auxfield(N, m),              //m columns of N rows
-		gUp(N,N,m), gDn(N,N,m),      //m slices of N columns x N rows
-		gFwdUp(N,N,m), gFwdDn(N,N,m),
-		gBwdUp(N,N,m), gBwdDn(N,N,m),
+		auxfield(N, m+1),                //m+1 columns of N rows
+		gUp(N,N,m+1), gDn(N,N,m+1),      //m+1 slices of N columns x N rows
+		gFwdUp(N,N,m+1), gFwdDn(N,N,m+1),
+		gBwdUp(N,N,m+1), gBwdDn(N,N,m+1),
 		obsNames(), obsShorts(), obsValRefs(), obsCount(0)
 {
 	createNeighborTable();
@@ -157,7 +157,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 
 //		//DEBUG: comparison of weight ratio calculation
 //		MatInt newAuxfield = auxfield;
-//		newAuxfield(site, timeslice - 1) *= -1;
+//		newAuxfield(site, timeslice) *= -1;
 //		num refRatio = weightRatioGenericNaive(auxfield, newAuxfield);
 //		std::cout << ratio << " vs. " << refRatio << std::endl;
 
@@ -170,7 +170,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 			//				auxfield = newAuxfield;
 
 			updateGreenFunctionWithFlip(site, timeslice);
-			auxfield(site, timeslice-1) *= -1;
+			auxfield(site, timeslice) *= -1;
 		}
 	}
 }
@@ -178,8 +178,8 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 
 void DetHubbard::sweepSimple() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		gUp.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Up);
-		gDn.slice(timeslice-1) = computeGreenFunctionNaive(timeslice, Spin::Down);
+		gUp.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Up);
+		gDn.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Down);
 		updateInSlice(timeslice);
 	}
 }
@@ -343,9 +343,9 @@ void DetHubbard::sweep() {
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
-		tie(ignore, gBwdUp.slice(m - 1), gFwdUp.slice(m - 1), gUp.slice(m - 1)) =
+		tie(ignore, gBwdUp.slice(m), gFwdUp.slice(m), gUp.slice(m)) =
 				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[n]);
-		tie(ignore, gBwdDn.slice(m - 1), gFwdDn.slice(m - 1), gDn.slice(m - 1)) =
+		tie(ignore, gBwdDn.slice(m), gFwdDn.slice(m), gDn.slice(m)) =
 				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[n]);
 
 		UdVStorageUp[n] = eye_UdV;
@@ -370,7 +370,7 @@ void DetHubbard::sweep() {
 				//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
 				const UdV& UdV_R = storage[l - 1];
 
-				unsigned next = s * (l - 1) - 1;
+				unsigned next = s * (l - 1);
 				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 						greenFromUdV_timedisplaced(UdV_L, UdV_R);
 				storage[l - 1] = UdV_L;
@@ -378,9 +378,9 @@ void DetHubbard::sweep() {
 			//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
 			auto wrapDownGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
 				MatNum B_k = computeBmatNaive(k, k - 1, spinz);
-				green.slice(k - 1 - 1) = arma::inv(B_k) * green.slice(k - 1) * B_k;
+				green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
 			};
-			for (unsigned k = l*s; k > (l-1)*s; --k) {
+			for (unsigned k = l*s; k > (l-1)*s + 1; --k) {
 				updateInSlice(k - 1);
 				wrapDownGreen(k, gUp, Spin::Up);
 				wrapDownGreen(k, gDn, Spin::Down);
@@ -419,7 +419,7 @@ void DetHubbard::sweep() {
 				UdV UdV_temp = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
 				UdV_temp.V *= V_l;
 
-				unsigned next = s * (l + 1) - 1;
+				unsigned next = s * (l + 1);
 				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 						greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
 
@@ -441,7 +441,7 @@ void DetHubbard::sweep() {
 			//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
 			auto wrapUpGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
-				green.slice(k + 1 - 1) = B_kp1 * green.slice(k - 1) * arma::inv(B_kp1);
+				green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
 			};
 			for (unsigned k = l*s; k < (l+1)*s; ++k) {
 				wrapUpGreen(k, gUp, Spin::Up);
@@ -472,18 +472,18 @@ void DetHubbard::measure() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
-			sum_GiiUp += gUp(site, site, timeslice - 1);
-			sum_GiiDn += gDn(site, site, timeslice - 1);
-			sum_GiiUpDn += gUp(site, site, timeslice - 1) * gDn(site, site, timeslice - 1);
+			sum_GiiUp += gUp(site, site, timeslice);
+			sum_GiiDn += gDn(site, site, timeslice);
+			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
 			//use nearest neighbor elements of Green functions:
 			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
 				unsigned neigh = nearestNeigbors(neighIndex, site);
-				sum_GneighUp += gUp(site, neigh, timeslice - 1);
-				sum_GneighDn += gDn(site, neigh, timeslice - 1);
+				sum_GneighUp += gUp(site, neigh, timeslice);
+				sum_GneighDn += gDn(site, neigh, timeslice);
 			}
 			//FORMULA-TEST -- made no difference
-//			sum_doubleoccupancy += (1 - gUp(site,site, timeslice - 1))
-//								 * (1 - gDn(site,site, timeslice - 1));
+//			sum_doubleoccupancy += (1 - gUp(site,site, timeslice))
+//								 * (1 - gDn(site,site, timeslice));
 		}
 	}
 	occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
@@ -508,7 +508,7 @@ void DetHubbard::measure() {
 	auto sumTrace = [m](const CubeNum& green) {
 		num sum = 0;
 		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			sum += arma::trace(green.slice(timeslice - 1));
+			sum += arma::trace(green.slice(timeslice));
 		}
 		return sum;
 	};
@@ -517,14 +517,14 @@ void DetHubbard::measure() {
 	auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
 		num sum = 0;
 		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			sum += arma::trace(green1.slice(timeslice - 1) * green2.slice(timeslice - 1));
+			sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
 		}
 		return sum;
 	};
 	num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
 	num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
-	num trGreenUp_0 = arma::trace(gUp.slice(m - 1));			//g(beta) = g(0)
-	num trGreenDn_0 = arma::trace(gDn.slice(m - 1));
+	num trGreenUp_0 = arma::trace(gUp.slice(m));			//g(beta) = g(0)
+	num trGreenDn_0 = arma::trace(gDn.slice(m));
 	suscq0 = dtau * (  (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
 					 - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
 					);
@@ -532,14 +532,14 @@ void DetHubbard::measure() {
 	// vector observables
 	zcorr.zeros();
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		num gUp_00 = gUp(0,0, timeslice - 1);
-		num gDn_00 = gDn(0,0, timeslice - 1);
+		num gUp_00 = gUp(0,0, timeslice);
+		num gDn_00 = gDn(0,0, timeslice);
 		zcorr[0] += -2.0 * gUp_00 * gDn_00 + gUp_00 + gDn_00;
 		for (unsigned siteJ = 1; siteJ < N; ++siteJ) {
-			num gUp_0j = gUp(0,siteJ,     timeslice - 1);
-			num gDn_0j = gDn(0,siteJ,     timeslice - 1);
-			num gUp_jj = gUp(siteJ,siteJ, timeslice - 1);
-			num gDn_jj = gDn(siteJ,siteJ, timeslice - 1);
+			num gUp_0j = gUp(0,siteJ,     timeslice);
+			num gDn_0j = gDn(0,siteJ,     timeslice);
+			num gUp_jj = gUp(siteJ,siteJ, timeslice);
+			num gDn_jj = gDn(siteJ,siteJ, timeslice);
 			using std::pow;
 			zcorr[siteJ] += gUp_00 * gUp_jj - gUp_00 * gDn_jj + gDn_00 * gDn_jj - gDn_00 * gUp_jj
 					- pow(gUp_0j, 2) - pow(gDn_0j, 2);
@@ -646,9 +646,9 @@ void DetHubbard::setupRandomAuxfield() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			if (rng.rand01() <= 0.5) {
-				auxfield(site, timeslice - 1) = +1;
+				auxfield(site, timeslice) = +1;
 			} else {
-				auxfield(site, timeslice - 1) = -1;
+				auxfield(site, timeslice) = -1;
 			}
 		}
 	}
@@ -698,7 +698,7 @@ inline MatNum DetHubbard::computeBmatNaive(unsigned k2, unsigned k1, Spin spinz,
 		//the cast with conv_to is necessary here, else everything would result in integers!
 		//-- an Armadillo bug IMHO
 		return diagmat(exp(sign * alpha *
-				conv_to<VecNum>::from(arbitraryAuxfield.col(timeslice-1)))) * proptmat;
+				conv_to<VecNum>::from(arbitraryAuxfield.col(timeslice)))) * proptmat;
 	};
 
 	MatNum B = singleTimeslicePropagator(k2);
@@ -750,11 +750,11 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 
 	//exponential factors
 	//results again do not seem to for the location of the -sign
-	num expUp   = exp(-2.0 * alpha * num(auxfield(site, timeslice-1)));
-	num expDown = exp( 2.0 * alpha * num(auxfield(site, timeslice-1)));
+	num expUp   = exp(-2.0 * alpha * num(auxfield(site, timeslice)));
+	num expDown = exp( 2.0 * alpha * num(auxfield(site, timeslice)));
 
-	num ratioUp   = 1.0 + (expUp   - 1.0) * (1.0 - gUp(site,site, timeslice-1));
-	num ratioDown = 1.0 + (expDown - 1.0) * (1.0 - gDn(site,site, timeslice-1));
+	num ratioUp   = 1.0 + (expUp   - 1.0) * (1.0 - gUp(site,site, timeslice));
+	num ratioDown = 1.0 + (expDown - 1.0) * (1.0 - gDn(site,site, timeslice));
 
 //	std::cout << ratioUp << " " << ratioDown << std::endl;
 
@@ -782,8 +782,8 @@ inline void DetHubbard::updateGreenFunctionWithFlip(unsigned site, unsigned time
 	};
 
 	using std::exp;
-	update(gUp.slice(timeslice-1), exp(-2.0 * alpha * num(auxfield(site, timeslice-1))) - 1.0);
-	update(gDn.slice(timeslice-1), exp(+2.0 * alpha * num(auxfield(site, timeslice-1))) - 1.0);
+	update(gUp.slice(timeslice), exp(-2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
+	update(gDn.slice(timeslice), exp(+2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
 }
 
 

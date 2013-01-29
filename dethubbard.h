@@ -131,17 +131,21 @@ protected:
 	//Auxiliary field represented by Ising spins, N entries of +/- 1.
 	//There is one auxiliary field for each imaginary time slice. One time slice
 	//corresponds to one column of the matrix. The time slices in auxfield are
-	//indexed from 0 to m-1. So auxfield.col(n) refers to the timeslice dtau*(n+1).
+	//indexed from 0 to m. So auxfield.col(n) refers to the timeslice dtau*n.
+	//Most code, however, only uses timeslices >= 1 ! Don't rely on auxfield.col(0)
+	//being valid.
 	MatInt auxfield;
 
 	//Equal imaginary time Green function
-	//slices indexed n=0..m-1 correspond to time slices at dtau*(n+1),
+	//slices indexed k=0..m correspond to time slices at dtau*k,
 	//which are then indexed by sites in row and column.
 	//One cube for each value of spinz.
-	//The Green functions for n=0 are equal to those for n=m.
+	//The Green functions for k=0 are conceptually equal to those for k=m.
+	//Most code, however, only uses timeslices k >= 1 ! Don't rely on g*.slice(0)
+	//being valid.
 	CubeNum gUp, gDn;
 	
-	//Imaginary time displaced Green function, tau > 0
+	//Imaginary time displaced Green function
 	// "forward" corresponds to G(tau, 0)
 	// "backward" corresponds to G(0, tau)
 	//the indexing works the same way as for the equal time case
@@ -215,10 +219,10 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	MatNum computeBmatNaive(unsigned bn2, unsigned n1, Spin spinz) const;
+	MatNum computeBmatNaive(unsigned k2, unsigned k1, Spin spinz) const;
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
-	MatNum computeBmatNaive(unsigned n2, unsigned n1, Spin spinz,
+	MatNum computeBmatNaive(unsigned k2, unsigned k1, Spin spinz,
 			const MatInt& arbitraryAuxfield) const;
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
