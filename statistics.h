@@ -11,7 +11,9 @@
 #include <cmath>
 #include <vector>
 #include <tuple>
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Weffc++"
 
 
 //There is support for Armadillo vector/matrix values in this functions. But this requires

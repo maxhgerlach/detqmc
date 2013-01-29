@@ -33,7 +33,9 @@
 #include <vector>
 #include <string>
 #include <tuple>
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Weffc++"
 #include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"
@@ -159,6 +161,12 @@ protected:
 		MatNum U;
 		VecNum d;
 		MatNum V;
+		//default constructor: leaves everything empty
+		UdV() : U(), d(), V() {}
+		//specify matrix size: initialize to identity
+		UdV(unsigned size) :
+			U(arma::eye(size,size)), d(arma::ones(size)), V(arma::eye(size,size))
+		{ }
 	};
 	UdV eye_UdV;	// U = d = V = 1
 	static UdV svd(const MatNum& mat);				//wraps arma::svd()

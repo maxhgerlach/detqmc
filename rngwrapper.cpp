@@ -24,7 +24,7 @@ std::string RngWrapper::getName() {
 }
 
 RngWrapper::RngWrapper(unsigned long seed_, int processIndex_)
-		: seed(seed_), processIndex(processIndex_) {
+		: seed(seed_), processIndex(processIndex_), dsfmt() {
 	//dSFMT
 	//TODO: use full seed
 

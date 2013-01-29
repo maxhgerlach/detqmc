@@ -8,7 +8,9 @@
 
 #include <ctime>
 #include <functional>
+#pragma GCC diagnostic ignored "-Weffc++"
 #include "boost/assign/std/vector.hpp"
+#pragma GCC diagnostic warning "-Weffc++"
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "tools.h"
@@ -19,7 +21,11 @@ using std::cout;
 using std::endl;
 
 DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
-		parsmodel(parsmodel_), parsmc(parsmc_), sweepsDone(0)
+		parsmodel(parsmodel_), parsmc(parsmc_),
+		//proper initialization of default initialized members done in method body
+		greenUpdateType(), sweepFunc(), modelMeta(), mcMeta(), rng(), replica(),
+		obsHandlers(), vecObsHandlers(),
+		sweepsDone(0)
 {
 	//check parameters
 	if (parsmodel.specified.count("model") == 0) {

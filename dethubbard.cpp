@@ -8,7 +8,9 @@
 #include <vector>
 #include <cmath>
 #include <cassert>
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#pragma GCC diagnostic warning "-Weffc++"
 #include "tools.h"
 #include "exceptions.h"
 #include "rngwrapper.h"
@@ -93,7 +95,12 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		gUp(N,N,m+1), gDn(N,N,m+1),      //m+1 slices of N columns x N rows
 		gFwdUp(N,N,m+1), gFwdDn(N,N,m+1),
 		gBwdUp(N,N,m+1), gBwdDn(N,N,m+1),
-		obsNames(), obsShorts(), obsValRefs(), obsCount(0)
+		eye_UdV(N),
+		UdVStorageUp(), UdVStorageDn(), lastSweepDir(SweepDirection::Up),
+		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
+		occDouble(), localMoment(), suscq0(), zcorr(),
+		obsNames(), obsShorts(), obsValRefs(), obsCount(0),
+		vecObsNames(), vecObsShorts(), vecObsValRefs(), vecObsCount(0)
 {
 	createNeighborTable();
 	setupRandomAuxfield();

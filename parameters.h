@@ -36,6 +36,9 @@ struct ModelParams {
 	unsigned s;		//separation of timeslices where the Green function is calculated
 						//from scratch
 	std::set<std::string> specified;
+
+	ModelParams() : model(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
+	{ }
 };
 
 
@@ -52,6 +55,10 @@ struct MCParams {
 	std::string greenUpdateType; 	//"simple" or "stabilized"
 
 	std::set<std::string> specified;
+
+	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
+			rngSeed(), greenUpdateType(), specified()
+	{ }
 };
 
 

@@ -17,7 +17,9 @@
 #include <string>
 #include <vector>
 #include <tuple>
+#pragma GCC diagnostic ignored "-Weffc++"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
 #include "metadata.h"
 #include "dataserieswritersucc.h"
@@ -112,7 +114,9 @@ public:
 			const MetadataMap& metadataToStoreModel,
 			const MetadataMap& metadataToStoreMC)
 		: ObservableHandlerCommon(observableName, simulationParameters,
-				metadataToStoreModel, metadataToStoreMC)
+				metadataToStoreModel, metadataToStoreMC),
+		timeseriesBuffer(),			//empty by default
+		storage()					//initialize to something like a nullptr
 	{
 		if (mcparams.timeseries) {
 			std::string filename = observableName + ".series";

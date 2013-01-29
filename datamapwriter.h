@@ -72,7 +72,7 @@ private:
 
 template<typename Key, typename Value>
 DataMapWriter<Key, Value>::DataMapWriter() :
-    header("") {
+    data(), errors(), header("") {
 }
 
 template <typename Key, typename Value>

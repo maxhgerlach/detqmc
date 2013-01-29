@@ -37,14 +37,15 @@ public:
 
 	virtual ~DetQMC();
 protected:
+	ModelParams parsmodel;
+	MCParams parsmc;
+
 	enum class GreenUpdateType {Simple, Stabilized};
 	GreenUpdateType greenUpdateType;
 	std::function<void()> sweepFunc;	//the replica member function that will be called
 										//to perform a sweep (depending on greenUpdate).
 										//adds a function pointer layer
 
-	ModelParams parsmodel;
-	MCParams parsmc;
 	MetadataMap modelMeta;
 	MetadataMap mcMeta;
 	RngWrapper rng;

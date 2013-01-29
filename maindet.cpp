@@ -6,9 +6,11 @@
  */
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Weffc++"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
 #pragma GCC diagnostic warning "-Wunused-parameter"
+#pragma GCC diagnostic warning "-Weffc++"
 #include <iostream>
 #include <fstream>
 #include <string>
