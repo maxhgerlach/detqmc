@@ -352,7 +352,7 @@ void DetHubbard::sweep() {
 		UdVStorageDn[n] = eye_UdV;
 		for (unsigned l = n; l >= 1; --l) {
 			//compute the green function in timeslice s*(l-1) from scratch with the help
-			//of B-matrices computed before
+			//of the B-matrices computed before in the last sweep
 			auto advanceDownGreen = [this](unsigned l, std::vector<UdV>& storage,
 					                       CubeNum& green, CubeNum& greenFwd,
 					                       CubeNum& greenBwd, Spin spinz) -> void {
@@ -370,12 +370,9 @@ void DetHubbard::sweep() {
 				//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
 				const UdV& UdV_R = storage[l - 1];
 
-				if (l - 1 > 0) {      //TODO: this if handled correctly?
-					unsigned next = s * (l - 1) - 1;
-					tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-							greenFromUdV_timedisplaced(UdV_L, UdV_R);
-				}
-
+				unsigned next = s * (l - 1) - 1;
+				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
+						greenFromUdV_timedisplaced(UdV_L, UdV_R);
 				storage[l - 1] = UdV_L;
 			};
 			//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
@@ -388,9 +385,11 @@ void DetHubbard::sweep() {
 				wrapDownGreen(k, gUp, Spin::Up);
 				wrapDownGreen(k, gDn, Spin::Down);
 			}
-			updateInSlice((l-1)*s);
-			advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-			advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+			if (l > 1) {
+				updateInSlice((l-1)*s);
+				advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+				advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+			}
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
@@ -424,7 +423,7 @@ void DetHubbard::sweep() {
 				tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 						greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
 
-				//storage[l + 1] = UdV_temp;    //storage will be wrong after updateInSlice!
+				//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
 			};
 			//Given B(l*s*dtau, 0) from the last step in the storage, compute
 			//B((l+1)*s*dtau, 0) and put it into storage
