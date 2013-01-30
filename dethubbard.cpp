@@ -157,7 +157,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 	// picking sites linearly: system seemed to alternate between two configurations
 	// sweep after sweep
 //	for (unsigned site = 0; site < N; ++site) {
-	std::cout << timeslice << " ";  //DEBUG
+//	std::cout << timeslice << " ";  //DEBUG
 	for (unsigned count = 0; count < N; ++count) {
 		unsigned site = rng.randInt(0, N-1);
 
@@ -377,6 +377,7 @@ void DetHubbard::sweep() {
 		MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
 	};
+
 	//update the green function in timeslice s*(l+1) from scratch with the help
 	//of B-matrices computed before
 	auto advanceUpGreen = [this](unsigned l, const std::vector<UdV>& storage,
@@ -402,9 +403,10 @@ void DetHubbard::sweep() {
 
 		//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
 	};
+
 	//Given B(l*s*dtau, 0) from the last step in the storage, compute
 	//B((l+1)*s*dtau, 0) and put it into storage
-	auto updateAdvanceStorage = [this](unsigned l, std::vector<UdV>& storage,
+	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdV>& storage,
 			Spin spinz) -> void {
 		MatNum B_lp1 = computeBmatNaive(s*(l + 1), s*l, spinz);
 		//from the last step the following are B(l*s*dtau, 0):
@@ -415,6 +417,7 @@ void DetHubbard::sweep() {
 		storage[l+1] = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
 		storage[l+1].V *= V_l;
 	};
+
 	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
 	auto wrapUpGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
 		MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
@@ -422,7 +425,7 @@ void DetHubbard::sweep() {
 	};
 
 	if (lastSweepDir == SweepDirection::Up) {
-		debugCheckBeforeSweepDown();
+//		debugCheckBeforeSweepDown();
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
@@ -439,10 +442,6 @@ void DetHubbard::sweep() {
 				wrapDownGreen(k + 1, gDn, Spin::Down);
 				updateInSlice(k);
 			}
-//			if (l > 1) {
-//				updateInSlice((l-1)*s);
-//			}
-//			updateInSlice((l-1)*s + 1);
 			//TODO: this will also compute the Green function at k=0, which technically is not necessary
 			//but sensible for the following sweep up
 			//TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
@@ -451,31 +450,23 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
-		debugCheckBeforeSweepUp();
+//		debugCheckBeforeSweepUp();
 		//We need to have computed the Green function for time slice k=0 so that the first
 		//wrap-up step is correct.
-//		const UdV& udv_L_up = UdVStorageUp[0];   //TODO: storage[0] indeed correct?
-//		const UdV& udv_R_up = eye_UdV;
-//		tie(ignore, gBwdUp.slice(0), gFwdUp.slice(0), gUp.slice(0)) =
-//				greenFromUdV_timedisplaced(udv_L_up, udv_R_up);
-//		const UdV& udv_L_dn = UdVStorageDn[0];   //TODO: storage[0] indeed correct?
-//		const UdV& udv_R_dn = eye_UdV;
-//		tie(ignore, gBwdDn.slice(0), gFwdDn.slice(0), gDn.slice(0)) =
-//				greenFromUdV_timedisplaced(udv_L_dn, udv_R_dn);
-		//set storage at k=0 to unity for the upcoming sweep:
-		UdVStorageUp[0] = eye_UdV;
-		UdVStorageDn[0] = eye_UdV;
 		for (unsigned k = 1; k <= s-1; ++k) {
 			wrapUpGreen(k - 1, gUp, Spin::Up);
 			wrapUpGreen(k - 1, gDn, Spin::Down);
 			updateInSlice(k);
 		}
+		//set storage at k=0 to unity for the upcoming sweep:
+		UdVStorageUp[0] = eye_UdV;
+		UdVStorageDn[0] = eye_UdV;
 		advanceUpGreen(0, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
 		advanceUpGreen(0, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		for (unsigned l = 1; l < n; ++l) {
 			updateInSlice(l*s);
-			updateAdvanceStorage(l - 1, UdVStorageUp, Spin::Up);
-			updateAdvanceStorage(l - 1, UdVStorageDn, Spin::Down);
+			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
+			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
 			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
 				wrapUpGreen(k - 1, gUp, Spin::Up);
 				wrapUpGreen(k - 1, gDn, Spin::Down);
@@ -483,11 +474,11 @@ void DetHubbard::sweep() {
 			}
 		}
 		updateInSlice(n*s);
-		updateAdvanceStorage(n - 1, UdVStorageUp, Spin::Up);
-		updateAdvanceStorage(n - 1, UdVStorageDn, Spin::Down);
+		advanceUpUpdateStorage(n - 1, UdVStorageUp, Spin::Up);
+		advanceUpUpdateStorage(n - 1, UdVStorageDn, Spin::Down);
 		lastSweepDir = SweepDirection::Up;
 	}
-	std::cout << std::endl;		//DEBUG
+//	std::cout << std::endl;		//DEBUG
 }
 
 void DetHubbard::measure() {
