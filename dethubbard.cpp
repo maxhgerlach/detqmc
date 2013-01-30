@@ -309,16 +309,16 @@ void DetHubbard::setupUdVStorage() {
 void DetHubbard::debugCheckBeforeSweepDown() {
 	std::cout << "Before sweep down:\n";
 	std::cout << "up: ";
-	for (unsigned timeslice = 0; timeslice <= m; ++timeslice) {
-		UdV udv = UdVStorageUp[timeslice];
-		MatNum diff = computeBmatNaive(timeslice, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+	for (unsigned l = 0; l <= n; ++l) {
+		UdV udv = UdVStorageUp[l];
+		MatNum diff = computeBmatNaive(l*s, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
-	for (unsigned timeslice = 0; timeslice <= m; ++timeslice) {
-		UdV udv = UdVStorageDn[timeslice];
-		MatNum diff = computeBmatNaive(timeslice, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+	for (unsigned l = 0; l <= n; ++l) {
+		UdV udv = UdVStorageDn[l];
+		MatNum diff = computeBmatNaive(l*s, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n\n";
@@ -327,16 +327,16 @@ void DetHubbard::debugCheckBeforeSweepDown() {
 void DetHubbard::debugCheckBeforeSweepUp() {
 	std::cout << "Before sweep up:\n";
 	std::cout << "up: ";
-	for (unsigned timeslice = 0; timeslice <= m; ++timeslice) {
-		UdV udv = UdVStorageUp[timeslice];
-		MatNum diff = computeBmatNaive(m, timeslice, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+	for (unsigned l = 0; l <= n; ++l) {
+		UdV udv = UdVStorageUp[l];
+		MatNum diff = computeBmatNaive(m, l*s, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
-	for (unsigned timeslice = 0; timeslice <= m; ++timeslice) {
-		UdV udv = UdVStorageDn[timeslice];
-		MatNum diff = computeBmatNaive(m, timeslice, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+	for (unsigned l = 0; l <= n; ++l) {
+		UdV udv = UdVStorageDn[l];
+		MatNum diff = computeBmatNaive(m, l*s, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n\n";
@@ -434,7 +434,7 @@ void DetHubbard::sweep() {
 		UdVStorageDn[n] = eye_UdV;
 		for (unsigned l = n; l >= 1; --l) {
 			updateInSlice(l*s);
-			for (unsigned k = l*s - 1; k > (l-1)*s + 1; --k) {
+			for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
 				wrapDownGreen(k + 1, gUp, Spin::Up);
 				wrapDownGreen(k + 1, gDn, Spin::Down);
 				updateInSlice(k);
@@ -465,7 +465,7 @@ void DetHubbard::sweep() {
 		//set storage at k=0 to unity for the upcoming sweep:
 		UdVStorageUp[0] = eye_UdV;
 		UdVStorageDn[0] = eye_UdV;
-		for (unsigned k = 1; k < s-1; ++k) {
+		for (unsigned k = 1; k <= s-1; ++k) {
 			wrapUpGreen(k - 1, gUp, Spin::Up);
 			wrapUpGreen(k - 1, gDn, Spin::Down);
 			updateInSlice(k);
@@ -476,7 +476,7 @@ void DetHubbard::sweep() {
 			updateInSlice(l*s);
 			updateAdvanceStorage(l - 1, UdVStorageUp, Spin::Up);
 			updateAdvanceStorage(l - 1, UdVStorageDn, Spin::Down);
-			for (unsigned k = l*s + 1; k < l*s + (s-1); ++k) {
+			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
 				wrapUpGreen(k - 1, gUp, Spin::Up);
 				wrapUpGreen(k - 1, gDn, Spin::Down);
 				updateInSlice(k);
