@@ -157,6 +157,7 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 	// picking sites linearly: system seemed to alternate between two configurations
 	// sweep after sweep
 //	for (unsigned site = 0; site < N; ++site) {
+	std::cout << timeslice << " ";  //DEBUG
 	for (unsigned count = 0; count < N; ++count) {
 		unsigned site = rng.randInt(0, N-1);
 
@@ -461,7 +462,7 @@ void DetHubbard::sweep() {
 				MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 				green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
 			};
-			for (unsigned k = l*s; k < (l+1)*s; ++k) {
+			for (unsigned k = l*s; k < (l+1)*s - 1; ++k) {
 				wrapUpGreen(k, gUp, Spin::Up);
 				wrapUpGreen(k, gDn, Spin::Down);
 				updateInSlice(k + 1);
@@ -474,6 +475,7 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Up;
 	}
+	std::cout << std::endl;		//DEBUG
 }
 
 void DetHubbard::measure() {
