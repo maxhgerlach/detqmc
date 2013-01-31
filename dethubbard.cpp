@@ -444,7 +444,7 @@ void DetHubbard::sweep() {
 
 	if (lastSweepDir == SweepDirection::Up) {
 //		debugCheckBeforeSweepDown();
-		debugCheckGreenFunctions();
+//		debugCheckGreenFunctions();
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
@@ -469,7 +469,7 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
-		debugCheckGreenFunctions();
+//		debugCheckGreenFunctions();
 //		debugCheckBeforeSweepUp();
 		//We need to have computed the Green function for time slice k=0 so that the first
 		//wrap-up step is correct.
