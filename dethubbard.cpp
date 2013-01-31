@@ -481,9 +481,9 @@ void DetHubbard::sweep() {
 		//set storage at k=0 to unity for the upcoming sweep:
 		UdVStorageUp[0] = eye_UdV;
 		UdVStorageDn[0] = eye_UdV;
-		advanceUpGreen(0, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-		advanceUpGreen(0, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 		for (unsigned l = 1; l < n; ++l) {
+			advanceUpGreen(l-1, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+			advanceUpGreen(l-1, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 			updateInSlice(l*s);
 			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
 			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
