@@ -277,6 +277,7 @@ protected:
 
 	void debugCheckBeforeSweepDown();
 	void debugCheckBeforeSweepUp();
+	void debugCheckGreenFunctions();
 };
 
 #endif /* DETHUBBARD_H_ */

@@ -342,6 +342,24 @@ void DetHubbard::debugCheckBeforeSweepUp() {
 	std::cout << "\n\n";
 }
 
+void DetHubbard::debugCheckGreenFunctions() {
+	std::cout << "debugCheckGreenFunctions:\n";
+	std::cout << "up: ";
+	for (unsigned k = 1; k <= m; ++k) {
+		MatNum green = gUp.slice(k);
+		MatNum reldiff = (computeGreenFunctionNaive(k, Spin::Up) - green) / green;
+		std::cout << reldiff.max() << " ";
+	}
+	std::cout << "\n";
+	std::cout << "down: ";
+	for (unsigned k = 1; k <= m; ++k) {
+		MatNum green = gDn.slice(k);
+		MatNum reldiff = (computeGreenFunctionNaive(k, Spin::Down) - green) / green;
+		std::cout << reldiff.max() << " ";
+	}
+	std::cout << "\n\n";
+}
+
 
 
 void DetHubbard::sweep() {
@@ -426,6 +444,7 @@ void DetHubbard::sweep() {
 
 	if (lastSweepDir == SweepDirection::Up) {
 //		debugCheckBeforeSweepDown();
+		debugCheckGreenFunctions();
 		//to compute green function for timeslice tau=beta:
 		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 		//The latter is given in storage slice m from the last sweep.
@@ -450,6 +469,7 @@ void DetHubbard::sweep() {
 		}
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
+		debugCheckGreenFunctions();
 //		debugCheckBeforeSweepUp();
 		//We need to have computed the Green function for time slice k=0 so that the first
 		//wrap-up step is correct.
