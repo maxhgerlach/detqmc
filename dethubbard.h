@@ -96,7 +96,8 @@ public:
     void sweepSimple();
 
     //perform a sweep as suggested in the text by Assaad with stable computation
-    //of Green functions, alternate between sweeping up and down in imaginary time
+    //of Green functions, alternate between sweeping up and down in imaginary time.
+    //Will give equal-time and time-displaced Green functions.
     void sweep();
 
 	enum class Spin: int {Up = +1, Down = -1};

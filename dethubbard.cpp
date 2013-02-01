@@ -391,9 +391,12 @@ void DetHubbard::sweep() {
 	};
 
 	//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
-	auto wrapDownGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
+	auto wrapDownGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+			CubeNum& greenBwd, Spin spinz) -> void {
 		MatNum B_k = computeBmatNaive(k, k - 1, spinz);
 		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
+		greenFwd.slice(k - 1) = arma::inv(B_k) * greenFwd.slice(k);
+		greenBwd.slice(k - 1) = greenBwd(k) * B_k;
 	};
 
 	//update the green function in timeslice s*(l+1) from scratch with the help
@@ -437,9 +440,12 @@ void DetHubbard::sweep() {
 	};
 
 	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
-	auto wrapUpGreen = [this](unsigned k, CubeNum& green, Spin spinz) -> void {
+	auto wrapUpGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+			CubeNum& greenBwd, Spin spinz) -> void {
 		MatNum B_kp1 = computeBmatNaive(k + 1, k, spinz);
 		green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
+		greenFwd.slice(k + 1) = B_kp1 * greenFwd.slice(k);
+		greenBwd.slice(k + 1) = greenBwd.slice(k) * arma::inv(B_kp1);
 	};
 
 	if (lastSweepDir == SweepDirection::Up) {
@@ -457,8 +463,8 @@ void DetHubbard::sweep() {
 		for (unsigned l = n; l >= 1; --l) {
 			updateInSlice(l*s);
 			for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
-				wrapDownGreen(k + 1, gUp, Spin::Up);
-				wrapDownGreen(k + 1, gDn, Spin::Down);
+				wrapDownGreen(k + 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+				wrapDownGreen(k + 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 				updateInSlice(k);
 			}
 			//TODO: this will also compute the Green function at k=0, which technically is not necessary
@@ -474,8 +480,8 @@ void DetHubbard::sweep() {
 		//We need to have computed the Green function for time slice k=0 so that the first
 		//wrap-up step is correct.
 		for (unsigned k = 1; k <= s-1; ++k) {
-			wrapUpGreen(k - 1, gUp, Spin::Up);
-			wrapUpGreen(k - 1, gDn, Spin::Down);
+			wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+			wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 			updateInSlice(k);
 		}
 		//set storage at k=0 to unity for the upcoming sweep:
@@ -488,8 +494,8 @@ void DetHubbard::sweep() {
 			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
 			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
 			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
-				wrapUpGreen(k - 1, gUp, Spin::Up);
-				wrapUpGreen(k - 1, gDn, Spin::Down);
+				wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+				wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 				updateInSlice(k);
 			}
 		}
@@ -508,7 +514,7 @@ void DetHubbard::measure() {
 	//used to measure kinetic energy:
 	num sum_GneighUp = 0;
 	num sum_GneighDn = 0;
-	//used to measure potential energy:
+//	//used to measure double occupancy / potential energy:
 	num sum_GiiUpDn = 0;
 	//FORMULA-TEST -- made no difference
 //	num sum_doubleoccupancy = 0;
@@ -541,7 +547,8 @@ void DetHubbard::measure() {
 	localMoment = occTotal - 2*occDouble;
 
 //	ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
-	ePotential = U * ( 0.25 + (1.0 / (N*m)) * (sum_GiiUpDn - 0.5 * (sum_GiiUp + sum_GiiDn)) );
+//	ePotential = U * ( 0.25 + (1.0 / (N*m)) * (sum_GiiUpDn - 0.5 * (sum_GiiUp + sum_GiiDn)) );
+	ePotential = U * occDouble;
 
 	//Note: chemical potential term included in kinetic energy:
 	eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) - mu * occTotal;
