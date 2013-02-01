@@ -32,9 +32,9 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandler>>& 
 }
 
 void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers) {
-	typedef std::map<num, num> NumMap;
+	typedef std::map<unsigned, num> NumMap;
 	typedef std::shared_ptr<NumMap> NumMapPtr;
-	typedef DataMapWriter<num,num> NumMapWriter;
+	typedef DataMapWriter<unsigned,num> NumMapWriter;
 
 	for (auto p = obsHandlers.cbegin(); p != obsHandlers.cend(); ++p) {
 		const std::unique_ptr<VectorObservableHandler>& obsptr = *p;
@@ -44,8 +44,8 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& 
 		NumMapPtr valmap(new NumMap);
 		NumMapPtr errmap(new NumMap);
 		for (unsigned site = 0; site < N; ++site) {
-			valmap->insert(std::make_pair(num(site), values[site]));
-			errmap->insert(std::make_pair(num(site), errors[site]));
+			valmap->insert(std::make_pair(site, values[site]));
+			errmap->insert(std::make_pair(site, errors[site]));
 		}
 		NumMapWriter output;
 		output.setData(valmap);
@@ -60,8 +60,4 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& 
 		output.writeToFile("results-" + obsptr->name + ".values");
 	}
 }
-
-
-
-
 
