@@ -22,6 +22,7 @@
 #include <armadillo>
 #pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
+#include "observable.h"
 #include "metadata.h"
 #include "dataserieswritersucc.h"
 #include "datamapwriter.h"
@@ -31,13 +32,15 @@
 template <typename ObsType>
 class ObservableHandlerCommon {
 public:
-	ObservableHandlerCommon(const std::string& observableName,
+	ObservableHandlerCommon(const Observable<ObsType>& observable,
 			const MCParams& simulationParameters,
 			const MetadataMap& metadataToStoreModel,
 			const MetadataMap& metadataToStoreMC,
 			ObsType zeroValue = ObsType())
-		: zero(zeroValue),			//ObsType() may not be a valid choice!
-		  name(observableName), mcparams(simulationParameters),
+		: obs(observable),
+		  name(obs.name),
+		  zero(zeroValue),			//ObsType() may not be a valid choice!
+		  mcparams(simulationParameters),
 		  metaModel(metadataToStoreModel), metaMC(metadataToStoreMC),
 		  jkBlockCount(mcparams.jkBlocks),
 		  jkBlockSizeSweeps(mcparams.sweeps / jkBlockCount),
@@ -48,10 +51,12 @@ public:
 
 	virtual ~ObservableHandlerCommon() { }
 
-	// Log a newly measured observable value, pass the number of the current sweep.
+	// Log a newly measured observable value via the the reference contained in this->obs,
+	// pass the number of the current sweep.
 	// Measurements do not need to be stored at every sweep, but the number of skipped
 	// sweeps must be constant.
-	void insertValue(const ObsType& value, unsigned curSweep) {
+	void insertValue(unsigned curSweep) {
+		ObsType value = obs.valRef;
 		unsigned curJkBlock = curSweep / jkBlockSizeSweeps;
 		for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 			if (jb != curJkBlock) {
@@ -87,11 +92,12 @@ public:
 		return std::make_tuple(mean, error);
 	}
 protected:
+	const Observable<ObsType>& obs;
+	const std::string& name;
 	ObsType zero;				//an instance of ObsType that works like the number zero
 								//for addition -- this is not totally trivial for vector
 								//valued observables
 
-	std::string name;
 	MCParams mcparams;
 	MetadataMap metaModel, metaMC;
 	unsigned jkBlockCount;
@@ -105,38 +111,41 @@ protected:
 };
 
 
+
+
 //specialized ObservableHandler that uses num as a value type
 // -- can store time series, can be output into a common file "results.values"
 //    for all scalar observables
 class ScalarObservableHandler : public ObservableHandlerCommon<num> {
 public:
-	ScalarObservableHandler(const std::string& observableName,
+	ScalarObservableHandler(const ScalarObservable& observable,
 			const MCParams& simulationParameters,
 			const MetadataMap& metadataToStoreModel,
 			const MetadataMap& metadataToStoreMC)
-		: ObservableHandlerCommon(observableName, simulationParameters,
+		: ObservableHandlerCommon(observable, simulationParameters,
 				metadataToStoreModel, metadataToStoreMC),
 		timeseriesBuffer(),			//empty by default
 		storage()					//initialize to something like a nullptr
 	{
 		if (mcparams.timeseries) {
-			std::string filename = observableName + ".series";
+			std::string filename = observable.name + ".series";
 			storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
 					new DoubleVectorWriterSuccessive(filename));
-			storage->addHeaderText("Timeseries for observable " + observableName);
+			storage->addHeaderText("Timeseries for observable " + observable.name);
 			storage->addMetadataMap(metaModel);
 			storage->addMetadataMap(metaMC);
-			storage->addMeta("observable", observableName);
+			storage->addMeta("observable", observable.name);
 			storage->writeHeader();
 		}
 	}
 
 	//in addition to base class functionality supports adding to the timeseries buffer
-	void insertValue(num value, unsigned curSweep) {
+	void insertValue(unsigned curSweep) {
+		num value = obs.valRef;
 		if (mcparams.timeseries) {
 			timeseriesBuffer.push_back(value);
 		}
-		ObservableHandlerCommon<num>::insertValue(value, curSweep);
+		ObservableHandlerCommon<num>::insertValue(curSweep);
 	}
 
 	//If we don't have multiple jackknife blocks and the whole timeseries is stored
@@ -175,17 +184,16 @@ protected:
 //the vector size.
 class VectorObservableHandler : public ObservableHandlerCommon<arma::Col<num>> {
 public:
-	VectorObservableHandler(const std::string& observableName,
+	VectorObservableHandler(const VectorObservable& observable,
 			const MCParams& simulationParameters,
 			const MetadataMap& metadataToStoreModel,
-			const MetadataMap& metadataToStoreMC,
-			unsigned vectorSize)
-		: ObservableHandlerCommon<arma::Col<num>>(observableName,
+			const MetadataMap& metadataToStoreMC)
+		: ObservableHandlerCommon<arma::Col<num>>(observable,
 				simulationParameters, metadataToStoreModel, metadataToStoreMC,
-				arma::zeros<arma::Col<num>>(vectorSize)),
-		  vsize(vectorSize), indexes(vectorSize), indexName("site")
+				arma::zeros<arma::Col<num>>(observable.vectorSize)),
+		  vsize(observable.vectorSize), indexes(vsize), indexName("site")
 	{
-		for (unsigned counter = 0; counter < vectorSize; ++counter) {
+		for (unsigned counter = 0; counter < vsize; ++counter) {
 			indexes[counter] = counter;
 		}
 	}
@@ -204,18 +212,15 @@ protected:
 //Vector indexed by arbitrary key
 class KeyValueObservableHandler : public VectorObservableHandler {
 public:
-	KeyValueObservableHandler(const std::string& observableName,
+	KeyValueObservableHandler(const KeyValueObservable& observable,
 			const MCParams& simulationParameters,
 			const MetadataMap& metadataToStoreModel,
-			const MetadataMap& metadataToStoreMC,
-			const arma::Col<num>& observableKeys,
-			const std::string& keyName) :
-				VectorObservableHandler(observableName, simulationParameters,
-						metadataToStoreModel, metadataToStoreMC,
-						observableKeys.n_rows) {
+			const MetadataMap& metadataToStoreMC) :
+				VectorObservableHandler(observable, simulationParameters,
+						metadataToStoreModel, metadataToStoreMC) {
 		//this code is convenient but sets the vector indexes twice upon construction
-		indexes = observableKeys;
-		indexName = keyName;
+		indexes = observable.keys;
+		indexName = observable.keyName;
 	}
 };
 

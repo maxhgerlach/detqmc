@@ -39,6 +39,7 @@
 #include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"
+#include "observable.h"
 
 typedef arma::Col<num> VecNum;
 typedef arma::Mat<num> MatNum;
@@ -75,20 +76,11 @@ public:
 	//perform measurements of all observables
     void measure();
 
-    //get values of observables normalized by system size:
-    //obs corresponds to an observable additional to the energy
-    //if values of obsIndex > 0 are supported, we measure multiple, different
-    //observables (up to obsIndex == getNumberOfObservables() - 1 )
-    unsigned getNumberOfObservables() const;
-    num obsNormalized(unsigned obsIndex = 0) const;
-    virtual std::string getObservableName(unsigned obsIndex = 0) const;
-    virtual std::string getObservableShort(unsigned obsIndex = 0) const;
-
-    //the same for vector observables
-    unsigned getNumberOfVectorObservables() const;
-    VecNum vecObsNormalized(unsigned obsIndex = 0) const;
-    virtual std::string getVectorObservableName(unsigned obsIndex = 0) const;
-    virtual std::string getVectorObservableShort(unsigned obsIndex = 0) const;
+    //get values of observables normalized by system size, the structures returned
+    //contain references to the current values measured by DetHubbard.
+	std::vector<ScalarObservable> getScalarObservables();
+	std::vector<VectorObservable> getVectorObservables();
+	std::vector<KeyValueObservable> getKeyValueObservables();
 
 
     //perform a sweep updating the auxiliary field with costly recomputations
@@ -192,24 +184,21 @@ protected:
 	num localMoment;	//local Moment: <m^2> = <(nUp - nDown)^2>
 	num suscq0;			//q=0 susceptibility of z component of magnetization (nUp - nDown)
 
-	//for d=2: the Fourier transform of the timedisplaced Green function for k=(pi/2, 2*pi/3)
-
 	//the same for vector observables, averaged over timeslices with the current auxiliary field
 	VecNum zcorr;		//correlation function of magnetization density at site 0 with all other sites, z component
 
+	//for d=2: the Fourier transform of the timedisplaced Green function for k=(pi/2, 2*pi/3)
+	VecNum gf;			//values for different time-displacements
+	VecNum gf_dt;		//time-displacements, where the values are evaluated
 
-	//multiple observable handling
-	std::vector<std::string> obsNames;
-    std::vector<std::string> obsShorts;
-    //references to variables updated in measure():
-    std::vector<std::reference_wrapper<const num>> obsValRefs;
-    unsigned obsCount;
 
-    std::vector<std::string> vecObsNames;
-    std::vector<std::string> vecObsShorts;
-    //references to variables updated in measure():
-    std::vector<std::reference_wrapper<const VecNum>> vecObsValRefs;
-    unsigned vecObsCount;
+
+	//observable handling -- these contain information about observables (such as their names)
+	//as well as reference to their current value, which will be shared with simulation management
+	//in a different class. The values reference there are to be updated here in the replica class.
+	std::vector<ScalarObservable> obsScalar;
+	std::vector<VectorObservable> obsVector;
+	std::vector<KeyValueObservable> obsKeyValue;
 
 	void createNeighborTable();
 	unsigned coordsToSite(const std::vector<unsigned>& coords) const;

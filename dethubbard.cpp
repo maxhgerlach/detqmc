@@ -98,9 +98,8 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		eye_UdV(N),
 		UdVStorageUp(), UdVStorageDn(), lastSweepDir(SweepDirection::Up),
 		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
-		occDouble(), localMoment(), suscq0(), zcorr(),
-		obsNames(), obsShorts(), obsValRefs(), obsCount(0),
-		vecObsNames(), vecObsShorts(), vecObsValRefs(), vecObsCount(0)
+		occDouble(), localMoment(), suscq0(), zcorr(), gf(), gf_dt(),
+		obsScalar(), obsVector(), obsKeyValue()
 {
 	createNeighborTable();
 	setupRandomAuxfield();
@@ -110,30 +109,27 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 
 	using namespace boost::assign;         // bring operator+=() into scope
 	using std::cref;
-	obsNames += "occupationUp", "occupationDown", "totalOccupation",
-			"doubleOccupation", "localMoment",
-			"kineticEnergy", "potentialEnergy", "totalEnergy", "susceptibilityQ0";
-	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e", "chi_q0";
-	obsValRefs += cref(occUp), cref(occDn), cref(occTotal), cref(occDouble), cref(localMoment),
-			cref(eKinetic), cref(ePotential), cref(eTotal), cref(suscq0);
 
-	if (d == 2) {
-		obsNames += "greenFourier";
-		obsShorts += "gf";
-	}
-
-	assert(obsNames.size() == obsShorts.size());
-	assert(obsNames.size() == obsValRefs.size());
-	obsCount = obsNames.size();
-
-	vecObsNames += "spinzCorrelationFunction";
-	vecObsShorts += "zcorr";
-	vecObsValRefs += cref(zcorr);
-	assert(vecObsNames.size() == vecObsShorts.size());
-	assert(vecObsNames.size() == vecObsValRefs.size());
-	vecObsCount = vecObsNames.size();
+	obsScalar += ScalarObservable(occUp, "occupationUp", "nUp"),
+	             ScalarObservable(occDn, "occupationDown", "nDown"),
+	             ScalarObservable(occTotal, "totalOccupation", "n"),
+	             ScalarObservable(occDouble, "doubleOccupation", "n2"),
+	             ScalarObservable(localMoment, "localMoment", "m^2"),
+	             ScalarObservable(eKinetic, "kineticEnergy", "e_t"),
+	             ScalarObservable(ePotential, "potentialEnergy", "e_U"),
+	             ScalarObservable(eTotal, "totalEnergy", "e"),
+	             ScalarObservable(suscq0, "susceptibilityQ0", "chi_q0");
 
 	zcorr.zeros(N);
+	obsVector += VectorObservable(zcorr, N, "spinzCorrelationFunction", "zcorr");
+
+	if (d == 2) {
+		//TODO: once we're done with testing this, replace by more general setup!
+		gf_dt << 0.1 << 0.2 << 0.3 << 0.4 << 0.5 << 0.6 << 0.7 << 0.8 << 0.9
+		      << 1.0 << 1.1 << 1.2 << 1.3 << 1.4 << 1.5;
+		gf.zeros(gf_dt.n_elem);
+		obsKeyValue += KeyValueObservable(gf, gf_dt, "dt", "greenFourier", "gf");
+	}
 }
 
 DetHubbard::~DetHubbard() {
@@ -209,6 +205,19 @@ DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 unsigned DetHubbard::getSystemN() const {
 	return N;
 }
+
+std::vector<ScalarObservable> DetHubbard::getScalarObservables() {
+	return obsScalar;
+}
+
+std::vector<VectorObservable> DetHubbard::getVectorObservables() {
+	return obsVector;
+}
+
+std::vector<KeyValueObservable> DetHubbard::getKeyValueObservables() {
+	return obsKeyValue;
+}
+
 
 DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
 		const UdV& UdV_l, const UdV& UdV_r) const {
@@ -607,61 +616,6 @@ void DetHubbard::measure() {
 }
 
 
-unsigned DetHubbard::getNumberOfObservables() const {
-	return obsCount;
-}
-
-num DetHubbard::obsNormalized(unsigned obsIndex) const {
-	if (obsIndex < obsCount) {
-		return obsValRefs[obsIndex];
-	} else {
-		throw WrongObsIndex(obsIndex);
-	}
-}
-
-std::string DetHubbard::getObservableName(unsigned obsIndex) const {
-	if (obsIndex < obsCount) {
-		return obsNames[obsIndex];
-	} else {
-		throw WrongObsIndex(obsIndex);
-	}
-}
-
-std::string DetHubbard::getObservableShort(unsigned obsIndex) const {
-	if (obsIndex < obsCount) {
-		return obsShorts[obsIndex];
-	} else {
-		throw WrongObsIndex(obsIndex);
-	}
-}
-
-unsigned DetHubbard::getNumberOfVectorObservables() const {
-	return vecObsCount;
-}
-
-VecNum DetHubbard::vecObsNormalized(unsigned vecObsIndex) const {
-	if (vecObsIndex < vecObsCount) {
-		return vecObsValRefs[vecObsIndex];
-	} else {
-		throw WrongObsIndex(vecObsIndex, true);
-	}
-}
-
-std::string DetHubbard::getVectorObservableName(unsigned vecObsIndex) const {
-	if (vecObsIndex < vecObsCount) {
-		return vecObsNames[vecObsIndex];
-	} else {
-		throw WrongObsIndex(vecObsIndex, true);
-	}
-}
-
-std::string DetHubbard::getVectorObservableShort(unsigned vecObsIndex) const {
-	if (vecObsIndex < vecObsCount) {
-		return vecObsShorts[vecObsIndex];
-	} else {
-		throw WrongObsIndex(vecObsIndex, true);
-	}
-}
 
 
 

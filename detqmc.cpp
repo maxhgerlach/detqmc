@@ -83,15 +83,22 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	//prepare metadata
 	modelMeta = replica->prepareModelMetadataMap();
 	mcMeta = prepareMCMetadataMap();
-	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfObservables(); ++obsIndex) {
+
+	//prepare observable handlers
+	auto scalarObs = replica->getScalarObservables();
+	for (auto obsP = scalarObs.cbegin(); obsP != scalarObs.cend(); ++obsP) {
 		obsHandlers.push_back(ObsPtr(
-				new ScalarObservableHandler(replica->getObservableName(obsIndex), parsmc,
-						modelMeta, mcMeta)));
+				new ScalarObservableHandler(*obsP, parsmc, modelMeta, mcMeta)));
 	}
-	for (unsigned obsIndex = 0; obsIndex < replica->getNumberOfVectorObservables(); ++obsIndex) {
+	auto vectorObs = replica->getVectorObservables();
+	for (auto obsP = vectorObs.cbegin(); obsP != vectorObs.cend(); ++obsP) {
 		vecObsHandlers.push_back(VecObsPtr(
-				new VectorObservableHandler(replica->getVectorObservableName(obsIndex), parsmc,
-						modelMeta, mcMeta, replica->getSystemN())));
+				new VectorObservableHandler(*obsP, parsmc, modelMeta, mcMeta)));
+	}
+	auto keyValueObs = replica->getKeyValueObservables();
+	for (auto obsP = keyValueObs.cbegin(); obsP != keyValueObs.cend(); ++obsP) {
+		vecObsHandlers.push_back(VecObsPtr(
+				new KeyValueObservableHandler(*obsP, parsmc, modelMeta, mcMeta)));
 	}
 
 	cout << "\nSimulation initialized, parameters: " << endl;
@@ -129,11 +136,11 @@ void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 		if (sw % measureInterval == 0) {
 			replica->measure();
 			//TODO: can this for loop be expressed in a more elegant and terse way?
-			for (unsigned oi = 0; oi < replica->getNumberOfObservables(); ++oi) {
-				obsHandlers[oi]->insertValue(replica->obsNormalized(oi), sweepsDone);
+			for (auto ph = obsHandlers.begin(); ph != obsHandlers.end(); ++ph) {
+				(*ph)->insertValue(sweepsDone);
 			}
-			for (unsigned oi = 0; oi < replica->getNumberOfVectorObservables(); ++oi) {
-				vecObsHandlers[oi]->insertValue(replica->vecObsNormalized(oi), sweepsDone);
+			for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
+				(*ph)->insertValue(sweepsDone);
 			}
 		}
 	}
