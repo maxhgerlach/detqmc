@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <string>
+#include <map>
 #include <vector>
 #include <tuple>
 #pragma GCC diagnostic ignored "-Weffc++"
@@ -170,7 +171,8 @@ protected:
 
 
 //Vector valued observables.  We use Armadillo vectors as they support arithmetics.
-//A fixed vector size must be specified at initialization.
+//A fixed vector size must be specified at initialization. This indexes the vector from 0 to
+//the vector size.
 class VectorObservableHandler : public ObservableHandlerCommon<arma::Col<num>> {
 public:
 	VectorObservableHandler(const std::string& observableName,
@@ -181,8 +183,11 @@ public:
 		: ObservableHandlerCommon<arma::Col<num>>(observableName,
 				simulationParameters, metadataToStoreModel, metadataToStoreMC,
 				arma::zeros<arma::Col<num>>(vectorSize)),
-		  vsize(vectorSize)
+		  vsize(vectorSize), indexes(vectorSize), indexName("site")
 	{
+		for (unsigned counter = 0; counter < vectorSize; ++counter) {
+			indexes[counter] = counter;
+		}
 	}
 	unsigned getVectorSize() {
 		return vsize;
@@ -191,6 +196,27 @@ public:
 			const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
 protected:
 	unsigned vsize;
+	arma::Col<num> indexes;
+	std::string indexName;
+};
+
+
+//Vector indexed by arbitrary key
+class KeyValueObservableHandler : public VectorObservableHandler {
+public:
+	KeyValueObservableHandler(const std::string& observableName,
+			const MCParams& simulationParameters,
+			const MetadataMap& metadataToStoreModel,
+			const MetadataMap& metadataToStoreMC,
+			const arma::Col<num>& observableKeys,
+			const std::string& keyName) :
+				VectorObservableHandler(observableName, simulationParameters,
+						metadataToStoreModel, metadataToStoreMC,
+						observableKeys.n_rows) {
+		//this code is convenient but sets the vector indexes twice upon construction
+		indexes = observableKeys;
+		indexName = keyName;
+	}
 };
 
 

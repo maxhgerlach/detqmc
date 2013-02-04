@@ -43,9 +43,10 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& 
 		std::tie(values, errors) = obsptr->evaluateJackknife();
 		NumMapPtr valmap(new NumMap);
 		NumMapPtr errmap(new NumMap);
-		for (unsigned site = 0; site < N; ++site) {
-			valmap->insert(std::make_pair(site, values[site]));
-			errmap->insert(std::make_pair(site, errors[site]));
+		for (unsigned counter = 0; counter < N; ++counter) {
+			num index = obsptr->indexes[counter];
+			valmap->insert(std::make_pair(index, values[counter]));
+			errmap->insert(std::make_pair(index, errors[counter]));
 		}
 		NumMapWriter output;
 		output.setData(valmap);
@@ -54,9 +55,9 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& 
 				" expectation values");
 		output.addMetadataMap(obsptr->metaModel);
 		output.addMetadataMap(obsptr->metaMC);
-		output.addMeta("key", "site");
+		output.addMeta("key", obsptr->indexName);
 		output.addMeta("observable", obsptr->name);
-		output.addHeaderText("site \t value \t error");
+		output.addHeaderText("key\t value \t error");
 		output.writeToFile("results-" + obsptr->name + ".values");
 	}
 }

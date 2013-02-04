@@ -116,6 +116,12 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	obsShorts += "nUp", "nDown", "n", "n2", "m^2", "e_t", "e_U", "e", "chi_q0";
 	obsValRefs += cref(occUp), cref(occDn), cref(occTotal), cref(occDouble), cref(localMoment),
 			cref(eKinetic), cref(ePotential), cref(eTotal), cref(suscq0);
+
+	if (d == 2) {
+		obsNames += "greenFourier";
+		obsShorts += "gf";
+	}
+
 	assert(obsNames.size() == obsShorts.size());
 	assert(obsNames.size() == obsValRefs.size());
 	obsCount = obsNames.size();
@@ -341,6 +347,8 @@ void DetHubbard::debugCheckBeforeSweepUp() {
 	}
 	std::cout << "\n\n";
 }
+
+
 
 void DetHubbard::debugCheckGreenFunctions() {
 	std::cout << "debugCheckGreenFunctions:\n";
@@ -835,6 +843,5 @@ inline void DetHubbard::updateGreenFunctionWithFlip(unsigned site, unsigned time
 	update(gUp.slice(timeslice), exp(-2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
 	update(gDn.slice(timeslice), exp(+2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
 }
-
 
 

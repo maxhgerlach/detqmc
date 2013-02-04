@@ -192,6 +192,8 @@ protected:
 	num localMoment;	//local Moment: <m^2> = <(nUp - nDown)^2>
 	num suscq0;			//q=0 susceptibility of z component of magnetization (nUp - nDown)
 
+	//for d=2: the Fourier transform of the timedisplaced Green function for k=(pi/2, 2*pi/3)
+
 	//the same for vector observables, averaged over timeslices with the current auxiliary field
 	VecNum zcorr;		//correlation function of magnetization density at site 0 with all other sites, z component
 
