@@ -56,7 +56,7 @@ public:
 	// Measurements do not need to be stored at every sweep, but the number of skipped
 	// sweeps must be constant.
 	void insertValue(unsigned curSweep) {
-		ObsType value = obs.valRef;
+		ObsType const value = obs.valRef;
 		unsigned curJkBlock = curSweep / jkBlockSizeSweeps;
 		for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 			if (jb != curJkBlock) {
@@ -92,8 +92,8 @@ public:
 		return std::make_tuple(mean, error);
 	}
 protected:
-	const Observable<ObsType>& obs;
-	const std::string& name;
+	Observable<ObsType> obs;
+	const std::string& name;	//reference to name in obs
 	ObsType zero;				//an instance of ObsType that works like the number zero
 								//for addition -- this is not totally trivial for vector
 								//valued observables
@@ -141,7 +141,7 @@ public:
 
 	//in addition to base class functionality supports adding to the timeseries buffer
 	void insertValue(unsigned curSweep) {
-		num value = obs.valRef;
+		num value = obs.valRef.get();
 		if (mcparams.timeseries) {
 			timeseriesBuffer.push_back(value);
 		}

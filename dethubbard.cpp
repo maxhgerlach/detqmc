@@ -110,25 +110,25 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	using namespace boost::assign;         // bring operator+=() into scope
 	using std::cref;
 
-	obsScalar += ScalarObservable(occUp, "occupationUp", "nUp"),
-	             ScalarObservable(occDn, "occupationDown", "nDown"),
-	             ScalarObservable(occTotal, "totalOccupation", "n"),
-	             ScalarObservable(occDouble, "doubleOccupation", "n2"),
-	             ScalarObservable(localMoment, "localMoment", "m^2"),
-	             ScalarObservable(eKinetic, "kineticEnergy", "e_t"),
-	             ScalarObservable(ePotential, "potentialEnergy", "e_U"),
-	             ScalarObservable(eTotal, "totalEnergy", "e"),
-	             ScalarObservable(suscq0, "susceptibilityQ0", "chi_q0");
+	obsScalar += ScalarObservable(cref(occUp), "occupationUp", "nUp"),
+	             ScalarObservable(cref(occDn), "occupationDown", "nDown"),
+	             ScalarObservable(cref(occTotal), "totalOccupation", "n"),
+	             ScalarObservable(cref(occDouble), "doubleOccupation", "n2"),
+	             ScalarObservable(cref(localMoment), "localMoment", "m^2"),
+	             ScalarObservable(cref(eKinetic), "kineticEnergy", "e_t"),
+	             ScalarObservable(cref(ePotential), "potentialEnergy", "e_U"),
+	             ScalarObservable(cref(eTotal), "totalEnergy", "e"),
+	             ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
 
 	zcorr.zeros(N);
-	obsVector += VectorObservable(zcorr, N, "spinzCorrelationFunction", "zcorr");
+	obsVector += VectorObservable(cref(zcorr), N, "spinzCorrelationFunction", "zcorr");
 
 	if (d == 2) {
 		//TODO: once we're done with testing this, replace by more general setup!
 		gf_dt << 0.1 << 0.2 << 0.3 << 0.4 << 0.5 << 0.6 << 0.7 << 0.8 << 0.9
-		      << 1.0 << 1.1 << 1.2 << 1.3 << 1.4 << 1.5;
+				<< 1.0 << 1.1 << 1.2 << 1.3 << 1.4 << 1.5;
 		gf.zeros(gf_dt.n_elem);
-		obsKeyValue += KeyValueObservable(gf, gf_dt, "dt", "greenFourier", "gf");
+		obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
 	}
 }
 

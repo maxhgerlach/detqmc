@@ -13,18 +13,17 @@
 #include <armadillo>
 #include "parameters.h"
 
-//a simple handle holding an observable value reference to be shared by a replica class
-//implementing a model and a simulation class handling the calculation of expectation values
-//and so on
+//share
 
 template <typename ObsType>
 struct Observable {
-	std::reference_wrapper<const ObsType> valRef;		//this will be a reference to an object held by the replica!
+	typedef std::reference_wrapper<const ObsType> RefType;
+	RefType valRef;
 	std::string name;
 	std::string shortName;
 
-	Observable(const ObsType& valRef_, const std::string& name_, const std::string& short_)
-		: valRef(std::cref(valRef_)), name(name_), shortName(short_)
+	Observable(RefType v, const std::string& name_, const std::string& short_)
+		: valRef(v), name(name_), shortName(short_)
 	{ }
 	virtual ~Observable() { }
 };
@@ -36,9 +35,9 @@ typedef Observable<num> ScalarObservable;
 struct VectorObservable : public Observable<arma::Col<num>> {
 	unsigned vectorSize;
 
-	VectorObservable(const arma::Col<num>& valRef_, unsigned vectorSize_,
+	VectorObservable(RefType v, unsigned vectorSize_,
 			const std::string& name_, const std::string& short_)
-		: Observable<arma::Col<num>>(valRef_, name_, short_),
+		: Observable<arma::Col<num>>(v, name_, short_),
 		  vectorSize(vectorSize_)
 	{ }
 };
@@ -48,10 +47,10 @@ struct KeyValueObservable : public VectorObservable {
 	arma::Col<num> keys;
 	std::string keyName;
 
-	KeyValueObservable(const arma::Col<num>& valRef_, const arma::Col<num>& keys_,
+	KeyValueObservable(RefType v, const arma::Col<num>& keys_,
 			const std::string& keyName_,
 			const std::string& name_, const std::string& short_)
-		: VectorObservable(valRef_, keys.n_rows, name_, short_), keys(keys_),
+		: VectorObservable(v, keys_.n_elem, name_, short_), keys(keys_),
 		  keyName(keyName_)
 	{ }
 };
