@@ -11,10 +11,13 @@
 
 #include "metadata.h"
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <boost/property_tree/ptree.hpp>      //config file parsing
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/algorithm/string.hpp>   //trimming
 #pragma GCC diagnostic warning "-Weffc++"
+#pragma GCC diagnostic warning "-Wconversion"
 #include <sstream>
 #include <fstream>
 #include <vector>

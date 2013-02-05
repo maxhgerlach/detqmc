@@ -23,14 +23,14 @@ std::string RngWrapper::getName() {
 	return "DSFMT " + numToString(DSFMT_MEXP);
 }
 
-RngWrapper::RngWrapper(unsigned long seed_, int processIndex_)
+RngWrapper::RngWrapper(unsigned long seed_, unsigned processIndex_)
 		: seed(seed_), processIndex(processIndex_), dsfmt() {
 	//dSFMT
 	//TODO: use full seed
 
 	//this is not a very rigorous approach to have independent random
 	//number generators (taken from Katzgraber's introduction to PRNG)
-	unsigned long mySeed = abs(
+	unsigned long mySeed = (unsigned long) std::abs(
 			((seed * 181) * ((processIndex - 83) * 359)) % 104729);
 
 	dsfmt_init_gen_rand(&dsfmt, mySeed);

@@ -9,8 +9,10 @@
 #include <ctime>
 #include <functional>
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include "boost/assign/std/vector.hpp"
 #pragma GCC diagnostic warning "-Weffc++"
+#pragma GCC diagnostic warning "-Wconversion"
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "tools.h"
@@ -45,7 +47,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 
 	if (parsmc.specified.count("rngSeed") == 0) {
 		cout << "No rng seed specified, will use std::time(0)" << endl;
-		parsmc.rngSeed = std::time(0);
+		parsmc.rngSeed = (long unsigned) std::time(0);
 	}
 	rng = RngWrapper(parsmc.rngSeed);
 

@@ -19,7 +19,9 @@
 #include <vector>
 #include <tuple>
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Wsign-conversion"
 #pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
 #include "observable.h"

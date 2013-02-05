@@ -12,8 +12,12 @@
 #include <vector>
 #include <tuple>
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
 #pragma GCC diagnostic warning "-Weffc++"
+#pragma GCC diagnostic warning "-Wconversion"
+
+
 
 
 //There is support for Armadillo vector/matrix values in this functions. But this requires

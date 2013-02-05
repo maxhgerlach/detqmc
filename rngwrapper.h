@@ -22,10 +22,10 @@ extern "C" {
 
 class RngWrapper {
     unsigned long seed;
-    int processIndex;
+    unsigned int processIndex;
     dsfmt_t dsfmt;
 public:
-    RngWrapper(unsigned long seed_ = 0, int processIndex_ = 0);
+    RngWrapper(unsigned long seed_ = 0, unsigned processIndex_ = 0);
     virtual ~RngWrapper() {}
 
     std::string getName();

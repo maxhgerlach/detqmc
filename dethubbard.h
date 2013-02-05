@@ -34,8 +34,10 @@
 #include <string>
 #include <tuple>
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
 #pragma GCC diagnostic warning "-Weffc++"
+#pragma GCC diagnostic warning "-Wconversion"
 #include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"

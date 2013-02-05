@@ -7,9 +7,12 @@
 
 #include <vector>
 #include <cmath>
+#include <complex>
 #include <cassert>
 #pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#pragma GCC diagnostic warning "-Wconversion"
 #pragma GCC diagnostic warning "-Weffc++"
 #include "tools.h"
 #include "exceptions.h"
@@ -98,7 +101,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		eye_UdV(N),
 		UdVStorageUp(), UdVStorageDn(), lastSweepDir(SweepDirection::Up),
 		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
-		occDouble(), localMoment(), suscq0(), zcorr(), gf(), gf_dt(),
+		occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m),
 		obsScalar(), obsVector(), obsKeyValue()
 {
 	createNeighborTable();
@@ -124,10 +127,12 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	obsVector += VectorObservable(cref(zcorr), N, "spinzCorrelationFunction", "zcorr");
 
 	if (d == 2) {
-		//TODO: once we're done with testing this, replace by more general setup!
-		gf_dt << 0.1 << 0.2 << 0.3 << 0.4 << 0.5 << 0.6 << 0.7 << 0.8 << 0.9
-				<< 1.0 << 1.1 << 1.2 << 1.3 << 1.4 << 1.5;
+		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			gf_dt[timeslice - 1] = dtau * timeslice;
+		}
+		gf_dt.reshape(gf_dt.n_elem, 1);		//column vector
 		gf.zeros(gf_dt.n_elem);
+
 		obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
 	}
 }
@@ -613,6 +618,35 @@ void DetHubbard::measure() {
 		}
 	}
 	zcorr /= num(m);
+
+	if (d == 2) {
+		//compute the Fourier transform of the imaginary time-displaced forward Green function for
+		//k = (pi/3, 2*pi/3) at some preset values of tau
+		const num kx = M_PI / 3.0;
+		const num ky = 2.0 * M_PI / 3.0;
+		for (unsigned timeslice = 1; timeslice < m; ++timeslice) {
+//			std::complex<num> sum(0,0);
+			num sum = 0.0;
+			for (unsigned siteI = 0; siteI < N; ++siteI) {
+				const num yI = siteI / L;
+				const num xI = siteI % L;
+				for (unsigned siteJ = 0; siteJ < N; ++siteJ) {
+					const num yJ = siteJ / L;
+					const num xJ = siteJ % L;
+//					const std::complex<num> expFactor =
+//							std::exp(std::complex<num>(0, kx * (xJ - xI) + ky * (yJ - yI)));
+					const num cosFactor = std::cos(kx * (xJ - xI) + ky * (yJ - yI));
+
+//					sum += expFactor * gFwdUp(siteI, siteJ, timeslice);
+//					sum += expFactor * gFwdDn(siteI, siteJ, timeslice);
+					sum += cosFactor * gFwdUp(siteI, siteJ, timeslice);
+					sum += cosFactor * gFwdDn(siteI, siteJ, timeslice);
+				}
+			}
+			sum /= num(N);
+			gf[timeslice - 1] = sum;
+		}
+	}
 }
 
 
@@ -636,7 +670,7 @@ void DetHubbard::createNeighborTable() {
     for (unsigned site = 0; site < N; ++site) {
         int reducedSite = site;
         for (int dim = d - 1; dim >= 0; --dim) {
-            curCoords[dim] = floor(reducedSite / uint_pow(L, dim));
+            curCoords[dim] = unsigned(floor(reducedSite / uint_pow(L, dim)));
             reducedSite -= curCoords[dim] * uint_pow(L, dim);
         }
         assert(reducedSite == 0);
