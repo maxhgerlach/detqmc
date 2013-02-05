@@ -207,7 +207,8 @@ protected:
 
 
 	void setupRandomAuxfield();
-	void setupPropTmat();
+	void setupPropTmat_direct();
+	void setupPropTmat_checkerboard();
 	void setupUdVStorage();
 
 
@@ -221,10 +222,10 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	MatNum computeBmatNaive(unsigned k2, unsigned k1, Spin spinz) const;
+	MatNum computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const;
 	//calculate the B matrix for an arbitrary auxiliary field that need not match
 	//the current one
-	MatNum computeBmatNaive(unsigned k2, unsigned k1, Spin spinz,
+	MatNum computeBmat_direct(unsigned k2, unsigned k1, Spin spinz,
 			const MatInt& arbitraryAuxfield) const;
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
