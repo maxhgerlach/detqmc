@@ -221,9 +221,21 @@ void DetHubbard::sweepSimple() {
 
 DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
 	UdV result;
-	MatNum V_transpose;
-	arma::svd(result.U, result.d, V_transpose, mat, "standard");
-	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+
+//	MatNum V_transpose;
+//	arma::svd(result.U, result.d, V_transpose, mat, "standard");
+//	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
+
+
+	arma::qr(result.U, result.V, mat);
+	//normalize rows of V to obtain scales in d:
+	result.d = VecNum(mat.n_rows);
+	for (unsigned rown = 0; rown < mat.n_rows; ++rown) {
+		const num norm = arma::norm(result.V.row(rown), 2);
+		result.d[rown] = norm;
+		result.V.row(rown) /= norm;
+	}
+
 	return result;
 }
 
