@@ -28,6 +28,7 @@
  *
  */
 
+#include <functional>
 #include <utility>
 #include <memory>
 #include <vector>
@@ -48,6 +49,8 @@ typedef arma::Mat<num> MatNum;
 typedef arma::Cube<num> CubeNum;
 
 typedef arma::Mat<int> MatInt;
+
+typedef arma::SpMat<num> SpMatNum;
 
 typedef arma::Mat<unsigned> tableSites;
 
@@ -84,7 +87,6 @@ public:
 	std::vector<VectorObservable> getVectorObservables();
 	std::vector<KeyValueObservable> getKeyValueObservables();
 
-
     //perform a sweep updating the auxiliary field with costly recomputations
     //of Green functions from scratch
     void sweepSimple();
@@ -98,29 +100,40 @@ public:
 protected:
 	RngWrapper& rng;
 	//parameters:
-	num t;			//hopping energy scale
-	num U;			//interaction energy scale
-	num mu;			//chemical potential
-	unsigned L;	//linear lattice size
-	unsigned d;	//spatial dimension of lattice
-	unsigned z;   // lattice coordination number, 2 * d
-	unsigned N;   // L ** d
-	num beta;		//inverse temperature
-	unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
-	unsigned s;	//interval between time slices where the Green-function is calculated from scratch
-	unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
-	num dtau;     // beta / m
-	num alpha;    // cosh(alpha) = exp(dtau U / 2)
+	const bool checkerboard;
+	const num t;			//hopping energy scale
+	const num U;			//interaction energy scale
+	const num mu;			//chemical potential
+	const unsigned L;	//linear lattice size
+	const unsigned d;	//spatial dimension of lattice
+	const unsigned z;   // lattice coordination number, 2 * d
+	const unsigned N;   // L ** d
+	const num beta;		//inverse temperature
+	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
+	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
+	const unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
+	const num dtau;     // beta / m
+	const num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
 	//Neighbor table: columns index sites, rows index lattice directions
 	//as in +x,-x,+y,-y,+z,-z, ...
 	tableSites nearestNeigbors;
+	enum class NeighDir : unsigned {
+		XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3
+	};
+
+	std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
+
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down -- tmat
 	// related propagator e ** (-dtau * tmat):
 	MatNum proptmat;
 
+	//checker board decomposition matrices (2d square lattice only ATM)
+	//used in computation of propagator
+//	SpMatNum checkerX_a, checkerX_b;
+//	SpMatNum checkerY_a, checkerY_b;
 
 	//the following quantities vary during the course of the simulation
 
@@ -213,7 +226,7 @@ protected:
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
-	MatNum computePropagator(num scalar, const MatNum& matrix) const;
+	MatNum computePropagator_direct(num scalar, const MatNum& matrix) const;
 
 	//given the current auxiliary fields {s_n}, compute the matrix
 	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}
@@ -223,10 +236,10 @@ protected:
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
 	MatNum computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const;
-	//calculate the B matrix for an arbitrary auxiliary field that need not match
-	//the current one
-	MatNum computeBmat_direct(unsigned k2, unsigned k1, Spin spinz,
-			const MatInt& arbitraryAuxfield) const;
+
+	//compute the latter using a checker board decomposition with systematic
+	//error of O[dtau^2]
+	MatNum computeBmat_checkerBoard(unsigned k2, unsigned k1, Spin spinz) const;
 
 	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 	//for the current aux field.
@@ -239,8 +252,8 @@ protected:
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
 	//by brute force and naively computed B-matrices
-	num weightRatioGenericNaive(const MatInt& auxfieldBefore,
-			const MatInt& auxfieldAfter) const;
+//	num weightRatioGenericNaive(const MatInt& auxfieldBefore,
+//			const MatInt& auxfieldAfter) const;
 
 	//ratio of weighting determinants if a single auxiliary field
 	//spin (at site in timeslice) is flipped from the current configuration.

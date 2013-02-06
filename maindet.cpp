@@ -48,6 +48,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	po::options_description modelOptions("Model parameters, specify via command line or config file");
 	modelOptions.add_options()
 			("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "model to be simulated")
+			("checkerboard", po::bool_switch(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator of the Hubbard model")
 			("t", po::value<num>(&modelpar.t), "hopping energy")
 			("U", po::value<num>(&modelpar.U), "potential energy")
 			("mu", po::value<num>(&modelpar.mu), "chemical potential")

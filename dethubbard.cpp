@@ -38,11 +38,18 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "t", "U", "mu", "L", "d", "beta", "s";
+	neededModelPars += "t", "U", "mu", "L", "d", "beta", "s", "checkerboard";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
 		}
+	}
+
+	if (pars.checkerboard and pars.L % 2 != 0) {
+		throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
+	}
+	if (pars.checkerboard and (pars.model != "hubbard" or pars.d != 2)) {
+		throw ParameterWrong("Checker board decomposition only supported for 2d Hubbard model");
 	}
 
 	//check that only positive values are passed for certain parameters
@@ -87,12 +94,14 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 
 DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		rng(rng_),
+		checkerboard(pars.checkerboard),
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
 		z(2*d), //coordination number: 2*d
 		N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		nearestNeigbors(z, N),
+		computeBmatFunc(),
 		proptmat(N,N),
 		auxfield(N, m+1),                //m+1 columns of N rows
 		gUp(N,N,m+1), gDn(N,N,m+1),      //m+1 slices of N columns x N rows
@@ -106,7 +115,17 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 {
 	createNeighborTable();
 	setupRandomAuxfield();
-	setupPropTmat_direct();
+	if (pars.checkerboard) {
+		setupPropTmat_checkerboard();
+		computeBmatFunc = [this](unsigned k2, unsigned k1, Spin spinz) {
+			return computeBmat_checkerBoard(k2, k1, spinz);
+		};
+	} else {
+		setupPropTmat_direct();
+		computeBmatFunc = [this](unsigned k2, unsigned k1, Spin spinz) {
+			return computeBmat_direct(k2, k1, spinz);
+		};
+	}
 	setupUdVStorage();
 	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
 
@@ -144,6 +163,7 @@ DetHubbard::~DetHubbard() {
 MetadataMap DetHubbard::prepareModelMetadataMap() {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
+	meta["checkerboard"] = (checkerboard ? "true" : "false");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(t);
 	META_INSERT(U);
@@ -305,13 +325,13 @@ void DetHubbard::setupUdVStorage() {
 		storage = std::vector<UdV>(n + 1);
 
 		storage[0] = eye_UdV;
-		storage[1] = svd(computeBmat_direct(s, 0, spinz));
+		storage[1] = svd(computeBmatFunc(s, 0, spinz));
 
 		for (unsigned l = 1; l <= n - 1; ++l) {
 			const MatNum& U_l = storage[l].U;
 			const VecNum& d_l = storage[l].d;
 			const MatNum& V_l = storage[l].V;
-			MatNum B_lp1 = computeBmat_direct(s*(l + 1), s*l, spinz);
+			MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 			UdV UdV_temp = svd((B_lp1 * U_l) * arma::diagmat(d_l));
 			storage[l+1].U = UdV_temp.U;
 			storage[l+1].d = UdV_temp.d;
@@ -331,14 +351,14 @@ void DetHubbard::debugCheckBeforeSweepDown() {
 	std::cout << "up: ";
 	for (unsigned l = 0; l <= n; ++l) {
 		UdV udv = UdVStorageUp[l];
-		MatNum diff = computeBmat_direct(l*s, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+		MatNum diff = computeBmatFunc(l*s, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
 	for (unsigned l = 0; l <= n; ++l) {
 		UdV udv = UdVStorageDn[l];
-		MatNum diff = computeBmat_direct(l*s, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+		MatNum diff = computeBmatFunc(l*s, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n\n";
@@ -349,14 +369,14 @@ void DetHubbard::debugCheckBeforeSweepUp() {
 	std::cout << "up: ";
 	for (unsigned l = 0; l <= n; ++l) {
 		UdV udv = UdVStorageUp[l];
-		MatNum diff = computeBmat_direct(m, l*s, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
+		MatNum diff = computeBmatFunc(m, l*s, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
 	for (unsigned l = 0; l <= n; ++l) {
 		UdV udv = UdVStorageDn[l];
-		MatNum diff = computeBmat_direct(m, l*s, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
+		MatNum diff = computeBmatFunc(m, l*s, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n\n";
@@ -392,7 +412,7 @@ void DetHubbard::sweep() {
 	auto advanceDownGreen = [this](unsigned l, std::vector<UdV>& storage,
 			CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_l = computeBmat_direct(s*l, s*(l - 1), spinz);
+		MatNum B_l = computeBmatFunc(s*l, s*(l - 1), spinz);
 
 		//U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
 		const MatNum& U_l = storage[l].U;
@@ -415,7 +435,7 @@ void DetHubbard::sweep() {
 	//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
 	auto wrapDownGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_k = computeBmat_direct(k, k - 1, spinz);
+		MatNum B_k = computeBmatFunc(k, k - 1, spinz);
 		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
 		greenFwd.slice(k - 1) = arma::inv(B_k) * greenFwd.slice(k);
 		greenBwd.slice(k - 1) = greenBwd(k) * B_k;
@@ -426,7 +446,7 @@ void DetHubbard::sweep() {
 	auto advanceUpGreen = [this](unsigned l, const std::vector<UdV>& storage,
 			CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_lp1 = computeBmat_direct(s*(l + 1), s*l, spinz);
+		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 
 		//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
 		const UdV& UdV_lp1 = storage[l + 1];
@@ -451,7 +471,7 @@ void DetHubbard::sweep() {
 	//B((l+1)*s*dtau, 0) and put it into storage
 	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdV>& storage,
 			Spin spinz) -> void {
-		MatNum B_lp1 = computeBmat_direct(s*(l + 1), s*l, spinz);
+		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 		//from the last step the following are B(l*s*dtau, 0):
 		const MatNum& U_l = storage[l].U;
 		const VecNum& d_l = storage[l].d;
@@ -464,7 +484,7 @@ void DetHubbard::sweep() {
 	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
 	auto wrapUpGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_kp1 = computeBmat_direct(k + 1, k, spinz);
+		MatNum B_kp1 = computeBmatFunc(k + 1, k, spinz);
 		green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
 		greenFwd.slice(k + 1) = B_kp1 * greenFwd.slice(k);
 		greenBwd.slice(k + 1) = greenBwd.slice(k) * arma::inv(B_kp1);
@@ -711,14 +731,61 @@ void DetHubbard::setupPropTmat_direct() {
 		}
 	}
 
-	proptmat = computePropagator(dtau, tmat);
+	proptmat = computePropagator_direct(dtau, tmat);
 }
 
 void DetHubbard::setupPropTmat_checkerboard() {
-
+	assert(d == 2);
+	auto xyToSite = [L](unsigned x, unsigned y) {
+		return y * L + x;
+	};
+	SpMatNum kxa = SpMatNum(N, N);
+	SpMatNum kxb = SpMatNum(N, N);
+	SpMatNum kya = SpMatNum(N, N);
+	SpMatNum kyb = SpMatNum(N, N);
+	for (unsigned y = 0; y < L; ++y) {
+		for (unsigned x = 0; x < L; x += 2) {
+			//sub board a
+			unsigned siteA = xyToSite(x, y);
+			unsigned neighA = nearestNeigbors((unsigned)NeighDir::XPLUS, siteA);
+			kxa(siteA, neighA) = 1.0;
+			kxa(neighA, siteA) = 1.0;
+			//sub board b
+			unsigned siteB = neighA;
+			unsigned neighB = nearestNeigbors((unsigned)NeighDir::XPLUS, siteB);
+			kxb(siteB, neighB) = 1.0;
+			kxb(neighB, siteB) = 1.0;
+		}
+	}
+	for (unsigned x = 0; x < L; ++x) {
+		for (unsigned y = 0; y < L; y += 2) {
+			//sub board a
+			unsigned siteA = xyToSite(x, y);
+			unsigned neighA = nearestNeigbors((unsigned)NeighDir::YPLUS, siteA);
+			kya(siteA, neighA) = 1.0;
+			kya(neighA, siteA) = 1.0;
+			//sub board b
+			unsigned siteB = neighA;
+			unsigned neighB = nearestNeigbors((unsigned)NeighDir::YPLUS, siteB);
+			kyb(siteB, neighB) = 1.0;
+			kyb(neighB, siteB) = 1.0;
+		}
+	}
+	using std::cosh; using std::sinh; using std::pow;
+	const num ch = cosh(dtau * t);
+	const num sh = sinh(dtau * t);
+	using arma::eye; using arma::conv_to;
+	//see notes / Mathematica experimentation:
+	proptmat = pow(ch, 4) * eye(N,N)
+	         + pow(ch, 3)*sh * (kxa + kxb + kya + kyb)
+	         + pow(ch, 2)*pow(sh, 2 ) * (kxa*kxb + kxa*kya + kxb*kya +
+	        		                      kxa*kyb + kxb*kyb + kya*kyb)
+	         + ch*pow(sh, 3) * (kxa*kxb*kya + kxa*kxb*kyb + kxa*kya*kyb +
+                                kxb*kya*kyb)
+             + pow(sh, 4) * kxa*kxb*kya*kyb;
 }
 
-MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) const {
+MatNum DetHubbard::computePropagator_direct(num scalar, const MatNum& matrix) const {
 	using namespace arma;
 
 	VecNum eigval;
@@ -729,8 +796,7 @@ MatNum DetHubbard::computePropagator(num scalar, const MatNum& matrix) const {
 }
 
 
-inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spinz,
-		const MatInt& arbitraryAuxfield) const {
+inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const {
 	using namespace arma;
 
 	if (k2 == k1) {
@@ -744,11 +810,11 @@ inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spin
 	num sign = num(int(spinz));
 
 	//Propagator using the HS-field potential for the given timeslice
-	auto singleTimeslicePropagator = [this, sign, arbitraryAuxfield](unsigned timeslice) -> MatNum {
+	auto singleTimeslicePropagator = [this, sign](unsigned timeslice) -> MatNum {
 		//the cast with conv_to is necessary here, else everything would result in integers!
 		//-- an Armadillo bug IMHO
 		return diagmat(exp(sign * alpha *
-				conv_to<VecNum>::from(arbitraryAuxfield.col(timeslice)))) * proptmat;
+				conv_to<VecNum>::from(auxfield.col(timeslice)))) * proptmat;
 	};
 
 	MatNum B = singleTimeslicePropagator(k2);
@@ -760,9 +826,13 @@ inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spin
 	return B;
 }
 
-inline MatNum DetHubbard::computeBmat_direct(unsigned n2, unsigned n1, Spin spinz) const {
-	return computeBmat_direct(n2, n1, spinz, auxfield);
+MatNum DetHubbard::computeBmat_checkerBoard(unsigned k2, unsigned k1,
+		Spin spinz) const {
+	//for now: in the checkerboard decomposition we generate the same type
+	//of proptmat as with the direct calculation
+	return computeBmat_direct(k2, k1, spinz);
 }
+
 
 inline MatNum DetHubbard::computeGreenFunctionNaive(
 		const MatNum& bTau0, const MatNum& bBetaTau) const {
@@ -777,22 +847,22 @@ inline MatNum DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
 }
 
 
-num DetHubbard::weightRatioGenericNaive(const MatInt& auxfieldBefore,
-		const MatInt& auxfieldAfter) const {
-	using namespace arma;
-
-	num weightAfterUp  = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Up, auxfieldAfter));
-	num weightBeforeUp = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Up, auxfieldBefore));
-	num ratioUp = weightAfterUp / weightBeforeUp;
-
-	num weightAfterDown  = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Down, auxfieldAfter));
-	num weightBeforeDown = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Down, auxfieldBefore));
-	num ratioDown = weightAfterDown / weightBeforeDown;
-
-//	std::cout << weightafterup << " " << weightbeforeup << " " << weightafterdown << " " << weightbeforedown << "\n";
-
-	return ratioUp * ratioDown;
-}
+//num DetHubbard::weightRatioGenericNaive(const MatInt& auxfieldBefore,
+//		const MatInt& auxfieldAfter) const {
+//	using namespace arma;
+//
+//	num weightAfterUp  = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Up, auxfieldAfter));
+//	num weightBeforeUp = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Up, auxfieldBefore));
+//	num ratioUp = weightAfterUp / weightBeforeUp;
+//
+//	num weightAfterDown  = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Down, auxfieldAfter));
+//	num weightBeforeDown = det(eye(N,N) + computeBmat_direct(m, 0, Spin::Down, auxfieldBefore));
+//	num ratioDown = weightAfterDown / weightBeforeDown;
+//
+////	std::cout << weightafterup << " " << weightbeforeup << " " << weightafterdown << " " << weightbeforedown << "\n";
+//
+//	return ratioUp * ratioDown;
+//}
 
 inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) const {
 	using std::exp;

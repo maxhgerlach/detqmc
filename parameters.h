@@ -25,6 +25,7 @@ typedef double num;		//possibility to switch to single precision if ever desired
 // Struct representing model parameters
 struct ModelParams {
 	std::string model;
+	bool checkerboard;		//use a checkerboard decomposition for computing the propagator
 	num t;
 	num U;
 	num mu;
@@ -37,7 +38,7 @@ struct ModelParams {
 						//from scratch
 	std::set<std::string> specified;
 
-	ModelParams() : model(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
+	ModelParams() : model(), checkerboard(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
 	{ }
 };
 
