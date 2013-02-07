@@ -162,8 +162,8 @@ protected:
 	CubeNum gFwdUp, gFwdDn;
 	CubeNum gBwdUp, gBwdDn;
 
-	//matrices used in the computation of B-matrices with singular value decomposition.
-	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, orthogonal matrix)
+	//matrices used in the computation of B-matrices decomposed into
+	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, row-normalized triangular matrix.
 	//Initialize at beginning of simulation by member function setupUdVStorage()
 	struct UdV {
 		MatNum U;
@@ -177,7 +177,7 @@ protected:
 		{ }
 	};
 	UdV eye_UdV;	// U = d = V = 1
-	static UdV svd(const MatNum& mat);				//wraps arma::svd()
+	static UdV udvDecompose(const MatNum& mat);				//wraps Armadillo functions
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
 	std::vector<UdV> UdVStorageUp;

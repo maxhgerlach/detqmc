@@ -219,13 +219,12 @@ void DetHubbard::sweepSimple() {
 	}
 }
 
-DetHubbard::UdV DetHubbard::svd(const MatNum& mat) {
+DetHubbard::UdV DetHubbard::udvDecompose(const MatNum& mat) {
 	UdV result;
 
 //	MatNum V_transpose;
 //	arma::svd(result.U, result.d, V_transpose, mat, "standard");
 //	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
-
 
 	arma::qr(result.U, result.V, mat);
 	//normalize rows of V to obtain scales in d:
@@ -289,7 +288,7 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
 	upright(temp)   = arma::diagmat(dl);
 	downleft(temp)  = arma::diagmat(-dr);
 	downright(temp) = arma::inv(Ul * Ur);
-	UdV tempUdV = svd(temp);
+	UdV tempUdV = udvDecompose(temp);
 
 	MatNum left(2*N,2*N);
 	upleft(left) = arma::inv(Vr);
@@ -320,7 +319,7 @@ MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
 
 	using arma::inv; using arma::diagmat; using arma::eye;
 
-	UdV UdV_temp = svd( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
+	UdV UdV_temp = udvDecompose( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
 
 	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
 
@@ -337,14 +336,14 @@ void DetHubbard::setupUdVStorage() {
 		storage = std::vector<UdV>(n + 1);
 
 		storage[0] = eye_UdV;
-		storage[1] = svd(computeBmatFunc(s, 0, spinz));
+		storage[1] = udvDecompose(computeBmatFunc(s, 0, spinz));
 
 		for (unsigned l = 1; l <= n - 1; ++l) {
 			const MatNum& U_l = storage[l].U;
 			const VecNum& d_l = storage[l].d;
 			const MatNum& V_l = storage[l].V;
 			MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
-			UdV UdV_temp = svd((B_lp1 * U_l) * arma::diagmat(d_l));
+			UdV UdV_temp = udvDecompose((B_lp1 * U_l) * arma::diagmat(d_l));
 			storage[l+1].U = UdV_temp.U;
 			storage[l+1].d = UdV_temp.d;
 			storage[l+1].V = UdV_temp.V * V_l;
@@ -432,7 +431,7 @@ void DetHubbard::sweep() {
 		const MatNum& V_l = storage[l].V;
 
 		//UdV_L will correspond to B(beta,(l-1)*s*dtau)
-		UdV UdV_L = svd(arma::diagmat(d_l) * (V_l * B_l));
+		UdV UdV_L = udvDecompose(arma::diagmat(d_l) * (V_l * B_l));
 		UdV_L.U = U_l * UdV_L.U;
 
 		//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
@@ -469,7 +468,7 @@ void DetHubbard::sweep() {
 		const MatNum& V_l = storage[l].V;
 
 		//UdV_temp will be the new B((l+1)*s*dtau, 0):
-		UdV UdV_temp = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
+		UdV UdV_temp = udvDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
 		UdV_temp.V *= V_l;
 
 		unsigned next = s * (l + 1);
@@ -489,7 +488,7 @@ void DetHubbard::sweep() {
 		const VecNum& d_l = storage[l].d;
 		const MatNum& V_l = storage[l].V;
 		//the new B((l+1)*s*dtau, 0):
-		storage[l+1] = svd(((B_lp1 * U_l) * arma::diagmat(d_l)));
+		storage[l+1] = udvDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
 		storage[l+1].V *= V_l;
 	};
 
