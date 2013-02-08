@@ -628,9 +628,9 @@ void DetHubbard::measure() {
 	num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
 	num trGreenUp_0 = arma::trace(gUp.slice(m));			//g(beta) = g(0)
 	num trGreenDn_0 = arma::trace(gDn.slice(m));
-	suscq0 = dtau * (  (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
-					 - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
-					);
+	suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
+			                          - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
+									 );
 
 	// vector observables
 	zcorr.zeros();
