@@ -43,6 +43,7 @@
 #include "parameters.h"
 #include "metadata.h"
 #include "observable.h"
+#include "udv.h"
 
 typedef arma::Col<num> VecNum;
 typedef arma::Mat<num> MatNum;
@@ -162,22 +163,8 @@ protected:
 	CubeNum gFwdUp, gFwdDn;
 	CubeNum gBwdUp, gBwdDn;
 
-	//matrices used in the computation of B-matrices decomposed into
-	//(U,d,V) = (orthogonal matrix, diagonal matrix elements, row-normalized triangular matrix.
-	//Initialize at beginning of simulation by member function setupUdVStorage()
-	struct UdV {
-		MatNum U;
-		VecNum d;
-		MatNum V;
-		//default constructor: leaves everything empty
-		UdV() : U(), d(), V() {}
-		//specify matrix size: initialize to identity
-		UdV(unsigned size) :
-			U(arma::eye(size,size)), d(arma::ones(size)), V(arma::eye(size,size))
-		{ }
-	};
+	typedef UdV<MatNum, VecNum> UdV;
 	UdV eye_UdV;	// U = d = V = 1
-	static UdV udvDecompose(const MatNum& mat);				//wraps Armadillo functions
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
 	std::vector<UdV> UdVStorageUp;
