@@ -612,22 +612,6 @@ void DetHubbard::measure() {
 	suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
 			                          - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
 									 );
-	//DEBUG: experimentation -- gives the same result
-	std::cout << suscq0 << " vs. ";
-	num suscSum = 0;
-	for (unsigned l = 1; l <= m; ++l) {
-		for (unsigned i = 0; i < N; ++i) {
-			for (unsigned j = 0; j < N; ++j) {
-				num upContrib = (1.0 - gUp(j,j,m))*(1.0 - gUp(i,i,l)) - gBwdUp(j,i,l)*gFwdUp(i,j,l)
-						      - (1.0 - gUp(j,j,m))*(1.0 - gDn(i,i,l));
-				num dnContrib = (1.0 - gDn(j,j,m))*(1.0 - gDn(i,i,l)) - gBwdDn(j,i,l)*gFwdDn(i,j,l)
-						      - (1.0 - gDn(j,j,m))*(1.0 - gUp(i,i,l));
-				suscSum += upContrib + dnContrib;
-			}
-		}
-	}
-	suscSum *= (dtau / num(N));
-	std::cout << suscSum << std::endl;
 
 	// vector observables
 	zcorr.zeros();
