@@ -163,12 +163,12 @@ protected:
 	CubeNum gFwdUp, gFwdDn;
 	CubeNum gBwdUp, gBwdDn;
 
-	typedef UdV<MatNum, VecNum> UdV;
-	UdV eye_UdV;	// U = d = V = 1
+	typedef UdV<MatNum, VecNum> UdVnum;
+	UdVnum eye_UdV;	// U = d = V = 1
 	//The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
-	std::vector<UdV> UdVStorageUp;
-	std::vector<UdV> UdVStorageDn;
+	std::vector<UdVnum> UdVStorageUp;
+	std::vector<UdVnum> UdVStorageDn;
 
 	enum class SweepDirection: int {Up = 1, Down = -1};
 	SweepDirection lastSweepDir;
@@ -264,11 +264,11 @@ protected:
 	//b is the backward time-displaced Green function; c the forward time-
 	//displaced Green function; d is the equal-time Green function
 	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
-	MatNum4 greenFromUdV_timedisplaced(const UdV& UdV_l, const UdV& UdV_r) const;
+	MatNum4 greenFromUdV_timedisplaced(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
 
 	//use a faster method that does not yield information about the time-displaced
 	//Green functions
-	MatNum greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const;
+	MatNum greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
 
 	void debugCheckBeforeSweepDown();
 	void debugCheckBeforeSweepUp();

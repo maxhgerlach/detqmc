@@ -5,6 +5,7 @@
  *      Author: gerlach
  */
 
+#include <functional>
 #include <vector>
 #include <cmath>
 #include <complex>
@@ -21,6 +22,8 @@
 #include "parameters.h"
 
 //using std::acosh;    //Intel compiler chokes with std::acosh
+
+auto udvNumDecompose = udvDecompose<MatNum, VecNum>;
 
 
 void debugSaveMatrix(const MatNum& matrix, const std::string& basename) {
@@ -237,7 +240,7 @@ std::vector<KeyValueObservable> DetHubbard::getKeyValueObservables() {
 
 
 DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
-		const UdV& UdV_l, const UdV& UdV_r) const {
+		const UdVnum& UdV_l, const UdVnum& UdV_r) const {
 	//Ul vs Vl to be compatible with labeling in the notes
 	const MatNum& Ul = UdV_l.V;   //!
 	const VecNum& dl = UdV_l.d;
@@ -269,7 +272,7 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
 	upright(temp)   = arma::diagmat(dl);
 	downleft(temp)  = arma::diagmat(-dr);
 	downright(temp) = arma::inv(Ul * Ur);
-	UdV tempUdV = udvDecompose(temp);
+	UdVnum tempUdV = udvNumDecompose(temp);
 
 	MatNum left(2*N,2*N);
 	upleft(left) = arma::inv(Vr);
@@ -289,7 +292,7 @@ DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
 				   downleft(result), downright(result));
 }
 
-MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
+MatNum DetHubbard::greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const {
 	//variable names changed according to labeling in notes
 	const MatNum& V_l = UdV_l.U;   //!
 	const VecNum& d_l = UdV_l.d;
@@ -300,7 +303,7 @@ MatNum DetHubbard::greenFromUdV(const UdV& UdV_l, const UdV& UdV_r) const {
 
 	using arma::inv; using arma::diagmat; using arma::eye;
 
-	UdV UdV_temp = udvDecompose( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
+	UdVnum UdV_temp = udvNumDecompose( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
 
 	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
 
@@ -313,18 +316,18 @@ void DetHubbard::setupUdVStorage() {
 	eye_UdV.d = arma::ones(N);
 	eye_UdV.V = arma::eye(N,N);
 
-	auto setup = [this](std::vector<UdV>& storage, Spin spinz) {
-		storage = std::vector<UdV>(n + 1);
+	auto setup = [this](std::vector<UdVnum>& storage, Spin spinz) {
+		storage = std::vector<UdVnum>(n + 1);
 
 		storage[0] = eye_UdV;
-		storage[1] = udvDecompose(computeBmatFunc(s, 0, spinz));
+		storage[1] = udvNumDecompose(computeBmatFunc(s, 0, spinz));
 
 		for (unsigned l = 1; l <= n - 1; ++l) {
 			const MatNum& U_l = storage[l].U;
 			const VecNum& d_l = storage[l].d;
 			const MatNum& V_l = storage[l].V;
 			MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
-			UdV UdV_temp = udvDecompose((B_lp1 * U_l) * arma::diagmat(d_l));
+			UdVnum UdV_temp = udvNumDecompose((B_lp1 * U_l) * arma::diagmat(d_l));
 			storage[l+1].U = UdV_temp.U;
 			storage[l+1].d = UdV_temp.d;
 			storage[l+1].V = UdV_temp.V * V_l;
@@ -342,14 +345,14 @@ void DetHubbard::debugCheckBeforeSweepDown() {
 	std::cout << "Before sweep down:\n";
 	std::cout << "up: ";
 	for (unsigned l = 0; l <= n; ++l) {
-		UdV udv = UdVStorageUp[l];
+		UdVnum udv = UdVStorageUp[l];
 		MatNum diff = computeBmatFunc(l*s, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
 	for (unsigned l = 0; l <= n; ++l) {
-		UdV udv = UdVStorageDn[l];
+		UdVnum udv = UdVStorageDn[l];
 		MatNum diff = computeBmatFunc(l*s, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
@@ -360,14 +363,14 @@ void DetHubbard::debugCheckBeforeSweepUp() {
 	std::cout << "Before sweep up:\n";
 	std::cout << "up: ";
 	for (unsigned l = 0; l <= n; ++l) {
-		UdV udv = UdVStorageUp[l];
+		UdVnum udv = UdVStorageUp[l];
 		MatNum diff = computeBmatFunc(m, l*s, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
 	std::cout << "\n";
 	std::cout << "down: ";
 	for (unsigned l = 0; l <= n; ++l) {
-		UdV udv = UdVStorageDn[l];
+		UdVnum udv = UdVStorageDn[l];
 		MatNum diff = computeBmatFunc(m, l*s, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 		std::cout << diff.max() << " ";
 	}
@@ -401,7 +404,7 @@ void DetHubbard::sweep() {
 
 	//compute the green function in timeslice s*(l-1) from scratch with the help
 	//of the B-matrices computed before in the last up-sweep
-	auto advanceDownGreen = [this](unsigned l, std::vector<UdV>& storage,
+	auto advanceDownGreen = [this](unsigned l, std::vector<UdVnum>& storage,
 			CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
 		MatNum B_l = computeBmatFunc(s*l, s*(l - 1), spinz);
@@ -412,11 +415,11 @@ void DetHubbard::sweep() {
 		const MatNum& V_l = storage[l].V;
 
 		//UdV_L will correspond to B(beta,(l-1)*s*dtau)
-		UdV UdV_L = udvDecompose(arma::diagmat(d_l) * (V_l * B_l));
+		UdVnum UdV_L = udvNumDecompose(arma::diagmat(d_l) * (V_l * B_l));
 		UdV_L.U = U_l * UdV_L.U;
 
 		//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
-		const UdV& UdV_R = storage[l - 1];
+		const UdVnum& UdV_R = storage[l - 1];
 
 		unsigned next = s * (l - 1);
 		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
@@ -435,13 +438,13 @@ void DetHubbard::sweep() {
 
 	//update the green function in timeslice s*(l+1) from scratch with the help
 	//of B-matrices computed before
-	auto advanceUpGreen = [this](unsigned l, const std::vector<UdV>& storage,
+	auto advanceUpGreen = [this](unsigned l, const std::vector<UdVnum>& storage,
 			CubeNum& green, CubeNum& greenFwd,
 			CubeNum& greenBwd, Spin spinz) -> void {
 		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 
 		//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
-		const UdV& UdV_lp1 = storage[l + 1];
+		const UdVnum& UdV_lp1 = storage[l + 1];
 
 		//from the last step the following are B(l*s*dtau, 0):
 		const MatNum& U_l = storage[l].U;
@@ -449,7 +452,7 @@ void DetHubbard::sweep() {
 		const MatNum& V_l = storage[l].V;
 
 		//UdV_temp will be the new B((l+1)*s*dtau, 0):
-		UdV UdV_temp = udvDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
+		UdVnum UdV_temp = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
 		UdV_temp.V *= V_l;
 
 		unsigned next = s * (l + 1);
@@ -461,7 +464,7 @@ void DetHubbard::sweep() {
 
 	//Given B(l*s*dtau, 0) from the last step in the storage, compute
 	//B((l+1)*s*dtau, 0) and put it into storage
-	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdV>& storage,
+	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdVnum>& storage,
 			Spin spinz) -> void {
 		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 		//from the last step the following are B(l*s*dtau, 0):
@@ -469,7 +472,7 @@ void DetHubbard::sweep() {
 		const VecNum& d_l = storage[l].d;
 		const MatNum& V_l = storage[l].V;
 		//the new B((l+1)*s*dtau, 0):
-		storage[l+1] = udvDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
+		storage[l+1] = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
 		storage[l+1].V *= V_l;
 	};
 
