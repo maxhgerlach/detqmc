@@ -25,6 +25,7 @@ typedef double num;		//possibility to switch to single precision if ever desired
 // Struct representing model parameters
 struct ModelParams {
 	std::string model;
+	bool timedisplaced;		//also evaluate timedisplaced Green functions and derived quantities
 	bool checkerboard;		//use a checkerboard decomposition for computing the propagator
 	num t;
 	num U;

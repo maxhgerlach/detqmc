@@ -9,7 +9,7 @@
 #define NEIGHBORTABLE_H_
 
 #include <cmath>
-#include <assert>
+#include <cassert>
 #include <vector>
 #pragma GCC diagnostic ignored "-Weffc++"
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -20,6 +20,11 @@
 #include "tools.h"
 
 
+//lattice directions are indexed as in +x,-x,+y,-y,+z,-z, ...
+//enums provided for d <= 3, but code valid also for higher dimensions
+enum class NeighDir : unsigned {
+	XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3, ZPLUS = 4, ZMINUS = 5
+};
 
 class PeriodicCubicLatticeNearestNeighbors {
 public:
@@ -50,18 +55,22 @@ public:
 		}
 	}
 
-	//lattice directions are indexed as in +x,-x,+y,-y,+z,-z, ...
-	//enums provided for d <= 3, but code valid also for higher dimensions
-	enum NeighDir {
-		XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3, ZPLUS = 4, ZMINUS = 5
-	};
-
 	//get site index of nearest neighbor of site in NeighDir latticeDirection
 	unsigned operator()(unsigned latticeDirection, unsigned site) const {
 		assert(latticeDirection < z);
 		assert(site < N);
 		return nearestNeighbors(latticeDirection, site);
 	}
+
+	//iterators over the nearest neighbors of a site:
+	auto beginNeighbors(unsigned site) -> decltype(const nearestNeighbors.begin_col(site)) const {
+		return nearestNeighbors.begin_col(site);
+	}
+
+	auto endNeighbors(unsigned site) -> decltype(const nearestNeighbors.end_col(site)) const {
+		return nearestNeighbors.end_col(site);
+	}
+
 
 	unsigned coordsToSite(const std::vector<unsigned>& coords) const {
 		assert(coords.size() == d);

@@ -29,7 +29,7 @@
  */
 
 #include "detmodel.h"
-
+#include "neighbortable.h"
 #include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"
@@ -72,7 +72,7 @@ public:
 
     //perform a sweep updating the auxiliary field with costly recomputations
     //of Green functions from scratch
-    void sweepSimple();
+    //void sweepSimple();
 
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
@@ -98,21 +98,15 @@ protected:
 	const num dtau;     // beta / m
 	const num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
-
-
+	PeriodicCubicLatticeNearestNeighbors neigh;
 
 	std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
-
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down -- tmat
 	// related propagator e ** (-dtau * tmat):
 	MatNum proptmat;
 
-	//checker board decomposition matrices (2d square lattice only ATM)
-	//used in computation of propagator
-//	SpMatNum checkerX_a, checkerX_b;
-//	SpMatNum checkerY_a, checkerY_b;
 
 	//the following quantities vary during the course of the simulation
 
@@ -164,13 +158,10 @@ protected:
 
 
 
-
-
-
 	void setupRandomAuxfield();
 	void setupPropTmat_direct();
 	void setupPropTmat_checkerboard();
-	void setupUdVStorage();
+	//void setupUdVStorage();
 
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
@@ -224,12 +215,12 @@ protected:
 	// a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)
 	//b is the backward time-displaced Green function; c the forward time-
 	//displaced Green function; d is the equal-time Green function
-	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
-	MatNum4 greenFromUdV_timedisplaced(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
+//	typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
+//	MatNum4 greenFromUdV_timedisplaced(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
 
 	//use a faster method that does not yield information about the time-displaced
 	//Green functions
-	MatNum greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
+//	MatNum greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
 
 	void debugCheckBeforeSweepDown();
 	void debugCheckBeforeSweepUp();

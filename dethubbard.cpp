@@ -96,6 +96,7 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 
 
 DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
+		DetModel<2>(pars),
 		rng(rng_),
 		checkerboard(pars.checkerboard),
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
@@ -103,7 +104,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		N(static_cast<unsigned>(uint_pow(L,d))),
 		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
-		nearestNeigbors(z, N),
+		neigh(d, N),
 		computeBmatFunc(),
 		proptmat(N,N),
 		auxfield(N, m+1),                //m+1 columns of N rows
@@ -113,10 +114,8 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		eye_UdV(N),
 		UdVStorageUp(), UdVStorageDn(), lastSweepDir(SweepDirection::Up),
 		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
-		occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m),
-		obsScalar(), obsVector(), obsKeyValue()
+		occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m)
 {
-	createNeighborTable();
 	setupRandomAuxfield();
 	if (pars.checkerboard) {
 		setupPropTmat_checkerboard();
@@ -213,14 +212,14 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 	}
 }
 
-
-void DetHubbard::sweepSimple() {
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		gUp.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Up);
-		gDn.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Down);
-		updateInSlice(timeslice);
-	}
-}
+//
+//void DetHubbard::sweepSimple() {
+//	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+//		gUp.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Up);
+//		gDn.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Down);
+//		updateInSlice(timeslice);
+//	}
+//}
 
 unsigned DetHubbard::getSystemN() const {
 	return N;
@@ -239,106 +238,106 @@ std::vector<KeyValueObservable> DetHubbard::getKeyValueObservables() {
 }
 
 
-DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
-		const UdVnum& UdV_l, const UdVnum& UdV_r) const {
-	//Ul vs Vl to be compatible with labeling in the notes
-	const MatNum& Ul = UdV_l.V;   //!
-	const VecNum& dl = UdV_l.d;
-	const MatNum& Vl = UdV_l.U;   //!
-	const MatNum& Ur = UdV_r.U;
-	const VecNum& dr = UdV_r.d;
-	const MatNum& Vr = UdV_r.V;
+//DetHubbard::MatNum4 DetHubbard::greenFromUdV_timedisplaced(
+//		const UdVnum& UdV_l, const UdVnum& UdV_r) const {
+//	//Ul vs Vl to be compatible with labeling in the notes
+//	const MatNum& Ul = UdV_l.V;   //!
+//	const VecNum& dl = UdV_l.d;
+//	const MatNum& Vl = UdV_l.U;   //!
+//	const MatNum& Ur = UdV_r.U;
+//	const VecNum& dr = UdV_r.d;
+//	const MatNum& Vr = UdV_r.V;
+//
+//	//submatrix view helpers for 2*N x 2*N matrices
+//	//#define upleft(m) m.submat(0,0, N-1,N-1)
+//	//#define upright(m) m.submat(0,N, N-1,2*N-1)
+//	//#define downleft(m) m.submat(N,0, 2*N-1,N-1)
+//	//#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
+//	auto upleft = [N](MatNum& m) {
+//		return m.submat(0,0, N-1,N-1);
+//	};
+//	auto upright = [N](MatNum& m) {
+//		return m.submat(0,N, N-1,2*N-1);
+//	};
+//	auto downleft = [N](MatNum& m) {
+//		return m.submat(N,0, 2*N-1,N-1);
+//	};
+//	auto downright = [N](MatNum& m) {
+//		return m.submat(N,N, 2*N-1,2*N-1);
+//	};
+//
+//	MatNum temp(2*N,2*N);
+//	upleft(temp)    = arma::inv(Vr * Vl);
+//	upright(temp)   = arma::diagmat(dl);
+//	downleft(temp)  = arma::diagmat(-dr);
+//	downright(temp) = arma::inv(Ul * Ur);
+//	UdVnum tempUdV = udvNumDecompose(temp);
+//
+//	MatNum left(2*N,2*N);
+//	upleft(left) = arma::inv(Vr);
+//	upright(left).zeros();
+//	downleft(left).zeros();
+//	downright(left) = arma::inv(Ul);
+//
+//	MatNum right(2*N,2*N);
+//	upleft(right) = arma::inv(Vl);
+//	upright(right).zeros();
+//	downleft(right).zeros();
+//	downright(right) = arma::inv(Ur);
+//
+//	MatNum result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
+//					* (arma::inv(tempUdV.U) * right);
+//	return MatNum4(upleft(result), upright(result),
+//				   downleft(result), downright(result));
+//}
 
-	//submatrix view helpers for 2*N x 2*N matrices
-	//#define upleft(m) m.submat(0,0, N-1,N-1)
-	//#define upright(m) m.submat(0,N, N-1,2*N-1)
-	//#define downleft(m) m.submat(N,0, 2*N-1,N-1)
-	//#define downright(m) m.submat(N,N, 2*N-1,2*N-1)
-	auto upleft = [N](MatNum& m) {
-		return m.submat(0,0, N-1,N-1);
-	};
-	auto upright = [N](MatNum& m) {
-		return m.submat(0,N, N-1,2*N-1);
-	};
-	auto downleft = [N](MatNum& m) {
-		return m.submat(N,0, 2*N-1,N-1);
-	};
-	auto downright = [N](MatNum& m) {
-		return m.submat(N,N, 2*N-1,2*N-1);
-	};
-
-	MatNum temp(2*N,2*N);
-	upleft(temp)    = arma::inv(Vr * Vl);
-	upright(temp)   = arma::diagmat(dl);
-	downleft(temp)  = arma::diagmat(-dr);
-	downright(temp) = arma::inv(Ul * Ur);
-	UdVnum tempUdV = udvNumDecompose(temp);
-
-	MatNum left(2*N,2*N);
-	upleft(left) = arma::inv(Vr);
-	upright(left).zeros();
-	downleft(left).zeros();
-	downright(left) = arma::inv(Ul);
-
-	MatNum right(2*N,2*N);
-	upleft(right) = arma::inv(Vl);
-	upright(right).zeros();
-	downleft(right).zeros();
-	downright(right) = arma::inv(Ur);
-
-	MatNum result = (left * arma::inv(tempUdV.V)) * arma::diagmat(1.0 / tempUdV.d)
-					* (arma::inv(tempUdV.U) * right);
-	return MatNum4(upleft(result), upright(result),
-				   downleft(result), downright(result));
-}
-
-MatNum DetHubbard::greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const {
-	//variable names changed according to labeling in notes
-	const MatNum& V_l = UdV_l.U;   //!
-	const VecNum& d_l = UdV_l.d;
-	const MatNum& U_l = UdV_l.V;   //!
-	const MatNum& U_r = UdV_r.U;
-	const VecNum& d_r = UdV_r.d;
-	const MatNum& V_r = UdV_r.V;
-
-	using arma::inv; using arma::diagmat; using arma::eye;
-
-	UdVnum UdV_temp = udvNumDecompose( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
-
-	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
-
-	return green;
-}
+//MatNum DetHubbard::greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const {
+//	//variable names changed according to labeling in notes
+//	const MatNum& V_l = UdV_l.U;   //!
+//	const VecNum& d_l = UdV_l.d;
+//	const MatNum& U_l = UdV_l.V;   //!
+//	const MatNum& U_r = UdV_r.U;
+//	const VecNum& d_r = UdV_r.d;
+//	const MatNum& V_r = UdV_r.V;
+//
+//	using arma::inv; using arma::diagmat; using arma::eye;
+//
+//	UdVnum UdV_temp = udvNumDecompose( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
+//
+//	MatNum green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+//
+//	return green;
+//}
 
 
-void DetHubbard::setupUdVStorage() {
-	eye_UdV.U = arma::eye(N,N);
-	eye_UdV.d = arma::ones(N);
-	eye_UdV.V = arma::eye(N,N);
-
-	auto setup = [this](std::vector<UdVnum>& storage, Spin spinz) {
-		storage = std::vector<UdVnum>(n + 1);
-
-		storage[0] = eye_UdV;
-		storage[1] = udvNumDecompose(computeBmatFunc(s, 0, spinz));
-
-		for (unsigned l = 1; l <= n - 1; ++l) {
-			const MatNum& U_l = storage[l].U;
-			const VecNum& d_l = storage[l].d;
-			const MatNum& V_l = storage[l].V;
-			MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
-			UdVnum UdV_temp = udvNumDecompose((B_lp1 * U_l) * arma::diagmat(d_l));
-			storage[l+1].U = UdV_temp.U;
-			storage[l+1].d = UdV_temp.d;
-			storage[l+1].V = UdV_temp.V * V_l;
-		}
-	};
-
-	setup(UdVStorageUp, Spin::Up);
-	setup(UdVStorageDn, Spin::Down);
-
-	lastSweepDir = SweepDirection::Up;
-}
+//void DetHubbard::setupUdVStorage() {
+//	eye_UdV.U = arma::eye(N,N);
+//	eye_UdV.d = arma::ones(N);
+//	eye_UdV.V = arma::eye(N,N);
+//
+//	auto setup = [this](std::vector<UdVnum>& storage, Spin spinz) {
+//		storage = std::vector<UdVnum>(n + 1);
+//
+//		storage[0] = eye_UdV;
+//		storage[1] = udvNumDecompose(computeBmatFunc(s, 0, spinz));
+//
+//		for (unsigned l = 1; l <= n - 1; ++l) {
+//			const MatNum& U_l = storage[l].U;
+//			const VecNum& d_l = storage[l].d;
+//			const MatNum& V_l = storage[l].V;
+//			MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
+//			UdVnum UdV_temp = udvNumDecompose((B_lp1 * U_l) * arma::diagmat(d_l));
+//			storage[l+1].U = UdV_temp.U;
+//			storage[l+1].d = UdV_temp.d;
+//			storage[l+1].V = UdV_temp.V * V_l;
+//		}
+//	};
+//
+//	setup(UdVStorageUp, Spin::Up);
+//	setup(UdVStorageDn, Spin::Down);
+//
+//	lastSweepDir = SweepDirection::Up;
+//}
 
 
 void DetHubbard::debugCheckBeforeSweepDown() {
@@ -399,150 +398,150 @@ void DetHubbard::debugCheckGreenFunctions() {
 
 
 
-void DetHubbard::sweep() {
-	using std::tie; using std::ignore; using std::get;
-
-	//compute the green function in timeslice s*(l-1) from scratch with the help
-	//of the B-matrices computed before in the last up-sweep
-	auto advanceDownGreen = [this](unsigned l, std::vector<UdVnum>& storage,
-			CubeNum& green, CubeNum& greenFwd,
-			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_l = computeBmatFunc(s*l, s*(l - 1), spinz);
-
-		//U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
-		const MatNum& U_l = storage[l].U;
-		const VecNum& d_l = storage[l].d;
-		const MatNum& V_l = storage[l].V;
-
-		//UdV_L will correspond to B(beta,(l-1)*s*dtau)
-		UdVnum UdV_L = udvNumDecompose(arma::diagmat(d_l) * (V_l * B_l));
-		UdV_L.U = U_l * UdV_L.U;
-
-		//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
-		const UdVnum& UdV_R = storage[l - 1];
-
-		unsigned next = s * (l - 1);
-		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-				greenFromUdV_timedisplaced(UdV_L, UdV_R);
-		storage[l - 1] = UdV_L;
-	};
-
-	//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
-	auto wrapDownGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
-			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_k = computeBmatFunc(k, k - 1, spinz);
-		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
-		greenFwd.slice(k - 1) = arma::inv(B_k) * greenFwd.slice(k);
-		greenBwd.slice(k - 1) = greenBwd(k) * B_k;
-	};
-
-	//update the green function in timeslice s*(l+1) from scratch with the help
-	//of B-matrices computed before
-	auto advanceUpGreen = [this](unsigned l, const std::vector<UdVnum>& storage,
-			CubeNum& green, CubeNum& greenFwd,
-			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
-
-		//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
-		const UdVnum& UdV_lp1 = storage[l + 1];
-
-		//from the last step the following are B(l*s*dtau, 0):
-		const MatNum& U_l = storage[l].U;
-		const VecNum& d_l = storage[l].d;
-		const MatNum& V_l = storage[l].V;
-
-		//UdV_temp will be the new B((l+1)*s*dtau, 0):
-		UdVnum UdV_temp = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
-		UdV_temp.V *= V_l;
-
-		unsigned next = s * (l + 1);
-		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
-				greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
-
-		//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
-	};
-
-	//Given B(l*s*dtau, 0) from the last step in the storage, compute
-	//B((l+1)*s*dtau, 0) and put it into storage
-	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdVnum>& storage,
-			Spin spinz) -> void {
-		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
-		//from the last step the following are B(l*s*dtau, 0):
-		const MatNum& U_l = storage[l].U;
-		const VecNum& d_l = storage[l].d;
-		const MatNum& V_l = storage[l].V;
-		//the new B((l+1)*s*dtau, 0):
-		storage[l+1] = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
-		storage[l+1].V *= V_l;
-	};
-
-	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
-	auto wrapUpGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
-			CubeNum& greenBwd, Spin spinz) -> void {
-		MatNum B_kp1 = computeBmatFunc(k + 1, k, spinz);
-		green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
-		greenFwd.slice(k + 1) = B_kp1 * greenFwd.slice(k);
-		greenBwd.slice(k + 1) = greenBwd.slice(k) * arma::inv(B_kp1);
-	};
-
-	if (lastSweepDir == SweepDirection::Up) {
-//		debugCheckBeforeSweepDown();
-//		debugCheckGreenFunctions();
-		//to compute green function for timeslice tau=beta:
-		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
-		//The latter is given in storage slice m from the last sweep.
-		tie(ignore, gBwdUp.slice(m), gFwdUp.slice(m), gUp.slice(m)) =
-				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[n]);
-		tie(ignore, gBwdDn.slice(m), gFwdDn.slice(m), gDn.slice(m)) =
-				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[n]);
-		UdVStorageUp[n] = eye_UdV;
-		UdVStorageDn[n] = eye_UdV;
-		for (unsigned l = n; l >= 1; --l) {
-			updateInSlice(l*s);
-			for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
-				wrapDownGreen(k + 1, gUp, gFwdUp, gBwdUp, Spin::Up);
-				wrapDownGreen(k + 1, gDn, gFwdDn, gBwdDn, Spin::Down);
-				updateInSlice(k);
-			}
-			//TODO: this will also compute the Green function at k=0, which technically is not necessary
-			//but sensible for the following sweep up
-			//TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
-			advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-			advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
-		}
-		lastSweepDir = SweepDirection::Down;
-	} else if (lastSweepDir == SweepDirection::Down) {
-//		debugCheckGreenFunctions();
-//		debugCheckBeforeSweepUp();
-		//We need to have computed the Green function for time slice k=0 so that the first
-		//wrap-up step is correct.
-		for (unsigned k = 1; k <= s-1; ++k) {
-			wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
-			wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
-			updateInSlice(k);
-		}
-		//set storage at k=0 to unity for the upcoming sweep:
-		UdVStorageUp[0] = eye_UdV;
-		UdVStorageDn[0] = eye_UdV;
-		for (unsigned l = 1; l < n; ++l) {
-			advanceUpGreen(l-1, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
-			advanceUpGreen(l-1, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
-			updateInSlice(l*s);
-			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
-			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
-			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
-				wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
-				wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
-				updateInSlice(k);
-			}
-		}
-		updateInSlice(n*s);
-		advanceUpUpdateStorage(n - 1, UdVStorageUp, Spin::Up);
-		advanceUpUpdateStorage(n - 1, UdVStorageDn, Spin::Down);
-		lastSweepDir = SweepDirection::Up;
-	}
-//	std::cout << std::endl;		//DEBUG
-}
+//void DetHubbard::sweep() {
+//	using std::tie; using std::ignore; using std::get;
+//
+//	//compute the green function in timeslice s*(l-1) from scratch with the help
+//	//of the B-matrices computed before in the last up-sweep
+//	auto advanceDownGreen = [this](unsigned l, std::vector<UdVnum>& storage,
+//			CubeNum& green, CubeNum& greenFwd,
+//			CubeNum& greenBwd, Spin spinz) -> void {
+//		MatNum B_l = computeBmatFunc(s*l, s*(l - 1), spinz);
+//
+//		//U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
+//		const MatNum& U_l = storage[l].U;
+//		const VecNum& d_l = storage[l].d;
+//		const MatNum& V_l = storage[l].V;
+//
+//		//UdV_L will correspond to B(beta,(l-1)*s*dtau)
+//		UdVnum UdV_L = udvNumDecompose(arma::diagmat(d_l) * (V_l * B_l));
+//		UdV_L.U = U_l * UdV_L.U;
+//
+//		//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
+//		const UdVnum& UdV_R = storage[l - 1];
+//
+//		unsigned next = s * (l - 1);
+//		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
+//				greenFromUdV_timedisplaced(UdV_L, UdV_R);
+//		storage[l - 1] = UdV_L;
+//	};
+//
+//	//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
+//	auto wrapDownGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+//			CubeNum& greenBwd, Spin spinz) -> void {
+//		MatNum B_k = computeBmatFunc(k, k - 1, spinz);
+//		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
+//		greenFwd.slice(k - 1) = arma::inv(B_k) * greenFwd.slice(k);
+//		greenBwd.slice(k - 1) = greenBwd(k) * B_k;
+//	};
+//
+//	//update the green function in timeslice s*(l+1) from scratch with the help
+//	//of B-matrices computed before
+//	auto advanceUpGreen = [this](unsigned l, const std::vector<UdVnum>& storage,
+//			CubeNum& green, CubeNum& greenFwd,
+//			CubeNum& greenBwd, Spin spinz) -> void {
+//		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
+//
+//		//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
+//		const UdVnum& UdV_lp1 = storage[l + 1];
+//
+//		//from the last step the following are B(l*s*dtau, 0):
+//		const MatNum& U_l = storage[l].U;
+//		const VecNum& d_l = storage[l].d;
+//		const MatNum& V_l = storage[l].V;
+//
+//		//UdV_temp will be the new B((l+1)*s*dtau, 0):
+//		UdVnum UdV_temp = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
+//		UdV_temp.V *= V_l;
+//
+//		unsigned next = s * (l + 1);
+//		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
+//				greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
+//
+//		//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
+//	};
+//
+//	//Given B(l*s*dtau, 0) from the last step in the storage, compute
+//	//B((l+1)*s*dtau, 0) and put it into storage
+//	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdVnum>& storage,
+//			Spin spinz) -> void {
+//		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
+//		//from the last step the following are B(l*s*dtau, 0):
+//		const MatNum& U_l = storage[l].U;
+//		const VecNum& d_l = storage[l].d;
+//		const MatNum& V_l = storage[l].V;
+//		//the new B((l+1)*s*dtau, 0):
+//		storage[l+1] = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
+//		storage[l+1].V *= V_l;
+//	};
+//
+//	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
+//	auto wrapUpGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+//			CubeNum& greenBwd, Spin spinz) -> void {
+//		MatNum B_kp1 = computeBmatFunc(k + 1, k, spinz);
+//		green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
+//		greenFwd.slice(k + 1) = B_kp1 * greenFwd.slice(k);
+//		greenBwd.slice(k + 1) = greenBwd.slice(k) * arma::inv(B_kp1);
+//	};
+//
+//	if (lastSweepDir == SweepDirection::Up) {
+////		debugCheckBeforeSweepDown();
+////		debugCheckGreenFunctions();
+//		//to compute green function for timeslice tau=beta:
+//		//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
+//		//The latter is given in storage slice m from the last sweep.
+//		tie(ignore, gBwdUp.slice(m), gFwdUp.slice(m), gUp.slice(m)) =
+//				greenFromUdV_timedisplaced(eye_UdV, UdVStorageUp[n]);
+//		tie(ignore, gBwdDn.slice(m), gFwdDn.slice(m), gDn.slice(m)) =
+//				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[n]);
+//		UdVStorageUp[n] = eye_UdV;
+//		UdVStorageDn[n] = eye_UdV;
+//		for (unsigned l = n; l >= 1; --l) {
+//			updateInSlice(l*s);
+//			for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
+//				wrapDownGreen(k + 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+//				wrapDownGreen(k + 1, gDn, gFwdDn, gBwdDn, Spin::Down);
+//				updateInSlice(k);
+//			}
+//			//TODO: this will also compute the Green function at k=0, which technically is not necessary
+//			//but sensible for the following sweep up
+//			//TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
+//			advanceDownGreen(l, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+//			advanceDownGreen(l, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+//		}
+//		lastSweepDir = SweepDirection::Down;
+//	} else if (lastSweepDir == SweepDirection::Down) {
+////		debugCheckGreenFunctions();
+////		debugCheckBeforeSweepUp();
+//		//We need to have computed the Green function for time slice k=0 so that the first
+//		//wrap-up step is correct.
+//		for (unsigned k = 1; k <= s-1; ++k) {
+//			wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+//			wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
+//			updateInSlice(k);
+//		}
+//		//set storage at k=0 to unity for the upcoming sweep:
+//		UdVStorageUp[0] = eye_UdV;
+//		UdVStorageDn[0] = eye_UdV;
+//		for (unsigned l = 1; l < n; ++l) {
+//			advanceUpGreen(l-1, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
+//			advanceUpGreen(l-1, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
+//			updateInSlice(l*s);
+//			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
+//			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
+//			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
+//				wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
+//				wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
+//				updateInSlice(k);
+//			}
+//		}
+//		updateInSlice(n*s);
+//		advanceUpUpdateStorage(n - 1, UdVStorageUp, Spin::Up);
+//		advanceUpUpdateStorage(n - 1, UdVStorageDn, Spin::Down);
+//		lastSweepDir = SweepDirection::Up;
+//	}
+////	std::cout << std::endl;		//DEBUG
+//}
 
 void DetHubbard::measure() {
 	//used to measure occupation:
@@ -562,8 +561,9 @@ void DetHubbard::measure() {
 			sum_GiiDn += gDn(site, site, timeslice);
 			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
 			//use nearest neighbor elements of Green functions:
-			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
-				unsigned neigh = nearestNeigbors(neighIndex, site);
+//			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
+			for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(siter); ++p) {
+				unsigned neigh = *p;
 				sum_GneighUp += gUp(site, neigh, timeslice);
 				sum_GneighDn += gDn(site, neigh, timeslice);
 			}
@@ -690,8 +690,8 @@ void DetHubbard::setupPropTmat_direct() {
 
 	for (unsigned site = 0; site < N; ++site) {
 		//hopping between nearest neighbors
-		for (auto p = nearestNeigbors.begin_col(site);
-				 p != nearestNeigbors.end_col(site); ++p) {
+		for (auto p = neigh.beginNeighbors(site);
+				 p != neigh.endNeighbors(site); ++p) {
 			tmat(*p, site) -= t;
 		}
 	}
@@ -712,12 +712,12 @@ void DetHubbard::setupPropTmat_checkerboard() {
 		for (unsigned x = 0; x < L; x += 2) {
 			//sub board a
 			unsigned siteA = xyToSite(x, y);
-			unsigned neighA = nearestNeigbors((unsigned)NeighDir::XPLUS, siteA);
+			unsigned neighA = neigh((unsigned)NeighDir::XPLUS, siteA);
 			kxa(siteA, neighA) = 1.0;
 			kxa(neighA, siteA) = 1.0;
 			//sub board b
 			unsigned siteB = neighA;
-			unsigned neighB = nearestNeigbors((unsigned)NeighDir::XPLUS, siteB);
+			unsigned neighB = neigh((unsigned)NeighDir::XPLUS, siteB);
 			kxb(siteB, neighB) = 1.0;
 			kxb(neighB, siteB) = 1.0;
 		}
