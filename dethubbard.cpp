@@ -670,36 +670,6 @@ void DetHubbard::measure() {
 
 inline unsigned DetHubbard::coordsToSite(const std::vector<unsigned>& coords) const {
     const unsigned dimensions = coords.size();
-    int site = 0;
-    for (unsigned dim = 0; dim < dimensions; ++dim) {
-        site += coords[dim] * uint_pow(L, dim);
-    }
-    return site;
-}
-
-void DetHubbard::createNeighborTable() {
-	using std::floor;
-	nearestNeigbors.resize(2*d, N);
-    std::vector<unsigned> curCoords(d);     //holds the x, y, z coordinate components of the current site
-    std::vector<unsigned> newCoords(d);     //newly calculated coords of the neighbor
-    for (unsigned site = 0; site < N; ++site) {
-        int reducedSite = site;
-        for (int dim = d - 1; dim >= 0; --dim) {
-            curCoords[dim] = unsigned(floor(reducedSite / uint_pow(L, dim)));
-            reducedSite -= curCoords[dim] * uint_pow(L, dim);
-        }
-        assert(reducedSite == 0);
-        for (unsigned dim = 0; dim < d; ++dim) {
-        	//neighbor in + direction, periodic
-        	newCoords = curCoords;
-        	newCoords[dim] = (newCoords[dim] + 1) % L;
-        	nearestNeigbors(dim * 2, site) = coordsToSite(newCoords);
-        	//neighbor in - direction, periodic
-        	newCoords = curCoords;
-        	newCoords[dim] = (newCoords[dim] - 1 + L) % L;
-        	nearestNeigbors(dim * 2 + 1, site) = coordsToSite(newCoords);
-        }
-    }
 }
 
 

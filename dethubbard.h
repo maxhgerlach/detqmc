@@ -28,43 +28,25 @@
  *
  */
 
-#include <functional>
-#include <utility>
-#include <memory>
-#include <vector>
-#include <string>
-#include <tuple>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
-#include <armadillo>
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
+#include "detmodel.h"
+
 #include "rngwrapper.h"
 #include "parameters.h"
 #include "metadata.h"
 #include "observable.h"
 #include "udv.h"
 
-typedef arma::Col<num> VecNum;
-typedef arma::Mat<num> MatNum;
-typedef arma::Cube<num> CubeNum;
-
-typedef arma::Mat<int> MatInt;
-
-typedef arma::SpMat<num> SpMatNum;
-
-typedef arma::Mat<unsigned> tableSites;
 
 struct ModelParams;			//definition in parameters.h
-class DetHubbard;		//defined below in this file
+class DetHubbard;			//defined below in this file
 
 //factory function to init DetHubbard from parameter struct
 //
 //(in the future: possibly create such factories for different models)
 //will do parameter checking etc
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+std::unique_ptr<DetHunnbbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
-class DetHubbard {
+class DetHubbard : public DetModel<2> {
 private:
 	//only initialize with the "factory" function ::createDetHubbard() declared above.
 	//Give a reference to the RNG instance to be used
@@ -116,12 +98,8 @@ protected:
 	const num dtau;     // beta / m
 	const num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
-	//Neighbor table: columns index sites, rows index lattice directions
-	//as in +x,-x,+y,-y,+z,-z, ...
-	tableSites nearestNeigbors;
-	enum class NeighDir : unsigned {
-		XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3
-	};
+
+
 
 	std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
 
@@ -148,31 +126,22 @@ protected:
 	MatInt auxfield;
 
 	//Equal imaginary time Green function
-	//slices indexed k=0..m correspond to time slices at dtau*k,
-	//which are then indexed by sites in row and column.
 	//One cube for each value of spinz.
-	//The Green functions for k=0 are conceptually equal to those for k=m.
-	//Most code, however, only uses timeslices k >= 1 ! Don't rely on g*.slice(0)
-	//being valid.
-	CubeNum gUp, gDn;
+	CubeNum& gUp;
+	CubeNum& gDn;
 	
 	//Imaginary time displaced Green function
 	// "forward" corresponds to G(tau, 0)
 	// "backward" corresponds to G(0, tau)
 	//the indexing works the same way as for the equal time case
-	CubeNum gFwdUp, gFwdDn;
-	CubeNum gBwdUp, gBwdDn;
+	CubeNum& gFwdUp;
+	CubeNum& gFwdDn;
+	CubeNum& gBwdUp;
+	CubeNum& gBwdDn;
 
-	typedef UdV<MatNum, VecNum> UdVnum;
 	UdVnum eye_UdV;	// U = d = V = 1
-	//The UdV-instances in UdVStorage will not move around much after setup, so storing
-	//the (rather big) objects in the vector is fine
-	std::vector<UdVnum> UdVStorageUp;
-	std::vector<UdVnum> UdVStorageDn;
-
-	enum class SweepDirection: int {Up = 1, Down = -1};
-	SweepDirection lastSweepDir;
-
+	std::vector<UdVnum>& UdVStorageUp;
+	std::vector<UdVnum>& UdVStorageDn;
 
 	//observables, values for the current auxiliary field; averaged over aux. field
 	num occUp;          //occupation spin up
@@ -195,15 +164,7 @@ protected:
 
 
 
-	//observable handling -- these contain information about observables (such as their names)
-	//as well as reference to their current value, which will be shared with simulation management
-	//in a different class. The values reference there are to be updated here in the replica class.
-	std::vector<ScalarObservable> obsScalar;
-	std::vector<VectorObservable> obsVector;
-	std::vector<KeyValueObservable> obsKeyValue;
 
-	void createNeighborTable();
-	unsigned coordsToSite(const std::vector<unsigned>& coords) const;
 
 
 	void setupRandomAuxfield();
