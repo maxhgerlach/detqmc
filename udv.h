@@ -8,16 +8,21 @@
 #ifndef UDV_H_
 #define UDV_H_
 
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Weffc++"
+#pragma GCC diagnostic warning "-Wconversion"
+
 
 //matrices used in the computation of B-matrices decomposed into
 //(U,d,V) = (orthogonal matrix, diagonal matrix elements, row-normalized triangular matrix.
 //Initialize at beginning of simulation by member function setupUdVStorage()
-template <typename ArmaMat, typename ArmaVec>
+template <typename num>
 struct UdV {
-	ArmaMat U;
-	ArmaVec d;
-	ArmaMat V;
+	arma::Mat<num> U;
+	arma::Col<num> d;
+	arma::Mat<num> V;
 	//default constructor: leaves everything empty
 	UdV() : U(), d(), V() {}
 	//specify matrix size: initialize to identity
@@ -26,9 +31,9 @@ struct UdV {
 	{ }
 };
 
-template <typename ArmaMat, typename ArmaVec>
-UdV<ArmaMat, ArmaVec> udvDecompose(const ArmaMat& mat) {
-	typedef UdV<ArmaMat, ArmaVec> UdV;
+template <typename num>
+UdV<num> udvDecompose(const arma::Mat<num>& mat) {
+	typedef UdV<num> UdV;
 	UdV result;
 
 //	ArmaMat V_transpose;
@@ -37,7 +42,7 @@ UdV<ArmaMat, ArmaVec> udvDecompose(const ArmaMat& mat) {
 
 	arma::qr(result.U, result.V, mat);
 	//normalize rows of V to obtain scales in d:
-	result.d = ArmaVec(mat.n_rows);
+	result.d = arma::Col<num>(mat.n_rows);
 	for (unsigned rown = 0; rown < mat.n_rows; ++rown) {
 		const num norm = arma::norm(result.V.row(rown), 2);
 		result.d[rown] = norm;
@@ -46,6 +51,8 @@ UdV<ArmaMat, ArmaVec> udvDecompose(const ArmaMat& mat) {
 
 	return result;
 }
+
+
 
 
 

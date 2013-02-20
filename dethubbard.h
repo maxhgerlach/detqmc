@@ -37,16 +37,15 @@
 #include "udv.h"
 
 
-struct ModelParams;			//definition in parameters.h
 class DetHubbard;			//defined below in this file
 
 //factory function to init DetHubbard from parameter struct
 //
 //(in the future: possibly create such factories for different models)
 //will do parameter checking etc
-std::unique_ptr<DetHunnbbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
-class DetHubbard : public DetModel<2> {
+class DetHubbard : public DetModelGC<2> {
 private:
 	//only initialize with the "factory" function ::createDetHubbard() declared above.
 	//Give a reference to the RNG instance to be used
@@ -55,20 +54,20 @@ public:
 	friend std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 	virtual ~DetHubbard();
 
-	unsigned getSystemN() const;
+	virtual unsigned getSystemN() const;
 
 	//Create a MetadataMap describing the parameters of the
 	//simulated model
-	MetadataMap prepareModelMetadataMap();
+	virtual MetadataMap prepareModelMetadataMap() const;
 
 	//perform measurements of all observables
-    void measure();
+    virtual void measure();
 
     //get values of observables normalized by system size, the structures returned
     //contain references to the current values measured by DetHubbard.
-	std::vector<ScalarObservable> getScalarObservables();
-	std::vector<VectorObservable> getVectorObservables();
-	std::vector<KeyValueObservable> getKeyValueObservables();
+//	std::vector<ScalarObservable> getScalarObservables();
+//	std::vector<VectorObservable> getVectorObservables();
+//	std::vector<KeyValueObservable> getKeyValueObservables();
 
     //perform a sweep updating the auxiliary field with costly recomputations
     //of Green functions from scratch
@@ -77,10 +76,11 @@ public:
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
     //Will give equal-time and time-displaced Green functions.
-    void sweep();
+//    void sweep();
 
-	enum class Spin: int {Up = +1, Down = -1};
 protected:
+	enum class Spin: int {Up = +1, Down = -1};
+	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
 	RngWrapper& rng;
 	//parameters:
 	const bool checkerboard;
@@ -91,16 +91,16 @@ protected:
 	const unsigned d;	//spatial dimension of lattice
 	const unsigned z;   // lattice coordination number, 2 * d
 	const unsigned N;   // L ** d
-	const num beta;		//inverse temperature
-	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
-	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
-	const unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
-	const num dtau;     // beta / m
+//	const num beta;		//inverse temperature
+//	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
+//	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
+//	const unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
+//	const num dtau;     // beta / m
 	const num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
 	PeriodicCubicLatticeNearestNeighbors neigh;
 
-	std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
+	//std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down -- tmat
@@ -156,8 +156,6 @@ protected:
 	VecNum gf;			//values for different time-displacements
 	VecNum gf_dt;		//time-displacements, where the values are evaluated
 
-
-
 	void setupRandomAuxfield();
 	void setupPropTmat_direct();
 	void setupPropTmat_checkerboard();
@@ -180,13 +178,13 @@ protected:
 	//error of O[dtau^2]
 	MatNum computeBmat_checkerBoard(unsigned k2, unsigned k1, Spin spinz) const;
 
-	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
-	//for the current aux field.
-	//These functions perform a naive matrix product and inversion.
-	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau) const;
-	//Calculate the Green function from scratch for the given timeslice index
-	//(tau = dtau * timeslice) for spin up or down
-	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz) const;
+//	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
+//	//for the current aux field.
+//	//These functions perform a naive matrix product and inversion.
+//	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau) const;
+//	//Calculate the Green function from scratch for the given timeslice index
+//	//(tau = dtau * timeslice) for spin up or down
+//	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz) const;
 
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
@@ -222,9 +220,9 @@ protected:
 	//Green functions
 //	MatNum greenFromUdV(const UdVnum& UdV_l, const UdVnum& UdV_r) const;
 
-	void debugCheckBeforeSweepDown();
-	void debugCheckBeforeSweepUp();
-	void debugCheckGreenFunctions();
+//	void debugCheckBeforeSweepDown();
+//	void debugCheckBeforeSweepUp();
+//	void debugCheckGreenFunctions();
 };
 
 #endif /* DETHUBBARD_H_ */

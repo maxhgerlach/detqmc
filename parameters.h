@@ -39,7 +39,7 @@ struct ModelParams {
 						//from scratch
 	std::set<std::string> specified;
 
-	ModelParams() : model(), checkerboard(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
+	ModelParams() : model(), timedisplaced(), checkerboard(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
 	{ }
 };
 

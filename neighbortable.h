@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cassert>
 #include <vector>
+#include <utility>
 #pragma GCC diagnostic ignored "-Weffc++"
 #pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
@@ -26,18 +27,22 @@ enum class NeighDir : unsigned {
 	XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3, ZPLUS = 4, ZMINUS = 5
 };
 
+typedef arma::Mat<unsigned> tableSites;
+
+
 class PeriodicCubicLatticeNearestNeighbors {
 public:
 	PeriodicCubicLatticeNearestNeighbors(unsigned d_, unsigned L_) :
 		d(d_), L(L_), N(static_cast<unsigned>(uint_pow(L,d))), z(2*d),
-		nearestNeigbors(z, N)
+		nearestNeighbors(z, N)
 	{
 		using std::floor;
 		std::vector<unsigned> curCoords(d);     //holds the x, y, z coordinate components of the current site
 		std::vector<unsigned> newCoords(d);     //newly calculated coords of the neighbor
 		for (unsigned site = 0; site < N; ++site) {
-			int reducedSite = site;
-			for (int dim = d - 1; dim >= 0; --dim) {
+			unsigned reducedSite = site;
+			for (int idim = int(d) - 1; idim >= 0; --idim) {
+				unsigned dim = unsigned(idim);
 				curCoords[dim] = unsigned(floor(reducedSite / uint_pow(L, dim)));
 				reducedSite -= curCoords[dim] * uint_pow(L, dim);
 			}
@@ -46,11 +51,11 @@ public:
 				//neighbor in + direction, periodic
 				newCoords = curCoords;
 				newCoords[dim] = (newCoords[dim] + 1) % L;
-				nearestNeigbors(dim * 2, site) = coordsToSite(newCoords);
+				nearestNeighbors(dim * 2, site) = coordsToSite(newCoords);
 				//neighbor in - direction, periodic
 				newCoords = curCoords;
 				newCoords[dim] = (newCoords[dim] - 1 + L) % L;
-				nearestNeigbors(dim * 2 + 1, site) = coordsToSite(newCoords);
+				nearestNeighbors(dim * 2 + 1, site) = coordsToSite(newCoords);
 			}
 		}
 	}
@@ -61,13 +66,16 @@ public:
 		assert(site < N);
 		return nearestNeighbors(latticeDirection, site);
 	}
+	unsigned operator()(NeighDir latticeDirection, unsigned site) const {
+		return operator()((unsigned) latticeDirection, site);
+	}
 
 	//iterators over the nearest neighbors of a site:
-	auto beginNeighbors(unsigned site) -> decltype(const nearestNeighbors.begin_col(site)) const {
+	auto beginNeighbors(unsigned site) -> tableSites::const_col_iterator const {
 		return nearestNeighbors.begin_col(site);
 	}
 
-	auto endNeighbors(unsigned site) -> decltype(const nearestNeighbors.end_col(site)) const {
+	auto endNeighbors(unsigned site) -> tableSites::const_col_iterator const {
 		return nearestNeighbors.end_col(site);
 	}
 
@@ -86,8 +94,7 @@ private:
 	unsigned N;		//number of sites
 	unsigned z;		//lattice coordination number
 	//Neighbor table: columns index sites, rows index lattice directions
-	typedef arma::Mat<unsigned> tableSites;
-	tableSites nearestNeigbors;
+	tableSites nearestNeighbors;
 };
 
 

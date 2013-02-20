@@ -15,7 +15,7 @@
 #include <memory>
 #include "metadata.h"
 #include "parameters.h"
-#include "dethubbard.h"
+#include "detmodel.h"
 #include "observablehandler.h"
 #include "rngwrapper.h"
 
@@ -49,7 +49,7 @@ protected:
 	MetadataMap modelMeta;
 	MetadataMap mcMeta;
 	RngWrapper rng;
-	std::unique_ptr<DetHubbard> replica;		//extend to allow for derived classes in the future
+	std::unique_ptr<DetModel> replica;
 	typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
 	typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
 	std::vector<ObsPtr> obsHandlers;
