@@ -62,22 +62,6 @@ public:
 
 	//perform measurements of all observables
     virtual void measure();
-
-    //get values of observables normalized by system size, the structures returned
-    //contain references to the current values measured by DetHubbard.
-//	std::vector<ScalarObservable> getScalarObservables();
-//	std::vector<VectorObservable> getVectorObservables();
-//	std::vector<KeyValueObservable> getKeyValueObservables();
-
-    //perform a sweep updating the auxiliary field with costly recomputations
-    //of Green functions from scratch
-    //void sweepSimple();
-
-    //perform a sweep as suggested in the text by Assaad with stable computation
-    //of Green functions, alternate between sweeping up and down in imaginary time.
-    //Will give equal-time and time-displaced Green functions.
-//    void sweep();
-
 protected:
 	enum class Spin: int {Up = +1, Down = -1};
 	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
@@ -159,8 +143,6 @@ protected:
 	void setupRandomAuxfield();
 	void setupPropTmat_direct();
 	void setupPropTmat_checkerboard();
-	//void setupUdVStorage();
-
 
 	//compute e^{-scalar matrix}, matrix must be symmetric
 	MatNum computePropagator_direct(num scalar, const MatNum& matrix) const;

@@ -159,20 +159,22 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	             ScalarObservable(cref(localMoment), "localMoment", "m^2"),
 	             ScalarObservable(cref(eKinetic), "kineticEnergy", "e_t"),
 	             ScalarObservable(cref(ePotential), "potentialEnergy", "e_U"),
-	             ScalarObservable(cref(eTotal), "totalEnergy", "e"),
-	             ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
+	             ScalarObservable(cref(eTotal), "totalEnergy", "e");
 
 	zcorr.zeros(N);
 	obsVector += VectorObservable(cref(zcorr), N, "spinzCorrelationFunction", "zcorr");
 
-	if (d == 2) {
-		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			gf_dt[timeslice - 1] = dtau * timeslice;
-		}
-		gf_dt.reshape(gf_dt.n_elem, 1);		//column vector
-		gf.zeros(gf_dt.n_elem);
+	if (timedisplaced) {
+		obsScalar += ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
+		if (d == 2) {
+			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+				gf_dt[timeslice - 1] = dtau * timeslice;
+			}
+			gf_dt.reshape(gf_dt.n_elem, 1);		//column vector
+			gf.zeros(gf_dt.n_elem);
 
-		obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
+			obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
+		}
 	}
 }
 
@@ -184,6 +186,7 @@ MetadataMap DetHubbard::prepareModelMetadataMap() const {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
 	meta["checkerboard"] = (checkerboard ? "true" : "false");
+	meta["timedisplaced"] = (timedisplaced ? "true" : "false");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(t);
 	META_INSERT(U);
@@ -597,29 +600,31 @@ void DetHubbard::measure() {
 	eTotal = eKinetic + ePotential;
 
 	//susceptibility
-	auto sumTrace = [m](const CubeNum& green) {
-		num sum = 0;
-		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			sum += arma::trace(green.slice(timeslice));
-		}
-		return sum;
-	};
-	num sumTrGreenUp = sumTrace(gUp);
-	num sumTrGreenDn = sumTrace(gDn);
-	auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
-		num sum = 0;
-		for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-			sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
-		}
-		return sum;
-	};
-	num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
-	num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
-	num trGreenUp_0 = arma::trace(gUp.slice(m));			//g(beta) = g(0)
-	num trGreenDn_0 = arma::trace(gDn.slice(m));
-	suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
-			                          - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
-									 );
+	if (timedisplaced) {
+		auto sumTrace = [m](const CubeNum& green) {
+			num sum = 0;
+			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+				sum += arma::trace(green.slice(timeslice));
+			}
+			return sum;
+		};
+		num sumTrGreenUp = sumTrace(gUp);
+		num sumTrGreenDn = sumTrace(gDn);
+		auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
+			num sum = 0;
+			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
+			}
+			return sum;
+		};
+		num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
+		num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
+		num trGreenUp_0 = arma::trace(gUp.slice(m));			//g(beta) = g(0)
+		num trGreenDn_0 = arma::trace(gDn.slice(m));
+		suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
+				- (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
+		);
+	}
 
 	// vector observables
 	zcorr.zeros();
@@ -639,7 +644,7 @@ void DetHubbard::measure() {
 	}
 	zcorr /= num(m);
 
-	if (d == 2) {
+	if (timedisplaced and d == 2) {
 		//compute the Fourier transform of the imaginary time-displaced forward Green function for
 		//k = (pi/3, 2*pi/3) at some preset values of tau
 		const num kx = M_PI / 3.0;
