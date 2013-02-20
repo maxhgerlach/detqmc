@@ -126,6 +126,7 @@ protected:
     	}
     }
 
+    //only call *after* computeBmat[] is valid, i.e. in a derived class:
     void setupUdVStorage();
 
     //helpers for sweep():
@@ -212,9 +213,6 @@ DetModelGC<GC>::DetModelGC(const ModelParams& pars, unsigned greenComponentSize)
 			};
 		} );
 	}
-
-	setupUdVStorage();
-	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
 }
 
 template<unsigned GC>

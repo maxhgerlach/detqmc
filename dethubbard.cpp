@@ -95,7 +95,7 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 
 
 DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
-		DetModelGC<2>(pars, static_cast<unsigned>(uint_pow(L,d))),
+		DetModelGC<2>(pars, static_cast<unsigned>(uint_pow(pars.L,pars.d))),
 		rng(rng_),
 		checkerboard(pars.checkerboard),
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
@@ -103,7 +103,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 		N(static_cast<unsigned>(uint_pow(L,d))),
 //		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
-		neigh(d, N),
+		neigh(d, L),
 //		computeBmatFunc(),
 		proptmat(N,N),
 		auxfield(N, m+1),                //m+1 columns of N rows
@@ -145,6 +145,9 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 			return computeBmat_direct(k2, k1, Spin::Down);
 		};
 	}
+
+	setupUdVStorage();
+	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
 
 	using namespace boost::assign;         // bring operator+=() into scope
 	using std::cref;

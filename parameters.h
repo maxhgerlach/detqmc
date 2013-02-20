@@ -34,9 +34,9 @@ struct ModelParams {
 	unsigned d;
 	num beta;
 	unsigned m;		//either specify number of timeslices 'm'
-	num dtau;			//or timeslice separation 'dtau'
+	num dtau;		//or timeslice separation 'dtau'
 	unsigned s;		//separation of timeslices where the Green function is calculated
-						//from scratch
+					//from scratch
 	std::set<std::string> specified;
 
 	ModelParams() : model(), timedisplaced(), checkerboard(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
