@@ -31,6 +31,7 @@ struct ModelParams {
 	bool checkerboard;		//Hubbard: use a checkerboard decomposition for computing the propagator
 	num t;		//Hubbard
 	num U;		//Hubbard
+	num r;		//SDW
 	num mu;
 	unsigned L;
 	unsigned d;
@@ -41,8 +42,10 @@ struct ModelParams {
 					//from scratch
 	std::set<std::string> specified;
 
-	ModelParams() : model(), timedisplaced(), checkerboard(), t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), specified()
-	{ }
+	ModelParams() :
+			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
+			beta(), m(), dtau(), s(), specified() {
+	}
 };
 
 

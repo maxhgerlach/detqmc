@@ -117,7 +117,7 @@ protected:
 	CubeNum& gBwdUp;
 	CubeNum& gBwdDn;
 
-	UdVnum eye_UdV;	// U = d = V = 1
+//	UdVnum eye_UdV;	// U = d = V = 1
 	std::vector<UdVnum>& UdVStorageUp;
 	std::vector<UdVnum>& UdVStorageDn;
 
@@ -143,9 +143,6 @@ protected:
 	void setupRandomAuxfield();
 	void setupPropTmat_direct();
 	void setupPropTmat_checkerboard();
-
-	//compute e^{-scalar matrix}, matrix must be symmetric
-	MatNum computePropagator_direct(num scalar, const MatNum& matrix) const;
 
 	//given the current auxiliary fields {s_n}, compute the matrix
 	// B_{s_n}(tau_2, tau_1) = \prod_{n = n2}^{n = n1 + 1} e^V(s_n) e^{-dtau T}

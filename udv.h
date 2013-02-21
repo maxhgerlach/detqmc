@@ -8,6 +8,7 @@
 #ifndef UDV_H_
 #define UDV_H_
 
+#include <complex>
 #pragma GCC diagnostic ignored "-Weffc++"
 #pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
@@ -30,6 +31,13 @@ struct UdV {
 		U(arma::eye(size,size)), d(arma::ones(size)), V(arma::eye(size,size))
 	{ }
 };
+
+template<> inline
+UdV<std::complex<double>>::UdV(unsigned size) :
+	U(arma::eye(size,size), arma::zeros(size,size)),
+	d(arma::ones(size), arma::zeros(size,size)),
+	V(arma::eye(size,size), arma::zeros(size,size))
+{ }
 
 template <typename num>
 UdV<num> udvDecompose(const arma::Mat<num>& mat) {

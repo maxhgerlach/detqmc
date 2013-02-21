@@ -115,7 +115,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 //		gFwdUp(N,N,m+1), gFwdDn(N,N,m+1),
 //		gBwdUp(N,N,m+1), gBwdDn(N,N,m+1),
 //
-		eye_UdV(N),
+//		eye_UdV(N),
 		UdVStorageUp(UdVStorage[GreenCompSpinUp]), UdVStorageDn(UdVStorage[GreenCompSpinDown]),
 		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
 		occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m)
@@ -698,7 +698,7 @@ void DetHubbard::setupPropTmat_direct() {
 		}
 	}
 
-	proptmat = computePropagator_direct(dtau, tmat);
+	proptmat = computePropagator(dtau, tmat);
 }
 
 void DetHubbard::setupPropTmat_checkerboard() {
@@ -751,17 +751,6 @@ void DetHubbard::setupPropTmat_checkerboard() {
                                 kxb*kya*kyb)
              + pow(sh, 4) * kxa*kxb*kya*kyb;
 }
-
-MatNum DetHubbard::computePropagator_direct(num scalar, const MatNum& matrix) const {
-	using namespace arma;
-
-	VecNum eigval;
-	MatNum eigvec;
-	eig_sym(eigval, eigvec, matrix);
-
-	return eigvec * diagmat(exp(-scalar * eigval)) * trans(eigvec);
-}
-
 
 inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const {
 	using namespace arma;

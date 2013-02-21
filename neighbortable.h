@@ -23,7 +23,7 @@
 
 //lattice directions are indexed as in +x,-x,+y,-y,+z,-z, ...
 //enums provided for d <= 3, but code valid also for higher dimensions
-enum class NeighDir : unsigned {
+enum NeighDir {
 	XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3, ZPLUS = 4, ZMINUS = 5
 };
 
@@ -58,6 +58,8 @@ public:
 				nearestNeighbors(dim * 2 + 1, site) = coordsToSite(newCoords);
 			}
 		}
+	}
+	virtual ~PeriodicCubicLatticeNearestNeighbors() {
 	}
 
 	//get site index of nearest neighbor of site in NeighDir latticeDirection
@@ -95,6 +97,45 @@ private:
 	unsigned z;		//lattice coordination number
 	//Neighbor table: columns index sites, rows index lattice directions
 	tableSites nearestNeighbors;
+};
+
+
+class PeriodicSquareLatticeNearestNeighbors : public PeriodicCubicLatticeNearestNeighbors {
+public:
+	PeriodicSquareLatticeNearestNeighbors(unsigned L)
+		: PeriodicCubicLatticeNearestNeighbors(2, L)
+	{ }
+};
+
+
+enum class ChainDir : unsigned {
+	PLUS = 0, MINUS = 1
+};
+
+
+template <unsigned startWith=0>		//start the indexing with 0 or maybe 1 or something else...
+class PeriodicChainNearestNeighbors : public PeriodicCubicLatticeNearestNeighbors {
+public:
+	PeriodicChainNearestNeighbors(unsigned L)
+		: PeriodicCubicLatticeNearestNeighbors(1, L)
+	{ }
+
+	unsigned operator()(unsigned latticeDirection, unsigned site) const {
+		return PeriodicCubicLatticeNearestNeighbors::operator ()(latticeDirection, site - startWith);
+	}
+	unsigned operator()(NeighDir latticeDirection, unsigned site) const {
+		return operator()((unsigned) latticeDirection, site);
+	}
+	unsigned operator()(ChainDir latticeDirection, unsigned site) const {
+		return operator()((unsigned) latticeDirection, site);
+	}
+	//iterators over the nearest neighbors of a site:
+	auto beginNeighbors(unsigned site) -> tableSites::const_col_iterator const {
+		return PeriodicCubicLatticeNearestNeighbors::beginNeighbors(site - startWith);
+	}
+	auto endNeighbors(unsigned site) -> tableSites::const_col_iterator const {
+		return PeriodicCubicLatticeNearestNeighbors::endNeighbors(site - startWith);
+	}
 };
 
 

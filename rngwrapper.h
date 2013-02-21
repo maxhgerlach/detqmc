@@ -36,6 +36,11 @@ public:
         return dsfmt_genrand_open_open(&dsfmt);
     }
 
+    //return a floating point random number from (low, high)
+    double randRange(double low, double high) {
+    	return low + (high - low) * rand01();
+    }
+
     //return an integer random number from the discrete uniform distribution over the integers
     //{low, low + 1, . . . , high}. One call to rand01()
     int randInt(int low, int high) {
