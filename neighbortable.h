@@ -121,7 +121,8 @@ public:
 	{ }
 
 	unsigned operator()(unsigned latticeDirection, unsigned site) const {
-		return PeriodicCubicLatticeNearestNeighbors::operator ()(latticeDirection, site - startWith);
+		return PeriodicCubicLatticeNearestNeighbors::operator ()(latticeDirection, site - startWith)
+		       + startWith;
 	}
 	unsigned operator()(NeighDir latticeDirection, unsigned site) const {
 		return operator()((unsigned) latticeDirection, site);
@@ -131,10 +132,10 @@ public:
 	}
 	//iterators over the nearest neighbors of a site:
 	auto beginNeighbors(unsigned site) -> tableSites::const_col_iterator const {
-		return PeriodicCubicLatticeNearestNeighbors::beginNeighbors(site - startWith);
+		return PeriodicCubicLatticeNearestNeighbors::beginNeighbors(site - startWith) + startWith;
 	}
 	auto endNeighbors(unsigned site) -> tableSites::const_col_iterator const {
-		return PeriodicCubicLatticeNearestNeighbors::endNeighbors(site - startWith);
+		return PeriodicCubicLatticeNearestNeighbors::endNeighbors(site - startWith) + startWith;
 	}
 };
 

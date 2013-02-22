@@ -8,7 +8,7 @@
 #ifndef DETSDW_H_
 #define DETSDW_H_
 
-#include <array>
+#include <tuple>
 #include <vector>
 #include <complex>
 #include "rngwrapper.h"
@@ -91,6 +91,11 @@ protected:
 	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;
 
 	virtual void updateInSlice(unsigned timeslice);
+
+	//functions used by updateInSlice:
+	typedef VecNum::fixed<3> Phi;		//value of the three-component field at a single site and timeslice
+	Phi proposeNewField(unsigned site, unsigned timeslice);
+	num deltaSPhi(unsigned site, unsigned timeslice, Phi newphi);
 };
 
 #endif /* DETSDW_H_ */

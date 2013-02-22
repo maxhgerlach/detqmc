@@ -6,9 +6,10 @@
  */
 
 #include <cmath>
+#include <numeric>
 #include "detsdw.h"
 
-const num PhiLow = 0.1;
+const num PhiLow = 0.0;
 const num PhiHigh = 2.0;
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
@@ -156,7 +157,56 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 }
 
 void DetSDW::updateInSlice(unsigned timeslice) {
+	for_each_site( [this, timeslice](unsigned site) {
+		Phi newphi = proposeNewField(site, timeslice);
+	});
 }
+
+DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
+	(void) site; (void) timeslice;
+	//TODO: make this smarter!
+	return Phi{rng.randRange(PhiLow, PhiHigh),
+			   rng.randRange(PhiLow, PhiHigh),
+			   rng.randRange(PhiLow, PhiHigh)};
+}
+
+num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
+	const Phi oldphi = {phi1(site, timeslice),
+					    phi2(site, timeslice),
+					    phi3(site, timeslice)};
+
+	num oldphiSq = arma::dot(oldphi, oldphi);
+	num newphiSq = arma::dot(newphi, newphi);
+	num delta1 = (2.0 / (8.0 * dtau*dtau * c*c) + 0.5*z + 0.5*r) * (newphiSq - oldphiSq);
+
+	unsigned kEarlier = timeNeigh(ChainDir::MINUS, timeNeigh(ChainDir::MINUS, timeslice));
+	Phi phiEarlier = Phi{phi1(site, kEarlier),
+					     phi2(site, kEarlier),
+					     phi3(site, kEarlier)};
+	unsigned kLater = timeNeigh(ChainDir::PLUS, timeNeigh(ChainDir::PLUS, timeslice));
+	Phi phiLater = Phi{phi1(site, kLater),
+					   phi2(site, kLater),
+					   phi3(site, kLater)};
+	Phi phiTimeNeigh  = (1.0 / (8.0 * dtau*dtau * c*c)) * (phiEarlier + phiLater);
+	Phi phiSpaceNeigh = 0.5 * std::accumulate(spaceNeigh.beginNeighbors(site),
+								              spaceNeigh.endNeighbors(site),
+								              Phi{0,0,0},
+								              [this, timeslice] (Phi accum, unsigned neighSite) {
+													return accum + Phi{phi1(neighSite, timeslice),
+															     	   phi2(neighSite, timeslice),
+															           phi3(neighSite, timeslice)};
+	                                           }
+											 );
+	num delta2 = -2.0 * arma::dot((phiTimeNeigh + phiSpaceNeigh), (newphi - oldphi));
+
+	num oldphiPow4 = oldphiSq * oldphiSq;
+	num newphiPow4 = newphiSq * newphiSq;
+	num delta3 = 0.25*u * (newphiPow4 - oldphiPow4);
+
+	return delta1 + delta2 + delta3;
+}
+
+
 
 
 
