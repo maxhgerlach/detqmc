@@ -17,6 +17,7 @@
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
+typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
 
@@ -59,9 +60,9 @@ protected:
 
 	//three component sdw-order parameter,
 	//column indexes timeslice, row indexes site
+	MatNum phi0;
 	MatNum phi1;
 	MatNum phi2;
-	MatNum phi3;
 	//evaluation of element-wise functions of phi:
 	MatNum phiCosh;			// cosh(|phi|)
 	MatNum phiSinh;			// sinh(|phi|) / |phi|

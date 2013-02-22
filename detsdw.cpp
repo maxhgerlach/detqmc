@@ -18,13 +18,13 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 }
 
 DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
-		DetModelGC<1,cpx>(pars, L*L),
+		DetModelGC<1,cpx>(pars, 4 * L*L),
 		rng(rng_),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-		phi1(N, m+1), phi2(N, m+1), phi3(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1)
+		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1)
 {
 	setupRandomPhi();
 	setupPropK();
@@ -65,12 +65,12 @@ void DetSDW::measure() {
 void DetSDW::setupRandomPhi() {
 	for_each_timeslice( [this](unsigned k) {
 		for_each_site( [this, k](unsigned site) {
+			phi0(site, k) = rng.randRange(PhiLow, PhiHigh);
 			phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
 			phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
-			phi3(site, k) = rng.randRange(PhiLow, PhiHigh);
-			num phiNorm = std::sqrt(std::pow(phi1(site, k), 2)
-			+ std::pow(phi2(site, k), 2)
-			+ std::pow(phi3(site, k), 2));
+			num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
+			+ std::pow(phi1(site, k), 2)
+			+ std::pow(phi2(site, k), 2));
 			phiCosh(site, k) = std::cosh(phiNorm);
 			phiSinh(site, k) = std::sinh(phiNorm) / phiNorm;
 		} );
@@ -113,33 +113,33 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 			return result.submat(row * N, col * N,
 					             row * (N + 1) - 1, col * (N + 1) - 1);
 		};
+		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
 		auto& kphi2 = phi2.col(k);
-		auto& kphi3 = phi3.col(k);
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
 		block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx, zeros(N,N));
 		block(0, 1).zeros();
-		block(0, 2) = MatCpx(diagmat(+kphi3 * kphiSinh) * propKy,
+		block(0, 2) = MatCpx(diagmat(+kphi2 * kphiSinh) * propKy,
 				zeros(N,N));
-		block(0, 3) = MatCpx(diagmat( kphi1 * kphiSinh) * propKy,
-				diagmat(-kphi2 * kphiSinh) * propKy);
+		block(0, 3) = MatCpx(diagmat( kphi0 * kphiSinh) * propKy,
+				diagmat(-kphi1 * kphiSinh) * propKy);
 		block(1, 0).zeros();
 		block(1, 1) = block(0, 0);
-		block(1, 2) = MatCpx(diagmat( kphi1 * kphiSinh) * propKy,
-				diagmat(+kphi2 * kphiSinh) * propKy);
-		block(1, 3) = MatCpx(diagmat(-kphi3 * kphiSinh) * propKy,
+		block(1, 2) = MatCpx(diagmat( kphi0 * kphiSinh) * propKy,
+				diagmat(+kphi1 * kphiSinh) * propKy);
+		block(1, 3) = MatCpx(diagmat(-kphi2 * kphiSinh) * propKy,
 				zeros(N,N));
-		block(2, 0) = MatCpx(diagmat(+kphi3 * kphiSinh) * propKx,
+		block(2, 0) = MatCpx(diagmat(+kphi2 * kphiSinh) * propKx,
 				zeros(N,N));
-		block(2, 1) = MatCpx(diagmat( kphi1 * kphiSinh) * propKx,
-				diagmat(-kphi2 * kphiSinh) * propKx);
+		block(2, 1) = MatCpx(diagmat( kphi0 * kphiSinh) * propKx,
+				diagmat(-kphi1 * kphiSinh) * propKx);
 		block(2, 2) = block(0, 0);
 		block(2, 3).zeros();
-		block(3, 0) = MatCpx(diagmat( kphi1 * kphiSinh) * propKx,
-				diagmat(+kphi2 * kphiSinh) * propKx);
-		block(3, 1) = MatCpx(diagmat(-kphi3 * kphiSinh) * propKy,
+		block(3, 0) = MatCpx(diagmat( kphi0 * kphiSinh) * propKx,
+				diagmat(+kphi1 * kphiSinh) * propKx);
+		block(3, 1) = MatCpx(diagmat(-kphi2 * kphiSinh) * propKy,
 				zeros(N,N));
 		block(3, 2).zeros();
 		block(3, 3) = block(0, 0);
@@ -159,6 +159,76 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 void DetSDW::updateInSlice(unsigned timeslice) {
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
+
+		num propSPhi = std::exp(-deltaSPhi(site, timeslice, newphi));
+
+		//delta = e^(V_new)*e^(-V_old) - 1
+
+		//compute non-zero elements of delta
+		auto evMatrix = [](int sign, num kphi0, num kphi1,
+						   num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
+			MatNum::fixed<4,4> ev_real;
+			ev_real.diag().fill(kphiCosh);
+			ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
+			ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
+			ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
+			ev_real(3,0) = ev_real(1,2) = -sign * kphi1 * kphiSinh;
+			ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
+
+			MatCpx::fixed<4,4> ev;
+			ev.set_real(ev_real);
+			ev(0,3).imag(-sign * kphi1 * kphiSinh);
+			ev(1,2).imag( sign * kphi1 * kphiSinh);
+			ev(2,1).imag(-sign * kphi1 * kphiSinh);
+			ev(3,0).imag( sign * kphi1 * kphiSinh);
+
+			return ev;
+		};
+		MatCpx::fixed<4,4> emv = evMatrix(
+				-1,
+				phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
+				phiCosh(site, timeslice), phiSinh(site, timeslice)
+				);
+		num normnewphi = arma::norm(newphi,2);
+		MatCpx::fixed<4,4> env = evMatrix(
+				+1,
+				newphi[0], newphi[1], newphi[2],
+				std::cosh(normnewphi),
+				std::sinh(normnewphi) / normnewphi
+				);
+		MatCpx::fixed<4,4> deltanonzero = env * emv;
+		deltanonzero.diag() -= cpx(1.0, 0);
+
+		SpMatCpx delta(4*N, 4*N);
+		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+		//Armadilo lacks non-contiguous submatrix views for sparse matrices
+		unsigned i = 0;
+		for (auto col: idx) {
+			unsigned j = 0;
+			for (auto row: idx) {
+				delta(row, col) = deltanonzero(j, i);
+				++j;
+			}
+			++i;
+		}
+
+		//TODO: inefficient!
+		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
+		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
+
+		cpx weightRatio = arma::det(target);
+		std::cout << weightRatio << std::endl;
+		num propSFermion = weightRatio.real();
+
+		num prop = propSPhi * propSFermion;
+
+		if (prop > 1.0 or rng.rand01() < prop) {
+			phi0(site, timeslice) = newphi[0];
+			phi1(site, timeslice) = newphi[1];
+			phi2(site, timeslice) = newphi[2];
+
+			g.slice(timeslice) *= arma::inv(target);
+		}
 	});
 }
 
@@ -171,30 +241,32 @@ DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 }
 
 num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
-	const Phi oldphi = {phi1(site, timeslice),
-					    phi2(site, timeslice),
-					    phi3(site, timeslice)};
+	//calculation currently based on 3-point formulat for discretized time derivative
+
+	const Phi oldphi = {phi0(site, timeslice),
+					    phi1(site, timeslice),
+					    phi2(site, timeslice)};
 
 	num oldphiSq = arma::dot(oldphi, oldphi);
 	num newphiSq = arma::dot(newphi, newphi);
 	num delta1 = (2.0 / (8.0 * dtau*dtau * c*c) + 0.5*z + 0.5*r) * (newphiSq - oldphiSq);
 
 	unsigned kEarlier = timeNeigh(ChainDir::MINUS, timeNeigh(ChainDir::MINUS, timeslice));
-	Phi phiEarlier = Phi{phi1(site, kEarlier),
-					     phi2(site, kEarlier),
-					     phi3(site, kEarlier)};
+	Phi phiEarlier = Phi{phi0(site, kEarlier),
+					     phi1(site, kEarlier),
+					     phi2(site, kEarlier)};
 	unsigned kLater = timeNeigh(ChainDir::PLUS, timeNeigh(ChainDir::PLUS, timeslice));
-	Phi phiLater = Phi{phi1(site, kLater),
-					   phi2(site, kLater),
-					   phi3(site, kLater)};
+	Phi phiLater = Phi{phi0(site, kLater),
+					   phi1(site, kLater),
+					   phi2(site, kLater)};
 	Phi phiTimeNeigh  = (1.0 / (8.0 * dtau*dtau * c*c)) * (phiEarlier + phiLater);
 	Phi phiSpaceNeigh = 0.5 * std::accumulate(spaceNeigh.beginNeighbors(site),
 								              spaceNeigh.endNeighbors(site),
 								              Phi{0,0,0},
 								              [this, timeslice] (Phi accum, unsigned neighSite) {
-													return accum + Phi{phi1(neighSite, timeslice),
-															     	   phi2(neighSite, timeslice),
-															           phi3(neighSite, timeslice)};
+													return accum + Phi{phi0(neighSite, timeslice),
+															     	   phi1(neighSite, timeslice),
+															           phi2(neighSite, timeslice)};
 	                                           }
 											 );
 	num delta2 = -2.0 * arma::dot((phiTimeNeigh + phiSpaceNeigh), (newphi - oldphi));
