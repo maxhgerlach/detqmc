@@ -35,7 +35,7 @@ struct UdV {
 template<> inline
 UdV<std::complex<double>>::UdV(unsigned size) :
 	U(arma::eye(size,size), arma::zeros(size,size)),
-	d(arma::ones(size), arma::zeros(size,size)),
+	d(arma::ones(size), arma::zeros(size)),
 	V(arma::eye(size,size), arma::zeros(size,size))
 { }
 

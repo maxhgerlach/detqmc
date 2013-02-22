@@ -509,7 +509,9 @@ void DetModelGC<GC,V>::sweep() {
 	}
 }
 
-
+//Special handling to allow passing either 'm' or 'dtau', but not both.
+//Also check that 's' is set correctly.
+ModelParams updateTemperatureParameters(ModelParams pars);
 
 
 //compute e^{-scalar matrix}, matrix must be symmetric

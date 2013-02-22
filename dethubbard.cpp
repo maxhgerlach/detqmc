@@ -37,6 +37,8 @@ void debugSaveMatrix(const MatInt& matrix, const std::string& basename) {
 
 
 std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) {
+	pars = updateTemperatureParameters(pars);
+
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
@@ -69,25 +71,6 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	CHECK_POSITIVE(dtau);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
-
-	//Special handling to allow passing either 'm' or 'dtau', but not both.
-	//Also check that 's' is set correctly.
-	if (pars.specified.count("dtau") != 0) {
-		if (pars.specified.count("m")) {
-			throw ParameterWrong("Only specify one of the parameters m and dtau");
-		}
-		if (pars.s * pars.dtau > pars.beta) {
-			throw ParameterWrong("Parameters are incompatible: s * dtau > beta !");
-		}
-		unsigned n = unsigned(std::ceil(pars.beta / (pars.s * pars.dtau)));
-		pars.m = pars.s * n;
-	} else if (pars.specified.count("m") == 0) {
-		throw ParameterMissing("m");
-	}
-	if (pars.m % pars.s != 0) {
-		throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
-				+ " do not agree.");
-	}
 
 	return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
 }

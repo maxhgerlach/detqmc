@@ -15,6 +15,7 @@
 #pragma GCC diagnostic warning "-Wconversion"
 #include "detqmc.h"
 #include "dethubbard.h"
+#include "detsdw.h"
 #include "tools.h"
 #include "git-revision.h"
 #include "exceptions.h"
@@ -53,7 +54,10 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 
 	if (parsmodel.model == "hubbard") {
 		replica = createDetHubbard(rng, parsmodel);
-	} else {
+	} else if (parsmodel.model == "sdw") {
+		replica = createDetSDW(rng, parsmodel);
+	}
+	else {
 		throw ParameterWrong("model", parsmodel.model);
 	}
 

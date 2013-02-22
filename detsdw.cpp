@@ -21,11 +21,12 @@ const num PhiHigh = 2.0;
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//TODO: add checks
+	pars = updateTemperatureParameters(pars);
 	return std::unique_ptr<DetSDW>(new DetSDW(rng, pars));
 }
 
 DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
-		DetModelGC<1,cpx>(pars, 4 * L*L),
+		DetModelGC<1,cpx>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		spaceNeigh(L), timeNeigh(m),
@@ -128,7 +129,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		//submatrix view helper for a 4N*4N matrix
 		auto block = [&result, N](unsigned row, unsigned col) {
 			return result.submat(row * N, col * N,
-					             row * (N + 1) - 1, col * (N + 1) - 1);
+					             (row + 1) * N - 1, (col + 1) * N - 1);
 		};
 		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
