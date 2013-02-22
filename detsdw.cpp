@@ -35,6 +35,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		normPhi()
 {
+	g = CubeCpx(4*N,4*N, m+1);
+	if (pars.timedisplaced) {
+		gFwd = CubeCpx(4*N,4*N, m+1);
+		gBwd = CubeCpx(4*N,4*N, m+1);
+	}
 	setupRandomPhi();
 	setupPropK();
 	computeBmat[0] = [this](unsigned k2, unsigned k1) {
@@ -139,25 +144,25 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
 		block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx, zeros(N,N));
 		block(0, 1).zeros();
-		block(0, 2) = MatCpx(diagmat(+kphi2 * kphiSinh) * propKy,
+		block(0, 2) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
 				zeros(N,N));
-		block(0, 3) = MatCpx(diagmat( kphi0 * kphiSinh) * propKy,
-				diagmat(-kphi1 * kphiSinh) * propKy);
+		block(0, 3) = MatCpx(diagmat( kphi0 % kphiSinh) * propKy,
+				diagmat(-kphi1 % kphiSinh) * propKy);
 		block(1, 0).zeros();
 		block(1, 1) = block(0, 0);
-		block(1, 2) = MatCpx(diagmat( kphi0 * kphiSinh) * propKy,
-				diagmat(+kphi1 * kphiSinh) * propKy);
-		block(1, 3) = MatCpx(diagmat(-kphi2 * kphiSinh) * propKy,
+		block(1, 2) = MatCpx(diagmat( kphi0 % kphiSinh) * propKy,
+				diagmat(+kphi1 % kphiSinh) * propKy);
+		block(1, 3) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
 				zeros(N,N));
-		block(2, 0) = MatCpx(diagmat(+kphi2 * kphiSinh) * propKx,
+		block(2, 0) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
 				zeros(N,N));
-		block(2, 1) = MatCpx(diagmat( kphi0 * kphiSinh) * propKx,
-				diagmat(-kphi1 * kphiSinh) * propKx);
+		block(2, 1) = MatCpx(diagmat( kphi0 % kphiSinh) * propKx,
+				diagmat(-kphi1 % kphiSinh) * propKx);
 		block(2, 2) = block(0, 0);
 		block(2, 3).zeros();
-		block(3, 0) = MatCpx(diagmat( kphi0 * kphiSinh) * propKx,
-				diagmat(+kphi1 * kphiSinh) * propKx);
-		block(3, 1) = MatCpx(diagmat(-kphi2 * kphiSinh) * propKy,
+		block(3, 0) = MatCpx(diagmat( kphi0 % kphiSinh) * propKx,
+				diagmat(+kphi1 % kphiSinh) * propKx);
+		block(3, 1) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
 				zeros(N,N));
 		block(3, 2).zeros();
 		block(3, 3) = block(0, 0);
