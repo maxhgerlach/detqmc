@@ -7,6 +7,13 @@
 
 #include <cmath>
 #include <numeric>
+#include <functional>
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
+#include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#pragma GCC diagnostic warning "-Wconversion"
+#pragma GCC diagnostic warning "-Weffc++"
+#include "observable.h"
 #include "detsdw.h"
 
 const num PhiLow = 0.0;
@@ -24,7 +31,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1)
+		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
+		normPhi()
 {
 	setupRandomPhi();
 	setupPropK();
@@ -32,6 +40,10 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		return this->computeBmatSDW(k2, k1);
 	};
 	setupUdVStorage();
+
+	using std::cref;
+	using namespace boost::assign;
+	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np");
 }
 
 DetSDW::~DetSDW() {
@@ -60,6 +72,11 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 }
 
 void DetSDW::measure() {
+	Phi meanPhi;
+	meanPhi[0] = averageWholeSystem(phi0, 0.0);
+	meanPhi[1] = averageWholeSystem(phi1, 0.0);
+	meanPhi[2] = averageWholeSystem(phi2, 0.0);
+	normPhi = arma::norm(meanPhi, 2);
 }
 
 void DetSDW::setupRandomPhi() {
@@ -241,7 +258,7 @@ DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 }
 
 num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
-	//calculation currently based on 3-point formulat for discretized time derivative
+	//calculation currently based on 3-point formula for discretized time derivative
 
 	const Phi oldphi = {phi0(site, timeslice),
 					    phi1(site, timeslice),

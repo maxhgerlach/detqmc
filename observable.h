@@ -10,7 +10,11 @@
 
 #include <string>
 #include <functional>
+#pragma GCC diagnostic ignored "-Weffc++"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
+#pragma GCC diagnostic warning "-Wconversion"
+#pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
 
 //share

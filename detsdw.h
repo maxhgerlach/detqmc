@@ -68,6 +68,10 @@ protected:
 	MatNum phiSinh;			// sinh(|phi|) / |phi|
 
 
+	//Observables:
+	num normPhi;								//magnitude of averaged field
+
+
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);
@@ -84,6 +88,20 @@ protected:
     	for (unsigned k = 1; k <= m; ++k) {
     		func(k);
     	}
+    }
+    template<typename CallableSiteTimeslice, typename V>
+    V sumWholeSystem(CallableSiteTimeslice f, V init) {
+    	for (unsigned timeslice = 1; timeslice < m; ++timeslice) {
+    		for (unsigned site = 0; site < N; ++site) {
+				init += f(site, timeslice);
+			}
+    	}
+    	return init;
+    }
+    template<typename CallableSiteTimeslice, typename V>
+    V averageWholeSystem(CallableSiteTimeslice f, V init) {
+    	V sum = sumWholeSystem(f, init);
+    	return sum / num(m * N);
     }
 
     void setupRandomPhi();
