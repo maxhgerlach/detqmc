@@ -15,13 +15,34 @@
 #pragma GCC diagnostic warning "-Weffc++"
 #include "observable.h"
 #include "detsdw.h"
+#include "exceptions.h"
 
-const num PhiLow = 0.0;
+const num PhiLow = -2.0;
 const num PhiHigh = 2.0;
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//TODO: add checks
 	pars = updateTemperatureParameters(pars);
+
+	//check parameters: passed all that are necessary
+	using namespace boost::assign;
+	std::vector<std::string> neededModelPars;
+	neededModelPars += "mu", "L", "r";
+	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
+		if (pars.specified.count(*p) == 0) {
+			throw ParameterMissing(*p);
+		}
+	}
+#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
+#define CHECK_POSITIVE(x) 	{  					  						\
+								IF_NOT_POSITIVE(x) {  					\
+									throw ParameterWrong(#x, pars.x);	\
+								}										\
+							}
+	CHECK_POSITIVE(L);
+#undef CHECK_POSITIVE
+#undef IF_NOT_POSITIVE
+
 	return std::unique_ptr<DetSDW>(new DetSDW(rng, pars));
 }
 
@@ -92,8 +113,8 @@ void DetSDW::setupRandomPhi() {
 			phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
 			phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
 			num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-			+ std::pow(phi1(site, k), 2)
-			+ std::pow(phi2(site, k), 2));
+									+ std::pow(phi1(site, k), 2)
+									+ std::pow(phi2(site, k), 2));
 			phiCosh(site, k) = std::cosh(phiNorm);
 			phiSinh(site, k) = std::sinh(phiNorm) / phiNorm;
 		} );
@@ -184,6 +205,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		Phi newphi = proposeNewField(site, timeslice);
 
 		num propSPhi = std::exp(-deltaSPhi(site, timeslice, newphi));
+		std::cout << propSPhi << std::endl;
 
 		//delta = e^(V_new)*e^(-V_old) - 1
 

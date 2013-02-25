@@ -25,24 +25,13 @@
 
 
 
-void debugSaveMatrix(const MatNum& matrix, const std::string& basename) {
-	matrix.save(basename + ".csv", arma::csv_ascii);
-	matrix.save(basename + ".txt", arma::arma_ascii);
-}
-
-void debugSaveMatrix(const MatInt& matrix, const std::string& basename) {
-	matrix.save(basename + ".csv", arma::csv_ascii);
-	matrix.save(basename + ".txt", arma::arma_ascii);
-}
-
-
 std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) {
 	pars = updateTemperatureParameters(pars);
 
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "t", "U", "mu", "L", "d", "beta", "s", "checkerboard";
+	neededModelPars += "t", "U", "mu", "L", "d", "checkerboard";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
@@ -65,10 +54,6 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 							}
 	CHECK_POSITIVE(L);
 	CHECK_POSITIVE(d);
-	CHECK_POSITIVE(beta);
-	CHECK_POSITIVE(m);
-	CHECK_POSITIVE(s);
-	CHECK_POSITIVE(dtau);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 

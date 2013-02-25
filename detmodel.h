@@ -519,5 +519,9 @@ MatNum computePropagator(num scalar, const MatNum& matrix);
 
 
 
+void debugSaveMatrix(const MatNum& matrix, const std::string& basename);
+
+void debugSaveMatrix(const MatInt& matrix, const std::string& basename);
+
 
 #endif /* DETMODEL_H_ */
