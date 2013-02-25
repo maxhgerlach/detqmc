@@ -26,10 +26,13 @@
 #include "udv.h"
 #include "metadata.h"
 
+typedef std::complex<double> cpx;
+
 typedef arma::Col<num> VecNum;
 typedef arma::Mat<num> MatNum;
 typedef arma::Cube<num> CubeNum;
 typedef arma::Mat<int> MatInt;
+typedef arma::Mat<cpx> MatCpx;
 typedef arma::SpMat<num> SpMatNum;
 typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
 typedef UdV<num> UdVnum;
@@ -520,8 +523,8 @@ MatNum computePropagator(num scalar, const MatNum& matrix);
 
 
 void debugSaveMatrix(const MatNum& matrix, const std::string& basename);
-
 void debugSaveMatrix(const MatInt& matrix, const std::string& basename);
+void debugSaveMatrix(const MatCpx& matrix, const std::string& basename);
 
 
 #endif /* DETMODEL_H_ */

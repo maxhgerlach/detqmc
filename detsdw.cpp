@@ -136,7 +136,10 @@ void DetSDW::setupPropK() {
 				k(site, neigh) -= t[band][dir];
 			}
 		} );
+		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
+		debugSaveMatrix(k, name);
 		propK[band] = computePropagator(dtau, k);
+		debugSaveMatrix(propK[band], "prop" + name);
 	} );
 }
 
@@ -160,6 +163,9 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
 		auto& kphi2 = phi2.col(k);
+		debugSaveMatrix(kphi0, "kphi0");
+		debugSaveMatrix(kphi1, "kphi1");
+		debugSaveMatrix(kphi2, "kphi2");
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
@@ -179,15 +185,17 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 				zeros(N,N));
 		block(2, 1) = MatCpx(diagmat( kphi0 % kphiSinh) * propKx,
 				diagmat(-kphi1 % kphiSinh) * propKx);
-		block(2, 2) = block(0, 0);
+		block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy, zeros(N,N));
 		block(2, 3).zeros();
 		block(3, 0) = MatCpx(diagmat( kphi0 % kphiSinh) * propKx,
 				diagmat(+kphi1 % kphiSinh) * propKx);
-		block(3, 1) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
+		block(3, 1) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
 				zeros(N,N));
 		block(3, 2).zeros();
-		block(3, 3) = block(0, 0);
+		block(3, 3) = block(2, 2);
 
+		debugSaveMatrix(arma::real(result), "eVeK_real");
+		debugSaveMatrix(arma::imag(result), "eVeK_imag");
 		return result;
 	};
 

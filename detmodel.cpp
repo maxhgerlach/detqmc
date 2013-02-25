@@ -74,10 +74,12 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 
 void debugSaveMatrix(const MatNum& matrix, const std::string& basename) {
 	matrix.save(basename + ".csv", arma::csv_ascii);
-	matrix.save(basename + ".txt", arma::arma_ascii);
 }
 
 void debugSaveMatrix(const MatInt& matrix, const std::string& basename) {
 	matrix.save(basename + ".csv", arma::csv_ascii);
-	matrix.save(basename + ".txt", arma::arma_ascii);
+}
+
+void debugSaveMatrix(const MatCpx& matrix, const std::string& basename) {
+	matrix.save(basename + ".csv", arma::csv_ascii);
 }
