@@ -164,9 +164,9 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
 		auto& kphi2 = phi2.col(k);
-//		debugSaveMatrix(kphi0, "kphi0");
-//		debugSaveMatrix(kphi1, "kphi1");
-//		debugSaveMatrix(kphi2, "kphi2");
+		debugSaveMatrix(kphi0, "kphi0");
+		debugSaveMatrix(kphi1, "kphi1");
+		debugSaveMatrix(kphi2, "kphi2");
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
@@ -197,8 +197,8 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		block(3, 2).zeros();
 		block(3, 3) = block(2, 2);
 
-//		debugSaveMatrix(arma::real(result), "eVeK_real");
-//		debugSaveMatrix(arma::imag(result), "eVeK_imag");
+		debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
+		debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
 		return result;
 	};
 
