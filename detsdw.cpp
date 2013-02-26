@@ -115,8 +115,8 @@ void DetSDW::setupRandomPhi() {
 			num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
 									+ std::pow(phi1(site, k), 2)
 									+ std::pow(phi2(site, k), 2));
-			phiCosh(site, k) = std::cosh(phiNorm);
-			phiSinh(site, k) = std::sinh(phiNorm) / phiNorm;
+			phiCosh(site, k) = std::cosh(dtau * phiNorm);
+			phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
 		} );
 	} );
 }
@@ -163,9 +163,9 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
 		auto& kphi2 = phi2.col(k);
-		debugSaveMatrix(kphi0, "kphi0");
-		debugSaveMatrix(kphi1, "kphi1");
-		debugSaveMatrix(kphi2, "kphi2");
+//		debugSaveMatrix(kphi0, "kphi0");
+//		debugSaveMatrix(kphi1, "kphi1");
+//		debugSaveMatrix(kphi2, "kphi2");
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
@@ -194,8 +194,8 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		block(3, 2).zeros();
 		block(3, 3) = block(2, 2);
 
-		debugSaveMatrix(arma::real(result), "eVeK_real");
-		debugSaveMatrix(arma::imag(result), "eVeK_imag");
+//		debugSaveMatrix(arma::real(result), "eVeK_real");
+//		debugSaveMatrix(arma::imag(result), "eVeK_imag");
 		return result;
 	};
 
@@ -279,6 +279,11 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
 			phi2(site, timeslice) = newphi[2];
+			num phiNorm = std::sqrt(std::pow(phi0(site, timeslice), 2)
+									+ std::pow(phi1(site, timeslice), 2)
+									+ std::pow(phi2(site, timeslice), 2));
+			phiCosh(site, timeslice) = std::cosh(dtau * phiNorm);
+			phiSinh(site, timeslice) = std::sinh(dtau * phiNorm) / phiNorm;
 
 			g.slice(timeslice) *= arma::inv(target);
 		}

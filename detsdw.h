@@ -64,8 +64,8 @@ protected:
 	MatNum phi1;
 	MatNum phi2;
 	//evaluation of element-wise functions of phi:
-	MatNum phiCosh;			// cosh(|phi|)
-	MatNum phiSinh;			// sinh(|phi|) / |phi|
+	MatNum phiCosh;			// cosh(dtau * |phi|)
+	MatNum phiSinh;			// sinh(dtau * |phi|) / |phi|
 
 
 	//Observables:
