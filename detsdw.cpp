@@ -19,6 +19,7 @@
 
 const num PhiLow = -2.0;
 const num PhiHigh = 2.0;
+const num PhiDelta = 0.1;
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//TODO: add checks
@@ -137,9 +138,9 @@ void DetSDW::setupPropK() {
 			}
 		} );
 		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
-		debugSaveMatrix(k, name);
+//		debugSaveMatrix(k, name);
 		propK[band] = computePropagator(dtau, k);
-		debugSaveMatrix(propK[band], "prop" + name);
+//		debugSaveMatrix(propK[band], "prop" + name);
 	} );
 }
 
@@ -150,7 +151,6 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	}
 	assert(k2 > k1);
 	assert(k2 <= m);
-
 
 	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
 	auto singleTimesliceProp = [this, N](unsigned k) {
@@ -164,9 +164,9 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		auto& kphi0 = phi0.col(k);
 		auto& kphi1 = phi1.col(k);
 		auto& kphi2 = phi2.col(k);
-		debugSaveMatrix(kphi0, "kphi0");
-		debugSaveMatrix(kphi1, "kphi1");
-		debugSaveMatrix(kphi2, "kphi2");
+//		debugSaveMatrix(kphi0, "kphi0");
+//		debugSaveMatrix(kphi1, "kphi1");
+//		debugSaveMatrix(kphi2, "kphi2");
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
@@ -197,8 +197,8 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		block(3, 2).zeros();
 		block(3, 3) = block(2, 2);
 
-		debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
-		debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
+//		debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
+//		debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
 		return result;
 	};
 
@@ -215,8 +215,25 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
 
+		VecNum oldphi0 = phi0.col(timeslice);
+		VecNum oldphi1 = phi1.col(timeslice);
+		VecNum oldphi2 = phi2.col(timeslice);
+		debugSaveMatrix(oldphi0, "old_phi0");
+		debugSaveMatrix(oldphi1, "old_phi1");
+		debugSaveMatrix(oldphi2, "old_phi2");
+
+		VecNum newphi0 = phi0.col(timeslice);
+		VecNum newphi1 = phi1.col(timeslice);
+		VecNum newphi2 = phi2.col(timeslice);
+		newphi0[site] = newphi[0];
+		newphi1[site] = newphi[1];
+		newphi2[site] = newphi[2];
+		debugSaveMatrix(newphi0, "new_phi0");
+		debugSaveMatrix(newphi1, "new_phi1");
+		debugSaveMatrix(newphi2, "new_phi2");
+
 		num propSPhi = std::exp(-deltaSPhi(site, timeslice, newphi));
-		std::cout << propSPhi << std::endl;
+//		std::cout << propSPhi << std::endl;
 
 		//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
@@ -268,12 +285,20 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			++i;
 		}
 
+		MatCpx deltaDense(4*N,4*N);
+		deltaDense = delta;
+		debugSaveMatrix(MatNum(arma::real(deltaDense)), "delta_real");
+		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
+
 		//TODO: inefficient!
 		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
 		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
+		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
+		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
+
 		cpx weightRatio = arma::det(target);
-		std::cout << weightRatio << std::endl;
+//		std::cout << weightRatio << std::endl;
 		num propSFermion = weightRatio.real();
 
 		num prop = propSPhi * propSFermion;
@@ -288,7 +313,12 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			phiCosh(site, timeslice) = std::cosh(dtau * phiNorm);
 			phiSinh(site, timeslice) = std::sinh(dtau * phiNorm) / phiNorm;
 
+			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
+			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
 			g.slice(timeslice) *= arma::inv(target);
+			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
+			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
+			(void)prop;
 		}
 	});
 }
@@ -296,9 +326,18 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 	(void) site; (void) timeslice;
 	//TODO: make this smarter!
-	return Phi{rng.randRange(PhiLow, PhiHigh),
-			   rng.randRange(PhiLow, PhiHigh),
-			   rng.randRange(PhiLow, PhiHigh)};
+
+	Phi phi = { phi0(site, timeslice),
+			    phi1(site, timeslice),
+			    phi2(site, timeslice)
+	          };
+
+	for (auto& comp: phi) {
+		num r = rng.randRange(-PhiDelta, +PhiDelta);
+		comp += r;
+	}
+
+	return phi;
 }
 
 num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
