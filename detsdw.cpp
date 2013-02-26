@@ -218,7 +218,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		num propSPhi = std::exp(-deltaSPhi(site, timeslice, newphi));
 		std::cout << propSPhi << std::endl;
 
-		//delta = e^(V_new)*e^(-V_old) - 1
+		//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
 		//compute non-zero elements of delta
 		auto evMatrix = [](int sign, num kphi0, num kphi1,
@@ -228,7 +228,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
 			ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
 			ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
-			ev_real(3,0) = ev_real(1,2) = -sign * kphi1 * kphiSinh;
+			ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
 			ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
 
 			MatCpx::fixed<4,4> ev;
@@ -240,19 +240,19 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 
 			return ev;
 		};
-		MatCpx::fixed<4,4> emv = evMatrix(
-				-1,
+		MatCpx::fixed<4,4> evOld = evMatrix(
+				+1,
 				phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
 				phiCosh(site, timeslice), phiSinh(site, timeslice)
 				);
 		num normnewphi = arma::norm(newphi,2);
-		MatCpx::fixed<4,4> env = evMatrix(
-				+1,
+		MatCpx::fixed<4,4> emvNew = evMatrix(
+				-1,
 				newphi[0], newphi[1], newphi[2],
-				std::cosh(normnewphi),
-				std::sinh(normnewphi) / normnewphi
+				std::cosh(dtau * normnewphi),
+				std::sinh(dtau * normnewphi) / normnewphi
 				);
-		MatCpx::fixed<4,4> deltanonzero = env * emv;
+		MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
 		deltanonzero.diag() -= cpx(1.0, 0);
 
 		SpMatCpx delta(4*N, 4*N);
