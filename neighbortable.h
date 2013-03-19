@@ -90,7 +90,7 @@ public:
 		}
 		return site;
 	}
-private:
+protected:
 	unsigned d; 	//spatial dimension
 	unsigned L;		//linear extent
 	unsigned N;		//number of sites
@@ -104,7 +104,9 @@ class PeriodicSquareLatticeNearestNeighbors : public PeriodicCubicLatticeNearest
 public:
 	PeriodicSquareLatticeNearestNeighbors(unsigned L)
 		: PeriodicCubicLatticeNearestNeighbors(2, L)
-	{ }
+	{
+		nearestNeighbors.save("neighbors.csv", arma::csv_ascii);
+	}
 };
 
 
@@ -118,7 +120,9 @@ class PeriodicChainNearestNeighbors : public PeriodicCubicLatticeNearestNeighbor
 public:
 	PeriodicChainNearestNeighbors(unsigned L)
 		: PeriodicCubicLatticeNearestNeighbors(1, L)
-	{ }
+	{
+		nearestNeighbors.save("timeneighbors.csv", arma::csv_ascii);
+	}
 
 	unsigned operator()(unsigned latticeDirection, unsigned site) const {
 		return PeriodicCubicLatticeNearestNeighbors::operator ()(latticeDirection, site - startWith)

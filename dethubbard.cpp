@@ -189,6 +189,8 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 
 		assert(ratio > 0.0);
 
+//		std::cout << ratio << '\n';
+
 		//Metropolis
 		if (ratio > 1.0 or rng.rand01() < ratio) {
 			//			if (refRatio > 1 or rng.rand01() < refRatio) {

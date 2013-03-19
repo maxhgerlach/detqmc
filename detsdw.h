@@ -115,6 +115,9 @@ protected:
 	typedef VecNum::fixed<3> Phi;		//value of the three-component field at a single site and timeslice
 	Phi proposeNewField(unsigned site, unsigned timeslice);
 	num deltaSPhi(unsigned site, unsigned timeslice, Phi newphi);
+
+	//compute the total value of the action associated with the field phi
+	num phiAction();
 };
 
 #endif /* DETSDW_H_ */

@@ -218,9 +218,9 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		VecNum oldphi0 = phi0.col(timeslice);
 		VecNum oldphi1 = phi1.col(timeslice);
 		VecNum oldphi2 = phi2.col(timeslice);
-		debugSaveMatrix(oldphi0, "old_phi0");
-		debugSaveMatrix(oldphi1, "old_phi1");
-		debugSaveMatrix(oldphi2, "old_phi2");
+//		debugSaveMatrix(oldphi0, "old_phi0");
+//		debugSaveMatrix(oldphi1, "old_phi1");
+//		debugSaveMatrix(oldphi2, "old_phi2");
 
 		VecNum newphi0 = phi0.col(timeslice);
 		VecNum newphi1 = phi1.col(timeslice);
@@ -228,11 +228,12 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		newphi0[site] = newphi[0];
 		newphi1[site] = newphi[1];
 		newphi2[site] = newphi[2];
-		debugSaveMatrix(newphi0, "new_phi0");
-		debugSaveMatrix(newphi1, "new_phi1");
-		debugSaveMatrix(newphi2, "new_phi2");
+//		debugSaveMatrix(newphi0, "new_phi0");
+//		debugSaveMatrix(newphi1, "new_phi1");
+//		debugSaveMatrix(newphi2, "new_phi2");
 
-		num propSPhi = std::exp(-deltaSPhi(site, timeslice, newphi));
+		num dsphi = deltaSPhi(site, timeslice, newphi);
+		num propSPhi = std::exp(-dsphi);
 //		std::cout << propSPhi << std::endl;
 
 		//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
@@ -285,17 +286,17 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			++i;
 		}
 
-		MatCpx deltaDense(4*N,4*N);
-		deltaDense = delta;
-		debugSaveMatrix(MatNum(arma::real(deltaDense)), "delta_real");
-		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
+//		MatCpx deltaDense(4*N,4*N);
+//		deltaDense = delta;
+//		debugSaveMatrix(MatNum(arma::real(deltaDense)), "delta_real");
+//		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
 
 		//TODO: inefficient!
 		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
 		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
-		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
-		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
+//		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
+//		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
 
 		cpx weightRatio = arma::det(target);
 //		std::cout << weightRatio << std::endl;
@@ -304,20 +305,24 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		num prop = propSPhi * propSFermion;
 
 		if (prop > 1.0 or rng.rand01() < prop) {
+//			num phisBefore = phiAction();
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
 			phi2(site, timeslice) = newphi[2];
+//			num phisAfter = phiAction();
+//			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
+//					(phisAfter - phisBefore) << std::endl;
 			num phiNorm = std::sqrt(std::pow(phi0(site, timeslice), 2)
 									+ std::pow(phi1(site, timeslice), 2)
 									+ std::pow(phi2(site, timeslice), 2));
 			phiCosh(site, timeslice) = std::cosh(dtau * phiNorm);
 			phiSinh(site, timeslice) = std::sinh(dtau * phiNorm) / phiNorm;
 
-			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
-			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
+//			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
+//			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
 			g.slice(timeslice) *= arma::inv(target);
-			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
-			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
+//			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
+//			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
 			(void)prop;
 		}
 	});
@@ -377,6 +382,42 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 
 	return delta1 + delta2 + delta3;
 }
+
+num DetSDW::phiAction() {
+	num action = 0;
+	arma::field<Phi> phi(N, m+1);
+	for (unsigned timeslice = 1; timeslice < m + 1; ++timeslice) {
+		for (unsigned site = 0; site < N; ++site) {
+			phi(site, timeslice)[0] = phi0(site, timeslice);
+			phi(site, timeslice)[1] = phi1(site, timeslice);
+			phi(site, timeslice)[2] = phi2(site, timeslice);
+		}
+	}
+
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		for (unsigned site = 0; site < N; ++site) {
+			Phi timeDerivative =
+					(phi(site, timeNeigh(ChainDir::PLUS, timeslice)) -
+							phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
+					/ (2*dtau);
+			action += 0.5 * arma::dot(timeDerivative, timeDerivative);
+
+			Phi xneighDiff = phi(site, timeslice) -
+					phi(spaceNeigh(XPLUS, site), timeslice);
+			action += 0.5 * arma::dot(xneighDiff, xneighDiff);
+			Phi yneighDiff = phi(site, timeslice) -
+					phi(spaceNeigh(YPLUS, site), timeslice);
+			action += 0.5 * arma::dot(yneighDiff, yneighDiff);
+
+			num phisq = arma::dot(phi(site, timeslice), phi(site, timeslice));
+			action += 0.5 * r * phisq;
+
+			action += 0.25 * std::pow(phisq, 2);
+		}
+	}
+	return action;
+}
+
 
 
 
