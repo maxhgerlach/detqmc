@@ -273,34 +273,79 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
 		deltanonzero.diag() -= cpx(1.0, 0);
 
-		SpMatCpx delta(4*N, 4*N);
-		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
-		//Armadilo lacks non-contiguous submatrix views for sparse matrices
-		unsigned i = 0;
-		for (auto col: idx) {
-			unsigned j = 0;
-			for (auto row: idx) {
-				delta(row, col) = deltanonzero(j, i);
-				++j;
+		//****
+		//Compute the determinant and inverse of I + Delta*(I - G)
+		//based on Sherman-Morrison formula / Matrix-Determinant lemma
+		//****
+
+		//Delta*(I - G) is a sparse matrix containing just 4 rows:
+		//site, site+N, site+2N, site+3N
+		//Compute the values of these rows [O(N)]:
+		std::array<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+		for (unsigned r = 0; r < 4; ++r) {
+			for (unsigned i = 0; i < 4; ++i) {
+				for (unsigned col = 0; col < 4*N; ++col) {
+					rows[r][col] = -deltanonzero(r,i) * g.slice(timeslice).col(col)[site + i*N];
+				}
+				rows[r][site + i*N] += deltanonzero(r,i);
 			}
-			++i;
 		}
+
+		// [I + Delta*(I - G)]^(-1) again is a sparse matrix
+		// with four rows site, site+N, site+2N, site+3N
+		// compute them iteratively, together with the determinant of
+		// I + Delta*(I - G)
+		// Apart from these rows, the remaining diagonal entries of
+		// [I + Delta*(I - G)]^(-1) are 1
+		// TODO: get rid of unnecessary storage
+		std::array<VecCpx, 4> invRows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+		cpx det = 1;
+		for (unsigned l = 0; l < 4; ++l) {
+			VecCpx row = rows[l];
+			for (int k = l-1; k >= 0; --k) {
+				row[site + k*N] = 0;
+			}
+			for (int k = l-1; k >= 0; --k) {
+				row += rows[l][site + k*N] * invRows[k];
+			}
+			cpx divisor = cpx(1,0) + row[site + l*N];
+			invRows[l] = (-1.0/divisor) * row;
+			invRows[l][site + l*N] += 1;
+			for (int k = l - 1; k >= 0; --k) {
+				invRows[k] -= (invRows[k][site + l*N] / divisor) * row;
+			}
+			det *= divisor;
+		}
+
+//		SpMatCpx delta(4*N, 4*N);
+//		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+//		//Armadilo lacks non-contiguous submatrix views for sparse matrices
+//		unsigned i = 0;
+//		for (auto col: idx) {
+//			unsigned j = 0;
+//			for (auto row: idx) {
+//				delta(row, col) = deltanonzero(j, i);
+//				++j;
+//			}
+//			++i;
+//		}
 
 //		MatCpx deltaDense(4*N,4*N);
 //		deltaDense = delta;
 //		debugSaveMatrix(MatNum(arma::real(deltaDense)), "delta_real");
 //		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
 
-		//TODO: inefficient!
-		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
-		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
+//		//TODO: inefficient!
+//		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
+//		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
 //		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
 //		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
 
-		cpx weightRatio = arma::det(target);
+//		cpx weightRatio = arma::det(target);
 //		std::cout << weightRatio << std::endl;
-		num propSFermion = weightRatio.real();
+
+		num propSFermion = det.real();
 
 		num prop = propSPhi * propSFermion;
 
@@ -320,10 +365,23 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
-			g.slice(timeslice) *= arma::inv(target);
+//			g.slice(timeslice) *= arma::inv(target);
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
-			(void)prop;
+
+			//compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
+			MatCpx gTimesInvRows(4*N, 4*N);
+			const auto& G = g.slice(timeslice);
+			for (unsigned col = 0; col < 4*N; ++col) {
+				for (unsigned row = 0; row < 4*N; ++row) {
+					gTimesInvRows(row, col) = G(row, site) * invRows[0][col]
+					                        + G(row, site + N) * invRows[1][col]
+					                        + G(row, site + 2*N) * invRows[2][col]
+					                        + G(row, site + 3*N) * invRows[3][col]
+					                        ;
+				}
+			}
+			g.slice(timeslice) += gTimesInvRows;
 		}
 	});
 }
