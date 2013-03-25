@@ -283,13 +283,36 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		//Compute the values of these rows [O(N)]:
 		std::array<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
 		for (unsigned r = 0; r < 4; ++r) {
-			for (unsigned i = 0; i < 4; ++i) {
+			for (unsigned col = 0; col < 4*N; ++col) {
+				rows[r][col] = -deltanonzero(r,0) * g.slice(timeslice).col(col)[site];
+			}
+			rows[r][site] += deltanonzero(r,0);
+			for (unsigned dc = 1; dc < 4; ++dc) { //c schlechter Bezeichner
 				for (unsigned col = 0; col < 4*N; ++col) {
-					rows[r][col] = -deltanonzero(r,i) * g.slice(timeslice).col(col)[site + i*N];
+					rows[r][col] += -deltanonzero(r,dc) * g.slice(timeslice).col(col)[site + dc*N];
 				}
-				rows[r][site + i*N] += deltanonzero(r,i);
+				rows[r][site + dc*N] += deltanonzero(r,dc);
 			}
 		}
+
+//		std::array<VecCpx, 4> rows {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+//		for (unsigned r = 0; r < 4; ++r) {
+//			for (unsigned col = 0; col < 4*N; ++col) {
+//				rows[r][col] = 0;
+//			}
+//		}
+//		for (unsigned r = 0; r < 4; ++r) {
+//			for (unsigned dc = 0; dc < 4; ++dc) {
+//				rows[r][site + dc*N] = deltanonzero(r,dc);
+//			}
+//		}
+//		for (unsigned r = 0; r < 4; ++r) {
+//			for (unsigned col = 0; col < 4*N; ++col) {
+//				for (unsigned dc = 0; dc < 4; ++dc) {
+//					rows[r][col] -= deltanonzero(r, dc) * g.slice(timeslice).col(col)[site + dc*N];
+//				}
+//			}
+//		}
 
 		// [I + Delta*(I - G)]^(-1) again is a sparse matrix
 		// with four rows site, site+N, site+2N, site+3N
@@ -308,7 +331,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			for (int k = l-1; k >= 0; --k) {
 				row += rows[l][site + k*N] * invRows[k];
 			}
-			cpx divisor = cpx(1,0) + row[site + l*N];
+			cpx divisor = cpx(1.0, 0) + row[site + l*N];
 			invRows[l] = (-1.0/divisor) * row;
 			invRows[l][site + l*N] += 1;
 			for (int k = l - 1; k >= 0; --k) {
@@ -317,18 +340,22 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			det *= divisor;
 		}
 
-//		SpMatCpx delta(4*N, 4*N);
-//		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
-//		//Armadilo lacks non-contiguous submatrix views for sparse matrices
-//		unsigned i = 0;
-//		for (auto col: idx) {
-//			unsigned j = 0;
-//			for (auto row: idx) {
-//				delta(row, col) = deltanonzero(j, i);
-//				++j;
-//			}
-//			++i;
-//		}
+		//****
+		//DEBUG: This slow code was working before.
+		//Compare results with the better-performing sherman-morrison code
+		SpMatCpx delta(4*N, 4*N);
+		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+		//Armadilo lacks non-contiguous submatrix views for sparse matrices
+		unsigned i = 0;
+		for (auto col: idx) {
+			unsigned j = 0;
+			for (auto row: idx) {
+				delta(row, col) = deltanonzero(j, i);
+				++j;
+			}
+			++i;
+		}
+
 
 //		MatCpx deltaDense(4*N,4*N);
 //		deltaDense = delta;
@@ -336,14 +363,46 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 //		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
 
 //		//TODO: inefficient!
-//		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
-//		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
+		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
+		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
 //		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
 //		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
 
-//		cpx weightRatio = arma::det(target);
+		cpx weightRatio = arma::det(target);
 //		std::cout << weightRatio << std::endl;
+
+		std::cout << weightRatio << " vs. " << det << std::endl;
+		//END DEBUG
+		//****
+
+		//****
+		// DEBUG-CHECK Delta*(I - G) vs. rows
+//		MatCpx check = delta * (eyeCpx - g.slice(timeslice));
+//		for (unsigned r = 0; r < 4; ++r) {
+//			check.row(site + r*N) -= rows[r].st();
+//		}
+//		std::cout << "Row check: " << arma::max(arma::max(arma::abs(check))) << std::endl;
+//		debugSaveMatrix(MatNum(arma::real(check)), "check_real");
+//		debugSaveMatrix(MatNum(arma::imag(check)), "check_imag");
+//		exit(0);
+		// END-DEBUG-CHECK
+		//****
+
+		//****
+		//DEBUG-CHECK [I+Delta*(I - G)]^(-1) vs. invRows
+		MatCpx inv = arma::inv(target);
+		inv -= eyeCpx;
+		for (unsigned r = 0; r < 4; ++r) {
+			inv.row(site + r*N) -= invRows[r].st();
+			inv.row(site + r*N)[site + r*N] += 1;
+		}
+		std::cout << "inv-div: " << arma::max(arma::max(inv)) << std::endl;
+		//END-DEBUG-CHECK
+		//****
+
+
+
 
 		num propSFermion = det.real();
 
@@ -369,6 +428,17 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
 
+			//****
+			//DEBUG
+			MatCpx gPrimeRef = g.slice(timeslice) * arma::inv(target);
+			//END DEBUG
+			//****
+
+			//compensate for already included diagonal entries of I in invRows
+			invRows[0][site] -= 1;
+			invRows[1][site + N] -= 1;
+			invRows[2][site + 2*N] -= 1;
+			invRows[3][site + 3*N] -= 1;
 			//compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
 			MatCpx gTimesInvRows(4*N, 4*N);
 			const auto& G = g.slice(timeslice);
@@ -382,6 +452,14 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 				}
 			}
 			g.slice(timeslice) += gTimesInvRows;
+
+			//****
+			//DEBUG
+			std::cout << arma::max(arma::max(
+					(arma::abs(gPrimeRef - g.slice(timeslice))))) << std::endl;
+			//END DEBUG
+			//****
+
 		}
 	});
 }
