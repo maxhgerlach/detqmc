@@ -323,24 +323,24 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		}
 
 		//****DEBUG
-		std::array<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
+//		std::array<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
 		//****END-DEBUG
 
 		//****
 		//DEBUG: This slow code was working before.
 		//Compare results with the better-performing sherman-morrison code
-		SpMatCpx delta(4*N, 4*N);
-		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
-		//Armadilo lacks non-contiguous submatrix views for sparse matrices
-		unsigned i = 0;
-		for (auto col: idx) {
-			unsigned j = 0;
-			for (auto row: idx) {
-				delta(row, col) = deltanonzero(j, i);
-				++j;
-			}
-			++i;
-		}
+//		SpMatCpx delta(4*N, 4*N);
+//		arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+//		//Armadilo lacks non-contiguous submatrix views for sparse matrices
+//		unsigned i = 0;
+//		for (auto col: idx) {
+//			unsigned j = 0;
+//			for (auto row: idx) {
+//				delta(row, col) = deltanonzero(j, i);
+//				++j;
+//			}
+//			++i;
+//		}
 
 
 //		MatCpx deltaDense(4*N,4*N);
@@ -349,16 +349,16 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 //		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
 
 //		//TODO: inefficient!
-		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
-		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
+//		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
+//		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
 //		debugSaveMatrix(MatNum(arma::real(target)), "target_real");
 //		debugSaveMatrix(MatNum(arma::imag(target)), "target_imag");
 
-		cpx weightRatio = arma::det(target);
+//		cpx weightRatio = arma::det(target);
 //		std::cout << weightRatio << std::endl;
 
-		std::cout << weightRatio << " vs. " << det << std::endl;
+//		std::cout << weightRatio << " vs. " << det << std::endl;
 		//END DEBUG
 		//****
 
@@ -377,13 +377,13 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 
 		//****
 		//DEBUG-CHECK [I+Delta*(I - G)]^(-1) vs. invRows
-		MatCpx inv = arma::inv(target);
-		inv -= eyeCpx;
-		for (unsigned r = 0; r < 4; ++r) {
-			inv.row(site + r*N) -= invRows[r].st();
-			inv.row(site + r*N)[site + r*N] += 1;
-		}
-		std::cout << "inv-div: " << arma::max(arma::max(inv)) << std::endl;
+//		MatCpx inv = arma::inv(target);
+//		inv -= eyeCpx;
+//		for (unsigned r = 0; r < 4; ++r) {
+//			inv.row(site + r*N) -= invRows[r].st();
+//			inv.row(site + r*N)[site + r*N] += 1;
+//		}
+//		std::cout << "inv-div: " << arma::max(arma::max(inv)) << std::endl;
 		//END-DEBUG-CHECK
 		//****
 
@@ -416,7 +416,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 
 			//****
 			//DEBUG
-			MatCpx gPrimeRef = g.slice(timeslice) * arma::inv(target);
+//			MatCpx gPrimeRef = g.slice(timeslice) * arma::inv(target);
 			//END DEBUG
 			//****
 
@@ -441,11 +441,10 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 
 			//****
 			//DEBUG
-			std::cout << arma::max(arma::max(
-					(arma::abs(gPrimeRef - g.slice(timeslice))))) << std::endl;
+//			std::cout << arma::max(arma::max(
+//					(arma::abs(gPrimeRef - g.slice(timeslice))))) << std::endl;
 			//END DEBUG
 			//****
-
 		}
 	});
 }
