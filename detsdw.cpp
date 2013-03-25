@@ -287,7 +287,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 				rows[r][col] = -deltanonzero(r,0) * g.slice(timeslice).col(col)[site];
 			}
 			rows[r][site] += deltanonzero(r,0);
-			for (unsigned dc = 1; dc < 4; ++dc) { //c schlechter Bezeichner
+			for (unsigned dc = 1; dc < 4; ++dc) {
 				for (unsigned col = 0; col < 4*N; ++col) {
 					rows[r][col] += -deltanonzero(r,dc) * g.slice(timeslice).col(col)[site + dc*N];
 				}
@@ -295,33 +295,15 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			}
 		}
 
-//		std::array<VecCpx, 4> rows {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
-//		for (unsigned r = 0; r < 4; ++r) {
-//			for (unsigned col = 0; col < 4*N; ++col) {
-//				rows[r][col] = 0;
-//			}
-//		}
-//		for (unsigned r = 0; r < 4; ++r) {
-//			for (unsigned dc = 0; dc < 4; ++dc) {
-//				rows[r][site + dc*N] = deltanonzero(r,dc);
-//			}
-//		}
-//		for (unsigned r = 0; r < 4; ++r) {
-//			for (unsigned col = 0; col < 4*N; ++col) {
-//				for (unsigned dc = 0; dc < 4; ++dc) {
-//					rows[r][col] -= deltanonzero(r, dc) * g.slice(timeslice).col(col)[site + dc*N];
-//				}
-//			}
-//		}
-
 		// [I + Delta*(I - G)]^(-1) again is a sparse matrix
 		// with four rows site, site+N, site+2N, site+3N
 		// compute them iteratively, together with the determinant of
 		// I + Delta*(I - G)
 		// Apart from these rows, the remaining diagonal entries of
 		// [I + Delta*(I - G)]^(-1) are 1
-		// TODO: get rid of unnecessary storage
-		std::array<VecCpx, 4> invRows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+		//
+		// before this loop rows[] holds the entries of Delta*(I - G),
+		// after the loop rows[] holds the corresponding rows of [I + Delta*(I - G)]^(-1)
 		cpx det = 1;
 		for (unsigned l = 0; l < 4; ++l) {
 			VecCpx row = rows[l];
@@ -329,16 +311,20 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 				row[site + k*N] = 0;
 			}
 			for (int k = l-1; k >= 0; --k) {
-				row += rows[l][site + k*N] * invRows[k];
+				row += rows[l][site + k*N] * rows[k];
 			}
 			cpx divisor = cpx(1.0, 0) + row[site + l*N];
-			invRows[l] = (-1.0/divisor) * row;
-			invRows[l][site + l*N] += 1;
+			rows[l] = (-1.0/divisor) * row;
+			rows[l][site + l*N] += 1;
 			for (int k = l - 1; k >= 0; --k) {
-				invRows[k] -= (invRows[k][site + l*N] / divisor) * row;
+				rows[k] -= (rows[k][site + l*N] / divisor) * row;
 			}
 			det *= divisor;
 		}
+
+		//****DEBUG
+		std::array<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
+		//****END-DEBUG
 
 		//****
 		//DEBUG: This slow code was working before.
@@ -435,19 +421,19 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			//****
 
 			//compensate for already included diagonal entries of I in invRows
-			invRows[0][site] -= 1;
-			invRows[1][site + N] -= 1;
-			invRows[2][site + 2*N] -= 1;
-			invRows[3][site + 3*N] -= 1;
+			rows[0][site] -= 1;
+			rows[1][site + N] -= 1;
+			rows[2][site + 2*N] -= 1;
+			rows[3][site + 3*N] -= 1;
 			//compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
 			MatCpx gTimesInvRows(4*N, 4*N);
 			const auto& G = g.slice(timeslice);
 			for (unsigned col = 0; col < 4*N; ++col) {
 				for (unsigned row = 0; row < 4*N; ++row) {
-					gTimesInvRows(row, col) = G(row, site) * invRows[0][col]
-					                        + G(row, site + N) * invRows[1][col]
-					                        + G(row, site + 2*N) * invRows[2][col]
-					                        + G(row, site + 3*N) * invRows[3][col]
+					gTimesInvRows(row, col) = G(row, site) * rows[0][col]
+					                        + G(row, site + N) * rows[1][col]
+					                        + G(row, site + 2*N) * rows[2][col]
+					                        + G(row, site + 3*N) * rows[3][col]
 					                        ;
 				}
 			}
