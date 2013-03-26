@@ -17,9 +17,16 @@
 #include "detsdw.h"
 #include "exceptions.h"
 
+//initial values for field components chosen from this range:
 const num PhiLow = 1;
 const num PhiHigh = 1;
-const num PhiDelta = 0.05;
+//adjustment of phiDelta:
+const num InitialPhiDelta = 0.5;
+const unsigned int AccRatioAdjustmentSamples = 20;
+const num targetAccRatio = 0.5;
+const num phiDeltaGrowFactor = 1.1;
+const num phiDeltaShrinkFactor = 0.9;
+
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//TODO: add checks
@@ -55,6 +62,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
+		phiDelta(InitialPhiDelta), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
 		normPhi()
 {
 	g = CubeCpx(4*N,4*N, m+1);
@@ -71,7 +79,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
 	using std::cref;
 	using namespace boost::assign;
-	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np");
+	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
+			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
 }
 
 DetSDW::~DetSDW() {
@@ -212,6 +221,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 }
 
 void DetSDW::updateInSlice(unsigned timeslice) {
+	lastAccRatio = 0;
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
 
@@ -392,6 +402,9 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		num prop = propSPhi * propSFermion;
 
 		if (prop > 1.0 or rng.rand01() < prop) {
+			//count accepted update
+			lastAccRatio += 1.0;
+
 //			num phisBefore = phiAction();
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
@@ -444,7 +457,26 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			//****
 		}
 	});
+	lastAccRatio /= num(N);
 }
+
+void DetSDW::updateInSliceThermalization(unsigned timeslice) {
+	updateInSlice(timeslice);
+
+	accRatioRA.addValue(lastAccRatio);
+	if (accRatioRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
+		num avgAccRatio = accRatioRA.get();
+		if (avgAccRatio < targetAccRatio) {
+			phiDelta *= phiDeltaShrinkFactor;
+		} else if (avgAccRatio < targetAccRatio) {
+			phiDelta *= phiDeltaGrowFactor;
+		}
+	}
+}
+
+
+
+
 
 DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 	(void) site; (void) timeslice;
@@ -461,7 +493,7 @@ DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 //	comp = (comp + 1) % 3;
 
 	for (auto& comp: phi) {
-		num r = rng.randRange(-PhiDelta, +PhiDelta);
+		num r = rng.randRange(-phiDelta, +phiDelta);
 		comp += r;
 	}
 

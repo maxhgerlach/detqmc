@@ -14,6 +14,7 @@
 #include "rngwrapper.h"
 #include "detmodel.h"
 #include "neighbortable.h"
+#include "RunningAverage.h"
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
@@ -68,6 +69,12 @@ protected:
 	MatNum phiSinh;			// sinh(dtau * |phi|) / |phi|
 
 
+
+	num phiDelta;		//MC step size for field components
+	//used to adjust phiDelta
+	num lastAccRatio;
+	RunningAverage accRatioRA;
+
 	//Observables:
 	num normPhi;								//magnitude of averaged field
 
@@ -110,6 +117,8 @@ protected:
 	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;
 
 	virtual void updateInSlice(unsigned timeslice);
+	//this one does some adjusting of the box size from which new fields are chosen:
+	virtual void updateInSliceThermalization(unsigned timeslice);
 
 	//functions used by updateInSlice:
 	typedef VecNum::fixed<3> Phi;		//value of the three-component field at a single site and timeslice
