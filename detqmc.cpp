@@ -133,7 +133,6 @@ void DetQMC::run() {
 void DetQMC::thermalize(unsigned numSweeps) {
 	cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
-		std::cout << sw << '\n';
 		sweepFunc();
 	}
 	cout << endl;
@@ -141,7 +140,6 @@ void DetQMC::thermalize(unsigned numSweeps) {
 
 void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
-		std::cout << sw << '\n';
 		sweepFunc();
 		++sweepsDone;
 		if (sw % measureInterval == 0) {
