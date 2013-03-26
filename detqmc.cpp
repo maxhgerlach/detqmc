@@ -26,7 +26,8 @@ using std::endl;
 DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		parsmodel(parsmodel_), parsmc(parsmc_),
 		//proper initialization of default initialized members done in method body
-		greenUpdateType(), sweepFunc(), modelMeta(), mcMeta(), rng(), replica(),
+		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		modelMeta(), mcMeta(), rng(), replica(),
 		obsHandlers(), vecObsHandlers(),
 		sweepsDone(0)
 {
@@ -71,8 +72,10 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 
 	if (greenUpdateType == GreenUpdateType::Simple) {
 		sweepFunc = [this]() {replica->sweepSimple();};
+		sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
 	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
 		sweepFunc = [this]() {replica->sweep();};
+		sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
 	}
 
 	//some parameter consistency checking:

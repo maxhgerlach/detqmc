@@ -45,6 +45,8 @@ protected:
 	std::function<void()> sweepFunc;	//the replica member function that will be called
 										//to perform a sweep (depending on greenUpdate).
 										//adds a function pointer layer
+	std::function<void()> sweepThermalizationFunc;		//during thermalization this may
+														//be a different one
 
 	MetadataMap modelMeta;
 	MetadataMap mcMeta;

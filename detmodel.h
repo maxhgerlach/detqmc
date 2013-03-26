@@ -63,11 +63,18 @@ public:
     //perform a sweep updating the auxiliary field with costly re-computations
     //of Green functions from scratch
     virtual void sweepSimple() = 0;
+    //the same to be called during thermalization, may do the same or iteratively
+    //adjust parameters
+    virtual void sweepSimpleThermalization() = 0;
+
 
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
     //Will give equal-time and time-displaced Green functions.
     virtual void sweep() = 0;
+    //the same to be called during thermalization, may do the same or iteratively
+    //adjust parameters
+    virtual void sweepThermalization() = 0;
 };
 
 
@@ -91,11 +98,17 @@ public:
     //perform a sweep updating the auxiliary field with costly re-computations
     //of Green functions from scratch
     virtual void sweepSimple();
+    //the same to be called during thermalization, may do the same or iteratively
+    //adjust parameters
+    virtual void sweepSimpleThermalization();
 
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
     //Will give equal-time and time-displaced Green functions.
     virtual void sweep();
+    //the same to be called during thermalization, may do the same or iteratively
+    //adjust parameters
+    virtual void sweepThermalization();
 protected:
     typedef ValueType V;
     typedef arma::Mat<ValueType> MatV;
@@ -106,6 +119,11 @@ protected:
 
     //update the auxiliary field and the green function in the single timeslice
 	virtual void updateInSlice(unsigned timeslice) = 0;
+	//separate function to be called during thermalization, by default just do the
+	//same; a derived class may override this to introduce an adaptive behavior
+	virtual void updateInSliceThermalization(unsigned timeslice) {
+		updateInSlice(timeslice);
+	}
 
     //functions to compute B-matrices for the different Green function sectors
     typedef std::function<MatV(unsigned k2, unsigned k1)> FuncComputeBmat;
@@ -139,7 +157,7 @@ protected:
     //only call *after* computeBmat[] is valid, i.e. in a derived class:
     void setupUdVStorage();
 
-    //helpers for sweep():
+    //helpers for sweep(), sweepThermalization():
 	void advanceDownGreen(unsigned l, unsigned greenComponent);
 	void wrapDownGreen_timedisplaced(unsigned k, unsigned greenComponent);
 	void wrapDownGreen(unsigned k, unsigned greenComponent);
@@ -147,13 +165,15 @@ protected:
 	void advanceUpUpdateStorage(unsigned l, unsigned greenComponent);
 	void wrapUpGreen_timedisplaced(unsigned k, unsigned greenComponent);
 	void wrapUpGreen(unsigned k, unsigned greenComponent);
-	void sweepUp();
-	void sweepDown();
+	//functions to do the wrapping are set at runtime (depending on whether timedisplaced routines are used or not)
 	typedef std::function<void(unsigned k, unsigned greenComponent)> FuncWrapGreen;
 	FuncWrapGreen wrapUp;
 	FuncWrapGreen wrapDown;
+	//these receive as a template parameter the function to call for updates in a slice
+	template <class CallableUpdateInSlice> void sweepUp(CallableUpdateInSlice funcUpdateInSlice);
+	template <class CallableUpdateInSlice> void sweepDown(CallableUpdateInSlice funcUpdateInSlice);
 
-	//Green component size
+	//Green component size, e.g. sz == N for the Hubbard model
 	unsigned sz;
 
     //some simulation parameters are already relevant for member functions implemented
@@ -269,6 +289,7 @@ void DetModelGC<GC,V>::setupUdVStorage() {
 }
 
 
+//warning: the thermalization version below is almost a copy of this
 template<unsigned GC, typename V>
 void DetModelGC<GC,V>::sweepSimple() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
@@ -280,6 +301,20 @@ void DetModelGC<GC,V>::sweepSimple() {
 		updateInSlice(timeslice);
 	}
 }
+
+//warning: this is almost a copy of sweepSimple() defined above
+template<unsigned GC, typename V>
+void DetModelGC<GC,V>::sweepSimpleThermalization() {
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+		for_each_gc( [this, timeslice](unsigned gc) {
+			green[gc].slice(timeslice) =
+					arma::inv(arma::eye(sz,sz) + computeBmat[gc](timeslice, 0) *
+					                              computeBmat[gc](m, timeslice));
+		});
+		updateInSliceThermalization(timeslice);
+	}
+}
+
 
 
 template<unsigned GC, typename V>
@@ -459,40 +494,42 @@ void DetModelGC<GC,V>::wrapUpGreen(unsigned k, unsigned greenComponent) {
 }
 
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::sweepUp() {
+template<class CallableUpdateInSlice>
+void DetModelGC<GC,V>::sweepUp(CallableUpdateInSlice funcUpdateInSlice) {
 	//We need to have computed the Green function for time slice k=0 so that the first
 	//wrap-up step is correct.
 	for (unsigned k = 1; k <= s-1; ++k) {
 		for_each_gc( [this, k](unsigned gc) { wrapUp(k - 1, gc); } );
-		updateInSlice(k);
+		funcUpdateInSlice(k);
 	}
 	//set storage at k=0 to unity for the upcoming sweep:
 	for_each_gc( [this](unsigned gc) { UdVStorage[gc][0] = eye_UdV; } );
 	for (unsigned l = 1; l < n; ++l) {
 		for_each_gc( [this, l](unsigned gc) { this->advanceUpGreen(l-1, gc); });
-		updateInSlice(l*s);
+		funcUpdateInSlice(l*s);
 		for_each_gc( [this, l](unsigned gc) { this->advanceUpUpdateStorage(l-1, gc); });
 		for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
 			for_each_gc( [this, k](unsigned gc) { wrapUp(k - 1, gc); } );
-			updateInSlice(k);
+			funcUpdateInSlice(k);
 		}
 	}
-	updateInSlice(n*s);
+	funcUpdateInSlice(n*s);
 	for_each_gc( [this](unsigned gc) { this->advanceUpUpdateStorage(n - 1, gc); } );
 }
 
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::sweepDown() {
+template <class CallableUpdateInSlice>
+void DetModelGC<GC,V>::sweepDown(CallableUpdateInSlice funcUpdateInSlice) {
 	//to compute green function for timeslice tau=beta:
 	//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 	//The latter is given in storage slice m from the last sweep.
 	for_each_gc( [this](unsigned gc) { updateGreenFunctionUdV[gc](m, eye_UdV, UdVStorage[gc][n]); } );
 	for_each_gc( [this](unsigned gc) { UdVStorage[gc][n] = eye_UdV; } );
 	for (unsigned l = n; l >= 1; --l) {
-		updateInSlice(l*s);
+		funcUpdateInSlice(l*s);
 		for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
 			for_each_gc( [this, k](unsigned gc) { wrapDown(k + 1, gc); } );
-			updateInSlice(k);
+			funcUpdateInSlice(k);
 		}
 		//TODO: this will also compute the Green function at k=0, which technically is not necessary
 		//but sensible for the following sweep up
@@ -504,13 +541,25 @@ void DetModelGC<GC,V>::sweepDown() {
 template<unsigned GC, typename V>
 void DetModelGC<GC,V>::sweep() {
 	if (lastSweepDir == SweepDirection::Up) {
-		sweepDown();
+		sweepDown([this](unsigned k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
-		sweepUp();
+		sweepUp([this](unsigned k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Up;
 	}
 }
+
+template<unsigned GC, typename V>
+void DetModelGC<GC,V>::sweepThermalization() {
+	if (lastSweepDir == SweepDirection::Up) {
+		sweepDown([this](unsigned k){ this->updateInSliceThermalization(k); });
+		lastSweepDir = SweepDirection::Down;
+	} else if (lastSweepDir == SweepDirection::Down) {
+		sweepUp([this](unsigned k){ this->updateInSliceThermalization(k); });
+		lastSweepDir = SweepDirection::Up;
+	}
+}
+
 
 //Special handling to allow passing either 'm' or 'dtau', but not both.
 //Also check that 's' is set correctly.

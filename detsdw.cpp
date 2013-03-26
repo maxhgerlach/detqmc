@@ -17,9 +17,9 @@
 #include "detsdw.h"
 #include "exceptions.h"
 
-const num PhiLow = -2.0;
-const num PhiHigh = 2.0;
-const num PhiDelta = 0.1;
+const num PhiLow = 1;
+const num PhiHigh = 1;
+const num PhiDelta = 0.05;
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//TODO: add checks
@@ -387,9 +387,6 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		//END-DEBUG-CHECK
 		//****
 
-
-
-
 		num propSFermion = det.real();
 
 		num prop = propSPhi * propSFermion;
@@ -457,6 +454,11 @@ DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 			    phi1(site, timeslice),
 			    phi2(site, timeslice)
 	          };
+
+//	static int comp = 0;
+//	num r = rng.randRange(-PhiDelta, +PhiDelta);
+//	phi[comp] += r;
+//	comp = (comp + 1) % 3;
 
 	for (auto& comp: phi) {
 		num r = rng.randRange(-PhiDelta, +PhiDelta);
