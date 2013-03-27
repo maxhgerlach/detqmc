@@ -133,7 +133,7 @@ void DetQMC::run() {
 void DetQMC::thermalize(unsigned numSweeps) {
 	cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
-		sweepFunc();
+		sweepThermalizationFunc();
 	}
 	cout << endl;
 }

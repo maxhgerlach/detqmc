@@ -76,8 +76,14 @@ protected:
 	RunningAverage accRatioRA;
 
 	//Observables:
-	num normPhi;								//magnitude of averaged field
-
+	num normPhi;		//magnitude of averaged field
+	num sdwSusc;		//spin-density-wave susceptibility
+	std::array<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
+	VecNum& kOccX;
+	VecNum& kOccY;
+	std::array<VecNum, 2> kOccImag;
+	VecNum& kOccXimag;
+	VecNum& kOccYimag;
 
     template<typename Callable>
     void for_each_band(Callable func) {
@@ -98,7 +104,7 @@ protected:
     }
     template<typename CallableSiteTimeslice, typename V>
     V sumWholeSystem(CallableSiteTimeslice f, V init) {
-    	for (unsigned timeslice = 1; timeslice < m; ++timeslice) {
+    	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
     		for (unsigned site = 0; site < N; ++site) {
 				init += f(site, timeslice);
 			}

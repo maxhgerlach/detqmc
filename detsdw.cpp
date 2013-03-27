@@ -22,10 +22,10 @@ const num PhiLow = 1;
 const num PhiHigh = 1;
 //adjustment of phiDelta:
 const num InitialPhiDelta = 0.5;
-const unsigned int AccRatioAdjustmentSamples = 20;
+const unsigned int AccRatioAdjustmentSamples = 100;
 const num targetAccRatio = 0.5;
-const num phiDeltaGrowFactor = 1.1;
-const num phiDeltaShrinkFactor = 0.9;
+const num phiDeltaGrowFactor = 1.01;
+const num phiDeltaShrinkFactor = 0.99;
 
 
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
@@ -63,7 +63,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
-		normPhi()
+		normPhi(), sdwSusc(), kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
+		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOcc[YBAND])
 {
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
@@ -80,7 +81,17 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using std::cref;
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
+			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
 			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
+
+	kOccX.zeros(N);
+	kOccY.zeros(N);
+	obsVector += VectorObservable(cref(kOccX), N, "kOccX", "nkx"),
+			VectorObservable(cref(kOccY), N, "kOccY", "nky");
+	kOccXimag.zeros(N);
+	kOccYimag.zeros(N);
+	obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
+			VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
 }
 
 DetSDW::~DetSDW() {
@@ -114,6 +125,59 @@ void DetSDW::measure() {
 	meanPhi[1] = averageWholeSystem(phi1, 0.0);
 	meanPhi[2] = averageWholeSystem(phi2, 0.0);
 	normPhi = arma::norm(meanPhi, 2);
+
+	//fermion occupation number
+	kOccX.zeros(N);
+	kOccY.zeros(N);
+	kOccXimag.zeros(N);
+	kOccYimag.zeros(N);
+	static const num pi = M_PI;
+	for (unsigned l = 1; l <= m; ++l) {							//timeslices
+		for (unsigned ksitey = 0; ksitey < L; ++ksitey) {		//k-vectors
+			num ky = pi * num(ksitey) / num(L);
+			for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
+				num kx = pi * num(ksitex) / num(L);
+				unsigned ksite = L*ksitey + ksitex;
+				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
+					for (unsigned jx = 0; jx < L; ++jx) {
+						unsigned j = L*jy + jx;
+						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
+							for (unsigned ix = 0; ix < L; ++ix) {
+								unsigned i = L*iy + ix;
+								cpx phase = std::exp(cpx(0, kx * (ix - jx) + ky * (iy - jy)));
+								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
+								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
+								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
+								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j);
+								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + N);
+								kOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
+										                          + diracDelta - greenEntryXBandSpinDown));
+								kOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
+										                          + diracDelta - greenEntryYBandSpinDown));
+								//imaginary parts should add up to zero..., but for now check:
+								kOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
+										                              + diracDelta - greenEntryXBandSpinDown));
+								kOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
+										                              + diracDelta - greenEntryYBandSpinDown));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	using std::ref;
+	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
+		kocc /= num(m) * num(N);
+	}
+
+	//sdw-susceptibility
+	sdwSusc = dtau * sumWholeSystem( [this](unsigned site, unsigned timeslice) {
+											return phi0(site, timeslice) * phi0(0, m)
+												 + phi1(site, timeslice) * phi1(0, m)
+												 + phi2(site, timeslice) * phi2(0, m);
+										},
+									0.0);
 }
 
 void DetSDW::setupRandomPhi() {
@@ -468,9 +532,10 @@ void DetSDW::updateInSliceThermalization(unsigned timeslice) {
 		num avgAccRatio = accRatioRA.get();
 		if (avgAccRatio < targetAccRatio) {
 			phiDelta *= phiDeltaShrinkFactor;
-		} else if (avgAccRatio < targetAccRatio) {
+		} else if (avgAccRatio > targetAccRatio) {
 			phiDelta *= phiDeltaGrowFactor;
 		}
+		std::cout << avgAccRatio << " -> " << phiDelta << '\n';
 	}
 }
 
