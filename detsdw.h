@@ -11,6 +11,7 @@
 #include <tuple>
 #include <vector>
 #include <complex>
+#include <omp.h>
 #include "rngwrapper.h"
 #include "detmodel.h"
 #include "neighbortable.h"
@@ -104,6 +105,7 @@ protected:
     }
     template<typename CallableSiteTimeslice, typename V>
     V sumWholeSystem(CallableSiteTimeslice f, V init) {
+#pragma omp parallel for reduction(+:init)
     	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
     		for (unsigned site = 0; site < N; ++site) {
 				init += f(site, timeslice);

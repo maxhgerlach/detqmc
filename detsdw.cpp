@@ -356,6 +356,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		//site, site+N, site+2N, site+3N
 		//Compute the values of these rows [O(N)]:
 		std::array<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+#pragma omp parallel for
 		for (unsigned r = 0; r < 4; ++r) {
 			for (unsigned col = 0; col < 4*N; ++col) {
 				rows[r][col] = -deltanonzero(r,0) * g.slice(timeslice).col(col)[site];
@@ -422,7 +423,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 //		debugSaveMatrix(MatNum(arma::real(deltaDense)), "delta_real");
 //		debugSaveMatrix(MatNum(arma::imag(deltaDense)), "delta_imag");
 
-//		//TODO: inefficient!
+//		//inefficient!
 //		static MatCpx eyeCpx = MatCpx(arma::eye(4*N, 4*N), arma::zeros(4*N, 4*N));
 //		MatCpx target = eyeCpx + delta * (eyeCpx - g.slice(timeslice));
 
@@ -502,6 +503,7 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			//compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
 			MatCpx gTimesInvRows(4*N, 4*N);
 			const auto& G = g.slice(timeslice);
+#pragma omp parallel for
 			for (unsigned col = 0; col < 4*N; ++col) {
 				for (unsigned row = 0; row < 4*N; ++row) {
 					gTimesInvRows(row, col) = G(row, site) * rows[0][col]
