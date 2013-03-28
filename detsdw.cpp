@@ -64,7 +64,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
 		normPhi(), sdwSusc(), kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
-		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOcc[YBAND])
+		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND])
 {
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
@@ -132,12 +132,13 @@ void DetSDW::measure() {
 	kOccXimag.zeros(N);
 	kOccYimag.zeros(N);
 	static const num pi = M_PI;
-	for (unsigned l = 1; l <= m; ++l) {							//timeslices
-		for (unsigned ksitey = 0; ksitey < L; ++ksitey) {		//k-vectors
-			num ky = pi * num(ksitey) / num(L);
-			for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
-				num kx = pi * num(ksitex) / num(L);
-				unsigned ksite = L*ksitey + ksitex;
+#pragma omp parallel for
+	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {		//k-vectors
+		num ky = 2 * pi * num(ksitey) / num(L);
+		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
+			num kx = 2 * pi * num(ksitex) / num(L);
+			unsigned ksite = L*ksitey + ksitex;
+			for (unsigned l = 1; l <= m; ++l) {							//timeslices
 				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
 					for (unsigned jx = 0; jx < L; ++jx) {
 						unsigned j = L*jy + jx;
@@ -148,17 +149,17 @@ void DetSDW::measure() {
 								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
 								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
 								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
-								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j);
-								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + N);
+								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
+								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
 								kOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
-										                          + diracDelta - greenEntryXBandSpinDown));
+																  + diracDelta - greenEntryXBandSpinDown));
 								kOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
-										                          + diracDelta - greenEntryYBandSpinDown));
+																  + diracDelta - greenEntryYBandSpinDown));
 								//imaginary parts should add up to zero..., but for now check:
 								kOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
-										                              + diracDelta - greenEntryXBandSpinDown));
+																  	  + diracDelta - greenEntryXBandSpinDown));
 								kOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
-										                              + diracDelta - greenEntryYBandSpinDown));
+																  	  + diracDelta - greenEntryYBandSpinDown));
 							}
 						}
 					}
