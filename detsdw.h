@@ -78,6 +78,8 @@ protected:
 
 	//Observables:
 	num normPhi;		//magnitude of averaged field
+	num phiSecond;		//second moment of averaged field
+	num phiFourth;		//fourth moment of averaged field
 	num sdwSusc;		//spin-density-wave susceptibility
 	std::array<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
 	VecNum& kOccX;

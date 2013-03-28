@@ -63,7 +63,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
-		normPhi(), sdwSusc(), kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
+		normPhi(), phiSecond(), phiFourth(), sdwSusc(),
+		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND])
 {
 	g = CubeCpx(4*N,4*N, m+1);
@@ -81,6 +82,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using std::cref;
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
+			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
+			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
 			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
 			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
 
@@ -125,6 +128,8 @@ void DetSDW::measure() {
 	meanPhi[1] = averageWholeSystem(phi1, 0.0);
 	meanPhi[2] = averageWholeSystem(phi2, 0.0);
 	normPhi = arma::norm(meanPhi, 2);
+	phiSecond = normPhi * normPhi;
+	phiFourth = phiSecond * phiSecond;
 
 	//fermion occupation number
 	kOccX.zeros(N);
@@ -133,12 +138,12 @@ void DetSDW::measure() {
 	kOccYimag.zeros(N);
 	static const num pi = M_PI;
 #pragma omp parallel for
-	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {		//k-vectors
+	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
 		num ky = 2 * pi * num(ksitey) / num(L);
 		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
 			num kx = 2 * pi * num(ksitex) / num(L);
 			unsigned ksite = L*ksitey + ksitex;
-			for (unsigned l = 1; l <= m; ++l) {							//timeslices
+			for (unsigned l = 1; l <= m; ++l) {					//timeslices
 				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
 					for (unsigned jx = 0; jx < L; ++jx) {
 						unsigned j = L*jy + jx;
@@ -211,7 +216,7 @@ void DetSDW::setupPropK() {
 				k(site, neigh) -= t[band][dir];
 			}
 		} );
-		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
+//		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
 //		debugSaveMatrix(k, name);
 		propK[band] = computePropagator(dtau, k);
 //		debugSaveMatrix(propK[band], "prop" + name);
