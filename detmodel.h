@@ -25,6 +25,7 @@
 #include "observable.h"
 #include "udv.h"
 #include "metadata.h"
+#include "timing.h"
 
 typedef std::complex<double> cpx;
 
@@ -540,6 +541,8 @@ void DetModelGC<GC,V>::sweepDown(CallableUpdateInSlice funcUpdateInSlice) {
 
 template<unsigned GC, typename V>
 void DetModelGC<GC,V>::sweep() {
+	timing.start("sweep");
+
 	if (lastSweepDir == SweepDirection::Up) {
 		sweepDown([this](unsigned k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Down;
@@ -547,10 +550,14 @@ void DetModelGC<GC,V>::sweep() {
 		sweepUp([this](unsigned k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Up;
 	}
+
+	timing.stop("sweep");
 }
 
 template<unsigned GC, typename V>
 void DetModelGC<GC,V>::sweepThermalization() {
+	timing.start("sweep");
+
 	if (lastSweepDir == SweepDirection::Up) {
 		sweepDown([this](unsigned k){ this->updateInSliceThermalization(k); });
 		lastSweepDir = SweepDirection::Down;
@@ -558,6 +565,8 @@ void DetModelGC<GC,V>::sweepThermalization() {
 		sweepUp([this](unsigned k){ this->updateInSliceThermalization(k); });
 		lastSweepDir = SweepDirection::Up;
 	}
+
+	timing.stop("sweep");
 }
 
 

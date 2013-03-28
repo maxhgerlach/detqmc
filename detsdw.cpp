@@ -16,6 +16,7 @@
 #include "observable.h"
 #include "detsdw.h"
 #include "exceptions.h"
+#include "timing.h"
 
 //initial values for field components chosen from this range:
 const num PhiLow = 1;
@@ -123,6 +124,7 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 }
 
 void DetSDW::measure() {
+	timing.start("sdw-measure");
 	Phi meanPhi;
 	meanPhi[0] = averageWholeSystem(phi0, 0.0);
 	meanPhi[1] = averageWholeSystem(phi1, 0.0);
@@ -184,6 +186,8 @@ void DetSDW::measure() {
 												 + phi2(site, timeslice) * phi2(0, m);
 										},
 									0.0);
+
+	timing.stop("sdw-measure");
 }
 
 void DetSDW::setupRandomPhi() {
@@ -291,6 +295,8 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 }
 
 void DetSDW::updateInSlice(unsigned timeslice) {
+	timing.start("sdw-updateInSlice");
+
 	lastAccRatio = 0;
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
@@ -530,6 +536,8 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		}
 	});
 	lastAccRatio /= num(N);
+
+	timing.stop("sdw-updateInSlice");
 }
 
 void DetSDW::updateInSliceThermalization(unsigned timeslice) {

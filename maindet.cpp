@@ -22,6 +22,7 @@
 #include "metadata.h"
 #include "detqmc.h"
 #include "exceptions.h"
+#include "timing.h"
 
 
 //Parse command line and configuration file to configure the parameters of our simulation.
@@ -146,10 +147,12 @@ int main(int argc, char **argv) {
 	bool runSimulation;
 	std::tie(runSimulation, parmodel, parmc) = configureSimulation(argc, argv);
 
+	timing.start("total");
 	if (runSimulation) {
 		DetQMC simulation(parmodel, parmc);
 		simulation.run();
 	}
+	timing.stop("total");
 
 	return 0;
 }
