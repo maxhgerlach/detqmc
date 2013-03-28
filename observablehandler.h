@@ -78,7 +78,7 @@ public:
 	std::tuple<ObsType,ObsType> evaluateJackknife() const {
 		ObsType mean = total / countValues;
 		ObsType error = zero;
-		if (lastSweepLogged == mcparams.sweeps) {
+		if (mcparams.sweeps - lastSweepLogged <= mcparams.measureInterval) {
 			//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished.
 			//we can only calculate an error estimate if we have multiple jackknife blocks
 			if (jkBlockCount > 1) {
