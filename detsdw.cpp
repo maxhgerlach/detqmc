@@ -537,7 +537,6 @@ void DetSDW::updateInSliceThermalization(unsigned timeslice) {
 		} else if (avgAccRatio > targetAccRatio) {
 			phiDelta *= phiDeltaGrowFactor;
 		}
-		std::cout << avgAccRatio << " -> " << phiDelta << '\n';
 	}
 }
 
