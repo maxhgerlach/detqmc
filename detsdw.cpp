@@ -261,6 +261,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 		auto& kphiCosh = phiCosh.col(k);
 		auto& kphiSinh = phiSinh.col(k);
 		//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
+		//TODO: compare to using set_real / set_imag
 		block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
 				             zeros(N,N));
 		block(0, 1).zeros();
@@ -309,19 +310,19 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
 
-		VecNum oldphi0 = phi0.col(timeslice);
-		VecNum oldphi1 = phi1.col(timeslice);
-		VecNum oldphi2 = phi2.col(timeslice);
+//		VecNum oldphi0 = phi0.col(timeslice);
+//		VecNum oldphi1 = phi1.col(timeslice);
+//		VecNum oldphi2 = phi2.col(timeslice);
 //		debugSaveMatrix(oldphi0, "old_phi0");
 //		debugSaveMatrix(oldphi1, "old_phi1");
 //		debugSaveMatrix(oldphi2, "old_phi2");
 
-		VecNum newphi0 = phi0.col(timeslice);
-		VecNum newphi1 = phi1.col(timeslice);
-		VecNum newphi2 = phi2.col(timeslice);
-		newphi0[site] = newphi[0];
-		newphi1[site] = newphi[1];
-		newphi2[site] = newphi[2];
+//		VecNum newphi0 = phi0.col(timeslice);
+//		VecNum newphi1 = phi1.col(timeslice);
+//		VecNum newphi2 = phi2.col(timeslice);
+//		newphi0[site] = newphi[0];
+//		newphi1[site] = newphi[1];
+//		newphi2[site] = newphi[2];
 //		debugSaveMatrix(newphi0, "new_phi0");
 //		debugSaveMatrix(newphi1, "new_phi1");
 //		debugSaveMatrix(newphi2, "new_phi2");
