@@ -216,8 +216,8 @@ void DetSDW::setupRandomPhi() {
 void DetSDW::setupPropK() {
 	std::array<std::array<num,z>, 2> t;
 	t[XBAND][XPLUS] = t[XBAND][XMINUS] = -1.0;
-	t[XBAND][YPLUS] = t[XBAND][YMINUS] =  0.5;
-	t[YBAND][XPLUS] = t[YBAND][XMINUS] = -0.5;
+	t[XBAND][YPLUS] = t[XBAND][YMINUS] = -0.5;
+	t[YBAND][XPLUS] = t[YBAND][XMINUS] =  0.5;
 	t[YBAND][YPLUS] = t[YBAND][YMINUS] =  1.0;
 
 	for_each_band( [this, &t](unsigned band) {
