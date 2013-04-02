@@ -624,7 +624,7 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 	num newphiPow4 = newphiSq * newphiSq;
 	num delta3 = 0.25*u * (newphiPow4 - oldphiPow4);
 
-	return delta1 + delta2 + delta3;
+	return dtau * (delta1 + delta2 + delta3);
 }
 
 num DetSDW::phiAction() {
@@ -646,6 +646,7 @@ num DetSDW::phiAction() {
 					/ (2*dtau);
 			action += 0.5 * arma::dot(timeDerivative, timeDerivative);
 
+			//count only neighbors in PLUS-directions: no global overcounting of bonds
 			Phi xneighDiff = phi(site, timeslice) -
 					phi(spaceNeigh(XPLUS, site), timeslice);
 			action += 0.5 * arma::dot(xneighDiff, xneighDiff);
@@ -659,7 +660,7 @@ num DetSDW::phiAction() {
 			action += 0.25 * std::pow(phisq, 2);
 		}
 	}
-	return action;
+	return dtau * action;
 }
 
 
