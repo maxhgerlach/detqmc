@@ -19,6 +19,7 @@
 #include "tools.h"
 #include "git-revision.h"
 #include "exceptions.h"
+#include "timing.h"
 
 using std::cout;
 using std::endl;
@@ -173,6 +174,7 @@ MetadataMap DetQMC::prepareMCMetadataMap() const {
 
 
 void DetQMC::saveResults() {
+	timing.start("saveResults");
 	outputResults(obsHandlers);
 	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
 		(*p)->outputTimeseries();
@@ -193,4 +195,5 @@ void DetQMC::saveResults() {
 	writeOnlyMetaData(commonInfoFilename, currentState,
 			"Current state of simulation:",
 			true);
+	timing.stop("saveResults");
 }
