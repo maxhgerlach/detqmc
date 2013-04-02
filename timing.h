@@ -43,7 +43,6 @@ public:
 		timers.at(timerKey).stop();
 	}
 private:
-	//namespace bt=boost::timer;
 	std::map<std::string,boost::timer::cpu_timer> timers;
 };
 
@@ -66,7 +65,7 @@ public:
 
 #endif //TIMING
 
-extern Timing timing;		//one global timing object
+extern Timing timing;		//one global timing object, defined in timing.cpp
 
 
 
