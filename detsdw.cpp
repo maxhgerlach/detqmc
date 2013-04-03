@@ -137,7 +137,7 @@ void DetSDW::measure() {
 	}, 0.0);
 	phiFourth = averageWholeSystem( [this](unsigned i, unsigned k) {
 		using std::pow;
-		return pow(phi0(i, k), 4) + pow(phi1(i, k), 4) + pow(phi2(i, k), 4);
+		return pow(pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2), 2);
 	}, 0.0);
 	binder = 1.0 - 3.0*phiFourth / (5.0*phiSecond);
 
