@@ -277,7 +277,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 				             zeros(N,N));
 		block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
 				             zeros(N,N));
-		block(2, 1) = MatCpx(diagmat(- kphi0 % kphiSinh) * propKx,
+		block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
 				             diagmat(+kphi1 % kphiSinh) * propKx);
 		block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
 				             zeros(N,N));
@@ -297,7 +297,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	MatCpx result = singleTimesliceProp(k2);
 
 	for (unsigned k = k2 - 1; k > k1; --k) {
-		result *= singleTimesliceProp(k);
+		result = result * singleTimesliceProp(k);
 	}
 
 	return result;
