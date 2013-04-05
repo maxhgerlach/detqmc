@@ -297,7 +297,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	MatCpx result = singleTimesliceProp(k2);
 
 	for (unsigned k = k2 - 1; k > k1; --k) {
-		result = result * singleTimesliceProp(k);
+		result *= singleTimesliceProp(k);				// equivalent to result = result * singleTimesliceProp(k);
 	}
 
 	return result;
