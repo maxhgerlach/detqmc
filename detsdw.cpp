@@ -297,7 +297,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	MatCpx result = singleTimesliceProp(k2);
 
 	for (unsigned k = k2 - 1; k > k1; --k) {
-		result *= singleTimesliceProp(k);				// equivalent to result = result * singleTimesliceProp(k);
+		result *= singleTimesliceProp(k);				// equivalent to: result = result * singleTimesliceProp(k);
 	}
 
 	return result;
@@ -334,6 +334,10 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 		//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
 		//compute non-zero elements of delta
+		//evMatrix(): yield a 4x4 matrix containing the entries for the
+		//current lattice site and time slice of e^(sign*dtau*V) with
+		//given values of the field phi at that space-time location [and of
+		//cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
 		auto evMatrix = [](int sign, num kphi0, num kphi1,
 						   num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
 			MatNum::fixed<4,4> ev_real;
@@ -359,11 +363,12 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 				phiCosh(site, timeslice), phiSinh(site, timeslice)
 				);
 		num normnewphi = arma::norm(newphi,2);
+		num coshnewphi = std::cosh(dtau * normnewphi);
+		num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
 		MatCpx::fixed<4,4> emvNew = evMatrix(
 				-1,
 				newphi[0], newphi[1], newphi[2],
-				std::cosh(dtau * normnewphi),
-				std::sinh(dtau * normnewphi) / normnewphi
+				coshnewphi, sinhnewphi
 				);
 		MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
 		deltanonzero.diag() -= cpx(1.0, 0);
@@ -495,14 +500,11 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
 			phi2(site, timeslice) = newphi[2];
+			phiCosh(site, timeslice) = coshnewphi;
+			phiSinh(site, timeslice) = sinhnewphi;
 //			num phisAfter = phiAction();
 //			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
 //					(phisAfter - phisBefore) << std::endl;
-			num phiNorm = std::sqrt(std::pow(phi0(site, timeslice), 2)
-									+ std::pow(phi1(site, timeslice), 2)
-									+ std::pow(phi2(site, timeslice), 2));
-			phiCosh(site, timeslice) = std::cosh(dtau * phiNorm);
-			phiSinh(site, timeslice) = std::sinh(dtau * phiNorm) / phiNorm;
 
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
@@ -628,23 +630,22 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 }
 
 num DetSDW::phiAction() {
-	num action = 0;
 	arma::field<Phi> phi(N, m+1);
-	for (unsigned timeslice = 1; timeslice < m + 1; ++timeslice) {
+	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			phi(site, timeslice)[0] = phi0(site, timeslice);
 			phi(site, timeslice)[1] = phi1(site, timeslice);
 			phi(site, timeslice)[2] = phi2(site, timeslice);
 		}
 	}
-
+	num action = 0;
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			Phi timeDerivative =
 					(phi(site, timeNeigh(ChainDir::PLUS, timeslice)) -
 							phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
 					/ (2*dtau);
-			action += 0.5 * arma::dot(timeDerivative, timeDerivative);
+			action += (1.0 / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
 			//count only neighbors in PLUS-directions: no global overcounting of bonds
 			Phi xneighDiff = phi(site, timeslice) -
@@ -657,10 +658,11 @@ num DetSDW::phiAction() {
 			num phisq = arma::dot(phi(site, timeslice), phi(site, timeslice));
 			action += 0.5 * r * phisq;
 
-			action += 0.25 * std::pow(phisq, 2);
+			action += 0.25 * u * std::pow(phisq, 2);
 		}
 	}
-	return dtau * action;
+	action *= dtau;
+	return action;
 }
 
 
