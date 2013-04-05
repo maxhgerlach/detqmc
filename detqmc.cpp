@@ -122,6 +122,7 @@ DetQMC::~DetQMC() {
 
 void DetQMC::run() {
 	thermalize(parsmc.thermalization);
+	replica->thermalizationOver();
 	cout << "Starting measurements for " << parsmc.sweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < parsmc.sweeps; sw += parsmc.saveInterval) {
 		measure(parsmc.saveInterval, parsmc.measureInterval);

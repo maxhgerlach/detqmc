@@ -35,6 +35,7 @@ public:
 	virtual MetadataMap prepareModelMetadataMap() const;
     virtual void measure();
 
+    virtual void thermalizationOver();
 protected:
 	RngWrapper& rng;
 

@@ -629,6 +629,7 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 	return dtau * (delta1 + delta2 + delta3);
 }
 
+
 num DetSDW::phiAction() {
 	arma::field<Phi> phi(N, m+1);
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
@@ -666,7 +667,6 @@ num DetSDW::phiAction() {
 }
 
 
-
-
-
-
+void DetSDW::thermalizationOver() {
+	std::cout << "After thermalization: phiDelta = " << phiDelta << std::endl;
+}

@@ -76,6 +76,11 @@ public:
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters
     virtual void sweepThermalization() = 0;
+
+    //notify DetModel that thermalization has finished
+    //do nothing by default
+    virtual void thermalizationOver() {
+    }
 };
 
 
