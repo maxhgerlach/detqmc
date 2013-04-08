@@ -311,22 +311,22 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
 
-//		VecNum oldphi0 = phi0.col(timeslice);
-//		VecNum oldphi1 = phi1.col(timeslice);
-//		VecNum oldphi2 = phi2.col(timeslice);
-//		debugSaveMatrix(oldphi0, "old_phi0");
-//		debugSaveMatrix(oldphi1, "old_phi1");
-//		debugSaveMatrix(oldphi2, "old_phi2");
+		VecNum oldphi0 = phi0.col(timeslice);
+		VecNum oldphi1 = phi1.col(timeslice);
+		VecNum oldphi2 = phi2.col(timeslice);
+		debugSaveMatrix(oldphi0, "old_phi0");
+		debugSaveMatrix(oldphi1, "old_phi1");
+		debugSaveMatrix(oldphi2, "old_phi2");
 
-//		VecNum newphi0 = phi0.col(timeslice);
-//		VecNum newphi1 = phi1.col(timeslice);
-//		VecNum newphi2 = phi2.col(timeslice);
-//		newphi0[site] = newphi[0];
-//		newphi1[site] = newphi[1];
-//		newphi2[site] = newphi[2];
-//		debugSaveMatrix(newphi0, "new_phi0");
-//		debugSaveMatrix(newphi1, "new_phi1");
-//		debugSaveMatrix(newphi2, "new_phi2");
+		VecNum newphi0 = phi0.col(timeslice);
+		VecNum newphi1 = phi1.col(timeslice);
+		VecNum newphi2 = phi2.col(timeslice);
+		newphi0[site] = newphi[0];
+		newphi1[site] = newphi[1];
+		newphi2[site] = newphi[2];
+		debugSaveMatrix(newphi0, "new_phi0");
+		debugSaveMatrix(newphi1, "new_phi1");
+		debugSaveMatrix(newphi2, "new_phi2");
 
 		num dsphi = deltaSPhi(site, timeslice, newphi);
 		num propSPhi = std::exp(-dsphi);
@@ -497,15 +497,15 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			//count accepted update
 			lastAccRatio += 1.0;
 
-//			num phisBefore = phiAction();
+			num phisBefore = phiAction();
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
 			phi2(site, timeslice) = newphi[2];
 			phiCosh(site, timeslice) = coshnewphi;
 			phiSinh(site, timeslice) = sinhnewphi;
-//			num phisAfter = phiAction();
-//			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
-//					(phisAfter - phisBefore) << std::endl;
+			num phisAfter = phiAction();
+			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
+					(phisAfter - phisBefore) << std::endl;
 
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
