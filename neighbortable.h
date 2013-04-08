@@ -125,14 +125,14 @@ public:
 	}
 
 	unsigned operator()(unsigned latticeDirection, unsigned site) const {
-		return PeriodicCubicLatticeNearestNeighbors::operator ()(latticeDirection, site - startWith)
+		return PeriodicCubicLatticeNearestNeighbors::operator()(latticeDirection, site - startWith)
 		       + startWith;
 	}
 	unsigned operator()(NeighDir latticeDirection, unsigned site) const {
-		return operator()((unsigned) latticeDirection, site);
+		return PeriodicChainNearestNeighbors::operator()((unsigned) latticeDirection, site);
 	}
 	unsigned operator()(ChainDir latticeDirection, unsigned site) const {
-		return operator()((unsigned) latticeDirection, site);
+		return PeriodicChainNearestNeighbors::operator()((unsigned) latticeDirection, site);
 	}
 	//iterators over the nearest neighbors of a site:
 	auto beginNeighbors(unsigned site) -> tableSites::const_col_iterator const {
