@@ -656,7 +656,7 @@ num DetSDW::phiAction() {
 			Phi timeDerivative =
 					(phi(site, timeslice) - phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
 					/ dtau;
-			action += (1.0 / (2.0 * dtau * c * c)) * arma::dot(timeDerivative, timeDerivative);
+			action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
 			//count only neighbors in PLUS-directions: no global overcounting of bonds
 			Phi xneighDiff = phi(site, timeslice) -
