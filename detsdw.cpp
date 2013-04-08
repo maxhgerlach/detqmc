@@ -593,45 +593,55 @@ DetSDW::Phi DetSDW::proposeNewField(unsigned site, unsigned timeslice) {
 }
 
 num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
-	//calculation currently based on 3-point formula for discretized time derivative
+	//switched to asymmetric numerical derivative
+	using arma::dot;
 
 	const Phi oldphi = {phi0(site, timeslice),
 					    phi1(site, timeslice),
 					    phi2(site, timeslice)};
+	Phi phiDiff = newphi - oldphi;
 
-	num oldphiSq = arma::dot(oldphi, oldphi);
-	num newphiSq = arma::dot(newphi, newphi);
-	num delta1 = (2.0 / (8.0 * dtau*dtau * c*c) + 0.5*z + 0.5*r) * (newphiSq - oldphiSq);
-
-	unsigned kEarlier = timeNeigh(ChainDir::MINUS, timeNeigh(ChainDir::MINUS, timeslice));
-	Phi phiEarlier = Phi{phi0(site, kEarlier),
-					     phi1(site, kEarlier),
-					     phi2(site, kEarlier)};
-	unsigned kLater = timeNeigh(ChainDir::PLUS, timeNeigh(ChainDir::PLUS, timeslice));
-	Phi phiLater = Phi{phi0(site, kLater),
-					   phi1(site, kLater),
-					   phi2(site, kLater)};
-	Phi phiTimeNeigh  = (1.0 / (8.0 * dtau*dtau * c*c)) * (phiEarlier + phiLater);
-	Phi phiSpaceNeigh = 0.5 * std::accumulate(spaceNeigh.beginNeighbors(site),
-								              spaceNeigh.endNeighbors(site),
-								              Phi{0,0,0},
-								              [this, timeslice] (Phi accum, unsigned neighSite) {
-													return accum + Phi{phi0(neighSite, timeslice),
-															     	   phi1(neighSite, timeslice),
-															           phi2(neighSite, timeslice)};
-	                                           }
-											 );
-	num delta2 = -2.0 * arma::dot((phiTimeNeigh + phiSpaceNeigh), (newphi - oldphi));
+	num oldphiSq = dot(oldphi, oldphi);
+	num newphiSq = dot(newphi, newphi);
+	num phiSqDiff = newphiSq - oldphiSq;
 
 	num oldphiPow4 = oldphiSq * oldphiSq;
 	num newphiPow4 = newphiSq * newphiSq;
-	num delta3 = 0.25*u * (newphiPow4 - oldphiPow4);
+	num phiPow4Diff = newphiPow4 - oldphiPow4;
 
-	return dtau * (delta1 + delta2 + delta3);
+	unsigned kEarlier = timeNeigh(ChainDir::MINUS, timeslice);
+	Phi phiEarlier = Phi{phi0(site, kEarlier),
+					     phi1(site, kEarlier),
+					     phi2(site, kEarlier)};
+	unsigned kLater = timeNeigh(ChainDir::PLUS, timeslice);
+	Phi phiLater = Phi{phi0(site, kLater),
+					   phi1(site, kLater),
+					   phi2(site, kLater)};
+	Phi phiTimeNeigh = phiLater + phiEarlier;
+
+	Phi phiSpaceNeigh = 0.5 * std::accumulate(spaceNeigh.beginNeighbors(site),
+			spaceNeigh.endNeighbors(site),
+			Phi{0,0,0},
+			[this, timeslice] (Phi accum, unsigned neighSite) {
+				return accum + Phi{phi0(neighSite, timeslice),
+					phi1(neighSite, timeslice),
+					phi2(neighSite, timeslice)};
+			}
+	);
+
+
+	num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
+
+	num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiDiff, phiSpaceNeigh));
+
+	num delta3 = dtau * (0.5 * r * phiSqDiff + 0.25 * u * phiPow4Diff);
+
+	return delta1 + delta2 + delta3;
 }
 
 
 num DetSDW::phiAction() {
+	//switched to asymmetric numerical derivative
 	arma::field<Phi> phi(N, m+1);
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
@@ -644,26 +654,24 @@ num DetSDW::phiAction() {
 	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
 		for (unsigned site = 0; site < N; ++site) {
 			Phi timeDerivative =
-					(phi(site, timeNeigh(ChainDir::PLUS, timeslice)) -
-							phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
-					/ (2*dtau);
-			action += (1.0 / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
+					(phi(site, timeslice) - phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
+					/ dtau;
+			action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
 			//count only neighbors in PLUS-directions: no global overcounting of bonds
 			Phi xneighDiff = phi(site, timeslice) -
 					phi(spaceNeigh(XPLUS, site), timeslice);
-			action += 0.5 * arma::dot(xneighDiff, xneighDiff);
+			action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
 			Phi yneighDiff = phi(site, timeslice) -
 					phi(spaceNeigh(YPLUS, site), timeslice);
-			action += 0.5 * arma::dot(yneighDiff, yneighDiff);
+			action += 0.5 * dtau * arma::dot(yneighDiff, yneighDiff);
 
 			num phisq = arma::dot(phi(site, timeslice), phi(site, timeslice));
-			action += 0.5 * r * phisq;
+			action += 0.5 * dtau * r * phisq;
 
-			action += 0.25 * u * std::pow(phisq, 2);
+			action += 0.25 * dtau * u * std::pow(phisq, 2);
 		}
 	}
-	action *= dtau;
 	return action;
 }
 
