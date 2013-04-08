@@ -24,7 +24,6 @@ const num PhiHigh = 1;
 //adjustment of phiDelta:
 const num InitialPhiDelta = 0.5;
 const unsigned int AccRatioAdjustmentSamples = 100;
-const num targetAccRatio = 0.5;
 const num phiDeltaGrowFactor = 1.01;
 const num phiDeltaShrinkFactor = 0.99;
 
@@ -36,7 +35,7 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "mu", "L", "r";
+	neededModelPars += "mu", "L", "r", "accRatio";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
@@ -63,7 +62,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
-		phiDelta(InitialPhiDelta), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
+		phiDelta(InitialPhiDelta),
+		targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
 		normPhi(), phiSecond(), phiFourth(), binder(), sdwSusc(),
 		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND])
@@ -111,6 +111,7 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 	meta["model"] = "sdw";
 	meta["timedisplaced"] = (timedisplaced ? "true" : "false");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
+	META_INSERT(targetAccRatio);
 	META_INSERT(r);
 	META_INSERT(mu);
 	META_INSERT(L);

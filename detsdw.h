@@ -74,6 +74,7 @@ protected:
 
 	num phiDelta;		//MC step size for field components
 	//used to adjust phiDelta
+	num targetAccRatio;
 	num lastAccRatio;
 	RunningAverage accRatioRA;
 

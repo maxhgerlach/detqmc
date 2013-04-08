@@ -22,7 +22,7 @@
 
 typedef double num;		//possibility to switch to single precision if ever desired
 
-// Struct representing model parameters
+// Struct representing model specific parameters
 struct ModelParams {
 	//TODO: split this up so that model specific parameters are in substructs
 
@@ -40,11 +40,13 @@ struct ModelParams {
 	num dtau;		//or timeslice separation 'dtau'
 	unsigned s;		//separation of timeslices where the Green function is calculated
 					//from scratch
+	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
+
 	std::set<std::string> specified;
 
 	ModelParams() :
 			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
-			beta(), m(), dtau(), s(), specified() {
+			beta(), m(), dtau(), s(), accRatio(), specified() {
 	}
 };
 
