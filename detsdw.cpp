@@ -86,7 +86,6 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
 			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
 			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
-			ScalarObservable(cref(binder), "binder", "q2"),
 			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
 			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
 
@@ -143,7 +142,6 @@ void DetSDW::measure() {
 //	}, 0.0);
 	phiSecond = std::pow(normPhi, 2);
 	phiFourth = std::pow(phiSecond, 2);
-	binder = 1.0 - 3.0*phiFourth / (5.0*phiSecond);
 
 	//fermion occupation number
 	kOccX.zeros(N);
