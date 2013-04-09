@@ -498,15 +498,15 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 			//count accepted update
 			lastAccRatio += 1.0;
 
-			num phisBefore = phiAction();
+//			num phisBefore = phiAction();
 			phi0(site, timeslice) = newphi[0];
 			phi1(site, timeslice) = newphi[1];
 			phi2(site, timeslice) = newphi[2];
 			phiCosh(site, timeslice) = coshnewphi;
 			phiSinh(site, timeslice) = sinhnewphi;
-			num phisAfter = phiAction();
-			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
-					(phisAfter - phisBefore) << std::endl;
+//			num phisAfter = phiAction();
+//			std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
+//					(phisAfter - phisBefore) << std::endl;
 
 //			debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
 //			debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
