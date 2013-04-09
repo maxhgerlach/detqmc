@@ -19,7 +19,7 @@
 #include "observablehandler.h"
 #include "rngwrapper.h"
 
-
+#include <boost/serialization/split_member.hpp>
 
 // Class handling the simulation
 class DetQMC {
@@ -55,10 +55,34 @@ protected:
 	typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
 	typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
 	std::vector<ObsPtr> obsHandlers;
-	std::vector<VecObsPtr> vecObsHandlers;
+	std::vector<VecObsPtr> vecObsHandlers;		//need to be pointers: holds both KeyValueObservableHandlers and VectorObservableHandlers
 	unsigned sweepsDone;						//Measurement sweeps done
 
 	MetadataMap prepareMCMetadataMap() const;
+
+protected:
+	friend class boost::serialization::access;
+    template<class Archive>
+    void save(Archive & ar, const unsigned int version)
+    {
+    	ar & parsmodel & parsmc;
+    	ar & rng;
+    	ar & greenUpdateType;
+    	ar & (*replica);
+    	//how to serialize the vector of unique_ptr's ?
+
+    }
+    template<class Archive>
+    void load(Archive & ar, const unsigned int version)
+    {
+    	ar & parsmodel & parsmc;
+    	ar & rng;
+    	ar & greenUpdateType;
+    	if (parsmodel.model == "hubbard") {
+
+    	}
+    }
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 
