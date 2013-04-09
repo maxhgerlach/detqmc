@@ -19,7 +19,7 @@
 #include "timing.h"
 
 //initial values for field components chosen from this range:
-const num PhiLow = 1;
+const num PhiLow = -1;
 const num PhiHigh = 1;
 //adjustment of phiDelta:
 const num InitialPhiDelta = 0.5;
@@ -74,6 +74,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		gBwd = CubeCpx(4*N,4*N, m+1);
 	}
 	setupRandomPhi();
+	std::cout << "S_phi = " << phiAction() << std::endl;
 	setupPropK();
 	computeBmat[0] = [this](unsigned k2, unsigned k1) {
 		return this->computeBmatSDW(k2, k1);
@@ -311,22 +312,22 @@ void DetSDW::updateInSlice(unsigned timeslice) {
 	for_each_site( [this, timeslice](unsigned site) {
 		Phi newphi = proposeNewField(site, timeslice);
 
-		VecNum oldphi0 = phi0.col(timeslice);
-		VecNum oldphi1 = phi1.col(timeslice);
-		VecNum oldphi2 = phi2.col(timeslice);
-		debugSaveMatrix(oldphi0, "old_phi0");
-		debugSaveMatrix(oldphi1, "old_phi1");
-		debugSaveMatrix(oldphi2, "old_phi2");
+//		VecNum oldphi0 = phi0.col(timeslice);
+//		VecNum oldphi1 = phi1.col(timeslice);
+//		VecNum oldphi2 = phi2.col(timeslice);
+//		debugSaveMatrix(oldphi0, "old_phi0");
+//		debugSaveMatrix(oldphi1, "old_phi1");
+//		debugSaveMatrix(oldphi2, "old_phi2");
 
-		VecNum newphi0 = phi0.col(timeslice);
-		VecNum newphi1 = phi1.col(timeslice);
-		VecNum newphi2 = phi2.col(timeslice);
-		newphi0[site] = newphi[0];
-		newphi1[site] = newphi[1];
-		newphi2[site] = newphi[2];
-		debugSaveMatrix(newphi0, "new_phi0");
-		debugSaveMatrix(newphi1, "new_phi1");
-		debugSaveMatrix(newphi2, "new_phi2");
+//		VecNum newphi0 = phi0.col(timeslice);
+//		VecNum newphi1 = phi1.col(timeslice);
+//		VecNum newphi2 = phi2.col(timeslice);
+//		newphi0[site] = newphi[0];
+//		newphi1[site] = newphi[1];
+//		newphi2[site] = newphi[2];
+//		debugSaveMatrix(newphi0, "new_phi0");
+//		debugSaveMatrix(newphi1, "new_phi1");
+//		debugSaveMatrix(newphi2, "new_phi2");
 
 		num dsphi = deltaSPhi(site, timeslice, newphi);
 		num propSPhi = std::exp(-dsphi);
@@ -619,7 +620,8 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 					   phi2(site, kLater)};
 	Phi phiTimeNeigh = phiLater + phiEarlier;
 
-	Phi phiSpaceNeigh = 0.5 * std::accumulate(spaceNeigh.beginNeighbors(site),
+	Phi phiSpaceNeigh = std::accumulate(
+			spaceNeigh.beginNeighbors(site),
 			spaceNeigh.endNeighbors(site),
 			Phi{0,0,0},
 			[this, timeslice] (Phi accum, unsigned neighSite) {
@@ -632,7 +634,7 @@ num DetSDW::deltaSPhi(unsigned site, unsigned timeslice, const Phi newphi) {
 
 	num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
 
-	num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiDiff, phiSpaceNeigh));
+	num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiSpaceNeigh, phiDiff));
 
 	num delta3 = dtau * (0.5 * r * phiSqDiff + 0.25 * u * phiPow4Diff);
 
