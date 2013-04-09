@@ -74,7 +74,6 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		gBwd = CubeCpx(4*N,4*N, m+1);
 	}
 	setupRandomPhi();
-	std::cout << "S_phi = " << phiAction() << std::endl;
 	setupPropK();
 	computeBmat[0] = [this](unsigned k2, unsigned k1) {
 		return this->computeBmatSDW(k2, k1);
