@@ -133,14 +133,16 @@ void DetSDW::measure() {
 	meanPhi[1] = averageWholeSystem(phi1, 0.0);
 	meanPhi[2] = averageWholeSystem(phi2, 0.0);
 	normPhi = arma::norm(meanPhi, 2);
-	phiSecond = averageWholeSystem( [this](unsigned i, unsigned k) {
-		using std::pow;
-		return pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2);
-	}, 0.0);
-	phiFourth = averageWholeSystem( [this](unsigned i, unsigned k) {
-		using std::pow;
-		return pow(pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2), 2);
-	}, 0.0);
+//	phiSecond = averageWholeSystem( [this](unsigned i, unsigned k) {
+//		using std::pow;
+//		return pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2);
+//	}, 0.0);
+//	phiFourth = averageWholeSystem( [this](unsigned i, unsigned k) {
+//		using std::pow;
+//		return pow(pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2), 2);
+//	}, 0.0);
+	phiSecond = std::pow(normPhi, 2);
+	phiFourth = std::pow(phiSecond, 2);
 	binder = 1.0 - 3.0*phiFourth / (5.0*phiSecond);
 
 	//fermion occupation number
