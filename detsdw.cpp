@@ -237,6 +237,7 @@ void DetSDW::setupPropK() {
 }
 
 MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
+	timing.start("computeBmatSDW");
 	using arma::eye; using arma::zeros; using arma::diagmat;
 	if (k2 == k1) {
 		return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
@@ -300,6 +301,8 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	for (unsigned k = k2 - 1; k > k1; --k) {
 		result *= singleTimesliceProp(k);				// equivalent to: result = result * singleTimesliceProp(k);
 	}
+
+	timing.stop("computeBmatSDW");
 
 	return result;
 }

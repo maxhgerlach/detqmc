@@ -14,6 +14,7 @@
 #include <armadillo>
 #pragma GCC diagnostic warning "-Weffc++"
 #pragma GCC diagnostic warning "-Wconversion"
+#include "timing.h"
 
 
 //matrices used in the computation of B-matrices decomposed into
@@ -41,6 +42,8 @@ UdV<std::complex<double>>::UdV(unsigned size) :
 
 template <typename num>
 UdV<num> udvDecompose(const arma::Mat<num>& mat) {
+	timing.start("udvDecompose");
+
 	typedef UdV<num> UdV;
 	UdV result;
 
@@ -48,7 +51,9 @@ UdV<num> udvDecompose(const arma::Mat<num>& mat) {
 //	arma::svd(result.U, result.d, V_transpose, mat, "standard");
 //	result.V = V_transpose.t();			//potentially it may be advisable to not do this generally
 
+	timing.start("qr");
 	arma::qr(result.U, result.V, mat);
+	timing.stop("qr");
 	//normalize rows of V to obtain scales in d:
 	result.d = arma::Col<num>(mat.n_rows);
 	for (unsigned rown = 0; rown < mat.n_rows; ++rown) {
@@ -56,6 +61,8 @@ UdV<num> udvDecompose(const arma::Mat<num>& mat) {
 		result.d[rown] = norm;
 		result.V.row(rown) /= norm;
 	}
+
+	timing.stop("udvDecompose");
 
 	return result;
 }
