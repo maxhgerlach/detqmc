@@ -10,6 +10,7 @@
 
 #ifdef TIMING
 
+#include <vector>
 #include <string>
 #include <map>
 #include <iostream>
@@ -23,18 +24,19 @@
 
 class Timing {
 public:
-	Timing() : timers() {
+	Timing() : insertOrder(), timers() {
 	}
 	//on destruction print timing summary
 	~Timing() {
 		std::cout << "\nTimings:\n";
-		for (const auto& kv : timers) {
-			std::cout << kv.first << ": " << kv.second.format();
+		for (const auto& timerName : insertOrder) {
+			std::cout << timerName << ": " << timers[timerName].format();
 		}
 	}
 	//start or resume a timer:
 	void start(const std::string& timerKey) {
 		if (timers.count(timerKey) == 0) {
+			insertOrder.push_back(timerKey);
 			timers[timerKey] = boost::timer::cpu_timer();
 		}
 		timers[timerKey].resume();
@@ -43,6 +45,7 @@ public:
 		timers.at(timerKey).stop();
 	}
 private:
+	std::vector<std::string> insertOrder;
 	std::map<std::string,boost::timer::cpu_timer> timers;
 };
 
