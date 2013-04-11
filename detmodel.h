@@ -272,6 +272,7 @@ std::vector<KeyValueObservable> DetModelGC<GC,V>::getKeyValueObservables() {
 
 template<unsigned GC, typename V>
 void DetModelGC<GC,V>::setupUdVStorage() {
+	timing.start("setupUdVStorage");
 	auto setup = [this](unsigned gc) {
 		std::vector<UdVV>& storage = UdVStorage[gc];
 		storage = std::vector<UdVV>(n + 1);
@@ -292,6 +293,7 @@ void DetModelGC<GC,V>::setupUdVStorage() {
 	};
 	for_each_gc(setup);
 	lastSweepDir = SweepDirection::Up;
+	timing.stop("setupUdVStorage");
 }
 
 

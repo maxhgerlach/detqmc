@@ -247,6 +247,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 
 	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
 	auto singleTimesliceProp = [this, N](unsigned k) {
+		timing.start("singleTimesliceProp");
 		MatCpx result(4*N, 4*N);
 
 		//submatrix view helper for a 4N*4N matrix
@@ -293,6 +294,7 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 
 //		debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
 //		debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
+		timing.stop("singleTimesliceProp");
 		return result;
 	};
 
