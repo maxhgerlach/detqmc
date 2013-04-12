@@ -511,7 +511,7 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 	SpMatCpx result = singleTimesliceProp(k2);
 
 	for (unsigned k = k2 - 1; k > k1; --k) {
-		result *= singleTimesliceProp(k);			//TODO: Armadillo lacks support for complex sparse matrix products
+		result *= singleTimesliceProp(k);
 	}
 
 	timing.stop("computeBmatSDW_checkerboard");
