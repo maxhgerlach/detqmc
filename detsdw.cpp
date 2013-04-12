@@ -66,6 +66,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
+		checkerEmKx(N,N), checkerEmKy(N,N), checkerEpKx(N,N), checkerEpKy(N,N),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta),
@@ -253,7 +254,7 @@ void DetSDW::setupPropK_direct() {
 
 
 MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
-	timing.start("computeBmatSDW");
+	timing.start("computeBmatSDW_direct");
 	using arma::eye; using arma::zeros; using arma::diagmat;
 	if (k2 == k1) {
 		return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
@@ -263,7 +264,7 @@ MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
 
 	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
 	auto singleTimesliceProp = [this, N](unsigned k) {
-		timing.start("singleTimesliceProp");
+		timing.start("singleTimesliceProp_direct");
 		MatCpx result(4*N, 4*N);
 
 		//submatrix view helper for a 4N*4N matrix
@@ -310,7 +311,7 @@ MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
 
 //		debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
 //		debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
-		timing.stop("singleTimesliceProp");
+		timing.stop("singleTimesliceProp_direct");
 		return result;
 	};
 
@@ -320,7 +321,7 @@ MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
 		result *= singleTimesliceProp(k);				// equivalent to: result = result * singleTimesliceProp(k);
 	}
 
-	timing.stop("computeBmatSDW");
+	timing.stop("computeBmatSDW_direct");
 
 	return result;
 }
@@ -358,7 +359,7 @@ void DetSDW::setupPropK_checkerboard() {
 			//=======================
 			unsigned siteA = xyToSite(x, y);
 			unsigned neighA = spaceNeigh(NeighDir::XPLUS, siteA);
-			//x-badn
+			//x-band
 			kx_a_hor(siteA, neighA) = 1;
 			kx_a_hor(neighA, siteA) = 1;
 			//y-band
@@ -439,7 +440,83 @@ void DetSDW::setupPropK_checkerboard() {
 	std::cout << "checkerEpKy: " << num(checkerEpKy.n_nonzero) / num(N*N) << std::endl;
 }
 
+
 MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
+	using arma::diagmat; using arma::eye; using arma::zeros;
+	timing.start("computeBmatSDW_checkerboard");
+
+	if (k2 == k1) {
+		return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+	}
+	assert(k2 > k1);
+	assert(k2 <= m);
+
+	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K) * e^(dtau * mu)
+	auto singleTimesliceProp = [this, N](unsigned k) {
+		timing.start("singleTimesliceProp_checkerboard");
+		SpMatCpx result(4*N, 4*N);
+
+		//submatrix view helper for a 4N*4N matrix //TODO: specify return value as a reference?
+		auto block = [&result, N](unsigned row, unsigned col) {
+			return result.submat(row * N, col * N,
+					             (row + 1) * N - 1, (col + 1) * N - 1);
+		};
+		//Helper to compute the product of a diagonal matrix with a sparse matrix (NxN).
+		//This is written with sparse matrixes without any empty columns in mind.
+		auto diagTimesSpMat = [N](const VecNum& diag, const SpMatNum& spmat) {
+			SpMatNum result(N,N);
+			for (unsigned c = 0; c < N; ++c) {
+				result.col(c) = diag % spmat.col(c);
+			}
+			return result;
+		};
+
+		const auto& kphi0 = phi0.col(k);
+		const auto& kphi1 = phi1.col(k);
+		const auto& kphi2 = phi2.col(k);
+		const auto& kphiCosh = phiCosh.col(k);
+		const auto& kphiSinh = phiSinh.col(k);
+
+		block(0, 0) = SpMatCpx(diagTimesSpMat(kphiCosh, checkerEmKx),
+							   SpMatNum(N,N));
+		//block(0, 1) zero
+		block(0, 2) = SpMatCpx(diagTimesSpMat(-kphi2 % kphiSinh, checkerEmKy),
+				         	   SpMatNum(N,N));
+		block(0, 3) = SpMatCpx(diagTimesSpMat(-kphi0 % kphiSinh, checkerEmKy),
+				               diagTimesSpMat(+kphi1 % kphiSinh, checkerEmKy));
+		//block(1, 0) zero
+		block(1, 1) = block(0, 0);
+		block(1, 2) = SpMatCpx(diagTimesSpMat(-kphi0 % kphiSinh, checkerEmKy),
+				               diagTimesSpMat(-kphi1 % kphiSinh, checkerEmKy));
+		block(2, 0) = SpMatCpx(diagTimesSpMat(-kphi2 % kphiSinh, checkerEmKx),
+				               SpMatNum(N,N));
+		block(2, 1) = SpMatCpx(diagTimesSpMat(-kphi0 % kphiSinh, checkerEmKx),
+				               diagTimesSpMat(+kphi1 % kphiSinh, checkerEmKx));
+		block(2, 2) = SpMatCpx(diagTimesSpMat(kphiCosh, checkerEmKy),
+							   SpMatNum(N,N));
+		//block(2, 3) zero
+		block(3, 0) = SpMatCpx(diagTimesSpMat(-kphi0 % kphiSinh, checkerEmKx),
+							   diagTimesSpMat(-kphi1 % kphiSinh, checkerEmKx));
+		block(3, 1) = SpMatCpx(diagTimesSpMat(+kphi2 % kphiSinh, checkerEmKx),
+				               SpMatNum(N,N));
+		//block(3, 2) zero
+		block(3, 3) = block(2, 2);
+
+		timing.stop("singleTimesliceProp_checkerboard");
+		return result;
+	};
+
+	//TODO: try rvalue references, so I don't have to rely on named return value optimization being done
+
+	SpMatCpx result = singleTimesliceProp(k2);
+
+	for (unsigned k = k2 - 1; k > k1; --k) {
+		result *= singleTimesliceProp(k);			//TODO: Armadillo lacks support for complex sparse matrix products
+	}
+
+	timing.stop("computeBmatSDW_checkerboard");
+
+	return MatCpx(result);
 }
 
 
