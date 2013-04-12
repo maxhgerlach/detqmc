@@ -58,8 +58,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		replica = createDetHubbard(rng, parsmodel);
 	} else if (parsmodel.model == "sdw") {
 		replica = createDetSDW(rng, parsmodel);
-	}
-	else {
+	} else {
 		throw ParameterWrong("model", parsmodel.model);
 	}
 

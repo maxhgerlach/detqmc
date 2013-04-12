@@ -41,6 +41,11 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 			throw ParameterMissing(*p);
 		}
 	}
+
+	if (pars.checkerboard and pars.L % 2 != 0) {
+		throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
+	}
+
 #define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
 #define CHECK_POSITIVE(x) 	{  					  						\
 								IF_NOT_POSITIVE(x) {  					\
@@ -57,6 +62,7 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		DetModelGC<1,cpx>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
+		checkerboard(pars.checkerboard),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
@@ -74,10 +80,18 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		gBwd = CubeCpx(4*N,4*N, m+1);
 	}
 	setupRandomPhi();
-	setupPropK();
-	computeBmat[0] = [this](unsigned k2, unsigned k1) {
-		return this->computeBmatSDW(k2, k1);
-	};
+
+	if (checkerboard) {
+		setupPropK_checkerboard();
+		computeBmat[0] = [this](unsigned k2, unsigned k1) {
+			return this->computeBmatSDW_checkerboard(k2, k1);
+		};
+	} else {
+		setupPropK_direct();
+		computeBmat[0] = [this](unsigned k2, unsigned k1) {
+			return this->computeBmatSDW_direct(k2, k1);
+		};
+	}
 	setupUdVStorage();
 
 	using std::cref;
@@ -108,6 +122,7 @@ unsigned DetSDW::getSystemN() const {
 MetadataMap DetSDW::prepareModelMetadataMap() const {
 	MetadataMap meta;
 	meta["model"] = "sdw";
+	meta["checkerboard"] = (checkerboard ? "true" : "false");
 	meta["timedisplaced"] = (timedisplaced ? "true" : "false");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(targetAccRatio);
@@ -214,7 +229,7 @@ void DetSDW::setupRandomPhi() {
 	} );
 }
 
-void DetSDW::setupPropK() {
+void DetSDW::setupPropK_direct() {
 	std::array<std::array<num,z>, 2> t;
 	t[XBAND][XPLUS] = t[XBAND][XMINUS] = -1.0;
 	t[XBAND][YPLUS] = t[XBAND][YMINUS] = -0.5;
@@ -236,7 +251,8 @@ void DetSDW::setupPropK() {
 	} );
 }
 
-MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
+
+MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
 	timing.start("computeBmatSDW");
 	using arma::eye; using arma::zeros; using arma::diagmat;
 	if (k2 == k1) {
@@ -308,6 +324,128 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 
 	return result;
 }
+
+
+void DetSDW::setupPropK_checkerboard() {
+	//hopping constants:
+	std::array<std::array<num,2>, 2> t;
+	enum { HOR = 0, VER = 1 };
+	t[XBAND][HOR] = -1.0;
+	t[XBAND][VER] = -0.5;
+	t[YBAND][HOR] = 0.5;
+	t[YBAND][VER] = 1.0;
+
+	//hopping bond matrices, x-band
+	SpMatNum kx_a_hor = SpMatNum(N, N);
+	SpMatNum kx_b_hor = SpMatNum(N, N);
+	SpMatNum kx_a_ver = SpMatNum(N, N);
+	SpMatNum kx_b_ver = SpMatNum(N, N);
+
+	//hopping bond matrices, y-band
+	SpMatNum ky_a_hor = SpMatNum(N, N);
+	SpMatNum ky_b_hor = SpMatNum(N, N);
+	SpMatNum ky_a_ver = SpMatNum(N, N);
+	SpMatNum ky_b_ver = SpMatNum(N, N);
+
+	auto xyToSite = [L](unsigned x, unsigned y) {
+		return y * L + x;
+	};
+
+	//horizontal bonds
+	for (unsigned y = 0; y < L; ++y) {
+		for (unsigned x = 0; x < L; x += 2) {
+			//sub board a, horizontal
+			//=======================
+			unsigned siteA = xyToSite(x, y);
+			unsigned neighA = spaceNeigh(NeighDir::XPLUS, siteA);
+			//x-badn
+			kx_a_hor(siteA, neighA) = 1;
+			kx_a_hor(neighA, siteA) = 1;
+			//y-band
+			ky_a_hor(siteA, neighA) = 1;
+			ky_a_hor(neighA, siteA) = 1;
+
+			//sub board b, horizontal
+			//=======================
+			unsigned siteB = neighA;
+			unsigned neighB = spaceNeigh(NeighDir::XPLUS, siteB);
+			//x-band
+			kx_b_hor(siteB, neighB) = 1;
+			kx_b_hor(neighB, siteB) = 1;
+			//y-band
+			ky_b_hor(siteB, neighB) = 1;
+			ky_b_hor(neighB, siteB) = 1;
+		}
+	}
+	//vertical bonds
+	for (unsigned x = 0; x < L; ++x) {
+		for (unsigned y = 0; y < L; y += 2) {
+			//sub board a, vertical
+			//=====================
+			unsigned siteA = xyToSite(x, y);
+			unsigned neighA = spaceNeigh(NeighDir::YPLUS, siteA);
+			//x-band
+			kx_a_ver(siteA, neighA) = 1;
+			kx_a_ver(neighA, siteA) = 1;
+			//y-band
+			ky_a_ver(siteA, neighA) = 1;
+			ky_a_ver(neighA, siteA) = 1;
+
+			//sub board b, vertical
+			//=====================
+			unsigned siteB = neighA;
+			unsigned neighB = spaceNeigh(NeighDir::YPLUS, siteB);
+			//x-band
+			kx_b_ver(siteB, neighB) = 1;
+			kx_b_ver(neighB, siteB) = 1;
+			//y-band
+			ky_b_ver(siteB, neighB) = 1;
+			ky_b_ver(neighB, siteB) = 1;
+		}
+	}
+
+	using std::sinh; using std::cosh; using std::exp; using arma::speye;
+
+	SpMatNum em_kx_a_hor = -sinh(dtau * t[XBAND][HOR]) * kx_a_hor + cosh(dtau * t[XBAND][HOR]) * speye(N,N);
+	SpMatNum em_kx_b_hor = -sinh(dtau * t[XBAND][HOR]) * kx_b_hor + cosh(dtau * t[XBAND][HOR]) * speye(N,N);
+	SpMatNum em_kx_a_ver = -sinh(dtau * t[XBAND][VER]) * kx_a_ver + cosh(dtau * t[XBAND][VER]) * speye(N,N);
+	SpMatNum em_kx_b_ver = -sinh(dtau * t[XBAND][VER]) * kx_b_ver + cosh(dtau * t[XBAND][VER]) * speye(N,N);
+
+	checkerEmKx = exp(dtau * mu) * em_kx_a_hor * em_kx_a_ver * em_kx_b_hor * em_kx_b_ver;
+	std::cout << "checkerEmKx: " << num(checkerEmKx.n_nonzero) / num(N*N) << std::endl;
+
+	SpMatNum em_ky_a_hor = -sinh(dtau * t[YBAND][HOR]) * ky_a_hor + cosh(dtau * t[YBAND][HOR]) * speye(N,N);
+	SpMatNum em_ky_b_hor = -sinh(dtau * t[YBAND][HOR]) * ky_b_hor + cosh(dtau * t[YBAND][HOR]) * speye(N,N);
+	SpMatNum em_ky_a_ver = -sinh(dtau * t[YBAND][VER]) * ky_a_ver + cosh(dtau * t[YBAND][VER]) * speye(N,N);
+	SpMatNum em_ky_b_ver = -sinh(dtau * t[YBAND][VER]) * ky_b_ver + cosh(dtau * t[YBAND][VER]) * speye(N,N);
+
+	checkerEmKy = exp(dtau * mu) * em_ky_a_hor * em_ky_a_ver * em_ky_b_hor * em_ky_b_ver;
+	std::cout << "checkerEmKy: " << num(checkerEmKy.n_nonzero) / num(N*N) << std::endl;
+
+	SpMatNum ep_kx_a_hor = sinh(dtau * t[XBAND][HOR]) * kx_a_hor + cosh(dtau * t[XBAND][HOR]) * speye(N,N);
+	SpMatNum ep_kx_b_hor = sinh(dtau * t[XBAND][HOR]) * kx_b_hor + cosh(dtau * t[XBAND][HOR]) * speye(N,N);
+	SpMatNum ep_kx_a_ver = sinh(dtau * t[XBAND][VER]) * kx_a_ver + cosh(dtau * t[XBAND][VER]) * speye(N,N);
+	SpMatNum ep_kx_b_ver = sinh(dtau * t[XBAND][VER]) * kx_b_ver + cosh(dtau * t[XBAND][VER]) * speye(N,N);
+
+	checkerEpKx = exp(-dtau * mu) * ep_kx_a_hor * ep_kx_a_ver * ep_kx_b_hor * ep_kx_b_ver;
+	std::cout << "checkerEpkx: " << num(checkerEpKx.n_nonzero) / num(N*N) << std::endl;
+
+	SpMatNum ep_ky_a_hor = sinh(dtau * t[YBAND][HOR]) * ky_a_hor + cosh(dtau * t[YBAND][HOR]) * speye(N,N);
+	SpMatNum ep_ky_b_hor = sinh(dtau * t[YBAND][HOR]) * ky_b_hor + cosh(dtau * t[YBAND][HOR]) * speye(N,N);
+	SpMatNum ep_ky_a_ver = sinh(dtau * t[YBAND][VER]) * ky_a_ver + cosh(dtau * t[YBAND][VER]) * speye(N,N);
+	SpMatNum ep_ky_b_ver = sinh(dtau * t[YBAND][VER]) * ky_b_ver + cosh(dtau * t[YBAND][VER]) * speye(N,N);
+
+	checkerEpKy = exp(-dtau * mu) * ep_ky_a_hor * ep_ky_a_ver * ep_ky_b_hor * ep_ky_b_ver;
+	std::cout << "checkerEpKy: " << num(checkerEpKy.n_nonzero) / num(N*N) << std::endl;
+}
+
+MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
+}
+
+
+
+
+
 
 void DetSDW::updateInSlice(unsigned timeslice) {
 	timing.start("sdw-updateInSlice");

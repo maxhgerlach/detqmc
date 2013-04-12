@@ -41,6 +41,7 @@ protected:
 
 	static const unsigned d = 2;
 	static const unsigned z = 2*d;
+	const bool checkerboard;
 	const unsigned L;
 	const unsigned N;
 	const num r;
@@ -56,6 +57,15 @@ protected:
 	std::array<MatNum, 2> propK;
 	MatNum& propKx;
 	MatNum& propKy;
+
+	//e^(-dtau*K_x|y)*e^(dtau*mu) as calculated from checkerboard break up (dos Santos 2003)
+	//chemical potential mu included
+	//TODO: would it be better to keep the separate factors?
+	SpMatNum checkerEmKx;
+	SpMatNum checkerEmKy;
+	//the same for e^(+dtau*K_x|y)*e^(-dtau*mu)
+	SpMatNum checkerEpKx;
+	SpMatNum checkerEpKy;
 
 	CubeCpx& g;
 	CubeCpx& gFwd;
@@ -125,9 +135,11 @@ protected:
     }
 
     void setupRandomPhi();
-	void setupPropK();
+	void setupPropK_direct();
+	void setupPropK_checkerboard();
 
-	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;
+	MatCpx computeBmatSDW_direct(unsigned k2, unsigned k1) const;
+	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;
 
 	virtual void updateInSlice(unsigned timeslice);
 	//this one does some adjusting of the box size from which new fields are chosen:

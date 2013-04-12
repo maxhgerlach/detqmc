@@ -41,8 +41,8 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	if (pars.checkerboard and pars.L % 2 != 0) {
 		throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
 	}
-	if (pars.checkerboard and (pars.model != "hubbard" or pars.d != 2)) {
-		throw ParameterWrong("Checker board decomposition only supported for 2d Hubbard model");
+	if (pars.checkerboard and pars.d != 2) {
+		throw ParameterWrong("Checker board decomposition only supported for 2d lattices");
 	}
 
 	//check that only positive values are passed for certain parameters
@@ -672,6 +672,8 @@ void DetHubbard::setupPropTmat_direct() {
 }
 
 void DetHubbard::setupPropTmat_checkerboard() {
+	//Checkerboard break up as in dos Santos 2003
+
 	assert(d == 2);
 	auto xyToSite = [L](unsigned x, unsigned y) {
 		return y * L + x;
@@ -713,6 +715,8 @@ void DetHubbard::setupPropTmat_checkerboard() {
 	const num sh = sinh(dtau * t);
 	using arma::eye; using arma::conv_to;
 	//see notes / Mathematica experimentation:
+	//[Actually, by performing the calculations in this way, there is no numerical
+	//advantage whatsoever -- more sensible implementation to be done for the SDW model]x
 	proptmat = pow(ch, 4) * eye(N,N)
 	         + pow(ch, 3)*sh * (kxa + kxb + kya + kyb)
 	         + pow(ch, 2)*pow(sh, 2 ) * (kxa*kxb + kxa*kya + kxb*kya +
