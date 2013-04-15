@@ -453,7 +453,7 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 
 	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K) * e^(dtau * mu)
 	auto singleTimesliceProp = [this, N](unsigned k) {
-		timing.start("singleTimesliceProp_checkerboard");
+//		timing.start("singleTimesliceProp_checkerboard");
 		SpMatCpx result(4*N, 4*N);
 
 		//submatrix view helper for a 4N*4N matrix //TODO: specify return value as a reference?
@@ -502,7 +502,7 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 		//block(3, 2) zero
 		block(3, 3) = block(2, 2);
 
-		timing.stop("singleTimesliceProp_checkerboard");
+//		timing.stop("singleTimesliceProp_checkerboard");
 		return result;
 	};
 
