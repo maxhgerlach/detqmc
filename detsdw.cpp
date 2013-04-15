@@ -465,7 +465,6 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 		//This is written with sparse matrixes without any empty columns in mind.
 		auto diagTimesSpMat = [N](const VecNum& diag, const SpMatNum& spmat) {
 			SpMatNum result(N,N);
-#pragma omp parallel for
 			for (unsigned c = 0; c < N; ++c) {
 				result.col(c) = diag % spmat.col(c);
 			}
