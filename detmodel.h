@@ -133,7 +133,8 @@ protected:
 
     //functions to compute B-matrices for the different Green function sectors
     typedef std::function<MatV(unsigned k2, unsigned k1)> FuncComputeBmat;
-    std::array<FuncComputeBmat, GreenComponents> computeBmat;
+    std::array<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
+    std::array<FuncComputeBmat, GreenComponents> computeBmatInverse;	// B(k2*dtau, k1*dtau) ^ (-1)
 
     //functions that compute Green functions from UdV-decomposed matrices L/R
     //for a single timeslice
@@ -441,6 +442,7 @@ template<unsigned GC, typename V>
 void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(unsigned k, unsigned greenComponent) {
 	timing.start("wrapDownGreen_timedisplaced");
 	MatV B_k = computeBmat[greenComponent](k, k - 1);
+//	MatV B_k_inv = computeBmatInverse[greenComponent](k, k - 1);
 	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
 	greenFwd[greenComponent].slice(k - 1) = arma::inv(B_k) * greenFwd[greenComponent].slice(k);
 	greenBwd[greenComponent].slice(k - 1) = greenBwd[greenComponent](k) * B_k;
