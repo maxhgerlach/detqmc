@@ -60,3 +60,16 @@ void RngWrapper::loadState() {
 	}
 	fclose(F);
 }
+
+std::string RngWrapper::stateToString() {
+	const char* cstring = dsfmt_state_to_str(&dsfmt, NULL);
+	std::string s(cstring);
+	free(cstring);
+	return s;
+}
+
+void RngWrapper::stringToState(const std::string& stateString) {
+	const char* cstring = stateString.c_str();
+	dsfmt_str_to_state(&dsfmt, cstring, NULL);
+}
+

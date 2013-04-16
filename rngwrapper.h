@@ -20,6 +20,8 @@ extern "C" {
 #include "dsfmt/dSFMT.h"
 }
 
+#include <boost/serialization/string.hpp>
+
 class RngWrapper {
     unsigned long seed;
     unsigned int processIndex;
@@ -47,8 +49,31 @@ public:
         return low + static_cast<int> ((high - low + 1.0) * rand01());
     };
 
+    //saving/loading state without Boost serialization
     void saveState();
     void loadState();
+
+private:
+    //for serialization with Boost
+	friend class boost::serialization::access;
+
+    std::string stateToString();
+    void stringToState(const std::string& stateString);
+
+    template<class Archive>
+	void save(Archive& ar, const unsigned int version) {
+    	ar & seed & processIndex;
+    	ar & stateToString();
+    }
+
+    template<class Archive>
+	void load(Archive& ar, const unsigned int version) {
+    	ar & seed & processIndex;
+    	std::string stateString;
+    	ar & stateString;
+    	stringToState(stateString);
+    }
+
 };
 
 #endif /* RNGWRAPPER_H_ */
