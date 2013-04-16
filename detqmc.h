@@ -20,6 +20,8 @@
 #include "rngwrapper.h"
 
 #include <boost/serialization/split_member.hpp>
+#include "boost_serialize_uniqueptr.h"
+#include "boost_serialize_vector_uniqueptr.h"
 
 // Class handling the simulation
 class DetQMC {
@@ -61,25 +63,40 @@ protected:
 	MetadataMap prepareMCMetadataMap() const;
 
 protected:
+	//TODO: use boost nvp (name-value-pair) serialization
 	friend class boost::serialization::access;
+
+	//serialization code that is equal for save/load
+	template<class Archive>
+	void sharedSerialization(Archive& ar, const unsigned int version) {
+    	ar & parsmodel & parsmc;
+    	ar & modelMeta & mcMeta;
+    	ar & rng;
+    	ar & greenUpdateType;
+    	ar & replica;
+    	ar & obsHandlers & vecObsHandlers;
+    	ar & sweepsDone;
+	}
+
     template<class Archive>
     void save(Archive & ar, const unsigned int version)
     {
-    	ar & parsmodel & parsmc;
-    	ar & rng;
-    	ar & greenUpdateType;
-    	ar & (*replica);
-    	//how to serialize the vector of unique_ptr's ?
-
+    	sharedSerialization(ar, version);
     }
+
     template<class Archive>
     void load(Archive & ar, const unsigned int version)
     {
-    	ar & parsmodel & parsmc;
-    	ar & rng;
-    	ar & greenUpdateType;
-    	if (parsmodel.model == "hubbard") {
-
+    	sharedSerialization(ar, version);
+    	//reset sweep callback functions [everything would be cleaner
+    	//if templates were used throughout...]
+    	//code copied from the constructor
+    	if (greenUpdateType == GreenUpdateType::Simple) {
+    		sweepFunc = [this]() {replica->sweepSimple();};
+    		sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
+    	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
+    		sweepFunc = [this]() {replica->sweep();};
+    		sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
     	}
     }
     BOOST_SERIALIZATION_SPLIT_MEMBER()
