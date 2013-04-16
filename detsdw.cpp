@@ -470,6 +470,14 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 			}
 			return result;
 		};
+		//TODO: neaten this up... might be more efficient
+//		auto blockAssignRealDiagTimesSpMat = [N, result&, block](unsigned blockRow, unsigned blockCol,
+//				const VecNum& diag, const SpMatNum& spmat) -> void {
+//			for (unsigned c = 0; c < N; ++c) {
+//				block(blockRow, blockCol).col(c)) = diag % spmat.col(c), SpMatNum(N,N));
+//			}
+//		};
+
 
 		const auto& kphi0 = phi0.col(k);
 		const auto& kphi1 = phi1.col(k);
