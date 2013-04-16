@@ -52,6 +52,9 @@ struct ModelParams {
 			beta(), m(), dtau(), s(), accRatio(), specified() {
 	}
 
+private:
+	friend class boost::serialization::access;
+
 	template<class Archive>
 	void serialize(Archive& ar, const unsigned int version) {
 		ar & model & timedisplaced & checkerboard
@@ -78,6 +81,9 @@ struct MCParams {
 	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
 			rngSeed(), greenUpdateType(), specified()
 	{ }
+
+private:
+	friend class boost::serialization::access;
 
 	template<class Archive>
 	void serialize(Archive& ar, const unsigned int version) {
