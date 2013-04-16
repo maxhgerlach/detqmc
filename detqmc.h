@@ -20,6 +20,7 @@
 #include "rngwrapper.h"
 
 #include <boost/serialization/split_member.hpp>
+#include <boost/serialization/map.hpp>				//for MetadataMap
 #include "boost_serialize_uniqueptr.h"
 #include "boost_serialize_vector_uniqueptr.h"
 
