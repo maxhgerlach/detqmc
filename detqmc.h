@@ -79,14 +79,12 @@ protected:
 	}
 
     template<class Archive>
-    void save(Archive & ar, const unsigned int version)
-    {
+    void save(Archive& ar, const unsigned int version) {
     	sharedSerialization(ar, version);
     }
 
     template<class Archive>
-    void load(Archive & ar, const unsigned int version)
-    {
+    void load(Archive& ar, const unsigned int version) {
     	sharedSerialization(ar, version);
     	//reset sweep callback functions [everything would be cleaner
     	//if templates were used throughout...]
