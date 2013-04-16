@@ -27,6 +27,11 @@
 #include "metadata.h"
 #include "timing.h"
 
+#include <boost/serialization/base_object.hpp>
+#include <boost/serialization/export.hpp>
+#include <boost/serialization/assume_abstract.hpp>
+#include "boost_serialize_array.h"
+
 typedef std::complex<double> cpx;
 
 typedef arma::Col<num> VecNum;
@@ -81,8 +86,15 @@ public:
     //do nothing by default
     virtual void thermalizationOver() {
     }
-};
+private:
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
 
+    }
+};
+BOOST_SERIALIZATION_ASSUME_ABSTRACT(DetModel)
+BOOST_CLASS_EXPORT(DetModel)
 
 //GreenComponents is the number of independent sectors of the Green's function,
 //e.g. in the Hubbard model it is 2 for spin up and spin down
@@ -216,6 +228,44 @@ protected:
 	std::vector<ScalarObservable> obsScalar;
 	std::vector<VectorObservable> obsVector;
 	std::vector<KeyValueObservable> obsKeyValue;
+
+private:
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+    	ar & boost::serialization::base_object<DetModel>(*this);
+    	ar & sz;
+    	ar & timedisplaced & beta & m & s & n & dtau;
+    	ar & green & greenFwd & greenBwd;
+    	ar & eye_UdV;
+    	ar & UdVStorage;
+    	ar & lastSweepDir;
+    	ar & obsScalar & obsVector & obsKeyValue;
+    	//copied from constructor below:
+    	if (timedisplaced) {
+    		wrapUp = [this](unsigned k, unsigned gc) { this->wrapUpGreen_timedisplaced(k, gc); };
+    		wrapDown = [this](unsigned k, unsigned gc) { this->wrapDownGreen_timedisplaced(k, gc); };
+    		for_each_gc( [this](unsigned gc) {
+    			updateGreenFunctionUdV[gc] = [this, gc](unsigned targetSlice,
+    					const UdVV& UdV_L, const UdVV& UdV_R) {
+    				std::tie(std::ignore, greenBwd[gc].slice(targetSlice),
+    						greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice)) =
+    								this->greenFromUdV_timedisplaced(UdV_L, UdV_R);
+    			};
+    		} );
+    	} else {
+    		wrapUp = [this](unsigned k, unsigned gc) { this->wrapUpGreen(k, gc); };
+    		wrapDown = [this](unsigned k, unsigned gc) { this->wrapDownGreen(k, gc); };
+    		for_each_gc( [this](unsigned gc) {
+    			updateGreenFunctionUdV[gc] = [this, gc](unsigned targetSlice,
+    					const UdVV& UdV_L, const UdVV& UdV_R) {
+    				green[gc].slice(targetSlice) = this->greenFromUdV(UdV_L, UdV_R);
+    			};
+    		} );
+    	}
+
+    	//remember to reset  the arrays of function objects upon load in derived classes!
+    }
+
 };
 
 
