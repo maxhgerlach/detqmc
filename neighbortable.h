@@ -20,6 +20,8 @@
 
 #include "tools.h"
 
+#include "boost_serialize_armadillo.h"
+
 
 //lattice directions are indexed as in +x,-x,+y,-y,+z,-z, ...
 //enums provided for d <= 3, but code valid also for higher dimensions
@@ -97,6 +99,14 @@ protected:
 	unsigned z;		//lattice coordination number
 	//Neighbor table: columns index sites, rows index lattice directions
 	tableSites nearestNeighbors;
+
+protected:
+	friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+    	ar & d & L & N & z;
+    	ar & nearestNeighbors;
+    }
 };
 
 
@@ -105,7 +115,7 @@ public:
 	PeriodicSquareLatticeNearestNeighbors(unsigned L)
 		: PeriodicCubicLatticeNearestNeighbors(2, L)
 	{
-		nearestNeighbors.save("neighbors.csv", arma::csv_ascii);
+		//nearestNeighbors.save("neighbors.csv", arma::csv_ascii);
 	}
 };
 
@@ -121,7 +131,7 @@ public:
 	PeriodicChainNearestNeighbors(unsigned L)
 		: PeriodicCubicLatticeNearestNeighbors(1, L)
 	{
-		nearestNeighbors.save("timeneighbors.csv", arma::csv_ascii);
+		//nearestNeighbors.save("timeneighbors.csv", arma::csv_ascii);
 	}
 
 	unsigned operator()(unsigned latticeDirection, unsigned site) const {
