@@ -164,4 +164,6 @@ private:
 	}
 };
 
+BOOST_CLASS_EXPORT(DetSDW);
+
 #endif /* DETSDW_H_ */

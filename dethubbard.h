@@ -202,6 +202,19 @@ protected:
 //	void debugCheckBeforeSweepDown();
 //	void debugCheckBeforeSweepUp();
 //	void debugCheckGreenFunctions();
+private:
+	friend class boost::serialization::access;
+
+	template<class Archive>
+	void serialize(Archive& ar, const unsigned int version) {
+		ar & boost::serialization::base_object<DetModelGC<2>>(*this);
+		ar & auxfield;
+		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
+		   & occDouble & localMoment & suscq0;
+		ar & zcorr & gf & gf_dt;
+	}
 };
+
+BOOST_CLASS_EXPORT(DetHubbard);
 
 #endif /* DETHUBBARD_H_ */
