@@ -31,6 +31,7 @@
 #include <boost/serialization/export.hpp>
 #include <boost/serialization/assume_abstract.hpp>
 #include "boost_serialize_array.h"
+#include "boost_serialize_armadillo.h"
 
 typedef std::complex<double> cpx;
 
