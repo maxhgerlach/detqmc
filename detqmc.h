@@ -27,7 +27,13 @@
 // Class handling the simulation
 class DetQMC {
 public:
+	//constructor to init a new simulation:
 	DetQMC(const ModelParams& parsmodel, const MCParams& parsmc);
+
+	//constructor to resume a simulation from a dumped state file:
+	//if newSweeps > 0 is specified, adjust the number of target sweeps
+	DetQMC(const std::string& stateFileName, unsigned newSweeps = 0);
+
 
 	void run();			//carry out simulation determined by parsmc given in construction
 
@@ -40,6 +46,9 @@ public:
 
 	virtual ~DetQMC();
 protected:
+	//helper for constructors:
+	void initFromParameters(const ModelParams& parsmodel, const MCParams& parsmc);
+
 	ModelParams parsmodel;
 	MCParams parsmc;
 

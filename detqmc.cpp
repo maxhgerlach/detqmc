@@ -24,14 +24,9 @@
 using std::cout;
 using std::endl;
 
-DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
-		parsmodel(parsmodel_), parsmc(parsmc_),
-		//proper initialization of default initialized members done in method body
-		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
-		modelMeta(), mcMeta(), rng(), replica(),
-		obsHandlers(), vecObsHandlers(),
-		sweepsDone(0)
-{
+void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& parsmc_) {
+	parsmodel = parsmodel_;
+	parsmc = parsmc_;
 	//check parameters
 	if (parsmodel.specified.count("model") == 0) {
 		throw ParameterMissing("model");
@@ -115,6 +110,28 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
 
+DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
+		parsmodel(), parsmc(),
+		//proper initialization of default initialized members done in initFromParameters
+		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		modelMeta(), mcMeta(), rng(), replica(),
+		obsHandlers(), vecObsHandlers(),
+		sweepsDone(0)
+{
+	initFromParameters(parsmodel_, parsmc_);
+}
+
+DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
+		parsmodel(), parsmc(),
+		//proper initialization of default initialized members done by loading from archive
+		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		modelMeta(), mcMeta(), rng(), replica(),
+		obsHandlers(), vecObsHandlers(),
+		sweepsDone()
+{
+	//TODO: fill in loading from archive -- or split off the serialization of
+	//parsmc and parsmodel after all?
+}
 
 DetQMC::~DetQMC() {
 }

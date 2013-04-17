@@ -11,6 +11,7 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
+#include <boost/filesystem.hpp>
 #pragma GCC diagnostic warning "-Wunused-parameter"
 #pragma GCC diagnostic warning "-Weffc++"
 #pragma GCC diagnostic warning "-Wconversion"
