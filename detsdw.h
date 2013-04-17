@@ -157,7 +157,8 @@ private:
 		//references propKx, propKy, g, gFwd, gBwd should continue to work fine after serialization
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
-		ar & phiDelta & targetAccRatio & lastAccRatio & accRatioRA;
+		ar & phiDelta & targetAccRatio & lastAccRatio;
+		ar & accRatioRA;
 		ar & normPhi & phiSecond & phiFourth & binder & sdwSusc;
 		ar & kOcc & kOccImag;
 	}
