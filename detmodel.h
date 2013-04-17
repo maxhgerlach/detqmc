@@ -235,14 +235,15 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version) {
     	ar & boost::serialization::base_object<DetModel>(*this);
-    	ar & sz;
-    	ar & timedisplaced & beta & m & s & n & dtau;
+//    	ar & sz;
+//    	ar & timedisplaced & beta & m & s & n & dtau;
     	ar & green & greenFwd & greenBwd;
-    	ar & eye_UdV;
+//    	ar & eye_UdV;
     	ar & UdVStorage;
     	ar & lastSweepDir;
     	ar & obsScalar & obsVector & obsKeyValue;
-    	//no need to reset function object arrays -- still valid from construction!
+    	//no need to reset function object arrays, simulation configuration parameters
+    	//-- still valid from construction!
     }
 
 };
