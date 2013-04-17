@@ -30,6 +30,9 @@
 #include "datamapwriter.h"
 #include "statistics.h"
 
+#include <boost/serialization/vector.hpp>
+#include "boost_serialize_uniqueptr.h"
+
 
 template <typename ObsType>
 class ObservableHandlerCommon {
@@ -110,9 +113,27 @@ protected:
 
 	std::vector<ObsType> jkBlockValues;			// running counts of jackknife block values
 	ObsType total;								// running accumulation regardless of jackknife block
+
+private:
+    friend class boost::serialization::access;
+	template<class Archive>
+    void serialize(Archive &ar, const unsigned int version) {
+//		ar & obs;
+//		ar & name;
+//		ar & zero;
+//		ar & mcparams;
+//		ar & metaModel & metaMC;
+//		ar & jkBlockCount
+//		ar & jkBlockSizeSweeps;
+		//the variables above should not need to be serialized
+		ar & lastSweepLogged;
+		ar & countValues;
+		ar & total;
+	}
 };
 
-
+BOOST_CLASS_EXPORT(ObservableHandlerCommon<num>);
+BOOST_CLASS_EXPORT(ObservableHandlerCommon<arma::Col<num>>);
 
 
 //specialized ObservableHandler that uses num as a value type
@@ -178,7 +199,19 @@ public:
 protected:
 	std::vector<num> timeseriesBuffer;		// time series entries added since last call to writeData()
 	std::unique_ptr<DoubleVectorWriterSuccessive> storage;
+
+private:
+	friend class boost::serialization::access;
+	template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+		ar & boost::serialization::base_object<ObservableHandlerCommon<num>>(*this);
+		ar & timeseriesBuffer;
+		//*storage should not need to be serialized.  It will always write to the end
+		//of the timeseries file it finds at construction.
+	}
 };
+
+BOOST_CLASS_EXPORT(ScalarObservableHandler);
 
 
 //Vector valued observables.  We use Armadillo vectors as they support arithmetics.
@@ -208,7 +241,17 @@ protected:
 	unsigned vsize;
 	arma::Col<num> indexes;
 	std::string indexName;
+
+private:
+	friend class boost::serialization::access;
+	template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+		ar & boost::serialization::base_object<ObservableHandlerCommon<arma::Col<num>>>(*this);
+		//the other variables should not need to be serialized
+	}
 };
+
+BOOST_CLASS_EXPORT(VectorObservableHandler);
 
 
 //Vector indexed by arbitrary key
@@ -224,8 +267,17 @@ public:
 		indexes = observable.keys;
 		indexName = observable.keyName;
 	}
+
+private:
+	friend class boost::serialization::access;
+	template<class Archive>
+    void serialize(Archive& ar, const unsigned int version) {
+		ar & boost::serialization::base_object<VectorObservableHandler>(*this);
+		//the other variables should not need to be serialized
+	}
 };
 
+BOOST_CLASS_EXPORT(KeyValueObservableHandler);
 
 
 //Write expectation values and error bars for all observables to a file
