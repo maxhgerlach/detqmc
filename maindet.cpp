@@ -151,6 +151,7 @@ int main(int argc, char **argv) {
 	timing.start("total");
 	if (runSimulation) {
 		DetQMC simulation(parmodel, parmc);
+		//TODO: if we find a serialized state from before resume the simulation
 		simulation.run();
 	}
 	timing.stop("total");
