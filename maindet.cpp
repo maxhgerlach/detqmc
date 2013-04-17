@@ -151,7 +151,12 @@ int main(int argc, char **argv) {
 	timing.start("total");
 	if (runSimulation) {
 		DetQMC simulation(parmodel, parmc);
-		//TODO: if we find a serialized state from before resume the simulation
+		//TODO: if we find a serialized state from before, resume the simulation
+
+		//TODO: DetQMC should have a new constructor which constructs from
+		//TODO: saved state.
+		//TODO: take serialized ModelParams and MCParams, init the simulation,
+		//TODO: then de-serialize everything, starting from DetQMC
 		simulation.run();
 	}
 	timing.stop("total");

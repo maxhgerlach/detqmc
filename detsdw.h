@@ -147,13 +147,13 @@ private:
     friend class boost::serialization::access;
 	template<class Archive>
     void serialize(Archive &ar, const unsigned int version) {
-		//TODO: serialization should work by re-constructing ... this way references to coupled
-		//objects are set back correctly automatically
 		ar & boost::serialization::base_object<DetModelGC<1,cpx>>(*this);
 		//rng&: references should be to correct object that is serialized by class DetQMC
-		ar & L & N & r & mu & c & u & lambda;
-		ar & spaceNeigh & timeNeigh;
-		ar & propK;
+		//TODO: serialization should work by re-constructing ... this way references to coupled
+		//objects are set back correctly automatically
+//		ar & L & N & r & mu & c & u & lambda;
+//		ar & spaceNeigh & timeNeigh;
+//		ar & propK;
 		//references propKx, propKy, g, gFwd, gBwd should continue to work fine after serialization
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;

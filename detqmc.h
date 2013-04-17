@@ -69,36 +69,17 @@ protected:
 
 	//serialization code that is equal for save/load
 	template<class Archive>
-	void sharedSerialization(Archive& ar, const unsigned int version) {
+	void serialize(Archive& ar, const unsigned int version) {
+		//callbacks etc. need not be serialized as they are
+		//determined via parsmodel & parsmc upon construction.
     	ar & parsmodel & parsmc;
-    	ar & modelMeta & mcMeta;
+//    	ar & modelMeta & mcMeta;
     	ar & rng;
-    	ar & greenUpdateType;
+//    	ar & greenUpdateType;
     	ar & replica;
     	ar & obsHandlers & vecObsHandlers;
     	ar & sweepsDone;
 	}
-
-    template<class Archive>
-    void save(Archive& ar, const unsigned int version) {
-    	sharedSerialization(ar, version);
-    }
-
-    template<class Archive>
-    void load(Archive& ar, const unsigned int version) {
-    	sharedSerialization(ar, version);
-    	//reset sweep callback functions [everything would be cleaner
-    	//if templates were used throughout...]
-    	//code copied from the constructor
-    	if (greenUpdateType == GreenUpdateType::Simple) {
-    		sweepFunc = [this]() {replica->sweepSimple();};
-    		sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
-    	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
-    		sweepFunc = [this]() {replica->sweep();};
-    		sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
-    	}
-    }
-    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 
