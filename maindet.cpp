@@ -37,6 +37,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	namespace po = boost::program_options;
 	using std::string;
 	string confFileName;
+	string stateFileName;
 
 	po::options_description genericOptions("Generic options, command line only");
 	genericOptions.add_options()
@@ -44,6 +45,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("help", "print help on allowed options and exit")
 			("conf,c", po::value<string>(&confFileName)->default_value("simulation.conf"),
 					"specify configuration file to be used; settings in there will be overridden by command line arguments")
+			("state", po::value<string>(&stateFileName)->default_value("simulation.state"),
+					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here")
 			;
 
 	po::options_description modelOptions("Model parameters, specify via command line or config file");
