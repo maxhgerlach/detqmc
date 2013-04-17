@@ -62,15 +62,15 @@ private:
 
     template<class Archive>
 	void save(Archive& ar, const unsigned int version) {
-    	ar & seed & processIndex;
-    	ar & stateToString();
+    	ar << seed << processIndex;
+    	ar << stateToString();
     }
 
     template<class Archive>
 	void load(Archive& ar, const unsigned int version) {
-    	ar & seed & processIndex;
+    	ar >> seed >> processIndex;
     	std::string stateString;
-    	ar & stateString;
+    	ar >> stateString;
     	stringToState(stateString);
     }
 
