@@ -19,8 +19,8 @@
 #include "observablehandler.h"
 #include "rngwrapper.h"
 
-#include <boost/serialization/split_member.hpp>
-#include <boost/serialization/map.hpp>				//for MetadataMap
+#include "boost/serialization/split_member.hpp"
+#include "boost/serialization/map.hpp"				//for MetadataMap
 #include "boost_serialize_uniqueptr.h"
 #include "boost_serialize_vector_uniqueptr.h"
 
@@ -43,10 +43,12 @@ public:
 	void measure(unsigned numSweeps, unsigned measureInterval);
 	// update results stored on disk
 	void saveResults();
+	// dump simulation parameters and the current state to a Boost::S11n archive
+	void saveState();
 
 	virtual ~DetQMC();
 protected:
-	//helper for constructors:
+	//helper for constructors -- set all parameters and initialize contained objects
 	void initFromParameters(const ModelParams& parsmodel, const MCParams& parsmc);
 
 	ModelParams parsmodel;
@@ -69,6 +71,7 @@ protected:
 	std::vector<ObsPtr> obsHandlers;
 	std::vector<VecObsPtr> vecObsHandlers;		//need to be pointers: holds both KeyValueObservableHandlers and VectorObservableHandlers
 	unsigned sweepsDone;						//Measurement sweeps done
+	unsigned sweepsDoneThermalization;			//thermalization sweeps done
 
 	MetadataMap prepareMCMetadataMap() const;
 
@@ -81,13 +84,13 @@ protected:
 	void serialize(Archive& ar, const unsigned int version) {
 		//callbacks etc. need not be serialized as they are
 		//determined via parsmodel & parsmc upon construction.
-    	ar & parsmodel & parsmc;
+//    	ar & parsmodel & parsmc;
 //    	ar & modelMeta & mcMeta;
     	ar & rng;
 //    	ar & greenUpdateType;
     	ar & replica;
     	ar & obsHandlers & vecObsHandlers;
-    	ar & sweepsDone;
+    	ar & sweepsDone & sweepsDoneThermalization;
 	}
 };
 

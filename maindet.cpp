@@ -11,7 +11,7 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
-#include <boost/filesystem.hpp>
+#include "boost/filesystem.hpp"
 #pragma GCC diagnostic warning "-Wunused-parameter"
 #pragma GCC diagnostic warning "-Weffc++"
 #pragma GCC diagnostic warning "-Wconversion"
@@ -29,8 +29,9 @@
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
 //return a tuple (runSimulation = true or false, simulationParameterStruct)
-std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv) {
+std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **argv) {
 	bool runSimulation = true;
+	bool resumeSimulation = false;
 	ModelParams modelpar;
 	MCParams mcpar;
 
@@ -38,7 +39,6 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	namespace po = boost::program_options;
 	using std::string;
 	string confFileName;
-	string stateFileName;
 
 	po::options_description genericOptions("Generic options, command line only");
 	genericOptions.add_options()
@@ -46,8 +46,6 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("help", "print help on allowed options and exit")
 			("conf,c", po::value<string>(&confFileName)->default_value("simulation.conf"),
 					"specify configuration file to be used; settings in there will be overridden by command line arguments")
-			("state", po::value<string>(&stateFileName)->default_value("simulation.state"),
-					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here")
 			;
 
 	po::options_description modelOptions("Model parameters, specify via command line or config file");
@@ -80,6 +78,8 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 			("measureInterval", po::value<unsigned>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
 			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
 			("rngSeed", po::value<unsigned long>(&mcpar.rngSeed), "seed for pseudo random number generator")
+			("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
+					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work")
 			;
 
 	po::variables_map vm;
@@ -99,6 +99,11 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 
 	using std::cout; using std::endl;
 	cout << "Assume config file " << confFileName << endl;
+
+	if (boost::filesystem::exists(mcpar.stateFileName)) {
+		cout << "Found simulation state file " << stateFileName << ", will resume simulation" << endl;
+		resumeSimulation = true;
+	}
 
 	if (vm.count("help")) {
 		cout << "Usage:" << endl << endl
@@ -138,7 +143,7 @@ std::tuple<bool,ModelParams,MCParams> configureSimulation(int argc, char **argv)
 	record(modelOptions, modelpar.specified);
 	record(mcOptions, mcpar.specified);
 
-	return std::make_tuple(runSimulation, modelpar, mcpar);
+	return std::make_tuple(runSimulation, resumeSimulation, modelpar, mcpar);
 }
 
 
@@ -150,18 +155,18 @@ int main(int argc, char **argv) {
 	ModelParams parmodel;
 	MCParams parmc;
 	bool runSimulation;
-	std::tie(runSimulation, parmodel, parmc) = configureSimulation(argc, argv);
+	bool resumeSimulation;
+	std::tie(runSimulation, resumeSimulation, parmodel, parmc) = configureSimulation(argc, argv);
 
 	timing.start("total");
 	if (runSimulation) {
-		DetQMC simulation(parmodel, parmc);
-		//TODO: if we find a serialized state from before, resume the simulation
-
-		//TODO: DetQMC should have a new constructor which constructs from
-		//TODO: saved state.
-		//TODO: take serialized ModelParams and MCParams, init the simulation,
-		//TODO: then de-serialize everything, starting from DetQMC
-		simulation.run();
+		if (not resumeSimulation) {
+			DetQMC simulation(parmodel, parmc);
+			simulation.run();
+		} else if (resumeSimulation) {
+			DetQMC simulation(parmc.stateFileName, parmc.sweeps);
+			simulation.run();
+		}
 	}
 	timing.stop("total");
 

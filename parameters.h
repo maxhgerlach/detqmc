@@ -76,10 +76,12 @@ struct MCParams {
 
 	std::string greenUpdateType; 	//"simple" or "stabilized"
 
+	std::string stateFileName;		//for serialization dumps
+
 	std::set<std::string> specified;
 
 	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-			rngSeed(), greenUpdateType(), specified()
+			rngSeed(), greenUpdateType(), stateFileName(), specified()
 	{ }
 
 private:
@@ -89,6 +91,7 @@ private:
 	void serialize(Archive& ar, const unsigned int version) {
 		ar & sweeps & thermalization & jkBlocks & timeseries
 		   & measureInterval & saveInterval & rngSeed & greenUpdateType
+		   & stateFileName
 		   & specified;
 	}
 };
