@@ -9,12 +9,9 @@
 #define UDV_H_
 
 #include <complex>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
 
+#include "boost_serialize_armadillo.h"
 
 //matrices used in the computation of B-matrices decomposed into
 //(U,d,V) = (orthogonal matrix, diagonal matrix elements, row-normalized triangular matrix.
@@ -30,6 +27,13 @@ struct UdV {
 	UdV(unsigned size) :
 		U(arma::eye(size,size)), d(arma::ones(size)), V(arma::eye(size,size))
 	{ }
+private:
+    //for serialization with Boost
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive& ar, const unsigned int /* version */) {
+		ar & U & d & V;
+	}
 };
 
 template<> inline

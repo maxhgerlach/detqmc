@@ -5,16 +5,9 @@
  *      Author: gerlach
  */
 
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"
-#pragma GCC diagnostic warning "-Wunused-parameter"
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -101,7 +94,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 	cout << "Assume config file " << confFileName << endl;
 
 	if (boost::filesystem::exists(mcpar.stateFileName)) {
-		cout << "Found simulation state file " << stateFileName << ", will resume simulation" << endl;
+		cout << "Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;
 		resumeSimulation = true;
 	}
 

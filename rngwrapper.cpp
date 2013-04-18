@@ -19,7 +19,7 @@ extern "C" {
 #include <cstdlib>
 #include "tools.h"
 
-std::string RngWrapper::getName() {
+std::string RngWrapper::getName() const {
 	return "DSFMT " + numToString(DSFMT_MEXP);
 }
 
@@ -36,9 +36,9 @@ RngWrapper::RngWrapper(unsigned long seed_, unsigned processIndex_)
 	dsfmt_init_gen_rand(&dsfmt, mySeed);
 }
 
-void RngWrapper::saveState() {
+void RngWrapper::saveState() const {
 	//dSFMT
-	char *s2 = dsfmt_state_to_str(&dsfmt, NULL);
+	char *s2 = dsfmt_state_to_str(const_cast<dsfmt_t*>(&dsfmt), NULL);
 	char filename[100];
 	sprintf(filename, "state-dsfmt-rng-process-%d.dat", processIndex);
 	copyFileBackUp(std::string(filename));
@@ -61,15 +61,15 @@ void RngWrapper::loadState() {
 	fclose(F);
 }
 
-std::string RngWrapper::stateToString() {
-	const char* cstring = dsfmt_state_to_str(&dsfmt, NULL);
+std::string RngWrapper::stateToString() const {
+	char* cstring = dsfmt_state_to_str(const_cast<dsfmt_t*>(&dsfmt), NULL);
 	std::string s(cstring);
 	free(cstring);
 	return s;
 }
 
 void RngWrapper::stringToState(const std::string& stateString) {
-	const char* cstring = stateString.c_str();
+	char* cstring = const_cast<char*>(stateString.c_str());
 	dsfmt_str_to_state(&dsfmt, cstring, NULL);
 }
 

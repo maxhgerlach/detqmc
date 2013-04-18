@@ -18,11 +18,7 @@
 #include <map>
 #include <vector>
 #include <tuple>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Wsign-conversion"
-#pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
 #include "observable.h"
 #include "metadata.h"
@@ -30,9 +26,11 @@
 #include "datamapwriter.h"
 #include "statistics.h"
 
-#include <boost/serialization/vector.hpp>
-#include "boost_serialize_uniqueptr.h"
+class SerializeContentsKey;
 
+#include "boost/serialization/vector.hpp"
+#include "boost/serialization/export.hpp"
+#include "boost_serialize_uniqueptr.h"
 
 template <typename ObsType>
 class ObservableHandlerCommon {
@@ -114,26 +112,35 @@ protected:
 	std::vector<ObsType> jkBlockValues;			// running counts of jackknife block values
 	ObsType total;								// running accumulation regardless of jackknife block
 
-private:
-    friend class boost::serialization::access;
-	template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-//		ar & obs;
-//		ar & name;
-//		ar & zero;
-//		ar & mcparams;
-//		ar & metaModel & metaMC;
-//		ar & jkBlockCount
-//		ar & jkBlockSizeSweeps;
-		//the variables above should not need to be serialized
+//private:
+//    friend class boost::serialization::access;
+//	template<class Archive>
+//    void serialize(Archive &ar, const unsigned int version) {
+//		(void)version;
+////		ar & obs;
+////		ar & name;
+////		ar & zero;
+////		ar & mcparams;
+////		ar & metaModel & metaMC;
+////		ar & jkBlockCount
+////		ar & jkBlockSizeSweeps;
+//		//the variables above should not need to be serialized
+//		ar & lastSweepLogged;
+//		ar & countValues;
+//		ar & total;
+//	}
+
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &, Archive &ar) {
 		ar & lastSweepLogged;
 		ar & countValues;
 		ar & total;
-	}
+    }
 };
 
-BOOST_CLASS_EXPORT(ObservableHandlerCommon<num>);
-BOOST_CLASS_EXPORT(ObservableHandlerCommon<arma::Col<num>>);
 
 
 //specialized ObservableHandler that uses num as a value type
@@ -200,18 +207,32 @@ protected:
 	std::vector<num> timeseriesBuffer;		// time series entries added since last call to writeData()
 	std::unique_ptr<DoubleVectorWriterSuccessive> storage;
 
-private:
-	friend class boost::serialization::access;
-	template<class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-		ar & boost::serialization::base_object<ObservableHandlerCommon<num>>(*this);
-		ar & timeseriesBuffer;
-		//*storage should not need to be serialized.  It will always write to the end
+public:
+	// only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	ObservableHandlerCommon<num>::serializeContents(sck, ar);
+    	ar & timeseriesBuffer;
+    	//*storage should not need to be serialized.  It will always write to the end
 		//of the timeseries file it finds at construction.
-	}
+    }
+//
+//private:
+//	friend class boost::serialization::access;
+//	template<class Archive>
+//    void serialize(Archive& ar, const unsigned int version) {
+//		(void)version;
+//		ar & boost::serialization::base_object<ObservableHandlerCommon<num>>(*this);
+//		ar & timeseriesBuffer;
+//		//*storage should not need to be serialized.  It will always write to the end
+//		//of the timeseries file it finds at construction.
+//	}
 };
 
-BOOST_CLASS_EXPORT(ScalarObservableHandler);
+//BOOST_CLASS_EXPORT_GUID(ObservableHandlerCommon<num>, "ObservableHandlerCommon<num>")
+//BOOST_CLASS_EXPORT_GUID(ScalarObservableHandler, "ScalarObservableHandler")
+
 
 
 //Vector valued observables.  We use Armadillo vectors as they support arithmetics.
@@ -241,18 +262,19 @@ protected:
 	unsigned vsize;
 	arma::Col<num> indexes;
 	std::string indexName;
-
-private:
-	friend class boost::serialization::access;
-	template<class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-		ar & boost::serialization::base_object<ObservableHandlerCommon<arma::Col<num>>>(*this);
-		//the other variables should not need to be serialized
-	}
+//
+//private:
+//	friend class boost::serialization::access;
+//	template<class Archive>
+//    void serialize(Archive& ar, const unsigned int version) {
+//		(void)version;
+//		ar & boost::serialization::base_object<ObservableHandlerCommon<arma::Col<num>>>(*this);
+//		//the other variables should not need to be serialized
+//	}
 };
 
-BOOST_CLASS_EXPORT(VectorObservableHandler);
-
+//BOOST_CLASS_EXPORT_GUID(ObservableHandlerCommon<arma::Col<num>>, "ObservableHandlerCommon<arma::Col<num>>")
+//BOOST_CLASS_EXPORT_GUID(VectorObservableHandler, "VectorObservableHandler")
 
 //Vector indexed by arbitrary key
 class KeyValueObservableHandler : public VectorObservableHandler {
@@ -268,16 +290,18 @@ public:
 		indexName = observable.keyName;
 	}
 
-private:
-	friend class boost::serialization::access;
-	template<class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-		ar & boost::serialization::base_object<VectorObservableHandler>(*this);
-		//the other variables should not need to be serialized
-	}
+//private:
+//	friend class boost::serialization::access;
+//	template<class Archive>
+//    void serialize(Archive& ar, const unsigned int version) {
+//		(void)version;
+//		ar & boost::serialization::base_object<VectorObservableHandler>(*this);
+//		//the other variables should not need to be serialized
+//	}
 };
 
-BOOST_CLASS_EXPORT(KeyValueObservableHandler);
+//BOOST_CLASS_EXPORT_GUID(KeyValueObservableHandler, "KeyValueObservableHandler")
+
 
 
 //Write expectation values and error bars for all observables to a file

@@ -16,13 +16,18 @@
 #include "metadata.h"
 #include "parameters.h"
 #include "detmodel.h"
+#include "dethubbard.h"
+#include "detsdw.h"
 #include "observablehandler.h"
 #include "rngwrapper.h"
+#include "exceptions.h"
 
 #include "boost/serialization/split_member.hpp"
-#include "boost/serialization/map.hpp"				//for MetadataMap
-#include "boost_serialize_uniqueptr.h"
-#include "boost_serialize_vector_uniqueptr.h"
+//#include "boost/serialization/map.hpp"				//for MetadataMap
+//#include "boost_serialize_uniqueptr.h"
+//#include "boost_serialize_vector_uniqueptr.h"
+
+class SerializeContentsKey;
 
 // Class handling the simulation
 class DetQMC {
@@ -75,25 +80,56 @@ protected:
 
 	MetadataMap prepareMCMetadataMap() const;
 
-protected:
-	//TODO: use boost nvp (name-value-pair) serialization
-	friend class boost::serialization::access;
-
-	//serialization code that is equal for save/load
+private:
+	//Serialize only the content data that has changed after construction.
+	//Only call for "deserialization" after DetQMC has already been constructed and initialized!
 	template<class Archive>
-	void serialize(Archive& ar, const unsigned int version) {
+	void serializeContents(Archive& ar) {
 		//callbacks etc. need not be serialized as they are
 		//determined via parsmodel & parsmc upon construction.
 //    	ar & parsmodel & parsmc;
 //    	ar & modelMeta & mcMeta;
-    	ar & rng;
+    	ar & rng;					//serialize completely
 //    	ar & greenUpdateType;
-    	ar & replica;
-    	ar & obsHandlers & vecObsHandlers;
+
+    	//The template member functions serializeContents(Archive&) cannot be virtual,
+    	//so we have to resort to RTTI to serialize the right object.
+    	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else {
+    		throw SerializationError("Tried to serialize contents of unsupported replica");
+    	}
+
+    	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
+    		//ATM no further derived classes of ScalarObservableHandler have a method serializeContents
+    		(*p)->serializeContents(SerializeContentsKey(), ar);
+    	}
+    	for (auto p = vecObsHandlers.begin(); p != vecObsHandlers.end(); ++p) {
+    		//ATM no further derived classes of VectorObservableHandler have a method serializeContents
+    		(*p)->serializeContents(SerializeContentsKey(), ar);
+    	}
     	ar & sweepsDone & sweepsDoneThermalization;
 	}
 };
 
+
+//BOOST_CLASS_EXPORT_GUID(DetQMC, "DetQMC")
+
+
+//Only one member function of DetQMC is allowed to make instances of this class.
+//In this way access to the member function serializeContents() of other classes
+//is restricted.
+// compare to http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend
+class SerializeContentsKey {
+  SerializeContentsKey() {} // default ctor private
+  SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
+
+  // grant access to one method
+  template<class Archive>
+  friend void DetQMC::serializeContents(Archive& ar);
+};
 
 
 

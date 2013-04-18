@@ -13,13 +13,8 @@
 #include <string>
 #include <map>
 #include <iostream>
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
-#include <boost/timer/timer.hpp>
-#pragma GCC diagnostic warning "-Wunused-parameter"
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
+#include "boost/timer/timer.hpp"
+
 
 class Timing {
 public:

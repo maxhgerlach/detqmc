@@ -9,13 +9,18 @@
 #include <ctime>
 #include <functional>
 #include <fstream>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
+#include <array>
+#include <armadillo>
 #include "boost/assign/std/vector.hpp"
-#include "boost/serialization/binary_oarchive.hpp"
-#include "boost/serialization/binary_iarchive.hpp"
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
+
+#include "boost_serialize_armadillo.h"
+#include "boost_serialize_array.h"
+
+
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
+
+
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "detsdw.h"
@@ -133,7 +138,7 @@ DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
 		sweepsDone(), sweepsDoneThermalization()
 {
 	std::ifstream ifs;
-	ifs.exceptions(ifstream::badbit | ifstream::failbit);
+	ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
 	ifs.open(stateFileName.c_str(), std::ios::binary);
 	boost::archive::binary_iarchive ia(ifs);
 	ModelParams parsmodel_;
@@ -142,20 +147,21 @@ DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
 	if (newSweeps > parsmc_.sweeps) {
 		parsmc_.sweeps = newSweeps;
 	}
+	parsmc_.stateFileName = stateFileName;
 	//TODO: changing the number of target sweeps makes the on the fly Jackknife
 	//error-estimation invalid
 	initFromParameters(parsmodel_, parsmc_);
-	ia >> *this;
+	serializeContents(ia);
 }
 
 void DetQMC::saveState() {
 	timing.start("saveState");
 	std::ofstream ofs;
-	ofs.exceptions(ofstream::badbit | ofstream::failbit);
-	ofs.open(stateFileName.c_str(), std::ios::binary);
+	ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+	ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
 	boost::archive::binary_oarchive oa(ofs);
 	oa << parsmodel << parsmc;
-	oa << *this;
+	serializeContents(oa);
 	timing.stop("saveState");
 }
 
@@ -165,7 +171,7 @@ DetQMC::~DetQMC() {
 
 void DetQMC::run() {
 	if (sweepsDoneThermalization < parsmc.thermalization) {
-		cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
+		cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
 		for (unsigned sw = sweepsDoneThermalization;
 				sw < parsmc.thermalization; sw += parsmc.saveInterval) {
 			thermalize(parsmc.saveInterval);

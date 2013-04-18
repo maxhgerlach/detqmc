@@ -15,11 +15,7 @@
 #include <memory>
 #include <vector>
 #include <tuple>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
 
 #include "parameters.h"
 #include "observable.h"
@@ -28,8 +24,8 @@
 #include "timing.h"
 
 #include <boost/serialization/base_object.hpp>
-#include <boost/serialization/export.hpp>
-#include <boost/serialization/assume_abstract.hpp>
+//#include <boost/serialization/export.hpp>
+//#include <boost/serialization/assume_abstract.hpp>
 #include "boost_serialize_array.h"
 #include "boost_serialize_armadillo.h"
 
@@ -45,8 +41,13 @@ typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
 typedef UdV<num> UdVnum;
 
 
+class SerializeContentsKey;
+
+
+
 //base class for a model to be simulated by determinantal quantum Monte Carlo
 //
+
 
 //purely abstract base class
 class DetModel {
@@ -87,15 +88,16 @@ public:
     //do nothing by default
     virtual void thermalizationOver() {
     }
-private:
-    friend class boost::serialization::access;
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
-    void serialize(Archive &ar, const unsigned int version) {
-
+    void serializeContents(SerializeContentsKey const&, Archive &) {
     }
 };
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(DetModel);
-BOOST_CLASS_EXPORT(DetModel);
+//BOOST_SERIALIZATION_ASSUME_ABSTRACT(DetModel);
+//BOOST_CLASS_EXPORT_GUID(DetModel, "DetModel");
+
 
 //GreenComponents is the number of independent sectors of the Green's function,
 //e.g. in the Hubbard model it is 2 for spin up and spin down
@@ -193,11 +195,11 @@ protected:
 	template <class CallableUpdateInSlice> void sweepDown(CallableUpdateInSlice funcUpdateInSlice);
 
 	//Green component size, e.g. sz == N for the Hubbard model
-	unsigned sz;
+	const unsigned sz;
 
     //some simulation parameters are already relevant for member functions implemented
     //in this base class, the rest will only be used in derived classes
-	bool timedisplaced;
+	const bool timedisplaced;
 	const num beta;		//inverse temperature
 	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
 	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
@@ -217,7 +219,7 @@ protected:
 
     //The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
-    UdVV eye_UdV;
+    const UdVV eye_UdV;
 	std::array<std::vector<UdVV>, GreenComponents> UdVStorage;
 
     enum class SweepDirection: int {Up = 1, Down = -1};
@@ -230,22 +232,31 @@ protected:
 	std::vector<VectorObservable> obsVector;
 	std::vector<KeyValueObservable> obsKeyValue;
 
-private:
-	friend class boost::serialization::access;
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
-    void serialize(Archive& ar, const unsigned int version) {
-    	ar & boost::serialization::base_object<DetModel>(*this);
-//    	ar & sz;
-//    	ar & timedisplaced & beta & m & s & n & dtau;
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModel::serializeContents(sck, ar);		//base class
     	ar & green & greenFwd & greenBwd;
-//    	ar & eye_UdV;
     	ar & UdVStorage;
     	ar & lastSweepDir;
-    	ar & obsScalar & obsVector & obsKeyValue;
-    	//no need to reset function object arrays, simulation configuration parameters
-    	//-- still valid from construction!
     }
-
+//	friend class boost::serialization::access;
+//    template<class Archive>
+//    void serialize(Archive& ar, const unsigned int version) {
+//    	(void)version;
+//    	ar & boost::serialization::base_object<DetModel>(*this);
+////    	ar & sz;
+////    	ar & timedisplaced & beta & m & s & n & dtau;
+//    	ar & green & greenFwd & greenBwd;
+////    	ar & eye_UdV;
+//    	ar & UdVStorage;
+//    	ar & lastSweepDir;
+////    	ar & obsScalar & obsVector & obsKeyValue;
+//    	//no need to reset function object arrays, simulation configuration parameters
+//    	//-- still valid from construction!
+//    }
 };
 
 

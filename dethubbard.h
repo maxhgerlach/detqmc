@@ -36,6 +36,7 @@
 #include "observable.h"
 #include "udv.h"
 
+class SerializeContentsKey;
 
 class DetHubbard;			//defined below in this file
 
@@ -202,19 +203,33 @@ protected:
 //	void debugCheckBeforeSweepDown();
 //	void debugCheckBeforeSweepUp();
 //	void debugCheckGreenFunctions();
-private:
-	friend class boost::serialization::access;
 
-	template<class Archive>
-	void serialize(Archive& ar, const unsigned int version) {
-		ar & boost::serialization::base_object<DetModelGC<2>>(*this);
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<2>::serializeContents(sck, ar);		//base class
 		ar & auxfield;
 		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
 		   & occDouble & localMoment & suscq0;
 		ar & zcorr & gf & gf_dt;
-	}
+    }
+
+//private:
+//	friend class boost::serialization::access;
+//
+//	template<class Archive>
+//	void serialize(Archive& ar, const unsigned int version) {
+//		(void) version;
+//		ar & boost::serialization::base_object<DetModelGC<2>>(*this);
+//		ar & auxfield;
+//		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
+//		   & occDouble & localMoment & suscq0;
+//		ar & zcorr & gf & gf_dt;
+//	}
 };
 
-BOOST_CLASS_EXPORT(DetHubbard);
+//BOOST_CLASS_EXPORT_GUID(DetHubbard, "DetHubbard")
 
 #endif /* DETHUBBARD_H_ */

@@ -23,8 +23,16 @@ public:
 private:
 	friend class boost::serialization::access;
 
+	RunningAverage() :
+		sampleSize(), samplesAdded(), values(),
+		runningAverage()
+	{
+		//private default constructor, just for serialization
+	}
+
 	template<class Archive>
 	void serialize(Archive& ar, const unsigned int version) {
+		(void)version;
 		ar & sampleSize & samplesAdded
 		   & values & runningAverage;
 	}
@@ -64,3 +72,4 @@ int RunningAverage<Val>::getSamplesAdded() {
 }
 
 typedef RA::RunningAverage<double> RunningAverage;
+//BOOST_CLASS_EXPORT_GUID(RunningAverage, "RunningAverage")

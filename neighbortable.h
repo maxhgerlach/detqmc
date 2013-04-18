@@ -12,11 +12,7 @@
 #include <cassert>
 #include <vector>
 #include <utility>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
 
 #include "tools.h"
 
@@ -104,6 +100,7 @@ protected:
 	friend class boost::serialization::access;
     template<class Archive>
     void serialize(Archive& ar, const unsigned int version) {
+    	(void)version;
     	ar & d & L & N & z;
     	ar & nearestNeighbors;
     }
