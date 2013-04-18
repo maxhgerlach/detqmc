@@ -44,13 +44,14 @@ template <class Container>
 class DataSeriesWriterSuccessive {
 public:
     //prepare the file, the following operations will append to it
-    DataSeriesWriterSuccessive(const std::string& filename);
+    DataSeriesWriterSuccessive(const std::string& filename, bool appendToFile = false);
 
     //prepare the file at @filename,
     //copy the header from @headerSource
     DataSeriesWriterSuccessive(
             const DataSeriesWriterSuccessive& headerSource,
-            const std::string& filename);
+            const std::string& filename,
+            bool appendToFile = false);
 
     //use the following functions to prepare the header
     template <class ValueType>
@@ -70,16 +71,18 @@ private:
 
 template <class Container>
 DataSeriesWriterSuccessive<Container>::
-DataSeriesWriterSuccessive(const std::string& filename)
-    : output(filename.c_str(), std::ios::app), header("")
+DataSeriesWriterSuccessive(const std::string& filename, bool appendToFile)
+    : output(filename.c_str(), appendToFile ? std::ios::app : std::ios::out), header("")
 { }
 
 template <class Container>
 DataSeriesWriterSuccessive<Container>::
 DataSeriesWriterSuccessive(
         const DataSeriesWriterSuccessive<Container>& headerSource,
-        const std::string& filename)
-    : output(filename.c_str(), std::ios::app), header(headerSource.header)
+        const std::string& filename,
+        bool appendToFile)
+    : output(filename.c_str(), appendToFile ? std::ios::app : std::ios::out),
+      header(headerSource.header)
 {}
 
 template <class Container>

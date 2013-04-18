@@ -155,17 +155,11 @@ public:
 		: ObservableHandlerCommon(observable, simulationParameters,
 				metadataToStoreModel, metadataToStoreMC),
 		timeseriesBuffer(),			//empty by default
-		storage()					//initialize to something like a nullptr
+		storage(),					//initialize to something like a nullptr
+		storageFileStarted(false)
 	{
 		if (mcparams.timeseries) {
-			std::string filename = observable.name + ".series";
-			storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
-					new DoubleVectorWriterSuccessive(filename));
-			storage->addHeaderText("Timeseries for observable " + observable.name);
-			storage->addMetadataMap(metaModel);
-			storage->addMetadataMap(metaMC);
-			storage->addMeta("observable", observable.name);
-			storage->writeHeader();
+
 		}
 	}
 
@@ -196,6 +190,26 @@ public:
 		//TODO: reserve reasonable amount of memory for data to be added afterwards
 		//TODO: float precision
 		if (mcparams.timeseries) {
+			if (not storage) {
+				std::string filename = name + ".series";
+				if (not storageFileStarted) {
+					storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
+							new DoubleVectorWriterSuccessive(filename,
+									false // create a new file
+							));
+					storage->addHeaderText("Timeseries for observable " + name);
+					storage->addMetadataMap(metaModel);
+					storage->addMetadataMap(metaMC);
+					storage->addMeta("observable", name);
+					storage->writeHeader();
+					storageFileStarted = true;
+				} else {
+					storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
+							new DoubleVectorWriterSuccessive(filename,
+									true// append to file
+							));
+				}
+			}
 			storage->writeData(timeseriesBuffer);	//append last batch of measurements
 			timeseriesBuffer.resize(0);				//no need to keep it in memory anymore
 		}
@@ -206,6 +220,7 @@ public:
 protected:
 	std::vector<num> timeseriesBuffer;		// time series entries added since last call to writeData()
 	std::unique_ptr<DoubleVectorWriterSuccessive> storage;
+	bool storageFileStarted;
 
 public:
 	// only functions that can pass the key to this function have access
@@ -214,6 +229,7 @@ public:
     void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
     	ObservableHandlerCommon<num>::serializeContents(sck, ar);
     	ar & timeseriesBuffer;
+    	ar & storageFileStarted;
     	//*storage should not need to be serialized.  It will always write to the end
 		//of the timeseries file it finds at construction.
     }
