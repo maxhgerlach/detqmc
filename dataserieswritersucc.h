@@ -64,14 +64,14 @@ public:
     void writeData(const Container& dataSeries);
     void writeData(const Container& dataSeries, unsigned floatPrecision);
 private:
-    std::fstream output;
+    std::ofstream output;
     std::string header;
 };
 
 template <class Container>
 DataSeriesWriterSuccessive<Container>::
 DataSeriesWriterSuccessive(const std::string& filename)
-    : output(filename.c_str(), std::ios::out|std::ios::ate), header("")
+    : output(filename.c_str(), std::ios::app), header("")
 { }
 
 template <class Container>
@@ -79,7 +79,7 @@ DataSeriesWriterSuccessive<Container>::
 DataSeriesWriterSuccessive(
         const DataSeriesWriterSuccessive<Container>& headerSource,
         const std::string& filename)
-    : output(filename.c_str()), header(headerSource.header)
+    : output(filename.c_str(), std::ios::app), header(headerSource.header)
 {}
 
 template <class Container>
