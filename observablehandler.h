@@ -82,7 +82,7 @@ public:
 		if (mcparams.sweeps - lastSweepLogged <= mcparams.measureInterval) {
 			//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished.
 			//we can only calculate an error estimate if we have multiple jackknife blocks
-			if (jkBlockCount > 1) {
+			if (jkBlockCount > 1 and not mcparams.sweepsHasChanged) {
 				unsigned jkBlockSizeSamples = countValues / jkBlockCount;
 				unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
 				std::vector<ObsType> jkBlockAverages = jkBlockValues;	//copy

@@ -72,7 +72,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
 			("rngSeed", po::value<unsigned long>(&mcpar.rngSeed), "seed for pseudo random number generator")
 			("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
-					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work")
+					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
 			;
 
 	po::variables_map vm;

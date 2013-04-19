@@ -146,6 +146,7 @@ DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
 	ia >> parsmodel_ >> parsmc_;
 	if (newSweeps > parsmc_.sweeps) {
 		parsmc_.sweeps = newSweeps;
+		parsmc_.sweepsHasChanged = true;
 	}
 	parsmc_.stateFileName = stateFileName;
 	//TODO: changing the number of target sweeps makes the on the fly Jackknife

@@ -78,11 +78,12 @@ struct MCParams {
 	std::string greenUpdateType; 	//"simple" or "stabilized"
 
 	std::string stateFileName;		//for serialization dumps
+	bool sweepsHasChanged;			//true, if the number of target sweeps has changed after resuming
 
 	std::set<std::string> specified;
 
 	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-			rngSeed(), greenUpdateType(), stateFileName(), specified()
+			rngSeed(), greenUpdateType(), stateFileName(), sweepsHasChanged(false), specified()
 	{ }
 
 private:
@@ -94,6 +95,7 @@ private:
 		ar & sweeps & thermalization & jkBlocks & timeseries
 		   & measureInterval & saveInterval & rngSeed & greenUpdateType
 		   & stateFileName
+		   & sweepsHasChanged
 		   & specified;
 	}
 };
