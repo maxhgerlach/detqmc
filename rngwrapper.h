@@ -82,6 +82,4 @@ private:
     BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
-//BOOST_CLASS_EXPORT_GUID(RngWrapper, "RngWrapper")
-
 #endif /* RNGWRAPPER_H_ */
