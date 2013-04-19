@@ -6,11 +6,7 @@
  */
 
 #include "detmodel.h"
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
-#include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
-#pragma GCC diagnostic warning "-Wconversion"
-#pragma GCC diagnostic warning "-Weffc++"
+#include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
 #include "exceptions.h"
 
 

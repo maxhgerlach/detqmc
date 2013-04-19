@@ -8,11 +8,15 @@
 
 #include <ctime>
 #include <functional>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
+#include <fstream>
+#include <array>
+#include <armadillo>
 #include "boost/assign/std/vector.hpp"
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
+
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
+
+
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "detsdw.h"
@@ -24,14 +28,9 @@
 using std::cout;
 using std::endl;
 
-DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
-		parsmodel(parsmodel_), parsmc(parsmc_),
-		//proper initialization of default initialized members done in method body
-		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
-		modelMeta(), mcMeta(), rng(), replica(),
-		obsHandlers(), vecObsHandlers(),
-		sweepsDone(0)
-{
+void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& parsmc_) {
+	parsmodel = parsmodel_;
+	parsmc = parsmc_;
 	//check parameters
 	if (parsmodel.specified.count("model") == 0) {
 		throw ParameterMissing("model");
@@ -115,29 +114,89 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
 
+DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
+		parsmodel(), parsmc(),
+		//proper initialization of default initialized members done in initFromParameters
+		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		modelMeta(), mcMeta(), rng(), replica(),
+		obsHandlers(), vecObsHandlers(),
+		sweepsDone(0), sweepsDoneThermalization()
+{
+	initFromParameters(parsmodel_, parsmc_);
+}
+
+DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
+		parsmodel(), parsmc(),
+		//proper initialization of default initialized members done by loading from archive
+		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		modelMeta(), mcMeta(), rng(), replica(),
+		obsHandlers(), vecObsHandlers(),
+		sweepsDone(), sweepsDoneThermalization()
+{
+	std::ifstream ifs;
+	ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+	ifs.open(stateFileName.c_str(), std::ios::binary);
+	boost::archive::binary_iarchive ia(ifs);
+	ModelParams parsmodel_;
+	MCParams parsmc_;
+	ia >> parsmodel_ >> parsmc_;
+	if (newSweeps > parsmc_.sweeps) {
+		parsmc_.sweeps = newSweeps;
+		parsmc_.sweepsHasChanged = true;
+	}
+	parsmc_.stateFileName = stateFileName;
+	//TODO: changing the number of target sweeps makes the on the fly Jackknife
+	//error-estimation invalid
+	initFromParameters(parsmodel_, parsmc_);
+	serializeContents(ia);
+}
+
+void DetQMC::saveState() {
+	timing.start("saveState");
+	std::ofstream ofs;
+	ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+	ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
+	boost::archive::binary_oarchive oa(ofs);
+	oa << parsmodel << parsmc;
+	serializeContents(oa);
+	timing.stop("saveState");
+}
 
 DetQMC::~DetQMC() {
 }
 
 
 void DetQMC::run() {
-	thermalize(parsmc.thermalization);
-	replica->thermalizationOver();
-	cout << "Starting measurements for " << parsmc.sweeps << " sweeps..." << endl;
-	for (unsigned sw = 0; sw < parsmc.sweeps; sw += parsmc.saveInterval) {
-		measure(parsmc.saveInterval, parsmc.measureInterval);
-		cout << "  " << sw + parsmc.saveInterval << " ... saving results ...";
-		saveResults();
-		cout << endl;
+	if (sweepsDoneThermalization < parsmc.thermalization) {
+		cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
+		for (unsigned sw = sweepsDoneThermalization;
+				sw < parsmc.thermalization; sw += parsmc.saveInterval) {
+			thermalize(parsmc.saveInterval);
+			cout  << "  " << sw + parsmc.saveInterval << " ... saving state...";
+			saveState();
+			cout << endl;
+		}
 	}
+	cout << "Thermalization finished\n" << endl;
+	replica->thermalizationOver();
+	if (sweepsDone < parsmc.sweeps) {
+		cout << "Measurements for " << parsmc.sweeps << " sweeps..." << endl;
+		for (unsigned sw = sweepsDone; sw < parsmc.sweeps; sw += parsmc.saveInterval) {
+			measure(parsmc.saveInterval, parsmc.measureInterval);
+			cout << "  " << sw + parsmc.saveInterval << " ... saving results and state ...";
+			saveResults();
+			saveState();
+			cout << endl;
+		}
+	}
+	cout << "Measurements finished\n" << endl;
 }
 
 void DetQMC::thermalize(unsigned numSweeps) {
-	cout << "Thermalization for " << numSweeps << " sweeps..." << endl;
 	for (unsigned sw = 0; sw < numSweeps; ++sw) {
 		sweepThermalizationFunc();
+		++sweepsDoneThermalization;
 	}
-	cout << endl;
 }
 
 void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
@@ -192,6 +251,7 @@ void DetQMC::saveResults() {
 			"Monte Carlo parameters:",
 			true);
 	MetadataMap currentState;
+	currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
 	currentState["sweepsDone"] = numToString(sweepsDone);
 	writeOnlyMetaData(commonInfoFilename, currentState,
 			"Current state of simulation:",

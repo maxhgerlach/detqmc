@@ -36,6 +36,7 @@
 #include "observable.h"
 #include "udv.h"
 
+class SerializeContentsKey;
 
 class DetHubbard;			//defined below in this file
 
@@ -202,6 +203,18 @@ protected:
 //	void debugCheckBeforeSweepDown();
 //	void debugCheckBeforeSweepUp();
 //	void debugCheckGreenFunctions();
+
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<2>::serializeContents(sck, ar);		//base class
+		ar & auxfield;
+		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
+		   & occDouble & localMoment & suscq0;
+		ar & zcorr & gf & gf_dt;
+    }
 };
 
 #endif /* DETHUBBARD_H_ */

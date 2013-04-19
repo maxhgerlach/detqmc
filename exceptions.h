@@ -63,4 +63,15 @@ public:
 };
 
 
+class SerializationError : public std::exception {
+	std::string message;
+public:
+	SerializationError(const std::string& msg) : message(msg) {}
+	virtual ~SerializationError() throw () { }
+	virtual const char* what() const throw () {
+		return message.c_str();
+	}
+};
+
+
 #endif /* EXCEPTIONS_H_ */

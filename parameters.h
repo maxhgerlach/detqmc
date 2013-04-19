@@ -11,6 +11,9 @@
 #include <string>
 #include <set>
 
+#include "boost/serialization/string.hpp"
+#include "boost/serialization/set.hpp"
+
 // Collect various structs defining various parameters.
 // Passing around these reduces code duplication somewhat, and reduces errors caused by passing
 // values to the wrong (positional) constructor argument.
@@ -48,6 +51,17 @@ struct ModelParams {
 			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
 			beta(), m(), dtau(), s(), accRatio(), specified() {
 	}
+
+private:
+	friend class boost::serialization::access;
+
+	template<class Archive>
+	void serialize(Archive& ar, const unsigned int version) {
+		(void)version;
+		ar & model & timedisplaced & checkerboard
+		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio
+		   & specified;
+	}
 };
 
 
@@ -63,11 +77,27 @@ struct MCParams {
 
 	std::string greenUpdateType; 	//"simple" or "stabilized"
 
+	std::string stateFileName;		//for serialization dumps
+	bool sweepsHasChanged;			//true, if the number of target sweeps has changed after resuming
+
 	std::set<std::string> specified;
 
 	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-			rngSeed(), greenUpdateType(), specified()
+			rngSeed(), greenUpdateType(), stateFileName(), sweepsHasChanged(false), specified()
 	{ }
+
+private:
+	friend class boost::serialization::access;
+
+	template<class Archive>
+	void serialize(Archive& ar, const unsigned int version) {
+		(void)version;
+		ar & sweeps & thermalization & jkBlocks & timeseries
+		   & measureInterval & saveInterval & rngSeed & greenUpdateType
+		   & stateFileName
+		   & sweepsHasChanged
+		   & specified;
+	}
 };
 
 

@@ -23,8 +23,11 @@ typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
 
+class SerializeContentsKey;
+
 class DetSDW;
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars);
+
 
 class DetSDW: public DetModelGC<1, cpx> {
 	DetSDW(RngWrapper& rng, const ModelParams& pars	);
@@ -140,6 +143,20 @@ protected:
 
 	//compute the total value of the action associated with the field phi
 	num phiAction();
+
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::serializeContents(sck, ar);			//base class
+		ar & phi0 & phi1 & phi2;
+		ar & phiCosh & phiSinh;
+		ar & phiDelta & targetAccRatio & lastAccRatio;
+		ar & accRatioRA;
+		ar & normPhi & phiSecond & phiFourth & binder & sdwSusc;
+		ar & kOcc & kOccImag;
+    }
 };
 
 #endif /* DETSDW_H_ */

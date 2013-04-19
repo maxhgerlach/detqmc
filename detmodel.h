@@ -15,17 +15,17 @@
 #include <memory>
 #include <vector>
 #include <tuple>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Weffc++"
-#pragma GCC diagnostic warning "-Wconversion"
 
 #include "parameters.h"
 #include "observable.h"
 #include "udv.h"
 #include "metadata.h"
 #include "timing.h"
+
+#include "boost/serialization/base_object.hpp"
+#include "boost_serialize_array.h"
+#include "boost_serialize_armadillo.h"
 
 typedef std::complex<double> cpx;
 
@@ -39,8 +39,13 @@ typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
 typedef UdV<num> UdVnum;
 
 
+class SerializeContentsKey;
+
+
+
 //base class for a model to be simulated by determinantal quantum Monte Carlo
 //
+
 
 //purely abstract base class
 class DetModel {
@@ -81,11 +86,18 @@ public:
     //do nothing by default
     virtual void thermalizationOver() {
     }
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const&, Archive &) {
+    }
 };
 
 
+
 //GreenComponents is the number of independent sectors of the Green's function,
-//e.g. in the Hubbard model it is 2 for spin up and spin down
+//e.g. in the S=1/2-Hubbard model it is 2 for spin up and spin down
 
 template<unsigned GreenComponents, typename ValueType = num>
 class DetModelGC : public DetModel {
@@ -180,11 +192,11 @@ protected:
 	template <class CallableUpdateInSlice> void sweepDown(CallableUpdateInSlice funcUpdateInSlice);
 
 	//Green component size, e.g. sz == N for the Hubbard model
-	unsigned sz;
+	const unsigned sz;
 
     //some simulation parameters are already relevant for member functions implemented
     //in this base class, the rest will only be used in derived classes
-	bool timedisplaced;
+	const bool timedisplaced;
 	const num beta;		//inverse temperature
 	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
 	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
@@ -204,7 +216,7 @@ protected:
 
     //The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
-    UdVV eye_UdV;
+    const UdVV eye_UdV;
 	std::array<std::vector<UdVV>, GreenComponents> UdVStorage;
 
     enum class SweepDirection: int {Up = 1, Down = -1};
@@ -216,6 +228,17 @@ protected:
 	std::vector<ScalarObservable> obsScalar;
 	std::vector<VectorObservable> obsVector;
 	std::vector<KeyValueObservable> obsKeyValue;
+
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModel::serializeContents(sck, ar);		//base class
+    	ar & green & greenFwd & greenBwd;
+    	ar & UdVStorage;
+    	ar & lastSweepDir;
+    }
 };
 
 
