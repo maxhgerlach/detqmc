@@ -74,4 +74,33 @@ public:
 };
 
 
+
+class ReadError : public std::exception {
+    std::string filename;
+public:
+    ReadError(std::string filename) throw ():
+        filename(filename) {
+    }
+    ~ReadError() throw () { }
+    virtual const char* what() const throw () {
+        return ("Can't read from file " + filename).c_str();
+    }
+};
+
+class KeyUndefined : public std::exception {
+    std::string key;
+public:
+    KeyUndefined() : key("")
+    { }
+    KeyUndefined(std::string k) : key(k)
+    { }
+
+    virtual const char* what() const throw () {
+        return ("key undefined: " + key).c_str();
+    }
+
+    ~KeyUndefined() throw() { }
+};
+
+
 #endif /* EXCEPTIONS_H_ */
