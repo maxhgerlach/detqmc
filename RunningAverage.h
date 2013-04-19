@@ -72,4 +72,3 @@ int RunningAverage<Val>::getSamplesAdded() {
 }
 
 typedef RA::RunningAverage<double> RunningAverage;
-//BOOST_CLASS_EXPORT_GUID(RunningAverage, "RunningAverage")

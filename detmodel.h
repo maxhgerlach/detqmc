@@ -23,9 +23,7 @@
 #include "metadata.h"
 #include "timing.h"
 
-#include <boost/serialization/base_object.hpp>
-//#include <boost/serialization/export.hpp>
-//#include <boost/serialization/assume_abstract.hpp>
+#include "boost/serialization/base_object.hpp"
 #include "boost_serialize_array.h"
 #include "boost_serialize_armadillo.h"
 
@@ -95,12 +93,11 @@ public:
     void serializeContents(SerializeContentsKey const&, Archive &) {
     }
 };
-//BOOST_SERIALIZATION_ASSUME_ABSTRACT(DetModel);
-//BOOST_CLASS_EXPORT_GUID(DetModel, "DetModel");
+
 
 
 //GreenComponents is the number of independent sectors of the Green's function,
-//e.g. in the Hubbard model it is 2 for spin up and spin down
+//e.g. in the S=1/2-Hubbard model it is 2 for spin up and spin down
 
 template<unsigned GreenComponents, typename ValueType = num>
 class DetModelGC : public DetModel {
@@ -242,21 +239,6 @@ public:
     	ar & UdVStorage;
     	ar & lastSweepDir;
     }
-//	friend class boost::serialization::access;
-//    template<class Archive>
-//    void serialize(Archive& ar, const unsigned int version) {
-//    	(void)version;
-//    	ar & boost::serialization::base_object<DetModel>(*this);
-////    	ar & sz;
-////    	ar & timedisplaced & beta & m & s & n & dtau;
-//    	ar & green & greenFwd & greenBwd;
-////    	ar & eye_UdV;
-//    	ar & UdVStorage;
-//    	ar & lastSweepDir;
-////    	ar & obsScalar & obsVector & obsKeyValue;
-//    	//no need to reset function object arrays, simulation configuration parameters
-//    	//-- still valid from construction!
-//    }
 };
 
 

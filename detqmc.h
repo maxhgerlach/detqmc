@@ -23,9 +23,6 @@
 #include "exceptions.h"
 
 #include "boost/serialization/split_member.hpp"
-//#include "boost/serialization/map.hpp"				//for MetadataMap
-//#include "boost_serialize_uniqueptr.h"
-//#include "boost_serialize_vector_uniqueptr.h"
 
 class SerializeContentsKey;
 
@@ -85,12 +82,7 @@ private:
 	//Only call for "deserialization" after DetQMC has already been constructed and initialized!
 	template<class Archive>
 	void serializeContents(Archive& ar) {
-		//callbacks etc. need not be serialized as they are
-		//determined via parsmodel & parsmc upon construction.
-//    	ar & parsmodel & parsmc;
-//    	ar & modelMeta & mcMeta;
     	ar & rng;					//serialize completely
-//    	ar & greenUpdateType;
 
     	//The template member functions serializeContents(Archive&) cannot be virtual,
     	//so we have to resort to RTTI to serialize the right object.
@@ -113,9 +105,6 @@ private:
     	ar & sweepsDone & sweepsDoneThermalization;
 	}
 };
-
-
-//BOOST_CLASS_EXPORT_GUID(DetQMC, "DetQMC")
 
 
 //Only one member function of DetQMC is allowed to make instances of this class.

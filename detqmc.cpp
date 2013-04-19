@@ -13,10 +13,6 @@
 #include <armadillo>
 #include "boost/assign/std/vector.hpp"
 
-#include "boost_serialize_armadillo.h"
-#include "boost_serialize_array.h"
-
-
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 
