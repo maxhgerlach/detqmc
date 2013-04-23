@@ -6,6 +6,8 @@
  */
 
 
+#include <cstdlib>
+#include <limits>
 #include <ctime>
 #include <functional>
 #include <fstream>
@@ -16,7 +18,7 @@
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
 
-
+#include "tools.h"
 #include "detqmc.h"
 #include "dethubbard.h"
 #include "detsdw.h"
@@ -110,6 +112,15 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 				new KeyValueObservableHandler(*obsP, parsmc, modelMeta, mcMeta)));
 	}
 
+	//query allowed walltime
+	const char* pbs_walltime = std::getenv("PBS_WALLTIME");
+	if (pbs_walltime) {
+		grantedWalltimeSecs = fromString<decltype(grantedWalltimeSecs)>(pbs_walltime);
+	} else {
+		grantedWalltimeSecs = std::numeric_limits<decltype(grantedWalltimeSecs)>::max();
+	}
+	cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
+
 	cout << "\nSimulation initialized, parameters: " << endl;
 	cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
@@ -120,7 +131,11 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
 		modelMeta(), mcMeta(), rng(), replica(),
 		obsHandlers(), vecObsHandlers(),
-		sweepsDone(0), sweepsDoneThermalization()
+		sweepsDone(0), sweepsDoneThermalization(),
+		swCounter(0),
+		elapsedTimer(),		// start timing
+		totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
+		grantedWalltimeSecs(0)
 {
 	initFromParameters(parsmodel_, parsmc_);
 }
@@ -131,7 +146,11 @@ DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
 		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
 		modelMeta(), mcMeta(), rng(), replica(),
 		obsHandlers(), vecObsHandlers(),
-		sweepsDone(), sweepsDoneThermalization()
+		sweepsDone(), sweepsDoneThermalization(),
+		swCounter(0),
+		elapsedTimer(),		// start timing
+		totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
+		grantedWalltimeSecs(0)
 {
 	std::ifstream ifs;
 	ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -167,51 +186,95 @@ DetQMC::~DetQMC() {
 
 
 void DetQMC::run() {
-	if (sweepsDoneThermalization < parsmc.thermalization) {
+	enum class Stage { T, M, F };		//Thermalization, Measurement, Finished
+	Stage stage = Stage::T;
+
+	//local helper functions to initialize a "stage" of the big loop
+	auto thermalizationStage = [&stage, parsmc]() {
+		stage = Stage::T;
 		cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
-		for (unsigned sw = sweepsDoneThermalization;
-				sw < parsmc.thermalization; sw += parsmc.saveInterval) {
-			thermalize(parsmc.saveInterval);
-			cout  << "  " << sw + parsmc.saveInterval << " ... saving state...";
-			saveState();
-			cout << endl;
-		}
-	}
-	cout << "Thermalization finished\n" << endl;
-	replica->thermalizationOver();
-	if (sweepsDone < parsmc.sweeps) {
+	};
+	auto measurementsStage = [&stage, parsmc]() {
+		stage = Stage::M;
 		cout << "Measurements for " << parsmc.sweeps << " sweeps..." << endl;
-		for (unsigned sw = sweepsDone; sw < parsmc.sweeps; sw += parsmc.saveInterval) {
-			measure(parsmc.saveInterval, parsmc.measureInterval);
-			cout << "  " << sw + parsmc.saveInterval << " ... saving results and state ...";
-			saveResults();
+	};
+	auto finishedStage = [&stage]() {
+		stage = Stage::F;
+		cout << "Measurements finished\n" << endl;
+	};
+
+	if (sweepsDoneThermalization < parsmc.thermalization) {
+		thermalizationStage();
+	} else if (sweepsDone < parsmc.sweeps) {
+		measurementsStage();
+	} else {
+		finishedStage();
+	}
+
+	const unsigned SavetyMinutes = 30;
+
+	while (stage != Stage::F) {				//big loop
+		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
+			cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n"
+				 << "Save state / results and exit gracefully."
+				 << endl;
+			if (stage == Stage::M) {
+				saveResults();
+			}
 			saveState();
-			cout << endl;
+			break;	//while
 		}
-	}
-	cout << "Measurements finished\n" << endl;
-}
 
-void DetQMC::thermalize(unsigned numSweeps) {
-	for (unsigned sw = 0; sw < numSweeps; ++sw) {
-		sweepThermalizationFunc();
-		++sweepsDoneThermalization;
-	}
-}
+		//thermalization & measurement stages
+		switch (stage) {
 
-void DetQMC::measure(unsigned numSweeps, unsigned measureInterval) {
-	for (unsigned sw = 0; sw < numSweeps; ++sw) {
-		sweepFunc();
-		++sweepsDone;
-		if (sw % measureInterval == 0) {
-			replica->measure();
-			//TODO: can this for loop be expressed in a more elegant and terse way?
-			for (auto ph = obsHandlers.begin(); ph != obsHandlers.end(); ++ph) {
-				(*ph)->insertValue(sweepsDone);
+		case Stage::T:
+			sweepThermalizationFunc();
+			++sweepsDoneThermalization;
+			++swCounter;
+			if (swCounter == parsmc.saveInterval) {
+				cout  << "  " << sweepsDoneThermalization << " ... saving state...";
+				saveState();
+				cout << endl;
+				swCounter = 0;
 			}
-			for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
-				(*ph)->insertValue(sweepsDone);
+			if (sweepsDoneThermalization == parsmc.thermalization) {
+				cout << "Thermalization finished\n" << endl;
+				replica->thermalizationOver();
+				swCounter = 0;
+				measurementsStage();
 			}
+			break;	//case
+
+		case Stage::M:
+			sweepFunc();
+			++sweepsDone;
+			++swCounter;
+			if (swCounter % parsmc.measureInterval == 0) {
+				replica->measure();
+				for (auto ph = obsHandlers.begin(); ph != obsHandlers.end(); ++ph) {
+					(*ph)->insertValue(sweepsDone);
+				}
+				for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
+					(*ph)->insertValue(sweepsDone);
+				}
+			}
+			if (swCounter == parsmc.saveInterval) {
+				cout << "  " << sweepsDone << " ... saving results and state ...";
+				saveResults();
+				saveState();
+				cout << endl;
+				swCounter = 0;
+			}
+			if (sweepsDone == parsmc.sweeps) {
+				swCounter = 0;
+				finishedStage();
+			}
+			break;	//case
+
+		case Stage::F:
+			break;	//case
+
 		}
 	}
 }
@@ -235,6 +298,7 @@ MetadataMap DetQMC::prepareMCMetadataMap() const {
 
 void DetQMC::saveResults() {
 	timing.start("saveResults");
+
 	outputResults(obsHandlers);
 	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
 		(*p)->outputTimeseries();
@@ -250,11 +314,19 @@ void DetQMC::saveResults() {
 	writeOnlyMetaData(commonInfoFilename, mcMeta,
 			"Monte Carlo parameters:",
 			true);
+
 	MetadataMap currentState;
 	currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
 	currentState["sweepsDone"] = numToString(sweepsDone);
+
+	unsigned long cwts = curWalltimeSecs();
+	totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
+	walltimeSecsLastSaveResults = cwts;
+
+	currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
 	writeOnlyMetaData(commonInfoFilename, currentState,
 			"Current state of simulation:",
 			true);
+
 	timing.stop("saveResults");
 }

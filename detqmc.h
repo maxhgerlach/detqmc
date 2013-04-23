@@ -22,7 +22,9 @@
 #include "rngwrapper.h"
 #include "exceptions.h"
 
+#include "boost/timer/timer.hpp"
 #include "boost/serialization/split_member.hpp"
+
 
 class SerializeContentsKey;
 
@@ -37,12 +39,13 @@ public:
 	DetQMC(const std::string& stateFileName, unsigned newSweeps = 0);
 
 
-	void run();			//carry out simulation determined by parsmc given in construction
+	//carry out simulation determined by parsmc given in construction,
+	//- handle thermalization & measurement stages as necessary
+	//- save state and results periodically
+	//- if granted walltime is almost over, save state & results
+	//  and exit gracefully
+	void run();
 
-	// do numSweeps thermalization sweeps
-	void thermalize(unsigned numSweeps);
-	// do numSweeps sweeps taking measurements
-	void measure(unsigned numSweeps, unsigned measureInterval);
 	// update results stored on disk
 	void saveResults();
 	// dump simulation parameters and the current state to a Boost::S11n archive
@@ -75,11 +78,23 @@ protected:
 	unsigned sweepsDone;						//Measurement sweeps done
 	unsigned sweepsDoneThermalization;			//thermalization sweeps done
 
+	unsigned swCounter;			//helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
+
+	boost::timer::cpu_timer elapsedTimer;			//during this simulation run
+	unsigned long curWalltimeSecs() {
+		return elapsedTimer.elapsed().wall / 1000 / 1000 / 1000; // ns->mus->ms->s
+	}
+	unsigned long totalWalltimeSecs;				//this is serialized and carries the elapsed walltime in seconds
+													//accumulated over all runs, updated on call of saveResults()
+	unsigned long walltimeSecsLastSaveResults;		//timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
+	unsigned long grantedWalltimeSecs;				//walltime the simulation is allowed to run
+
+
 	MetadataMap prepareMCMetadataMap() const;
 
 private:
 	//Serialize only the content data that has changed after construction.
-	//Only call for "deserialization" after DetQMC has already been constructed and initialized!
+	//Only call for deserialization after DetQMC has already been constructed and initialized!
 	template<class Archive>
 	void serializeContents(Archive& ar) {
     	ar & rng;					//serialize completely
@@ -103,6 +118,9 @@ private:
     		(*p)->serializeContents(SerializeContentsKey(), ar);
     	}
     	ar & sweepsDone & sweepsDoneThermalization;
+    	ar & swCounter;
+
+    	ar & totalWalltimeSecs;
 	}
 };
 
