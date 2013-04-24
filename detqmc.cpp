@@ -234,9 +234,9 @@ void DetQMC::run() {
 			++swCounter;
 			if (swCounter == parsmc.saveInterval) {
 				cout  << "  " << sweepsDoneThermalization << " ... saving state...";
+				swCounter = 0;
 				saveState();
 				cout << endl;
-				swCounter = 0;
 			}
 			if (sweepsDoneThermalization == parsmc.thermalization) {
 				cout << "Thermalization finished\n" << endl;
@@ -261,10 +261,10 @@ void DetQMC::run() {
 			}
 			if (swCounter == parsmc.saveInterval) {
 				cout << "  " << sweepsDone << " ... saving results and state ...";
+				swCounter = 0;
 				saveResults();
 				saveState();
 				cout << endl;
-				swCounter = 0;
 			}
 			if (sweepsDone == parsmc.sweeps) {
 				swCounter = 0;
