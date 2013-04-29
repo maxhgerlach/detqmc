@@ -32,6 +32,32 @@ T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T())
 }
 
 
+// Compute jackknife-block-wise estimates of the average of data
+// TODO: extended version that applies a functor to each data-point
+template<typename T>
+std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBlocks) {
+	std::vector<T> blockEstimates(jkBlocks, T(0));
+	unsigned jkBlockSize = data.size() / jkBlocks;
+
+	for (unsigned i = 0; i < data.size(); ++i) {
+		T value = data[i];
+		unsigned curBlock = i / jkBlockSize;
+		for (unsigned jb = 0; jb < jkBlocks; ++jb) {
+			if (jb != curBlock) {
+				blockEstimates[jb] += value;
+			}
+		}
+	}
+
+	unsigned jkTotalSamples = data.size() - jkBlockSize;
+	for (T& blockEstimate : blockEstimates) {
+		blockEstimate /= T(jkTotalSamples);
+	}
+
+	return blockEstimates;
+}
+
+
 //Take a vector of block values, estimate their error using standard jackknife
 //use this if the average is already known
 template<typename T>
