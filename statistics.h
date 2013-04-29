@@ -64,7 +64,7 @@ std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
 // Compute jackknife-block-wise estimates of the average of data
 template<typename T>
 std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBlocks) {
-	return jackknifeBlockEstimates([](T v) { return v; },	//identity lambda function
+	return jackknifeBlockEstimates<T>([](T v) { return v; },	//identity lambda function
 			data, jkBlocks);
 }
 
@@ -92,19 +92,19 @@ T jackknife(
 //Take a vector of block values, calculate their average and estimate
 //their error using standard jackknife
 //return a tuple [average, error]
-template<typename T>
-std::tuple<T,T> jackknife(const std::vector<T>& blockValues, const T& zeroValue = T()) {
-    T outBlockAverage = zeroValue;
-	unsigned bc = blockValues.size();
-    for (unsigned b = 0; b < bc; ++b) {
-        outBlockAverage += blockValues[b];
-    }
-    outBlockAverage /= static_cast<T>(bc);
-
-    T outBlockError = jackknife(blockValues, outBlockAverage);
-
-    return std::make_tuple(outBlockAverage, outBlockError);
-}
+//template<typename T>
+//std::tuple<T,T> jackknife(const std::vector<T>& blockValues, const T& zeroValue = T()) {
+//    T outBlockAverage = zeroValue;
+//	unsigned bc = blockValues.size();
+//    for (unsigned b = 0; b < bc; ++b) {
+//        outBlockAverage += blockValues[b];
+//    }
+//    outBlockAverage /= static_cast<T>(bc);
+//
+//    T outBlockError = jackknife(blockValues, outBlockAverage);
+//
+//    return std::make_tuple(outBlockAverage, outBlockError);
+//}
 
 //if end==0: compute average over whole vector
 //else compute average for elements at start, start+1, ..., end-1
@@ -129,7 +129,7 @@ T average(const std::function<T(T)>& func,
 //else compute average for elements at start, start+1, ..., end-1
 template<typename T>
 T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
-	return average( [](T v) { return v; }, vec, start, end );
+	return average<T>( [](T v) { return v; }, vec, start, end );
 }
 
 
