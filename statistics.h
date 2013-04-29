@@ -92,7 +92,7 @@ T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0)
 //k_max \approx 6*\tau_int
 template<typename T>
 T tauint(const std::vector<T>& data, T selfConsCutOff = T(6)) {
-    int m = data.size();
+    std::size_t m = data.size();
     T mean = average(data);
     T var = 0;
     T result = 0.5;

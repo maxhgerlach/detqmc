@@ -22,6 +22,8 @@
 #include "boost/algorithm/string.hpp"   //trimming
 #include "metadata.h"
 
+// TODO: switch to smart (shared) pointers
+
 
 //reads in ASCII formated data
 //supports multiple columns in the format
