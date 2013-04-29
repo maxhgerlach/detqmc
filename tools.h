@@ -13,6 +13,7 @@
 #define TOOLS_H_
 
 #include <vector>
+#include <string>
 #include <sstream>
 #include <iostream>
 #include <fstream>
@@ -117,6 +118,10 @@ inline void copyFileBackUp(const std::string& filename) {
     std::ofstream output((filename + "~").c_str(), std::ios::trunc | std::ios::binary);
     output << input.rdbuf();
 }
+
+
+// Wrapper aroundPOSIX glob() that returns a vector<string>
+std::vector<std::string> glob(const std::string& path);
 
 
 
