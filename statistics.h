@@ -106,21 +106,30 @@ std::tuple<T,T> jackknife(const std::vector<T>& blockValues, const T& zeroValue 
     return std::make_tuple(outBlockAverage, outBlockError);
 }
 
-
 //if end==0: compute average over whole vector
 //else compute average for elements at start, start+1, ..., end-1
+// - more generic version that applies a function to each element before taking the average
 template<typename T>
-T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
+T average(const std::function<T(T)>& func,
+		const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
     if (end==0) {
         end = vec.size();
     }
 //  assert(end > start);
     T avg = T(0);
     for (std::size_t i = start; i < end; ++i) {
-        avg += T(vec[i]);
+        avg += func(T(vec[i]));
     }
     avg /= (end-start);
     return avg;
+}
+
+
+//if end==0: compute average over whole vector
+//else compute average for elements at start, start+1, ..., end-1
+template<typename T>
+T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
+	return average( [](T v) { return v; }, vec, start, end );
 }
 
 
