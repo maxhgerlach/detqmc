@@ -12,6 +12,16 @@
 #include <string>
 #include "tools.h"
 
+class GeneralError : public std::exception {
+	std::string message;
+public:
+	GeneralError(const std::string& msg) : message(msg) {}
+	virtual ~GeneralError() throw () { }
+	virtual const char* what() const throw () {
+		return message.c_str();
+	}
+};
+
 class WrongObsIndex : public std::exception {
 	int oi;
 	bool vec;
