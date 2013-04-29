@@ -11,6 +11,7 @@
 #include <cmath>
 #include <vector>
 #include <tuple>
+#include <functional>
 #include <armadillo>
 
 
@@ -32,15 +33,16 @@ T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T())
 }
 
 
-// Compute jackknife-block-wise estimates of the average of data
-// TODO: extended version that applies a functor to each data-point
+// Compute jackknife-block-wise estimates of the values of a function applied element-wise
+// to the data
 template<typename T>
-std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBlocks) {
+std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
+		const std::vector<T>& data, unsigned jkBlocks) {
 	std::vector<T> blockEstimates(jkBlocks, T(0));
 	unsigned jkBlockSize = data.size() / jkBlocks;
 
 	for (unsigned i = 0; i < data.size(); ++i) {
-		T value = data[i];
+		T value = func(data[i]);
 		unsigned curBlock = i / jkBlockSize;
 		for (unsigned jb = 0; jb < jkBlocks; ++jb) {
 			if (jb != curBlock) {
@@ -56,6 +58,17 @@ std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBl
 
 	return blockEstimates;
 }
+
+
+
+// Compute jackknife-block-wise estimates of the average of data
+template<typename T>
+std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBlocks) {
+	return jackknifeBlockEstimates([](T v) { return v; },	//identity lambda function
+			data, jkBlocks);
+}
+
+
 
 
 //Take a vector of block values, estimate their error using standard jackknife
