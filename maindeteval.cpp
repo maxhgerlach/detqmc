@@ -68,8 +68,15 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
-	//take simulation metadata from file info.dat
+	//take simulation metadata from file info.dat, remove some unnecessary parts
 	MetadataMap meta = readOnlyMetadata("info.dat");
+	for ( std::string key : {"buildDate", "buildHost", "buildTime",
+							 "cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
+							 "sweepsDone", "sweepsDoneThermalization", "totalWallTimeSecs"} ) {
+		if (meta.count(key)) {
+			meta.erase(key);
+		}
+	}
 	unsigned guessedLength = static_cast<unsigned>(fromString<double>(meta.at("sweeps")) /
 			fromString<double>(meta.at("measureInterval")));
 
