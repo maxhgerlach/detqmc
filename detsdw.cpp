@@ -79,10 +79,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using std::cref;
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
-			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
-			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
-			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
-			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
+//			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
+//			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
+//			ScalarObservable(cref(lastAccRatio), "accRatio", "ar"),
+			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc");
+
 
 	kOccX.zeros(N);
 	kOccY.zeros(N);
@@ -135,8 +136,8 @@ void DetSDW::measure() {
 //		using std::pow;
 //		return pow(pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2), 2);
 //	}, 0.0);
-	phiSecond = std::pow(normPhi, 2);
-	phiFourth = std::pow(phiSecond, 2);
+//	phiSecond = std::pow(normPhi, 2);
+//	phiFourth = std::pow(phiSecond, 2);
 
 	//fermion occupation number
 	kOccX.zeros(N);
@@ -679,5 +680,7 @@ num DetSDW::phiAction() {
 
 
 void DetSDW::thermalizationOver() {
-	std::cout << "After thermalization: phiDelta = " << phiDelta << std::endl;
+	std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
+			  << "lastAccRatio = " << lastAccRatio
+			  << std::endl;
 }
