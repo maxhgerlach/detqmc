@@ -9,6 +9,8 @@
 // Call in directory containing timeseries files.
 
 #include <iostream>
+#include <algorithm>
+#include <iterator>
 #include <memory>
 #include <map>
 #include <cmath>
@@ -127,6 +129,9 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
+//		std::copy(std::begin(jkBlockEstimates[obsName]), std::end(jkBlockEstimates[obsName]), std::ostream_iterator<double>(std::cout, " "));
+//		std::cout << std::endl;
+//		std::cout << average(jkBlockEstimates[obsName]);
 
 		if (not notau) {
 			tauints[obsName] = tauint(*data);

@@ -85,7 +85,7 @@ T jackknife(
     for (unsigned b = 0; b < bc; ++b) {
         squaredDeviation += pow(blockAverage - blockValues[b], 2);
     }
-    return sqrt(double(bc - 1) / double(bc) * squaredDeviation);
+    return sqrt((double(bc - 1) / double(bc)) * squaredDeviation);
 }
 
 
