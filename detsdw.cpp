@@ -63,6 +63,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		normPhi(), phiSecond(), phiFourth(), binder(), sdwSusc(),
 		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
+		kaltOcc(), kaltOccX(kaltOcc[XBAND]), kaltOccY(kaltOcc[YBAND]),
+		kaltOccImag(), kaltOccXimag(kaltOccImag[XBAND]), kaltOccYimag(kaltOccImag[YBAND]),
 		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
 		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
 {
@@ -95,6 +97,15 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	kOccYimag.zeros(N);
 	obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
 			VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
+
+	kaltOccX.zeros(N);
+	kaltOccY.zeros(N);
+	obsVector += VectorObservable(cref(kaltOccX), N, "kaltOccX", "nkaltx"),
+			VectorObservable(cref(kaltOccY), N, "kaltOccY", "nkalty");
+	kaltOccXimag.zeros(N);
+	kaltOccYimag.zeros(N);
+	obsVector += VectorObservable(cref(kaltOccXimag), N, "kaltOccXimag", "nkaltximag"),
+			VectorObservable(cref(kaltOccYimag), N, "kaltOccYimag", "nkaltyimag");
 
 	occX.zeros(N);
 	occY.zeros(N);
@@ -213,6 +224,51 @@ void DetSDW::measure() {
 	}
 	using std::ref;
 	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
+		kocc /= num(m) * num(N);
+	}
+
+	//fermion occupation number -- k-space - alternative sign -- does this play any role?
+	kaltOccX.zeros(N);
+	kaltOccY.zeros(N);
+	kaltOccXimag.zeros(N);
+	kaltOccYimag.zeros(N);
+#pragma omp parallel for
+	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
+		num ky = 2 * pi * num(ksitey) / num(L);
+		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
+			num kx = 2 * pi * num(ksitex) / num(L);
+			unsigned ksite = L*ksitey + ksitex;
+			for (unsigned l = 1; l <= m; ++l) {					//timeslices
+				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
+					for (unsigned jx = 0; jx < L; ++jx) {
+						unsigned j = L*jy + jx;
+						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
+							for (unsigned ix = 0; ix < L; ++ix) {
+								unsigned i = L*iy + ix;
+								cpx phase = std::exp(cpx(0, -kx * (ix - jx) -ky * (iy - jy)));	//introduce alternative minus
+								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
+								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
+								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
+								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
+								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
+								kaltOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
+																  + diracDelta - greenEntryXBandSpinDown));
+								kaltOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
+																  + diracDelta - greenEntryYBandSpinDown));
+								//imaginary parts should add up to zero..., but for now check:
+								kaltOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
+																  	  + diracDelta - greenEntryXBandSpinDown));
+								kaltOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
+																  	  + diracDelta - greenEntryYBandSpinDown));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	using std::ref;
+	for (VecNum& kocc : {ref(kaltOccX), ref(kaltOccY), ref(kaltOccXimag), ref(kaltOccYimag)}) {
 		kocc /= num(m) * num(N);
 	}
 
