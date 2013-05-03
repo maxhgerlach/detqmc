@@ -85,6 +85,7 @@ public:
 			if (jkBlockCount > 1 and not mcparams.sweepsHasChanged) {
 				unsigned jkBlockSizeSamples = countValues / jkBlockCount;
 				unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
+//				std::cout << jkTotalSamples << std::endl;
 				std::vector<ObsType> jkBlockAverages = jkBlockValues;	//copy
 				for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 					jkBlockAverages[jb] /= jkTotalSamples;
@@ -160,7 +161,7 @@ public:
 		num error;
 		std::tie(mean, error) = ObservableHandlerCommon<num>::evaluateJackknife();
 		if (jkBlockCount <= 1 and timeseriesBuffer.size() == countValues) {
-			error = variance(timeseriesBuffer, mean);
+			error = std::sqrt(variance(timeseriesBuffer, mean));
 		}
 		return std::make_tuple(mean, error);
 	}

@@ -40,8 +40,10 @@ std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
 		const std::vector<T>& data, unsigned jkBlocks) {
 	std::vector<T> blockEstimates(jkBlocks, T(0));
 	unsigned jkBlockSize = data.size() / jkBlocks;
+	//if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
+	unsigned totalSamples = jkBlocks * jkBlockSize;
 
-	for (unsigned i = 0; i < data.size(); ++i) {
+	for (unsigned i = 0; i < totalSamples; ++i) {
 		T value = func(data[i]);
 		unsigned curBlock = i / jkBlockSize;
 		for (unsigned jb = 0; jb < jkBlocks; ++jb) {
@@ -51,7 +53,7 @@ std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
 		}
 	}
 
-	unsigned jkTotalSamples = data.size() - jkBlockSize;
+	unsigned jkTotalSamples = totalSamples - jkBlockSize;
 	for (T& blockEstimate : blockEstimates) {
 		blockEstimate /= T(jkTotalSamples);
 	}
@@ -67,7 +69,6 @@ std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBl
 	return jackknifeBlockEstimates<T>([](T v) { return v; },	//identity lambda function
 			data, jkBlocks);
 }
-
 
 
 
