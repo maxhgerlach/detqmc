@@ -32,6 +32,10 @@ class SerializeContentsKey;
 #include "boost/serialization/export.hpp"
 #include "boost_serialize_uniqueptr.h"
 
+
+
+
+
 template <typename ObsType>
 class ObservableHandlerCommon {
 public:
@@ -90,7 +94,7 @@ public:
 				for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 					jkBlockAverages[jb] /= jkTotalSamples;
 				}
-				error = jackknife(jkBlockAverages, mean, zero);    //TODO: make this work with vector observables
+				error = jackknife(jkBlockAverages, mean, zero);
 			}
 		}
 		return std::make_tuple(mean, error);
@@ -119,9 +123,16 @@ public:
     void serializeContents(SerializeContentsKey const &, Archive &ar) {
 		ar & lastSweepLogged;
 		ar & countValues;
+		ar & jkBlockValues;
 		ar & total;
     }
 };
+
+
+
+
+
+
 
 
 
@@ -140,14 +151,11 @@ public:
 		storage(),					//initialize to something like a nullptr
 		storageFileStarted(false)
 	{
-		if (mcparams.timeseries) {
-
-		}
 	}
 
 	//in addition to base class functionality supports adding to the timeseries buffer
 	void insertValue(unsigned curSweep) {
-		num value = obs.valRef.get();
+		num value = obs.valRef;
 		if (mcparams.timeseries) {
 			timeseriesBuffer.push_back(value);
 		}
@@ -159,7 +167,9 @@ public:
 	std::tuple<num, num> evaluateJackknife() const {
 		num mean;
 		num error;
+
 		std::tie(mean, error) = ObservableHandlerCommon<num>::evaluateJackknife();
+
 		if (jkBlockCount <= 1 and timeseriesBuffer.size() == countValues) {
 			error = std::sqrt(variance(timeseriesBuffer, mean));
 		}
@@ -216,6 +226,11 @@ public:
 		//of the timeseries file it finds at construction.
     }
 };
+
+
+
+
+
 
 
 

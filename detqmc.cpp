@@ -248,7 +248,6 @@ void DetQMC::run() {
 
 		case Stage::M:
 			sweepFunc();
-			++sweepsDone;
 			++swCounter;
 			if (swCounter % parsmc.measureInterval == 0) {
 				replica->measure();
@@ -259,6 +258,7 @@ void DetQMC::run() {
 					(*ph)->insertValue(sweepsDone);
 				}
 			}
+			++sweepsDone;
 			if (swCounter == parsmc.saveInterval) {
 				cout << "  " << sweepsDone << " ... saving results and state ...";
 				swCounter = 0;
