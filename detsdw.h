@@ -94,6 +94,13 @@ protected:
 	VecNum& kOccXimag;
 	VecNum& kOccYimag;
 
+	std::array<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
+	VecNum& occX;
+	VecNum& occY;
+	std::array<VecNum, 2> occImag;
+	VecNum& occXimag;
+	VecNum& occYimag;
+
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);

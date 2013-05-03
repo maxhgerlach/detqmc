@@ -62,7 +62,9 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
 		normPhi(), phiSecond(), phiFourth(), binder(), sdwSusc(),
 		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
-		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND])
+		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
+		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
+		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
 {
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
@@ -93,6 +95,15 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	kOccYimag.zeros(N);
 	obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
 			VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
+
+	occX.zeros(N);
+	occY.zeros(N);
+	obsVector += VectorObservable(cref(occX), N, "occX", "nx"),
+			VectorObservable(cref(occY), N, "occY", "ny");
+	occXimag.zeros(N);
+	occYimag.zeros(N);
+	obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
+			VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
 }
 
 DetSDW::~DetSDW() {
@@ -139,7 +150,27 @@ void DetSDW::measure() {
 //	phiSecond = std::pow(normPhi, 2);
 //	phiFourth = std::pow(phiSecond, 2);
 
-	//fermion occupation number
+	//fermion occupation number -- real space
+	//probably not very interesting data
+	occX.zeros(N);
+	occY.zeros(N);
+	occXimag.zeros(N);
+	occYimag.zeros(N);
+#pragma omp parallel for
+	for (unsigned l = 1; l <= m; ++l) {
+		for (unsigned i = 0; i < N; ++i) {
+			occX[i] += std::real(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
+			occY[i] += std::real(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
+			occXimag[i] += std::imag(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
+			occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
+		}
+	}
+	using std::ref;
+	for (VecNum& occ : {ref(occX), ref(occY), ref(occXimag), ref(occYimag)}) {
+		occ /= num(m) * num(N);
+	}
+
+	//fermion occupation number -- k-space
 	kOccX.zeros(N);
 	kOccY.zeros(N);
 	kOccXimag.zeros(N);
