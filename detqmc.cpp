@@ -90,6 +90,10 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 		throw ParameterWrong("Measurement interval " + numToString(parsmc.measureInterval)
 				+ " ill-chosen for number of sweeps " + numToString(parsmc.sweeps));
 	}
+	if (parsmc.sweeps % parsmc.saveInterval != 0) {
+		throw ParameterWrong("saveInterval (" + numToString(parsmc.saveInterval) +
+				") needs to be a divisor of sweeps (" + numToString(parsmc.sweeps) + ")");
+	}
 
 	//prepare metadata
 	modelMeta = replica->prepareModelMetadataMap();
