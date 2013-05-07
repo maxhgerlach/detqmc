@@ -35,8 +35,10 @@ public:
 	DetQMC(const ModelParams& parsmodel, const MCParams& parsmc);
 
 	//constructor to resume a simulation from a dumped state file:
-	//if newSweeps > 0 is specified, adjust the number of target sweeps
-	DetQMC(const std::string& stateFileName, unsigned newSweeps = 0);
+	//we allow to change some MC parameters at this point:
+	//  sweeps & saveInterval
+	//if values > than the old values are specified, change them
+	DetQMC(const std::string& stateFileName, const MCParams& newParsmc);
 
 
 	//carry out simulation determined by parsmc given in construction,

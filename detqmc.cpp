@@ -144,7 +144,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 	initFromParameters(parsmodel_, parsmc_);
 }
 
-DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
+DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 		parsmodel(), parsmc(),
 		//proper initialization of default initialized members done by loading from archive
 		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
@@ -163,9 +163,17 @@ DetQMC::DetQMC(const std::string& stateFileName, unsigned newSweeps) :
 	ModelParams parsmodel_;
 	MCParams parsmc_;
 	ia >> parsmodel_ >> parsmc_;
-	if (newSweeps > parsmc_.sweeps) {
-		parsmc_.sweeps = newSweeps;
+
+	if (newParsmc.sweeps > parsmc_.sweeps) {
+		std::cout << "Target sweeps will be changed from " << parsmc_.sweeps
+				  << " to " << newParsmc.sweeps << std::endl;
+		parsmc_.sweeps = newParsmc.sweeps;
 		parsmc_.sweepsHasChanged = true;
+	}
+	if (newParsmc.saveInterval > 0 and newParsmc.saveInterval != parsmc_.saveInterval) {
+		std::cout << "saveInterval will be changed from " << parsmc_.saveInterval
+				  << " to " << newParsmc.saveInterval << std::endl;
+		parsmc_.saveInterval = newParsmc.saveInterval;
 	}
 	parsmc_.stateFileName = stateFileName;
 	//TODO: changing the number of target sweeps makes the on the fly Jackknife

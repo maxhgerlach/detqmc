@@ -157,7 +157,8 @@ int main(int argc, char **argv) {
 			DetQMC simulation(parmodel, parmc);
 			simulation.run();
 		} else if (resumeSimulation) {
-			DetQMC simulation(parmc.stateFileName, parmc.sweeps);
+			DetQMC simulation(parmc.stateFileName, parmc);
+			//only very select parameters given in parmc are updated for the resumed simulation
 			simulation.run();
 		}
 	}
