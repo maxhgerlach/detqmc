@@ -176,8 +176,20 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 		parsmc_.saveInterval = newParsmc.saveInterval;
 	}
 	parsmc_.stateFileName = stateFileName;
-	//TODO: changing the number of target sweeps makes the on the fly Jackknife
-	//error-estimation invalid
+
+	//make sure mcparams are set correctly as "specified"
+#define SPECIFIED_INSERT_VAL(x) if (parsmc_.x) { parsmc_.specified.insert(#x); }
+#define SPECIFIED_INSERT_STR(x) if (not parsmc_.x.empty()) { parsmc_.specified.insert(#x); }
+	SPECIFIED_INSERT_VAL(sweeps);
+	SPECIFIED_INSERT_VAL(thermalization);
+	SPECIFIED_INSERT_VAL(jkBlocks);
+	SPECIFIED_INSERT_VAL(measureInterval);
+	SPECIFIED_INSERT_VAL(saveInterval);
+	SPECIFIED_INSERT_STR(greenUpdateType);
+	SPECIFIED_INSERT_STR(stateFileName);
+#undef SPECIFIED_INSERT_VAL
+#undef SPECIFIED_INSERT_STR
+
 	initFromParameters(parsmodel_, parsmc_);
 	serializeContents(ia);
 }
