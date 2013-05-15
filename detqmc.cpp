@@ -191,7 +191,7 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 #undef SPECIFIED_INSERT_STR
 
 	initFromParameters(parsmodel_, parsmc_);
-	serializeContents(ia);
+	loadContents(ia);
 }
 
 void DetQMC::saveState() {
@@ -201,7 +201,7 @@ void DetQMC::saveState() {
 	ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
 	boost::archive::binary_oarchive oa(ofs);
 	oa << parsmodel << parsmc;
-	serializeContents(oa);
+	saveContents(oa);
 	timing.stop("saveState");
 }
 

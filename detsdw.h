@@ -161,11 +161,28 @@ protected:
 	num phiAction();
 
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // only functions that can pass the key to these functions have access
+    // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<1,cpx>::serializeContents(sck, ar);			//base class
+    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::saveContents(sck, ar);			//base class
+    	serializeContentsCommon(sck, ar);
+    }
+
+    //after loadContents() a sweep must be performed before any measurements are taken:
+    //else the green function would not be in a valid state
+    template<class Archive>
+    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::loadContents(sck, ar);			//base class
+    	serializeContentsCommon(sck, ar);
+    	//the fields now have a valid state, update UdV-storage to start
+    	//sweeping again
+    	setupUdVStorage();
+    	//now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
+    }
+
+    template<class Archive>
+    void serializeContentsCommon(SerializeContentsKey const &, Archive &ar) {
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;
