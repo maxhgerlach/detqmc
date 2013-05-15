@@ -64,12 +64,12 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 	mcpar.saveInterval = 0;
 	mcOptions.add_options()
 			("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
-			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
-			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
+			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements, must be even for serialization consistency")
+			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps, must be even for serialization consistency")
 			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
 			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
 			("measureInterval", po::value<unsigned>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
-			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
+			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation, must be even for serialization consistency")
 			("rngSeed", po::value<unsigned long>(&mcpar.rngSeed), "seed for pseudo random number generator")
 			("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
 					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
