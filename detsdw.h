@@ -83,9 +83,6 @@ protected:
 
 	//Observables:
 	num normPhi;		//magnitude of averaged field
-	num phiSecond;		//second moment of averaged field
-	num phiFourth;		//fourth moment of averaged field
-	num binder;			//Binder cumulant: 1 - 3*phiFourth / (5 * phiSecond**2)
 	num sdwSusc;		//spin-density-wave susceptibility
 
 	std::array<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
@@ -94,14 +91,6 @@ protected:
 	std::array<VecNum, 2> kOccImag;
 	VecNum& kOccXimag;
 	VecNum& kOccYimag;
-
-	std::array<VecNum, 2> kaltOcc;		//alternate sign convention
-	VecNum& kaltOccX;
-	VecNum& kaltOccY;
-	std::array<VecNum, 2> kaltOccImag;
-	VecNum& kaltOccXimag;
-	VecNum& kaltOccYimag;
-
 
 	std::array<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
 	VecNum& occX;
@@ -170,7 +159,7 @@ public:
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;
 		ar & accRatioRA;
-		ar & normPhi & phiSecond & phiFourth & binder & sdwSusc;
+		ar & normPhi & sdwSusc;
 		ar & kOcc & kOccImag;
     }
 };
