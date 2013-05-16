@@ -23,8 +23,11 @@ typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
 
+class SerializeContentsKey;
+
 class DetSDW;
 std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars);
+
 
 class DetSDW: public DetModelGC<1, cpx> {
 	DetSDW(RngWrapper& rng, const ModelParams& pars	);
@@ -94,12 +97,28 @@ protected:
 	num phiFourth;		//fourth moment of averaged field
 	num binder;			//Binder cumulant: 1 - 3*phiFourth / (5 * phiSecond**2)
 	num sdwSusc;		//spin-density-wave susceptibility
+
 	std::array<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
 	VecNum& kOccX;
 	VecNum& kOccY;
 	std::array<VecNum, 2> kOccImag;
 	VecNum& kOccXimag;
 	VecNum& kOccYimag;
+
+	std::array<VecNum, 2> kaltOcc;		//alternate sign convention
+	VecNum& kaltOccX;
+	VecNum& kaltOccY;
+	std::array<VecNum, 2> kaltOccImag;
+	VecNum& kaltOccXimag;
+	VecNum& kaltOccYimag;
+
+
+	std::array<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
+	VecNum& occX;
+	VecNum& occY;
+	std::array<VecNum, 2> occImag;
+	VecNum& occXimag;
+	VecNum& occYimag;
 
     template<typename Callable>
     void for_each_band(Callable func) {
@@ -152,6 +171,20 @@ protected:
 
 	//compute the total value of the action associated with the field phi
 	num phiAction();
+
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::serializeContents(sck, ar);			//base class
+		ar & phi0 & phi1 & phi2;
+		ar & phiCosh & phiSinh;
+		ar & phiDelta & targetAccRatio & lastAccRatio;
+		ar & accRatioRA;
+		ar & normPhi & phiSecond & phiFourth & binder & sdwSusc;
+		ar & kOcc & kOccImag;
+    }
 };
 
 #endif /* DETSDW_H_ */

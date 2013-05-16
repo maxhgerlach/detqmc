@@ -18,17 +18,22 @@
 #include <map>
 #include <vector>
 #include <tuple>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <armadillo>
-#pragma GCC diagnostic warning "-Wsign-conversion"
-#pragma GCC diagnostic warning "-Weffc++"
 #include "parameters.h"
 #include "observable.h"
 #include "metadata.h"
 #include "dataserieswritersucc.h"
 #include "datamapwriter.h"
 #include "statistics.h"
+
+class SerializeContentsKey;
+
+#include "boost/serialization/vector.hpp"
+#include "boost/serialization/export.hpp"
+#include "boost_serialize_uniqueptr.h"
+
+
+
 
 
 template <typename ObsType>
@@ -81,14 +86,15 @@ public:
 		if (mcparams.sweeps - lastSweepLogged <= mcparams.measureInterval) {
 			//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished.
 			//we can only calculate an error estimate if we have multiple jackknife blocks
-			if (jkBlockCount > 1) {
+			if (jkBlockCount > 1 and not mcparams.sweepsHasChanged) {
 				unsigned jkBlockSizeSamples = countValues / jkBlockCount;
 				unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
+//				std::cout << jkTotalSamples << std::endl;
 				std::vector<ObsType> jkBlockAverages = jkBlockValues;	//copy
 				for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
 					jkBlockAverages[jb] /= jkTotalSamples;
 				}
-				error = jackknife(jkBlockAverages, mean, zero);    //TODO: make this work with vector observables
+				error = jackknife(jkBlockAverages, mean, zero);
 			}
 		}
 		return std::make_tuple(mean, error);
@@ -110,7 +116,22 @@ protected:
 
 	std::vector<ObsType> jkBlockValues;			// running counts of jackknife block values
 	ObsType total;								// running accumulation regardless of jackknife block
+public:
+    // only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &, Archive &ar) {
+		ar & lastSweepLogged;
+		ar & countValues;
+		ar & jkBlockValues;
+		ar & total;
+    }
 };
+
+
+
+
+
 
 
 
@@ -127,23 +148,14 @@ public:
 		: ObservableHandlerCommon(observable, simulationParameters,
 				metadataToStoreModel, metadataToStoreMC),
 		timeseriesBuffer(),			//empty by default
-		storage()					//initialize to something like a nullptr
+		storage(),					//initialize to something like a nullptr
+		storageFileStarted(false)
 	{
-		if (mcparams.timeseries) {
-			std::string filename = observable.name + ".series";
-			storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
-					new DoubleVectorWriterSuccessive(filename));
-			storage->addHeaderText("Timeseries for observable " + observable.name);
-			storage->addMetadataMap(metaModel);
-			storage->addMetadataMap(metaMC);
-			storage->addMeta("observable", observable.name);
-			storage->writeHeader();
-		}
 	}
 
 	//in addition to base class functionality supports adding to the timeseries buffer
 	void insertValue(unsigned curSweep) {
-		num value = obs.valRef.get();
+		num value = obs.valRef;
 		if (mcparams.timeseries) {
 			timeseriesBuffer.push_back(value);
 		}
@@ -155,9 +167,11 @@ public:
 	std::tuple<num, num> evaluateJackknife() const {
 		num mean;
 		num error;
+
 		std::tie(mean, error) = ObservableHandlerCommon<num>::evaluateJackknife();
+
 		if (jkBlockCount <= 1 and timeseriesBuffer.size() == countValues) {
-			error = variance(timeseriesBuffer, mean);
+			error = std::sqrt(variance(timeseriesBuffer, mean));
 		}
 		return std::make_tuple(mean, error);
 	}
@@ -168,6 +182,26 @@ public:
 		//TODO: reserve reasonable amount of memory for data to be added afterwards
 		//TODO: float precision
 		if (mcparams.timeseries) {
+			if (not storage) {
+				std::string filename = name + ".series";
+				if (not storageFileStarted) {
+					storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
+							new DoubleVectorWriterSuccessive(filename,
+									false // create a new file
+							));
+					storage->addHeaderText("Timeseries for observable " + name);
+					storage->addMetadataMap(metaModel);
+					storage->addMetadataMap(metaMC);
+					storage->addMeta("observable", name);
+					storage->writeHeader();
+					storageFileStarted = true;
+				} else {
+					storage = std::unique_ptr<DoubleVectorWriterSuccessive>(
+							new DoubleVectorWriterSuccessive(filename,
+									true// append to file
+							));
+				}
+			}
 			storage->writeData(timeseriesBuffer);	//append last batch of measurements
 			timeseriesBuffer.resize(0);				//no need to keep it in memory anymore
 		}
@@ -178,7 +212,26 @@ public:
 protected:
 	std::vector<num> timeseriesBuffer;		// time series entries added since last call to writeData()
 	std::unique_ptr<DoubleVectorWriterSuccessive> storage;
+	bool storageFileStarted;
+
+public:
+	// only functions that can pass the key to this function have access
+    // -- in this way access is granted only to DetQMC::serializeContents
+    template<class Archive>
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	ObservableHandlerCommon<num>::serializeContents(sck, ar);
+    	ar & timeseriesBuffer;
+    	ar & storageFileStarted;
+    	//*storage should not need to be serialized.  It will always write to the end
+		//of the timeseries file it finds at construction.
+    }
 };
+
+
+
+
+
+
 
 
 //Vector valued observables.  We use Armadillo vectors as they support arithmetics.
@@ -209,6 +262,7 @@ protected:
 	arma::Col<num> indexes;
 	std::string indexName;
 };
+
 
 
 //Vector indexed by arbitrary key

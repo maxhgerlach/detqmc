@@ -20,6 +20,12 @@ extern "C" {
 #include "dsfmt/dSFMT.h"
 }
 
+#include "boost/serialization/string.hpp"
+#include "boost/serialization/access.hpp"
+#include "boost/serialization/export.hpp"
+#include "boost/serialization/split_member.hpp"
+
+
 class RngWrapper {
     unsigned long seed;
     unsigned int processIndex;
@@ -28,7 +34,7 @@ public:
     RngWrapper(unsigned long seed_ = 0, unsigned processIndex_ = 0);
     virtual ~RngWrapper() {}
 
-    std::string getName();
+    std::string getName() const;
 
     //return a floating point random number from (0, 1)
     double rand01() {
@@ -47,8 +53,33 @@ public:
         return low + static_cast<int> ((high - low + 1.0) * rand01());
     };
 
-    void saveState();
+    //saving/loading state without Boost serialization
+    void saveState() const;
     void loadState();
+
+private:
+    //for serialization with Boost
+	friend class boost::serialization::access;
+
+    std::string stateToString() const;
+    void stringToState(const std::string& stateString);
+
+    template<class Archive>
+	void save(Archive& ar, const unsigned int /* version */) const {
+    	ar << seed << processIndex;
+    	std::string stateString = stateToString();
+    	ar << stateString;
+    }
+
+    template<class Archive>
+	void load(Archive& ar, const unsigned int /* version */) {
+    	ar >> seed >> processIndex;
+    	std::string stateString;
+    	ar >> stateString;
+    	stringToState(stateString);
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
 };
 
 #endif /* RNGWRAPPER_H_ */

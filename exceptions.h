@@ -12,6 +12,16 @@
 #include <string>
 #include "tools.h"
 
+class GeneralError : public std::exception {
+	std::string message;
+public:
+	GeneralError(const std::string& msg) : message(msg) {}
+	virtual ~GeneralError() throw () { }
+	virtual const char* what() const throw () {
+		return message.c_str();
+	}
+};
+
 class WrongObsIndex : public std::exception {
 	int oi;
 	bool vec;
@@ -60,6 +70,46 @@ public:
 	virtual const char* what() const throw () {
 		return message.c_str();
 	}
+};
+
+
+class SerializationError : public std::exception {
+	std::string message;
+public:
+	SerializationError(const std::string& msg) : message(msg) {}
+	virtual ~SerializationError() throw () { }
+	virtual const char* what() const throw () {
+		return message.c_str();
+	}
+};
+
+
+
+class ReadError : public std::exception {
+    std::string filename;
+public:
+    ReadError(std::string filename) throw ():
+        filename(filename) {
+    }
+    ~ReadError() throw () { }
+    virtual const char* what() const throw () {
+        return ("Can't read from file " + filename).c_str();
+    }
+};
+
+class KeyUndefined : public std::exception {
+    std::string key;
+public:
+    KeyUndefined() : key("")
+    { }
+    KeyUndefined(std::string k) : key(k)
+    { }
+
+    virtual const char* what() const throw () {
+        return ("key undefined: " + key).c_str();
+    }
+
+    ~KeyUndefined() throw() { }
 };
 
 

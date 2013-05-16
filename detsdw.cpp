@@ -8,11 +8,7 @@
 #include <cmath>
 #include <numeric>
 #include <functional>
-#pragma GCC diagnostic ignored "-Weffc++"
-#pragma GCC diagnostic ignored "-Wconversion"
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
-#pragma GCC diagnostic warning "-Wconversion"
-#pragma GCC diagnostic warning "-Weffc++"
 #include "observable.h"
 #include "detsdw.h"
 #include "exceptions.h"
@@ -73,7 +69,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
 		normPhi(), phiSecond(), phiFourth(), binder(), sdwSusc(),
 		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
-		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND])
+		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
+		kaltOcc(), kaltOccX(kaltOcc[XBAND]), kaltOccY(kaltOcc[YBAND]),
+		kaltOccImag(), kaltOccXimag(kaltOccImag[XBAND]), kaltOccYimag(kaltOccImag[YBAND]),
+		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
+		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
 {
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
@@ -98,10 +98,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using std::cref;
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
-			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
-			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
-			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
-			ScalarObservable(cref(lastAccRatio), "accRatio", "ar");
+//			ScalarObservable(cref(phiSecond), "phiSecond", "p2"),
+//			ScalarObservable(cref(phiFourth), "phiFourth", "p4"),
+//			ScalarObservable(cref(lastAccRatio), "accRatio", "ar"),
+			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc");
+
 
 	kOccX.zeros(N);
 	kOccY.zeros(N);
@@ -111,6 +112,24 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	kOccYimag.zeros(N);
 	obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
 			VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
+
+	kaltOccX.zeros(N);
+	kaltOccY.zeros(N);
+	obsVector += VectorObservable(cref(kaltOccX), N, "kaltOccX", "nkaltx"),
+			VectorObservable(cref(kaltOccY), N, "kaltOccY", "nkalty");
+	kaltOccXimag.zeros(N);
+	kaltOccYimag.zeros(N);
+	obsVector += VectorObservable(cref(kaltOccXimag), N, "kaltOccXimag", "nkaltximag"),
+			VectorObservable(cref(kaltOccYimag), N, "kaltOccYimag", "nkaltyimag");
+
+	occX.zeros(N);
+	occY.zeros(N);
+	obsVector += VectorObservable(cref(occX), N, "occX", "nx"),
+			VectorObservable(cref(occY), N, "occY", "ny");
+	occXimag.zeros(N);
+	occYimag.zeros(N);
+	obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
+			VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
 }
 
 DetSDW::~DetSDW() {
@@ -155,10 +174,30 @@ void DetSDW::measure() {
 //		using std::pow;
 //		return pow(pow(phi0(i, k), 2) + pow(phi1(i, k), 2) + pow(phi2(i, k), 2), 2);
 //	}, 0.0);
-	phiSecond = std::pow(normPhi, 2);
-	phiFourth = std::pow(phiSecond, 2);
+//	phiSecond = std::pow(normPhi, 2);
+//	phiFourth = std::pow(phiSecond, 2);
 
-	//fermion occupation number
+	//fermion occupation number -- real space
+	//probably not very interesting data
+	occX.zeros(N);
+	occY.zeros(N);
+	occXimag.zeros(N);
+	occYimag.zeros(N);
+#pragma omp parallel for
+	for (unsigned l = 1; l <= m; ++l) {
+		for (unsigned i = 0; i < N; ++i) {
+			occX[i] += std::real(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
+			occY[i] += std::real(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
+			occXimag[i] += std::imag(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
+			occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
+		}
+	}
+	using std::ref;
+	for (VecNum& occ : {ref(occX), ref(occY), ref(occXimag), ref(occYimag)}) {
+		occ /= num(m) * num(N);
+	}
+
+	//fermion occupation number -- k-space
 	kOccX.zeros(N);
 	kOccY.zeros(N);
 	kOccXimag.zeros(N);
@@ -201,6 +240,51 @@ void DetSDW::measure() {
 	}
 	using std::ref;
 	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
+		kocc /= num(m) * num(N);
+	}
+
+	//fermion occupation number -- k-space - alternative sign -- does this play any role?
+	kaltOccX.zeros(N);
+	kaltOccY.zeros(N);
+	kaltOccXimag.zeros(N);
+	kaltOccYimag.zeros(N);
+#pragma omp parallel for
+	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
+		num ky = 2 * pi * num(ksitey) / num(L);
+		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
+			num kx = 2 * pi * num(ksitex) / num(L);
+			unsigned ksite = L*ksitey + ksitex;
+			for (unsigned l = 1; l <= m; ++l) {					//timeslices
+				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
+					for (unsigned jx = 0; jx < L; ++jx) {
+						unsigned j = L*jy + jx;
+						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
+							for (unsigned ix = 0; ix < L; ++ix) {
+								unsigned i = L*iy + ix;
+								cpx phase = std::exp(cpx(0, -kx * (ix - jx) -ky * (iy - jy)));	//introduce alternative minus
+								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
+								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
+								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
+								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
+								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
+								kaltOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
+																  + diracDelta - greenEntryXBandSpinDown));
+								kaltOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
+																  + diracDelta - greenEntryYBandSpinDown));
+								//imaginary parts should add up to zero..., but for now check:
+								kaltOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
+																  	  + diracDelta - greenEntryXBandSpinDown));
+								kaltOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
+																  	  + diracDelta - greenEntryYBandSpinDown));
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	using std::ref;
+	for (VecNum& kocc : {ref(kaltOccX), ref(kaltOccY), ref(kaltOccXimag), ref(kaltOccYimag)}) {
 		kocc /= num(m) * num(N);
 	}
 
@@ -906,5 +990,7 @@ num DetSDW::phiAction() {
 
 
 void DetSDW::thermalizationOver() {
-	std::cout << "After thermalization: phiDelta = " << phiDelta << std::endl;
+	std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
+			  << "lastAccRatio = " << lastAccRatio
+			  << std::endl;
 }

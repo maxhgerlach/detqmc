@@ -16,27 +16,48 @@
 #include "metadata.h"
 #include "parameters.h"
 #include "detmodel.h"
+#include "dethubbard.h"
+#include "detsdw.h"
 #include "observablehandler.h"
 #include "rngwrapper.h"
+#include "exceptions.h"
+
+#include "boost/timer/timer.hpp"
+#include "boost/serialization/split_member.hpp"
 
 
+class SerializeContentsKey;
 
 // Class handling the simulation
 class DetQMC {
 public:
+	//constructor to init a new simulation:
 	DetQMC(const ModelParams& parsmodel, const MCParams& parsmc);
 
-	void run();			//carry out simulation determined by parsmc given in construction
+	//constructor to resume a simulation from a dumped state file:
+	//we allow to change some MC parameters at this point:
+	//  sweeps & saveInterval
+	//if values > than the old values are specified, change them
+	DetQMC(const std::string& stateFileName, const MCParams& newParsmc);
 
-	// do numSweeps thermalization sweeps
-	void thermalize(unsigned numSweeps);
-	// do numSweeps sweeps taking measurements
-	void measure(unsigned numSweeps, unsigned measureInterval);
+
+	//carry out simulation determined by parsmc given in construction,
+	//- handle thermalization & measurement stages as necessary
+	//- save state and results periodically
+	//- if granted walltime is almost over, save state & results
+	//  and exit gracefully
+	void run();
+
 	// update results stored on disk
 	void saveResults();
+	// dump simulation parameters and the current state to a Boost::S11n archive
+	void saveState();
 
 	virtual ~DetQMC();
 protected:
+	//helper for constructors -- set all parameters and initialize contained objects
+	void initFromParameters(const ModelParams& parsmodel, const MCParams& parsmc);
+
 	ModelParams parsmodel;
 	MCParams parsmc;
 
@@ -55,12 +76,69 @@ protected:
 	typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
 	typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
 	std::vector<ObsPtr> obsHandlers;
-	std::vector<VecObsPtr> vecObsHandlers;
+	std::vector<VecObsPtr> vecObsHandlers;		//need to be pointers: holds both KeyValueObservableHandlers and VectorObservableHandlers
 	unsigned sweepsDone;						//Measurement sweeps done
+	unsigned sweepsDoneThermalization;			//thermalization sweeps done
+
+	unsigned swCounter;			//helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
+
+	boost::timer::cpu_timer elapsedTimer;			//during this simulation run
+	unsigned long curWalltimeSecs() {
+		return elapsedTimer.elapsed().wall / 1000 / 1000 / 1000; // ns->mus->ms->s
+	}
+	unsigned long totalWalltimeSecs;				//this is serialized and carries the elapsed walltime in seconds
+													//accumulated over all runs, updated on call of saveResults()
+	unsigned long walltimeSecsLastSaveResults;		//timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
+	unsigned long grantedWalltimeSecs;				//walltime the simulation is allowed to run
+
 
 	MetadataMap prepareMCMetadataMap() const;
+
+private:
+	//Serialize only the content data that has changed after construction.
+	//Only call for deserialization after DetQMC has already been constructed and initialized!
+	template<class Archive>
+	void serializeContents(Archive& ar) {
+    	ar & rng;					//serialize completely
+
+    	//The template member functions serializeContents(Archive&) cannot be virtual,
+    	//so we have to resort to RTTI to serialize the right object.
+    	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else {
+    		throw SerializationError("Tried to serialize contents of unsupported replica");
+    	}
+
+    	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
+    		//ATM no further derived classes of ScalarObservableHandler have a method serializeContents
+    		(*p)->serializeContents(SerializeContentsKey(), ar);
+    	}
+    	for (auto p = vecObsHandlers.begin(); p != vecObsHandlers.end(); ++p) {
+    		//ATM no further derived classes of VectorObservableHandler have a method serializeContents
+    		(*p)->serializeContents(SerializeContentsKey(), ar);
+    	}
+    	ar & sweepsDone & sweepsDoneThermalization;
+    	ar & swCounter;
+
+    	ar & totalWalltimeSecs;
+	}
 };
 
+
+//Only one member function of DetQMC is allowed to make instances of this class.
+//In this way access to the member function serializeContents() of other classes
+//is restricted.
+// compare to http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend
+class SerializeContentsKey {
+  SerializeContentsKey() {} // default ctor private
+  SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
+
+  // grant access to one method
+  template<class Archive>
+  friend void DetQMC::serializeContents(Archive& ar);
+};
 
 
 

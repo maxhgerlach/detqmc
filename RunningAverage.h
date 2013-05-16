@@ -2,7 +2,8 @@
 //used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
 //contact: maxgerlach@gmail.com
 
-#include <queue>
+#include <deque>
+#include <boost/serialization/deque.hpp>
 
 namespace RA {
 
@@ -10,7 +11,7 @@ template<typename Val>
 class RunningAverage {
     int sampleSize;
     int samplesAdded;
-    std::queue<Val> values;
+    std::deque<Val> values;
     Val runningAverage;
 public:
     RunningAverage(int sampleSize_);
@@ -18,6 +19,23 @@ public:
     Val get();
 
     int getSamplesAdded();
+
+private:
+	friend class boost::serialization::access;
+
+	RunningAverage() :
+		sampleSize(), samplesAdded(), values(),
+		runningAverage()
+	{
+		//private default constructor, just for serialization
+	}
+
+	template<class Archive>
+	void serialize(Archive& ar, const unsigned int version) {
+		(void)version;
+		ar & sampleSize & samplesAdded
+		   & values & runningAverage;
+	}
 };
 
 template<typename Val>
@@ -30,12 +48,12 @@ RunningAverage<Val>::RunningAverage(int sampleSize_) :
 template<typename Val>
 void RunningAverage<Val>::addValue(Val v) {
     if (samplesAdded < sampleSize) {
-        values.push(v);     //pushes to end of queue
+        values.push_back(v);
         runningAverage += v / sampleSize;
     } else {
         runningAverage -= values.front() / sampleSize;
-        values.pop();
-        values.push(v);
+        values.pop_front();
+        values.push_back(v);
         runningAverage += v / sampleSize;
     }
     ++samplesAdded;

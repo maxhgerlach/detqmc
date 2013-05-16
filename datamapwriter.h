@@ -140,6 +140,7 @@ inline void DataMapWriter<Key, Value>::addHeaderDirectly(
 
 typedef DataMapWriter<double, double> DoubleMapWriter;
 typedef DataMapWriter<int, double> IntDoubleMapWriter;
+typedef DataMapWriter<std::string, double> StringDoubleMapWriter;
 
 
 
