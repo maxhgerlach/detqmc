@@ -146,7 +146,12 @@ protected:
     //functions to compute B-matrices for the different Green function sectors
     typedef std::function<MatV(unsigned k2, unsigned k1)> FuncComputeBmat;
     std::array<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
-    std::array<FuncComputeBmat, GreenComponents> computeBmatInverse;	// B(k2*dtau, k1*dtau) ^ (-1)
+
+    //functions that have the same effect as multiplying a B-Matrix (or its inverse) to the left
+    //or right of some matrix -- may be useful if a checkerboard-breakup is performed
+    typedef std::function<void(MatV& A, unsigned k2, unsigned k1) FuncMultiplyBmat;
+    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// A = B(k2*dtau, k1*dtau) * A
+    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmatInv;	// A = A * B(k2*dtau, k1*dtau)^-1
 
     //functions that compute Green functions from UdV-decomposed matrices L/R
     //for a single timeslice

@@ -411,6 +411,7 @@ MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
 }
 
 
+#if 0
 void DetSDW::setupPropK_checkerboard() {
 	//hopping constants:
 	std::array<std::array<num,2>, 2> t;
@@ -523,8 +524,9 @@ void DetSDW::setupPropK_checkerboard() {
 	checkerEpKy = exp(-dtau * mu) * ep_ky_a_hor * ep_ky_a_ver * ep_ky_b_hor * ep_ky_b_ver;
 	std::cout << "checkerEpKy: " << num(checkerEpKy.n_nonzero) / num(N*N) << std::endl;
 }
+#endif //0
 
-
+#if 0
 MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 	using arma::diagmat; using arma::eye; using arma::zeros;
 	timing.start("computeBmatSDW_checkerboard");
@@ -610,6 +612,8 @@ MatCpx DetSDW::computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const {
 
 	return MatCpx(result);
 }
+
+#endif //0
 
 
 
