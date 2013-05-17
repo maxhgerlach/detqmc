@@ -359,6 +359,54 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	return result;
 }
 
+// with sign = +/- 1, band = XBAND|YBAND: set A := E^(sign * dtau * K_band) * A
+template <class Matrix>
+inline void checkerboardLeftMultiplyHoppingExp(Matrix& A, Band band, int sign) {
+	auto applyBondFactorsLeft = [this, band](NeighDir neigh, num ch, num sh) {
+		for (unsigned i = 0; i < N; ++i) {
+			unsigned j = spaceNeigh(neigh, i);
+			//change rows i and j of A
+			for (unsigned col = 0; col < N; ++col) {
+				cpx newAicol = ch * A(i, col) + sh * A(j, col);
+				cpx newAjcol = sh * A(i, col) + ch * A(j, col);
+				A(i,col) = newAicol;
+				A(j,col) = newAjcol;
+			}
+		}
+	};
+
+	//horizontal bonds
+	applyBondFactorsLeft(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+
+	//vertical bonds
+	applyBondFactorsLeft(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+}
+
+
+// with sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
+template <class Matrix>
+void checkerboardRightMultiplyHoppingExp(Matrix& A, Band band, int sign) {
+	auto applyBondFactorsRight = [this, band](NeighDir neigh, num ch, num sh) {
+		for (unsigned i = 0; i < N; ++i) {
+			unsigned j = spaceNeigh(neigh, i);
+			//change columns i and j of A
+			for (unsigned row = 0; row < N; ++row) {
+				cpx newArowi = ch * A(row, i) + sh * A(row, i);
+				cpx newArowj = sh * A(row, i) + ch * A(row, j);
+				A(row,i) = newArowi;
+				A(row,j) = newArowj;
+			}
+		}
+	};
+
+	//horizontal bonds
+	applyBondFactorsRight(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+
+	//vertical bonds
+	applyBondFactorsRight(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+}
+
+
 
 #if 0
 void DetSDW::setupPropK_checkerboard() {

@@ -157,9 +157,13 @@ protected:
 //	void setupPropK_checkerboard();
 
 
+    //the following are template function to allow applying them
+    //to submatrices as well
     // with sign = +/- 1, band = XBAND|YBAND: set A := E^(sign * dtau * K_band) * A
+    template <class Matrix>
     void checkerboardLeftMultiplyHoppingExp(MatCpx& A, Band band, int sign);
     // with sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
+    template <class Matrix>
     void checkerboardRightMultiplyHoppingExp(MatCpx& A, Band band, int sign);
 
 
