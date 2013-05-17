@@ -53,10 +53,19 @@ protected:
 	const num u;
 	const num lambda;
 
+	std::array<num,2> hopHor;
+	//hopping constants for XBAND and YBAND
+	std::array<num,2> hopHor;
+	std::array<num,2> hopVer;
+	// sinh|cosh(dtau * hop..)
+	std::array<num,2> sinhHopHor;
+	std::array<num,2> sinhHopVer;
+	std::array<num,2> coshHopHor;
+	std::array<num,2> coshHopVer;
+
 	PeriodicSquareLatticeNearestNeighbors spaceNeigh;
 	PeriodicChainNearestNeighbors<1> timeNeigh;
 
-	enum {XBAND = 0, YBAND = 1};
 	std::array<MatNum, 2> propK;
 	MatNum& propKx;
 	MatNum& propKy;
@@ -154,11 +163,19 @@ protected:
     }
 
     void setupRandomPhi();
-	void setupPropK_direct();
-	void setupPropK_checkerboard();
+    void setupPropK();			//compute e^(-dtau*K..) matrices by diagonalization
+//	void setupPropK_direct();
+//	void setupPropK_checkerboard();
 
-	MatCpx computeBmatSDW_direct(unsigned k2, unsigned k1) const;
-	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;
+
+    // with sign = +/- 1, band = XBAND|YBAND: set A := E^(sign * dtau * K_band) * A
+    void checkerboardLeftMultiplyHoppingExp(MatCpx& A, Band band, int sign);
+    // with sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
+    void checkerboardRightMultiplyHoppingExp(MatCpx& A, Band band, int sign);
+
+
+	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;			//compute B-matrix using dense matrix products
+//	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;
 
 	virtual void updateInSlice(unsigned timeslice);
 	//this one does some adjusting of the box size from which new fields are chosen:

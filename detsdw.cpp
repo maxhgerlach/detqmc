@@ -82,16 +82,34 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	}
 	setupRandomPhi();
 
+	//hopping constants
+	hopHor[XBAND] = -1.0;
+	hopVer[XBAND] = -0.5;
+	hopHor[YBAND] =  0.5;
+	hopVer[YBAND] =  1.0;
+	//precalculate hyperbolic functions, used in checkerboard decomposition
+	using std::sinh; using std::cosh;
+	for_each_band( [this](Band band) {
+		sinhHopHor[band] = sinh(dtau * hopHor[band]);
+		coshHopHor[band] = cosh(dtau * hopHor[band]);
+		sinhHopVer[band] = sinh(dtau * hopVer[band]);
+		coshHopVer[band] = cosh(dtau * hopVer[band]);
+	} );
+
+	setupPropK();
+	computeBmat[0] = [this](unsigned k2, unsigned k1) {
+		return this->computeBmatSDW(k2, k1);
+	};
+
+	//multiply-Funktoren setzen...
+
 	if (checkerboard) {
 		setupPropK_checkerboard();
 		computeBmat[0] = [this](unsigned k2, unsigned k1) {
 			return this->computeBmatSDW_checkerboard(k2, k1);
 		};
 	} else {
-		setupPropK_direct();
-		computeBmat[0] = [this](unsigned k2, unsigned k1) {
-			return this->computeBmatSDW_direct(k2, k1);
-		};
+
 	}
 	setupUdVStorage();
 
@@ -314,12 +332,12 @@ void DetSDW::setupRandomPhi() {
 	} );
 }
 
-void DetSDW::setupPropK_direct() {
+void DetSDW::setupPropK() {
 	std::array<std::array<num,z>, 2> t;
-	t[XBAND][XPLUS] = t[XBAND][XMINUS] = -1.0;
-	t[XBAND][YPLUS] = t[XBAND][YMINUS] = -0.5;
-	t[YBAND][XPLUS] = t[YBAND][XMINUS] =  0.5;
-	t[YBAND][YPLUS] = t[YBAND][YMINUS] =  1.0;
+	t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
+	t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
+	t[YBAND][XPLUS] = t[YBAND][XMINUS] = hopHor[YBAND];
+	t[YBAND][YPLUS] = t[YBAND][YMINUS] = hopVer[YBAND];
 
 	for_each_band( [this, &t](unsigned band) {
 		MatNum k = -mu * arma::eye(N,N);
@@ -337,7 +355,7 @@ void DetSDW::setupPropK_direct() {
 }
 
 
-MatCpx DetSDW::computeBmatSDW_direct(unsigned k2, unsigned k1) const {
+MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	timing.start("computeBmatSDW_direct");
 	using arma::eye; using arma::zeros; using arma::diagmat;
 	if (k2 == k1) {
