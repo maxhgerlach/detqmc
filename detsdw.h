@@ -72,7 +72,7 @@ protected:
 
 	//e^(-dtau*K_x|y)*e^(dtau*mu) as calculated from checkerboard break up (dos Santos 2003)
 	//chemical potential mu included
-	//TODO: would it be better to keep the separate factors?
+	//Remark: This was pointless
 	SpMatNum checkerEmKx;
 	SpMatNum checkerEmKy;
 	//the same for e^(+dtau*K_x|y)*e^(-dtau*mu)
@@ -167,6 +167,12 @@ protected:
     template <class Matrix>
     void checkerboardRightMultiplyHoppingExp(MatCpx& A, Band band, int sign);
 
+    //the following take a 4Nx4N matrix A and effectivel multiply B(k2,k1)
+    //or its inverse to the left or right of it
+    void checkerboardLeftMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1);
+    void checkerboardRightMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1);
+    void checkerboardLeftMultiplyBmatInv(MatCpx& A, unsigned k2, unsigned k1);
+    void checkerboardRightMultiplyBmatInv(MatCpx& A, unsigned k2, unsigned k1);
 
 	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;			//compute B-matrix using dense matrix products
 //	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;

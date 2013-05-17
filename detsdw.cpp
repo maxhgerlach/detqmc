@@ -382,6 +382,16 @@ inline void checkerboardLeftMultiplyHoppingExp(Matrix& A, Band band, int sign) {
 	applyBondFactorsLeft(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
 }
 
+void checkerboardLeftMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1) {
+	//submatrix block helper for A
+	auto block = [&result, N](unsigned row, unsigned col) {
+		return A.submat( row * N, col * N,
+		                (row + 1) * N - 1, (col + 1) * N - 1);
+	};
+
+}
+
+
 
 // with sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
 template <class Matrix>
