@@ -504,7 +504,7 @@ void checkerboardLeftMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1) 
 
 		for (unsigned col = 0; col < 4; ++col) {
 			using diag = arma::diagmat;
-			//only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+			//only three terms each time because of zero blocks in the E^(dtau*V) matrix
 			block(result, 0, col) = cbLMultHoppingExp(diag(c)   * block(orig, 0, col), XBAND, +1)
 								  + cbLMultHoppingExp(diag(max) * block(orig, 2, col), XBAND, +1)
 								  + cbLMultHoppingExp(diag(mbx) * block(orig, 3, col), XBAND, +1);
@@ -536,6 +536,63 @@ void checkerboardLeftMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1) 
 	return result;
 }
 
+MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1) {
+	assert(k2 > k1);
+	assert(k2 <= m);
+
+	//helper: submatrix block for a matrix
+	auto block = [N](MatCpx& mat, unsigned row, unsigned col) {
+		return mat.submat( row * N, col * N,
+		                  (row + 1) * N - 1, (col + 1) * N - 1);
+	};
+
+	//helper: multiply B(k,k-1) from right to orig, return result
+	auto rightMultiplyBk = [this, block](const MatCpx orig, unsigned k) -> MatCpx {
+		const auto& kphi0 = phi0.col(k);
+		const auto& kphi1 = phi1.col(k);
+		const auto& kphi2 = phi2.col(k);
+		const auto& c = phiCosh.col(k);			// cosh(dtau * |phi|)
+		const auto& kphiSinh = phiSinh.col(k);	// sinh(dtau * |phi|) / |phi|
+		VecNum ax  =  kphi2 % kphiSinh;
+		VecNum max = -kphi2 % kphiSinh;
+		VecCpx bx  {kphi1, -kphi2};
+		VecCpx bcx {kphi1, kphi2};
+
+		MatCpx result(4*N, 4*N);
+
+		for (unsigned row = 0; row < 4; ++row) {
+			using diag = arma::diagmat;
+			//only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+			block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diag(c),   XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 2) * diag(ax),  XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 3) * diag(bcx), XBAND, -1);
+
+			block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diag(c),   XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 2) * diag(bx),  XBAND, -1)
+							      + cbRMultHoppingExp(block(orig, row, 3) * diag(max), XBAND, -1);
+
+			block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diag(ax),  YBAND, -1)
+							      + cbRMultHoppingExp(block(orig, row, 1) * diag(bcx), YBAND, -1)
+							      + cbRMultHoppingExp(block(orig, row, 2) * diag(c),   YBAND, -1);
+
+			block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diag(bx),  YBAND, -1)
+							      + cbRMultHoppingExp(block(orig, row, 1) * diag(max), YBAND, -1)
+							      + cbRMultHoppingExp(block(orig, row, 3) * diag(c),   YBAND, -1);
+		}
+		return result;
+	};
+
+	MatCpx result = rightMultiplyBk(A, k2);
+
+	for (unsigned k = k2 - 1; k >= k1 +1; --k) {
+		result = rightMultiplyBk(result, k);
+	}
+
+	//chemical potential terms:
+	result *= std::exp(+dtau * (k2 - k1) * mu);
+
+	return result;
+}
 
 
 
