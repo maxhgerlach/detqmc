@@ -148,12 +148,12 @@ protected:
     std::array<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
 
     //functions that have the same effect as multiplying a B-Matrix (or its inverse) to the left
-    //or right of some matrix -- may be useful if a checkerboard-breakup is performed
-    typedef std::function<void(MatV& A, unsigned k2, unsigned k1)> FuncMultiplyBmat;
-    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// A := B(k2*dtau, k1*dtau) * A
-    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmat;	// A := A * B(k2*dtau, k1*dtau)
-    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmatInv;	// A := B(k2*dtau, k1*dtau)^-1 * A
-    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmatInv;	// A := A * B(k2*dtau, k1*dtau)^-1
+    //or right of some matrix -- useful if a checkerboard-breakup is performed
+    typedef std::function<MatV(const MatV& A, unsigned k2, unsigned k1)> FuncMultiplyBmat;
+    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// R := B(k2*dtau, k1*dtau) * A
+    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmat;	// R := A * B(k2*dtau, k1*dtau)
+    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmatInv;	// R := B(k2*dtau, k1*dtau)^-1 * A
+    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmatInv;	// R := A * B(k2*dtau, k1*dtau)^-1
 
     //functions that compute Green functions from UdV-decomposed matrices L/R
     //for a single timeslice
