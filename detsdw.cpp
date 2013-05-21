@@ -384,12 +384,23 @@ inline void checkerboardLeftMultiplyHoppingExp(Matrix& A, Band band, int sign) {
 }
 
 void checkerboardLeftMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1) {
+	assert(k2 > k1);
+	assert(k2 <= m);
+
 	//submatrix block helper for A
 	auto block = [&result, N](unsigned row, unsigned col) {
 		return A.submat( row * N, col * N,
 		                (row + 1) * N - 1, (col + 1) * N - 1);
 	};
 
+	//multiply B(k,k-1) from left to A
+	auto leftMultiplyBk = [&result, block](unsigned k) {
+
+	};
+
+	for (unsigned k = k2; k > k1; --k) {
+		leftMultiplyBk(k);
+	}
 }
 
 
