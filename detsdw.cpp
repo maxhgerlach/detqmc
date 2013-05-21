@@ -419,7 +419,7 @@ MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 
 
 
-void checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1) {
+MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1) {
 	assert(k2 > k1);
 	assert(k2 <= m);
 
@@ -472,7 +472,66 @@ void checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1) {
 	}
 
 	//chemical potential terms:
-	result *= std::exp(+dtau * mu);
+	result *= std::exp(+dtau * (k2 - k1) * mu);
+
+	return result;
+}
+
+
+void checkerboardLeftMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1) {
+	assert(k2 > k1);
+	assert(k2 <= m);
+
+	//helper: submatrix block for a matrix
+	auto block = [N](MatCpx& mat, unsigned row, unsigned col) {
+		return mat.submat( row * N, col * N,
+		                  (row + 1) * N - 1, (col + 1) * N - 1);
+	};
+
+	//helper: multiply B(k,k-1)^-1 from left to orig, return result
+	auto leftMultiplyBkInv = [this, block](const MatCpx orig, unsigned k) -> MatCpx {
+		const auto& kphi0 = phi0.col(k);
+		const auto& kphi1 = phi1.col(k);
+		const auto& kphi2 = phi2.col(k);
+		const auto& c = phiCosh.col(k);			// cosh(dtau * |phi|)
+		const auto& kphiSinh = phiSinh.col(k);	// sinh(dtau * |phi|) / |phi|
+		VecNum ax  =  kphi2 % kphiSinh;
+		VecNum max = -kphi2 % kphiSinh;
+		VecCpx mbx  {-kphi1, kphi2};
+		VecCpx mbcx {kphi1, -kphi2};
+
+		MatCpx result(4*N, 4*N);
+
+		for (unsigned col = 0; col < 4; ++col) {
+			using diag = arma::diagmat;
+			//only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+			block(result, 0, col) = cbLMultHoppingExp(diag(c)   * block(orig, 0, col), XBAND, +1)
+								  + cbLMultHoppingExp(diag(max) * block(orig, 2, col), XBAND, +1)
+								  + cbLMultHoppingExp(diag(mbx) * block(orig, 3, col), XBAND, +1);
+
+			block(result, 1, col) = cbLMultHoppingExp(diag(c)    * block(orig, 1, col), XBAND, +1)
+								  + cbLMultHoppingExp(diag(mbcx) * block(orig, 2, col), XBAND, +1)
+							      + cbLMultHoppingExp(diag(ax)   * block(orig, 3, col), XBAND, +1);
+
+			block(result, 2, col) = cbLMultHoppingExp(diag(max) * block(orig, 0, col), YBAND, +1)
+							      + cbLMultHoppingExp(diag(mbx) * block(orig, 1, col), YBAND, +1)
+							      + cbLMultHoppingExp(diag(c)   * block(orig, 2, col), YBAND, +1);
+
+			block(result, 3, col) = cbLMultHoppingExp(diag(mbcx) * block(orig, 0, col), YBAND, +1)
+							      + cbLMultHoppingExp(diag(ax)   * block(orig, 1, col), YBAND, +1)
+							      + cbLMultHoppingExp(diag(c)    * block(orig, 3, col), YBAND, +1);
+		}
+		return result;
+	};
+
+	MatCpx result = leftMultiplyBkInv(A, k1 + 1);
+
+	for (unsigned k = k1 + 2; k <= k2; ++k) {
+		result = leftMultiplyBkInv(result, k);
+	}
+
+	//chemical potential terms:
+	result *= std::exp(-dtau * (k2 - k1) * mu);
 
 	return result;
 }
