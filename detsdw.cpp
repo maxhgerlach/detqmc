@@ -99,17 +99,34 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	computeBmat[0] = [this](unsigned k2, unsigned k1) {
 		return this->computeBmatSDW(k2, k1);
 	};
-
-	//TODO:multiply-Funktoren setzen...
-
 	if (checkerboard) {
-		setupPropK_checkerboard();
-		computeBmat[0] = [this](unsigned k2, unsigned k1) {
-			return this->computeBmatSDW_checkerboard(k2, k1);
+		leftMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return this->checkerboardLeftMultiplyBmat(A, k2, k1);
+		};
+		rightMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return this->checkerboardRightMultiplyBmat(A, k2, k1);
+		};
+		leftMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return this->checkerboardLeftMultiplyBmatInv(A, k2, k1);
+		};
+		rightMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return this->checkerboardRightMultiplyBmatInv(A, k2, k1);
 		};
 	} else {
-
+		leftMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return computeBmatSDW(k2, k1) * A;
+		};
+		rightMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return A * computeBmatSDW(k2, k1);
+		};
+		leftMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return arma::inv(computeBmatSDW(k2, k1)) * A;
+		};
+		rightMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
+			return A * arma::inv(computeBmatSDW(k2, k1));
+		};
 	}
+
 	setupUdVStorage();
 
 	using std::cref;
