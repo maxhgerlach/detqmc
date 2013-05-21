@@ -55,7 +55,6 @@ protected:
 
 	enum Band {XBAND = 0, YBAND = 1};
 
-	std::array<num,2> hopHor;
 	//hopping constants for XBAND and YBAND
 	std::array<num,2> hopHor;
 	std::array<num,2> hopVer;
