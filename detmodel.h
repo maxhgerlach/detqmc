@@ -184,13 +184,13 @@ protected:
     void setupUdVStorage();
 
     //helpers for sweep(), sweepThermalization():
-	void advanceDownGreen(unsigned l, unsigned greenComponent);
-	void wrapDownGreen_timedisplaced(unsigned k, unsigned greenComponent);
-	void wrapDownGreen(unsigned k, unsigned greenComponent);
-	void advanceUpGreen(unsigned l, unsigned greenComponent);
-	void advanceUpUpdateStorage(unsigned l, unsigned greenComponent);
-	void wrapUpGreen_timedisplaced(unsigned k, unsigned greenComponent);
-	void wrapUpGreen(unsigned k, unsigned greenComponent);
+	void advanceDownGreen(unsigned l, unsigned gc);
+	void wrapDownGreen_timedisplaced(unsigned k, unsigned gc);
+	void wrapDownGreen(unsigned k, unsigned gc);
+	void advanceUpGreen(unsigned l, unsigned gc);
+	void advanceUpUpdateStorage(unsigned l, unsigned gc);
+	void wrapUpGreen_timedisplaced(unsigned k, unsigned gc);
+	void wrapUpGreen(unsigned k, unsigned gc);
 	//functions to do the wrapping are set at runtime (depending on whether timedisplaced routines are used or not)
 	typedef std::function<void(unsigned k, unsigned greenComponent)> FuncWrapGreen;
 	FuncWrapGreen wrapUp;
@@ -441,12 +441,12 @@ typename DetModelGC<GC,V>::MatV4 DetModelGC<GC,V>::greenFromUdV_timedisplaced(
 //compute the green function in timeslice s*(l-1) from scratch with the help
 //of the B-matrices computed before in the last up-sweep
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned greenComponent) {
+void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned gc) {
 	timing.start("advanceDownGreen");
 
-	std::vector<UdVV>& storage = UdVStorage[greenComponent];
+	std::vector<UdVV>& storage = UdVStorage[gc];
 
-	MatV B_l = computeBmat[greenComponent](s*l, s*(l - 1));
+//	MatV B_l = computeBmat[greenComponent](s*l, s*(l - 1));
 
 	//U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
 	const MatV& U_l = storage[l].U;
@@ -454,13 +454,14 @@ void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned greenComponent) {
 	const MatV& V_l = storage[l].V;
 
 	//UdV_L will correspond to B(beta,(l-1)*s*dtau)
-	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (V_l * B_l));
+//	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (V_l * B_l));
+	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (rightMultiplyBmat[gc](V_l, s*l, s*(l-1))));
 	UdV_L.U = U_l * UdV_L.U;
 
 	//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
 	const UdVV& UdV_R = storage[l - 1];
 	unsigned next = s * (l - 1);
-	updateGreenFunctionUdV[greenComponent](next, UdV_L, UdV_R);
+	updateGreenFunctionUdV[gc](next, UdV_L, UdV_R);
 	storage[l - 1] = UdV_L;
 
 	timing.stop("advanceDownGreen");
@@ -469,35 +470,40 @@ void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned greenComponent) {
 //compute the green function at k-1 by wrapping the one at k (accumulates rounding errors),
 //also compute time-displaced Green functions
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(unsigned k, unsigned greenComponent) {
+void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(unsigned k, unsigned gc) {
 	timing.start("wrapDownGreen_timedisplaced");
-	MatV B_k = computeBmat[greenComponent](k, k - 1);
+//	MatV B_k = computeBmat[greenComponent](k, k - 1);
 //	MatV B_k_inv = computeBmatInverse[greenComponent](k, k - 1);
-	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
-	greenFwd[greenComponent].slice(k - 1) = arma::inv(B_k) * greenFwd[greenComponent].slice(k);
-	greenBwd[greenComponent].slice(k - 1) = greenBwd[greenComponent](k) * B_k;
+//	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
+	green[gc].slice(k - 1) =
+			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
+//	greenFwd[greenComponent].slice(k - 1) = arma::inv(B_k) * greenFwd[greenComponent].slice(k);
+	greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv[gc](greenFwd[gc].slice(k), k, k-1);
+	greenBwd[gc].slice(k - 1) = rightMultiplyBmat[gc](greenBwd[gc].slice(k), k, k-1);
 	timing.stop("wrapDownGreen_timedisplaced");
 }
 
 //compute the green function at k-1 by wrapping the one at k (accumulates rounding errors),
 //only equal-time Green functions
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapDownGreen(unsigned k, unsigned greenComponent) {
+void DetModelGC<GC,V>::wrapDownGreen(unsigned k, unsigned gc) {
 	timing.start("wrapDownGreen");
-	MatV B_k = computeBmat[greenComponent](k, k - 1);
-	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
+//	MatV B_k = computeBmat[greenComponent](k, k - 1);
+//	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
+	green[gc].slice(k - 1) =
+			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
 	timing.stop("wrapDownGreen");
 }
 
 //update the green function in timeslice s*(l+1) from scratch with the help
 //of B-matrices computed before
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned greenComponent) {
+void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned gc) {
 	timing.start("advanceUpGreen");
 
-	std::vector<UdVV>& storage = UdVStorage[greenComponent];
+	std::vector<UdVV>& storage = UdVStorage[gc];
 
-	MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
+//	MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
 
 	//The following is B(beta, (l+1)*s*dtau), valid from the last sweep
 	const UdVV& UdV_lp1 = storage[l + 1];
@@ -508,11 +514,12 @@ void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned greenComponent) {
 	const MatV& V_l = storage[l].V;
 
 	//UdV_temp will be the new B((l+1)*s*dtau, 0):
-	UdVV UdV_temp = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
+//	UdVV UdV_temp = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
+	UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
 	UdV_temp.V *= V_l;
 
 	unsigned next = s * (l + 1);
-	updateGreenFunctionUdV[greenComponent](next, UdV_lp1, UdV_temp);
+	updateGreenFunctionUdV[gc](next, UdV_lp1, UdV_temp);
 
 	//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
 
@@ -522,18 +529,19 @@ void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned greenComponent) {
 //Given B(l*s*dtau, 0) from the last step in the storage, compute
 //B((l+1)*s*dtau, 0) and put it into storage
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceUpUpdateStorage(unsigned l, unsigned greenComponent) {
+void DetModelGC<GC,V>::advanceUpUpdateStorage(unsigned l, unsigned gc) {
 	timing.start("advanceUpUpdateStorage");
 
-	std::vector<UdVV>& storage = UdVStorage[greenComponent];
+	std::vector<UdVV>& storage = UdVStorage[gc];
 
-	MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
+//	MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
 	//from the last step the following are B(l*s*dtau, 0):
 	const MatV& U_l = storage[l].U;
 	const VecV& d_l = storage[l].d;
 	const MatV& V_l = storage[l].V;
 	//the new B((l+1)*s*dtau, 0):
-	storage[l+1] = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
+//	storage[l+1] = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
+	storage[l+1] = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
 	storage[l+1].V *= V_l;
 
 	timing.stop("advanceUpUpdateStorage");
@@ -542,22 +550,28 @@ void DetModelGC<GC,V>::advanceUpUpdateStorage(unsigned l, unsigned greenComponen
 //compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
 //also handle the time-displaced Green functions
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(unsigned k, unsigned greenComponent) {
+void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(unsigned k, unsigned gc) {
 	timing.start("wrapUpGreen_timedisplaced");
-	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
-	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
-	greenFwd[greenComponent].slice(k + 1) = B_kp1 * greenFwd[greenComponent].slice(k);
-	greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
+//	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
+//	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
+	green[gc].slice(k + 1) =
+			 leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
+//	greenFwd[greenComponent].slice(k + 1) = B_kp1 * greenFwd[greenComponent].slice(k);
+	greenFwd[gc].slice(k + 1) = leftMultiplyBmat[gc](greenFwd[gc].slice(k), k+1, k);
+//	greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
+	greenBwd[gc].slice(k + 1) = rightMultiplyBmatInv[gc](greenBwd[gc].slice(k), k+1, k);
 	timing.stop("wrapUpGreen_timedisplaced");
 }
 
 //compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
 //only compute equal-time Green functions
 template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapUpGreen(unsigned k, unsigned greenComponent) {
+void DetModelGC<GC,V>::wrapUpGreen(unsigned k, unsigned gc) {
 	timing.start("wrapUpGreen");
-	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
-	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
+//	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
+//	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
+	green[gc].slice(k + 1) =
+			leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
 	timing.stop("wrapUpGreen");
 }
 
