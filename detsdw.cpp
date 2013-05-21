@@ -360,18 +360,20 @@ MatCpx DetSDW::computeBmatSDW(unsigned k2, unsigned k1) const {
 	return result;
 }
 
-// with sign = +/- 1, band = XBAND|YBAND: set A := E^(sign * dtau * K_band) * A
-template <class Matrix>
-inline void checkerboardLeftMultiplyHoppingExp(Matrix& A, Band band, int sign) {
-	auto applyBondFactorsLeft = [this, band](NeighDir neigh, num ch, num sh) {
+// with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
+template <class Matrix> inline
+MatCpx cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
+	MatCpx result = A;		//can't avoid this copy
+
+	auto applyBondFactorsLeft = [this, band, &result](NeighDir neigh, num ch, num sh) {
 		for (unsigned i = 0; i < N; ++i) {
 			unsigned j = spaceNeigh(neigh, i);
-			//change rows i and j of A
+			//change rows i and j of result
 			for (unsigned col = 0; col < N; ++col) {
-				cpx newAicol = ch * A(i, col) + sh * A(j, col);
-				cpx newAjcol = sh * A(i, col) + ch * A(j, col);
-				A(i,col) = newAicol;
-				A(j,col) = newAjcol;
+				cpx new_icol = ch * result(i, col) + sh * result(j, col);
+				cpx new_jcol = sh * result(i, col) + ch * result(j, col);
+				result(i,col) = new_icol;
+				result(j,col) = new_jcol;
 			}
 		}
 	};
@@ -381,42 +383,26 @@ inline void checkerboardLeftMultiplyHoppingExp(Matrix& A, Band band, int sign) {
 
 	//vertical bonds
 	applyBondFactorsLeft(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
-}
 
-void checkerboardLeftMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1) {
-	assert(k2 > k1);
-	assert(k2 <= m);
-
-	//submatrix block helper for A
-	auto block = [&result, N](unsigned row, unsigned col) {
-		return A.submat( row * N, col * N,
-		                (row + 1) * N - 1, (col + 1) * N - 1);
-	};
-
-	//multiply B(k,k-1) from left to A
-	auto leftMultiplyBk = [&result, block](unsigned k) {
-
-	};
-
-	for (unsigned k = k2; k > k1; --k) {
-		leftMultiplyBk(k);
-	}
+	return result;
 }
 
 
 
-// with sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
-template <class Matrix>
-void checkerboardRightMultiplyHoppingExp(Matrix& A, Band band, int sign) {
-	auto applyBondFactorsRight = [this, band](NeighDir neigh, num ch, num sh) {
+// with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
+template <class Matrix> inline
+MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
+	MatCpx result = A;		//can't avoid this copy
+
+	auto applyBondFactorsRight = [this, band, &result](NeighDir neigh, num ch, num sh) {
 		for (unsigned i = 0; i < N; ++i) {
 			unsigned j = spaceNeigh(neigh, i);
-			//change columns i and j of A
+			//change columns i and j of result
 			for (unsigned row = 0; row < N; ++row) {
-				cpx newArowi = ch * A(row, i) + sh * A(row, i);
-				cpx newArowj = sh * A(row, i) + ch * A(row, j);
-				A(row,i) = newArowi;
-				A(row,j) = newArowj;
+				cpx new_rowi = ch * result(row, i) + sh * result(row, i);
+				cpx new_rowj = sh * result(row, i) + ch * result(row, j);
+				result(row,i) = new_rowi;
+				result(row,j) = new_rowj;
 			}
 		}
 	};
@@ -426,7 +412,73 @@ void checkerboardRightMultiplyHoppingExp(Matrix& A, Band band, int sign) {
 
 	//vertical bonds
 	applyBondFactorsRight(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+
+	return result;
 }
+
+
+
+
+void checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1) {
+	assert(k2 > k1);
+	assert(k2 <= m);
+
+	//helper: submatrix block for a matrix
+	auto block = [N](MatCpx& mat, unsigned row, unsigned col) {
+		return mat.submat( row * N, col * N,
+		                  (row + 1) * N - 1, (col + 1) * N - 1);
+	};
+
+	//helper: multiply B(k,k-1) from left to orig, return result
+	auto leftMultiplyBk = [this, block](const MatCpx orig, unsigned k) -> MatCpx {
+		const auto& kphi0 = phi0.col(k);
+		const auto& kphi1 = phi1.col(k);
+		const auto& kphi2 = phi2.col(k);
+		const auto& c = phiCosh.col(k);			// cosh(dtau * |phi|)
+		const auto& kphiSinh = phiSinh.col(k);	// sinh(dtau * |phi|) / |phi|
+		VecNum ax  =  kphi2 % kphiSinh;
+		VecNum max = -kphi2 % kphiSinh;
+		VecCpx bx  {kphi1, -kphi2};
+		VecCpx bcx {kphi1, kphi2};
+
+		MatCpx result(4*N, 4*N);
+
+		for (unsigned col = 0; col < 4; ++col) {
+			using diag = arma::diagmat;
+			//only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+			block(result, 0, col) = diag(c)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+								  + diag(ax) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
+								  + diag(bx) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+
+			block(result, 1, col) = diag(c)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+								  + diag(bcx) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
+							      + diag(max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+
+			block(result, 2, col) = diag(ax) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+							      + diag(bx) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+							      + diag(c)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1);
+
+			block(result, 3, col) = diag(bcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+							      + diag(max) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+							      + diag(c)   * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+		}
+		return result;
+	};
+
+	MatCpx result = leftMultiplyBk(A, k1 + 1);
+
+	for (unsigned k = k1 + 2; k <= k2; ++k) {
+		result = leftMultiplyBk(result, k);
+	}
+
+	//chemical potential terms:
+	result *= std::exp(+dtau * mu);
+
+	return result;
+}
+
+
+
 
 
 

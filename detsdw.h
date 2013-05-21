@@ -53,6 +53,8 @@ protected:
 	const num u;
 	const num lambda;
 
+	enum Band {XBAND = 0, YBAND = 1};
+
 	std::array<num,2> hopHor;
 	//hopping constants for XBAND and YBAND
 	std::array<num,2> hopHor;
@@ -159,20 +161,21 @@ protected:
 
     //the following are template function to allow applying them
     //to submatrices as well
+    //"cb" = "checkerboard"
     //Reminder: These do not include chemical potential
-    // with A: NxN, sign = +/- 1, band = XBAND|YBAND: set A := E^(sign * dtau * K_band) * A
+    // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to E^(sign * dtau * K_band) * A
     template <class Matrix>
-    void checkerboardLeftMultiplyHoppingExp(MatCpx& A, Band band, int sign);
-    // with A: NxN, sign = +/- 1, band = XBAND|YBAND: set A := A * E^(sign * dtau * K_band)
+    MatCpx cbLMultHoppingExp(const Matrix& A, Band band, int sign);
+    // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
     template <class Matrix>
-    void checkerboardRightMultiplyHoppingExp(MatCpx& A, Band band, int sign);
+    MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign);
 
-    //the following take a 4Nx4N matrix A and effectivel multiply B(k2,k1)
-    //or its inverse to the left or right of it
-    void checkerboardLeftMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1);
-    void checkerboardRightMultiplyBmat(MatCpx& A, unsigned k2, unsigned k1);
-    void checkerboardLeftMultiplyBmatInv(MatCpx& A, unsigned k2, unsigned k1);
-    void checkerboardRightMultiplyBmatInv(MatCpx& A, unsigned k2, unsigned k1);
+    //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
+    //or its inverse to the left or right of it and return the result
+    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1);
+    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1);
+    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1);
+    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1);
 
 	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;			//compute B-matrix using dense matrix products
 //	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;
