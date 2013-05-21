@@ -80,7 +80,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	}
 	setupRandomPhi();
 
-	//hopping constants
+	//hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
+	//So for actual calculations an additional minus-sign needs to be included.
 	hopHor[XBAND] = -1.0;
 	hopVer[XBAND] = -0.5;
 	hopHor[YBAND] =  0.5;
@@ -88,10 +89,10 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	//precalculate hyperbolic functions, used in checkerboard decomposition
 	using std::sinh; using std::cosh;
 	for_each_band( [this](Band band) {
-		sinhHopHor[band] = sinh(dtau * hopHor[band]);
-		coshHopHor[band] = cosh(dtau * hopHor[band]);
-		sinhHopVer[band] = sinh(dtau * hopVer[band]);
-		coshHopVer[band] = cosh(dtau * hopVer[band]);
+		sinhHopHor[band] = sinh(-dtau * hopHor[band]);
+		coshHopHor[band] = cosh(-dtau * hopHor[band]);
+		sinhHopVer[band] = sinh(-dtau * hopVer[band]);
+		coshHopVer[band] = cosh(-dtau * hopVer[band]);
 	} );
 
 	setupPropK();
@@ -99,7 +100,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		return this->computeBmatSDW(k2, k1);
 	};
 
-	//multiply-Funktoren setzen...
+	//TODO:multiply-Funktoren setzen...
 
 	if (checkerboard) {
 		setupPropK_checkerboard();
@@ -275,7 +276,7 @@ void DetSDW::setupPropK() {
 		for_each_site( [this, band, &k, &t](unsigned site) {
 			for (unsigned dir = 0; dir < z; ++dir) {
 				unsigned neigh = spaceNeigh(dir, site);
-				k(site, neigh) -= t[band][dir];
+				k(site, neigh) -= t[band][dir];					//Minus sign!
 			}
 		} );
 //		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
