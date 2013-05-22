@@ -134,7 +134,6 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
 			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc");
 
-
 	kOccX.zeros(N);
 	kOccY.zeros(N);
 	obsVector += VectorObservable(cref(kOccX), N, "kOccX", "nkx"),

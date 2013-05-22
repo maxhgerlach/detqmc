@@ -280,6 +280,22 @@ DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSiz
 			};
 		} );
 	}
+
+	// Default functors for multiplication with B-matrices
+	for_each_gc( [this](unsigned gc) {
+		leftMultiplyBmat[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+			return computeBmat[gc](k2, k1) * A;
+		};
+		rightMultiplyBmat[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+			return A * computeBmat[gc](k2, k1);
+		};
+		leftMultiplyBmatInv[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+			return arma::inv(computeBmat[gc](k2, k1)) * A;
+		};
+		rightMultiplyBmatInv[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+			return A * arma::inv(computeBmat[gc](k2, k1));
+		};
+	} );
 }
 
 template<unsigned GC, typename V>
