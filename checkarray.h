@@ -18,11 +18,11 @@
 template<typename T, std::size_t N>
 struct checkarray : std::array<T,N> {
 #ifdef _GLIBCXX_DEBUG
-	reference operator[](size_type n)	{
+	T& operator[](std::size_t n)	{
 		return at(n);
 	}
 
-	const_reference	operator[](size_type n) const	{
+	const T& operator[](std::size_t n) const	{
 		return at(n);
 	}
 #endif //_GLIBCXX_DEBUG
