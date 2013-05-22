@@ -70,13 +70,15 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 		throw ParameterWrong("greenUpdateType", parsmc.greenUpdateType);
 	}
 
-	if (greenUpdateType == GreenUpdateType::Simple) {
-		sweepFunc = [this]() {replica->sweepSimple();};
-		sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
-	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
-		sweepFunc = [this]() {replica->sweep();};
-		sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
-	}
+//	if (greenUpdateType == GreenUpdateType::Simple) {
+//		sweepFunc = [this]() {replica->sweepSimple();};
+//		sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
+//	} else if (greenUpdateType == GreenUpdateType::Stabilized) {
+//		sweepFunc = [this]() {replica->sweep();};
+//		sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
+//	} else {
+//		throw GeneralError("greenUpdateType not defined!");
+//	}
 
 	//some parameter consistency checking:
 	if (parsmc.sweeps % parsmc.jkBlocks != 0) {
@@ -130,7 +132,7 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 		parsmodel(), parsmc(),
 		//proper initialization of default initialized members done in initFromParameters
-		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		greenUpdateType(), //sweepFunc(), sweepThermalizationFunc(),
 		modelMeta(), mcMeta(), rng(), replica(),
 		obsHandlers(), vecObsHandlers(),
 		sweepsDone(0), sweepsDoneThermalization(),
@@ -145,7 +147,7 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 		parsmodel(), parsmc(),
 		//proper initialization of default initialized members done by loading from archive
-		greenUpdateType(), sweepFunc(), sweepThermalizationFunc(),
+		greenUpdateType(), //sweepFunc(), sweepThermalizationFunc(),
 		modelMeta(), mcMeta(), rng(), replica(),
 		obsHandlers(), vecObsHandlers(),
 		sweepsDone(), sweepsDoneThermalization(),
@@ -251,7 +253,14 @@ void DetQMC::run() {
 		switch (stage) {
 
 		case Stage::T:
-			sweepThermalizationFunc();
+			switch(greenUpdateType) {
+			case GreenUpdateType::Simple:
+				replica->sweepSimpleThermalization();
+				break;
+			case GreenUpdateType::Stabilized:
+				replica->sweepThermalization();
+				break;
+			}
 			++sweepsDoneThermalization;
 			++swCounter;
 			if (swCounter == parsmc.saveInterval) {
@@ -269,7 +278,14 @@ void DetQMC::run() {
 			break;	//case
 
 		case Stage::M:
-			sweepFunc();
+			switch(greenUpdateType) {
+			case GreenUpdateType::Simple:
+				replica->sweepSimple();
+				break;
+			case GreenUpdateType::Stabilized:
+				replica->sweep();
+				break;
+			}
 			++swCounter;
 			if (swCounter % parsmc.measureInterval == 0) {
 				replica->measure();
