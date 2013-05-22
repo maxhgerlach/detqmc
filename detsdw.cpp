@@ -752,7 +752,7 @@ void DetSDW::updateInSlice(uint32_t timeslice) {
 		//Delta*(I - G) is a sparse matrix containing just 4 rows:
 		//site, site+N, site+2N, site+3N
 		//Compute the values of these rows [O(N)]:
-		checkarray<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+		checkarray<VecCpx, 4> rows {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
 #pragma omp parallel for
 		for (uint32_t r = 0; r < 4; ++r) {
 			for (uint32_t col = 0; col < 4*N; ++col) {

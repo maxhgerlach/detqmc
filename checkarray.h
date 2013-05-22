@@ -14,19 +14,40 @@
 // http://stackoverflow.com/questions/8181887/bound-checking-of-stdarray-in-debug-version-of-gcc
 
 #include <array>
+#include <initializer_list>
 
-template<typename T, std::size_t N>
-struct checkarray : std::array<T,N> {
 #ifdef _GLIBCXX_DEBUG
-	T& operator[](std::size_t n)	{
-		return at(n);
+template<typename T, std::size_t N>
+struct checkarray : public std::array<T,N> {
+	typedef std::array<T,N> Base;
+	T& operator[](std::size_t n) {
+		return Base::at(n);
 	}
 
-	const T& operator[](std::size_t n) const	{
-		return at(n);
+	const T& operator[](std::size_t n) const {
+		return Base::at(n);
 	}
-#endif //_GLIBCXX_DEBUG
+
+	//std::array<T,N> is an aggregate type, but because we
+	//derive from it, checkarray<T,N> no longer is --> need
+	//to provide explicit constructors
+	checkarray(std::initializer_list<T> l) {
+		//this is not very pretty and lacks compile time
+		//bounds checking, but I have not found an easy solution
+		if (l.size() != Base::size()) {
+			throw std::out_of_range("Size of initializer_list does not match size of array");
+		}
+		std::copy(std::begin(l), std::end(l), this->begin());
+	}
+
+	checkarray() : Base()
+	{ }
 };
+#else //_GLIBCXX_DEBUG
+//This is an ugly workaround for lacking support for template-aliases
+#define checkarray std::array
+
+#endif //_GLIBCXX_DEBUG
 
 
 
