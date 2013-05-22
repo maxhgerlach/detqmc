@@ -252,7 +252,8 @@ public:
 
 template<unsigned GC, typename V>
 DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSize) :
-	computeBmat{}, updateGreenFunctionUdV{}, wrapUp(), wrapDown(),
+	computeBmat{}, leftMultiplyBmat{}, rightMultiplyBmat{}, leftMultiplyBmatInv{}, rightMultiplyBmatInv{},
+	updateGreenFunctionUdV{}, wrapUp(), wrapDown(),
 	sz(greenComponentSize),
 	timedisplaced(pars.timedisplaced), beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 	green{}, greenFwd{}, greenBwd{}, eye_UdV(sz), UdVStorage{},

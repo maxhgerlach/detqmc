@@ -60,9 +60,9 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		rng(rng_),
 		checkerboard(pars.checkerboard),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
+		hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
-		checkerEmKx(N,N), checkerEmKy(N,N), checkerEpKx(N,N), checkerEpKy(N,N),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta),
@@ -114,16 +114,16 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		};
 	} else {
 		leftMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
-			return computeBmatSDW(k2, k1) * A;
+			return this->computeBmatSDW(k2, k1) * A;
 		};
 		rightMultiplyBmat[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
-			return A * computeBmatSDW(k2, k1);
+			return A * this->computeBmatSDW(k2, k1);
 		};
 		leftMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
-			return arma::inv(computeBmatSDW(k2, k1)) * A;
+			return arma::inv(this->computeBmatSDW(k2, k1)) * A;
 		};
 		rightMultiplyBmatInv[0] = [this](const MatCpx& A, unsigned k2, unsigned k1) {
-			return A * arma::inv(computeBmatSDW(k2, k1));
+			return A * arma::inv(this->computeBmatSDW(k2, k1));
 		};
 	}
 

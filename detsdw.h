@@ -71,15 +71,6 @@ protected:
 	MatNum& propKx;
 	MatNum& propKy;
 
-	//e^(-dtau*K_x|y)*e^(dtau*mu) as calculated from checkerboard break up (dos Santos 2003)
-	//chemical potential mu included
-	//Remark: This was pointless
-	SpMatNum checkerEmKx;
-	SpMatNum checkerEmKy;
-	//the same for e^(+dtau*K_x|y)*e^(-dtau*mu)
-	SpMatNum checkerEpKx;
-	SpMatNum checkerEpKy;
-
 	CubeCpx& g;
 	CubeCpx& gFwd;
 	CubeCpx& gBwd;
