@@ -87,10 +87,13 @@ public:
     virtual void thermalizationOver() {
     }
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // only functions that can pass the key to these functions have access
+    // -- in this way access is granted only to restricted DetQMC methods
     template<class Archive>
-    void serializeContents(SerializeContentsKey const&, Archive &) {
+    void saveContents(SerializeContentsKey const&, Archive &) {
+    }
+    template<class Archive>
+    void loadContents(SerializeContentsKey const&, Archive &) {
     }
 };
 
@@ -230,14 +233,26 @@ protected:
 	std::vector<KeyValueObservable> obsKeyValue;
 
 public:
-    // only functions that can pass the key to this function have access
+    // only functions that can pass the key to these functions have access
     // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModel::serializeContents(sck, ar);		//base class
-    	ar & green & greenFwd & greenBwd;
-    	ar & UdVStorage;
-    	ar & lastSweepDir;
+    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModel::saveContents(sck, ar);		//base class
+
+    	//the following commented lines are for contents we no longer
+    	//serialize as they can be reconstructed from the field configuration
+    	//easily with setupUdVstorage and a sweep
+//    	ar & green & greenFwd & greenBwd;
+//    	ar & UdVStorage;
+//    	ar & lastSweepDir;
+    }
+
+    template<class Archive>
+    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModel::loadContents(sck, ar);		//base class
+    	//UdV-storage, green, greenFwd, greenBwd still need to be recast into a valid state
+    	//by a derived class!
+    	//TODO: this is a mess!
     }
 };
 

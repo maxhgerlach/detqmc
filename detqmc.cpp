@@ -49,6 +49,16 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 		parsmc.saveInterval = parsmc.sweeps;		//only save at end
 	}
 
+	if (parsmc.sweeps % 2 != 0) {
+		throw ParameterWrong("Parameter sweeps must be even [else serialization consistency cannot be guaranteed]");
+	}
+	if (parsmc.thermalization % 2 != 0) {
+		throw ParameterWrong("Parameter thermalization must be even [else serialization consistency cannot be guaranteed]");
+	}
+	if (parsmc.saveInterval % 2 != 0) {
+		throw ParameterWrong("Parameter saveInterval must be even [else serialization consistency cannot be guaranteed]");
+	}
+
 	if (parsmc.specified.count("rngSeed") == 0) {
 		cout << "No rng seed specified, will use std::time(0)" << endl;
 		parsmc.rngSeed = (long unsigned) std::time(0);
@@ -191,7 +201,7 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 #undef SPECIFIED_INSERT_STR
 
 	initFromParameters(parsmodel_, parsmc_);
-	serializeContents(ia);
+	loadContents(ia);
 }
 
 void DetQMC::saveState() {
@@ -201,7 +211,7 @@ void DetQMC::saveState() {
 	ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
 	boost::archive::binary_oarchive oa(ofs);
 	oa << parsmodel << parsmc;
-	serializeContents(oa);
+	saveContents(oa);
 	timing.stop("saveState");
 }
 
@@ -235,18 +245,22 @@ void DetQMC::run() {
 		finishedStage();
 	}
 
-	const unsigned SavetyMinutes = 30;
+	const unsigned SavetyMinutes = 35;
 
 	while (stage != Stage::F) {				//big loop
 		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
-			cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n"
-				 << "Save state / results and exit gracefully."
-				 << endl;
-			if (stage == Stage::M) {
-				saveResults();
+			//close to exceeded walltime, but only save state and exit if we have done an even
+			//number of sweeps for ("economic") serialization guarantee [else do one sweep more]
+			if (swCounter % 2 == 0) {
+				cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n"
+						<< "Save state / results and exit gracefully."
+						<< endl;
+				if (stage == Stage::M) {
+					saveResults();
+				}
+				saveState();
+				break;	//while
 			}
-			saveState();
-			break;	//while
 		}
 
 		//thermalization & measurement stages

@@ -97,19 +97,42 @@ protected:
 private:
 	//Serialize only the content data that has changed after construction.
 	//Only call for deserialization after DetQMC has already been constructed and initialized!
-	template<class Archive>
-	void serializeContents(Archive& ar) {
-    	ar & rng;					//serialize completely
 
-    	//The template member functions serializeContents(Archive&) cannot be virtual,
+	//separate functions loadContents, saveContents; both employ serializeContentsCommon
+	template<class Archive>
+	void loadContents(Archive& ar) {
+		serializeContentsCommon(ar);
+
+		//The template member functions saveContents(Archive&) cannot be virtual,
     	//so we have to resort to RTTI to serialize the right object.
     	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->loadContents(SerializeContentsKey(), ar);
     	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->loadContents(SerializeContentsKey(), ar);
     	} else {
-    		throw SerializationError("Tried to serialize contents of unsupported replica");
+    		throw SerializationError("Tried to save contents of unsupported replica");
     	}
+	}
+
+	template<class Archive>
+	void saveContents(Archive& ar) {
+		serializeContentsCommon(ar);
+
+		//The template member functions saveContents(Archive&) cannot be virtual,
+    	//so we have to resort to RTTI to serialize the right object.
+    	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
+    		p->saveContents(SerializeContentsKey(), ar);
+    	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
+    		p->saveContents(SerializeContentsKey(), ar);
+    	} else {
+    		throw SerializationError("Tried to save contents of unsupported replica");
+    	}
+	}
+
+
+	template<class Archive>
+	void serializeContentsCommon(Archive& ar) {
+    	ar & rng;					//serialize completely
 
     	for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
     		//ATM no further derived classes of ScalarObservableHandler have a method serializeContents
@@ -135,9 +158,13 @@ class SerializeContentsKey {
   SerializeContentsKey() {} // default ctor private
   SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
 
-  // grant access to one method
+  // grant access to few methods
   template<class Archive>
-  friend void DetQMC::serializeContents(Archive& ar);
+  friend void DetQMC::saveContents(Archive& ar);
+  template<class Archive>
+  friend void DetQMC::loadContents(Archive& ar);
+  template<class Archive>
+  friend void DetQMC::serializeContentsCommon(Archive& ar);
 };
 
 
