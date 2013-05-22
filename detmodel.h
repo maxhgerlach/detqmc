@@ -284,16 +284,16 @@ DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSiz
 
 	// Default functors for multiplication with B-matrices
 	for_each_gc( [this](uint32_t gc) {
-		leftMultiplyBmat[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmat[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) -> MatV {
 			return computeBmat[gc](k2, k1) * A;
 		};
-		rightMultiplyBmat[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmat[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) -> MatV {
 			return A * computeBmat[gc](k2, k1);
 		};
-		leftMultiplyBmatInv[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmatInv[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) -> MatV {
 			return arma::inv(computeBmat[gc](k2, k1)) * A;
 		};
-		rightMultiplyBmatInv[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmatInv[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) -> MatV {
 			return A * arma::inv(computeBmat[gc](k2, k1));
 		};
 	} );
