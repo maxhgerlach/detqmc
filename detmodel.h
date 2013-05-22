@@ -522,7 +522,8 @@ void DetModelGC<GC,V>::wrapDownGreen(uint32_t k, uint32_t gc) {
 //	green[gc].slice(k - 1) =
 //			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
 	//DEBUG: avoid chaining
-	MatV intermed = rightMultiplyBmat[gc](green[gc].slice(k), k, k-1);
+	MatV slice = green[gc].slice(k);
+	MatV intermed = rightMultiplyBmat[gc](slice, k, k-1);
 	green[gc].slice(k - 1) = leftMultiplyBmatInv[gc](intermed, k, k-1);
 
 	timing.stop("wrapDownGreen");
