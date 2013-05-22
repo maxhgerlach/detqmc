@@ -83,15 +83,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 	po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
 	po::notify(vm);
 
-	//parse config file, options specified there have lower precedence
-	po::options_description confFileOptions;
-	confFileOptions.add(modelOptions).add(mcOptions);
-	std::ifstream ifsConf(confFileName);
-	po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
-	po::notify(vm);
-
 	using std::cout; using std::endl;
-	cout << "Assume config file " << confFileName << endl;
 
 	if (boost::filesystem::exists(mcpar.stateFileName)) {
 		cout << "Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;
@@ -108,6 +100,17 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 	if (vm.count("version")) {
 		runSimulation = false;
 	}
+
+	if (runSimulation) {
+		cout << "Assume config file " << confFileName << endl;
+	}
+
+	//parse config file, options specified there have lower precedence
+	po::options_description confFileOptions;
+	confFileOptions.add(modelOptions).add(mcOptions);
+	std::ifstream ifsConf(confFileName);
+	po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
+	po::notify(vm);
 
 	if (vm.count("temp")) {
 		if (vm.count("beta")) {
