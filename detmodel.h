@@ -472,7 +472,13 @@ void DetModelGC<GC,V>::advanceDownGreen(uint32_t l, uint32_t gc) {
 
 	//UdV_L will correspond to B(beta,(l-1)*s*dtau)
 //	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (V_l * B_l));
-	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (rightMultiplyBmat[gc](V_l, s*l, s*(l-1))));
+
+
+	//UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (rightMultiplyBmat[gc](V_l, s*l, s*(l-1))));
+	//DEBUG: avoid chaining
+	MatV intermed = rightMultiplyBmat[gc](V_l, s*l, s*(l-1));
+	UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * intermed);
+
 	UdV_L.U = U_l * UdV_L.U;
 
 	//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
@@ -492,8 +498,13 @@ void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(uint32_t k, uint32_t gc) {
 //	MatV B_k = computeBmat[greenComponent](k, k - 1);
 //	MatV B_k_inv = computeBmatInverse[greenComponent](k, k - 1);
 //	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
-	green[gc].slice(k - 1) =
-			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
+
+//	green[gc].slice(k - 1) =
+//			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
+	//DEBUG: avoid chaining
+	MatV intermed = rightMultiplyBmat[gc](green[gc].slice(k), k, k-1);
+	green[gc].slice(k - 1) = leftMultiplyBmatInv[gc](intermed, k, k-1);
+
 //	greenFwd[greenComponent].slice(k - 1) = arma::inv(B_k) * greenFwd[greenComponent].slice(k);
 	greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv[gc](greenFwd[gc].slice(k), k, k-1);
 	greenBwd[gc].slice(k - 1) = rightMultiplyBmat[gc](greenBwd[gc].slice(k), k, k-1);
@@ -507,8 +518,13 @@ void DetModelGC<GC,V>::wrapDownGreen(uint32_t k, uint32_t gc) {
 	timing.start("wrapDownGreen");
 //	MatV B_k = computeBmat[greenComponent](k, k - 1);
 //	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
-	green[gc].slice(k - 1) =
-			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
+
+//	green[gc].slice(k - 1) =
+//			leftMultiplyBmatInv[gc](rightMultiplyBmat[gc](green[gc].slice(k), k, k-1), k, k-1);
+	//DEBUG: avoid chaining
+	MatV intermed = rightMultiplyBmat[gc](green[gc].slice(k), k, k-1);
+	green[gc].slice(k - 1) = leftMultiplyBmatInv[gc](intermed, k, k-1);
+
 	timing.stop("wrapDownGreen");
 }
 
@@ -532,7 +548,12 @@ void DetModelGC<GC,V>::advanceUpGreen(uint32_t l, uint32_t gc) {
 
 	//UdV_temp will be the new B((l+1)*s*dtau, 0):
 //	UdVV UdV_temp = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
-	UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
+
+//	UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
+	//DEBUG: avoid chaining
+	MatV intermed = leftMultiplyBmat[gc](U_l, s*(l+1), s*l);
+	UdVV UdV_temp = udvDecompose<V>(intermed * arma::diagmat(d_l));
+
 	UdV_temp.V *= V_l;
 
 	uint32_t next = s * (l + 1);
@@ -558,7 +579,12 @@ void DetModelGC<GC,V>::advanceUpUpdateStorage(uint32_t l, uint32_t gc) {
 	const MatV& V_l = storage[l].V;
 	//the new B((l+1)*s*dtau, 0):
 //	storage[l+1] = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
-	storage[l+1] = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
+
+//	storage[l+1] = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
+	//DEBUG: avoid chaining
+	MatV intermed = leftMultiplyBmat[gc](U_l, s*(l+1), s*l);
+	storage[l+1] = udvDecompose<V>(intermed * arma::diagmat(d_l));
+
 	storage[l+1].V *= V_l;
 
 	timing.stop("advanceUpUpdateStorage");
@@ -571,8 +597,13 @@ void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(uint32_t k, uint32_t gc) {
 	timing.start("wrapUpGreen_timedisplaced");
 //	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
-	green[gc].slice(k + 1) =
-			 leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
+
+//	green[gc].slice(k + 1) =
+//			 leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
+	//DEBUG: avoid chaining
+	MatV intermed = rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k);
+	green[gc].slice(k + 1) = leftMultiplyBmat[gc](intermed, k+1, k);
+
 //	greenFwd[greenComponent].slice(k + 1) = B_kp1 * greenFwd[greenComponent].slice(k);
 	greenFwd[gc].slice(k + 1) = leftMultiplyBmat[gc](greenFwd[gc].slice(k), k+1, k);
 //	greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
@@ -587,8 +618,13 @@ void DetModelGC<GC,V>::wrapUpGreen(uint32_t k, uint32_t gc) {
 	timing.start("wrapUpGreen");
 //	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
-	green[gc].slice(k + 1) =
-			leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
+
+//	green[gc].slice(k + 1) =
+//			leftMultiplyBmat[gc](rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k), k+1, k);
+	//DEBUG: avoid chaining
+	MatV intermed = rightMultiplyBmatInv[gc](green[gc].slice(k), k+1, k);
+	green[gc].slice(k + 1) = leftMultiplyBmat[gc](intermed, k+1, k);
+
 	timing.stop("wrapUpGreen");
 }
 
