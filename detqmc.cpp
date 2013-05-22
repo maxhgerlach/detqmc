@@ -11,7 +11,6 @@
 #include <ctime>
 #include <functional>
 #include <fstream>
-#include <array>
 #include <armadillo>
 #include "boost/assign/std/vector.hpp"
 

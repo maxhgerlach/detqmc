@@ -56,18 +56,18 @@ protected:
 	enum Band {XBAND = 0, YBAND = 1};
 
 	//hopping constants for XBAND and YBAND
-	std::array<num,2> hopHor;
-	std::array<num,2> hopVer;
+	checkarray<num,2> hopHor;
+	checkarray<num,2> hopVer;
 	// sinh|cosh(dtau * hop..)
-	std::array<num,2> sinhHopHor;
-	std::array<num,2> sinhHopVer;
-	std::array<num,2> coshHopHor;
-	std::array<num,2> coshHopVer;
+	checkarray<num,2> sinhHopHor;
+	checkarray<num,2> sinhHopVer;
+	checkarray<num,2> coshHopHor;
+	checkarray<num,2> coshHopVer;
 
 	PeriodicSquareLatticeNearestNeighbors spaceNeigh;
 	PeriodicChainNearestNeighbors<1> timeNeigh;
 
-	std::array<MatNum, 2> propK;
+	checkarray<MatNum, 2> propK;
 	MatNum& propKx;
 	MatNum& propKy;
 
@@ -95,17 +95,17 @@ protected:
 	num normPhi;		//magnitude of averaged field
 	num sdwSusc;		//spin-density-wave susceptibility
 
-	std::array<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
+	checkarray<VecNum, 2> kOcc;		//Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
 	VecNum& kOccX;
 	VecNum& kOccY;
-	std::array<VecNum, 2> kOccImag;
+	checkarray<VecNum, 2> kOccImag;
 	VecNum& kOccXimag;
 	VecNum& kOccYimag;
 
-	std::array<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
+	checkarray<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
 	VecNum& occX;
 	VecNum& occY;
-	std::array<VecNum, 2> occImag;
+	checkarray<VecNum, 2> occImag;
 	VecNum& occXimag;
 	VecNum& occYimag;
 

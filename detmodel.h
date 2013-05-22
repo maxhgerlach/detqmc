@@ -9,7 +9,6 @@
 #define DETMODEL_H_
 
 
-#include <array>
 #include <functional>
 #include <utility>
 #include <memory>
@@ -17,6 +16,7 @@
 #include <tuple>
 #include <armadillo>
 
+#include "checkarray.h"
 #include "parameters.h"
 #include "observable.h"
 #include "udv.h"
@@ -145,22 +145,22 @@ protected:
 
     //functions to compute B-matrices for the different Green function sectors
     typedef std::function<MatV(uint32_t k2, uint32_t k1)> FuncComputeBmat;
-    std::array<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
+    checkarray<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
 
     //functions that have the same effect as multiplying a B-Matrix (or its inverse) to the left
     //or right of some matrix -- useful if a checkerboard-breakup is performed
     typedef std::function<MatV(const MatV& A, uint32_t k2, uint32_t k1)> FuncMultiplyBmat;
-    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// R := B(k2*dtau, k1*dtau) * A
-    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmat;	// R := A * B(k2*dtau, k1*dtau)
-    std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmatInv;	// R := B(k2*dtau, k1*dtau)^-1 * A
-    std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmatInv;	// R := A * B(k2*dtau, k1*dtau)^-1
+    checkarray<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// R := B(k2*dtau, k1*dtau) * A
+    checkarray<FuncMultiplyBmat, GreenComponents> rightMultiplyBmat;	// R := A * B(k2*dtau, k1*dtau)
+    checkarray<FuncMultiplyBmat, GreenComponents> leftMultiplyBmatInv;	// R := B(k2*dtau, k1*dtau)^-1 * A
+    checkarray<FuncMultiplyBmat, GreenComponents> rightMultiplyBmatInv;	// R := A * B(k2*dtau, k1*dtau)^-1
 
     //functions that compute Green functions from UdV-decomposed matrices L/R
     //for a single timeslice
     //and update the member variables green -- and if desired -- greenFwd and greenBwd
     typedef std::function<void(uint32_t targetSlice, const UdVV& UdV_L, const UdVV& UdV_R
     		                   )> FuncUpdateGreenFunctionUdV;
-    std::array<FuncUpdateGreenFunctionUdV, GreenComponents> updateGreenFunctionUdV;
+    checkarray<FuncUpdateGreenFunctionUdV, GreenComponents> updateGreenFunctionUdV;
 	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
 	//calculate a tuple of four NxN matrices (a,b,c,d) with
 	// a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)
@@ -218,14 +218,14 @@ protected:
 	//Most code, however, only uses timeslices k >= 1 ! Don't rely on g*.slice(0)
 	//being valid.
 	//The Green functions for k=0 are conceptually equal to those for k=m.
-    std::array<CubeV, GreenComponents> green;
-    std::array<CubeV, GreenComponents> greenFwd;
-    std::array<CubeV, GreenComponents> greenBwd;
+    checkarray<CubeV, GreenComponents> green;
+    checkarray<CubeV, GreenComponents> greenFwd;
+    checkarray<CubeV, GreenComponents> greenBwd;
 
     //The UdV-instances in UdVStorage will not move around much after setup, so storing
 	//the (rather big) objects in the vector is fine
     const UdVV eye_UdV;
-	std::array<std::vector<UdVV>, GreenComponents> UdVStorage;
+	checkarray<std::vector<UdVV>, GreenComponents> UdVStorage;
 
     enum class SweepDirection: int {Up = 1, Down = -1};
 	SweepDirection lastSweepDir;

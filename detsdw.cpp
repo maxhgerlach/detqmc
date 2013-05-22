@@ -281,7 +281,7 @@ void DetSDW::setupRandomPhi() {
 }
 
 void DetSDW::setupPropK() {
-	std::array<std::array<num,z>, 2> t;
+	checkarray<checkarray<num,z>, 2> t;
 	t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
 	t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
 	t[YBAND][XPLUS] = t[YBAND][XMINUS] = hopHor[YBAND];
@@ -752,7 +752,7 @@ void DetSDW::updateInSlice(uint32_t timeslice) {
 		//Delta*(I - G) is a sparse matrix containing just 4 rows:
 		//site, site+N, site+2N, site+3N
 		//Compute the values of these rows [O(N)]:
-		std::array<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
+		checkarray<VecCpx, 4> rows = {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
 #pragma omp parallel for
 		for (uint32_t r = 0; r < 4; ++r) {
 			for (uint32_t col = 0; col < 4*N; ++col) {
@@ -795,7 +795,7 @@ void DetSDW::updateInSlice(uint32_t timeslice) {
 		}
 
 		//****DEBUG
-//		std::array<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
+//		checkarray<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
 		//****END-DEBUG
 
 		//****
