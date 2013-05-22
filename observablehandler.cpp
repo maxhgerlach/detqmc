@@ -38,12 +38,12 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandler>>& 
 
 	for (auto p = obsHandlers.cbegin(); p != obsHandlers.cend(); ++p) {
 		const std::unique_ptr<VectorObservableHandler>& obsptr = *p;
-		unsigned numberIndexes = obsptr->getVectorSize();
+		uint32_t numberIndexes = obsptr->getVectorSize();
 		arma::Col<num> values, errors;
 		std::tie(values, errors) = obsptr->evaluateJackknife();
 		NumMapPtr valmap(new NumMap);
 		NumMapPtr errmap(new NumMap);
-		for (unsigned counter = 0; counter < numberIndexes; ++counter) {
+		for (uint32_t counter = 0; counter < numberIndexes; ++counter) {
 			num index = obsptr->indexes[counter];
 			valmap->insert(std::make_pair(index, values[counter]));
 			errmap->insert(std::make_pair(index, errors[counter]));

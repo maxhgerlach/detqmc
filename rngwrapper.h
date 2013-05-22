@@ -27,11 +27,11 @@ extern "C" {
 
 
 class RngWrapper {
-    unsigned long seed;
-    unsigned int processIndex;
+    uint32_t seed;
+    uint32_t processIndex;
     dsfmt_t dsfmt;
 public:
-    RngWrapper(unsigned long seed_ = 0, unsigned processIndex_ = 0);
+    RngWrapper(uint32_t seed_ = 0, uint32_t processIndex_ = 0);
     virtual ~RngWrapper() {}
 
     std::string getName() const;
@@ -65,14 +65,14 @@ private:
     void stringToState(const std::string& stateString);
 
     template<class Archive>
-	void save(Archive& ar, const unsigned int /* version */) const {
+	void save(Archive& ar, const uint32_t /* version */) const {
     	ar << seed << processIndex;
     	std::string stateString = stateToString();
     	ar << stateString;
     }
 
     template<class Archive>
-	void load(Archive& ar, const unsigned int /* version */) {
+	void load(Archive& ar, const uint32_t /* version */) {
     	ar >> seed >> processIndex;
     	std::string stateString;
     	ar >> stateString;

@@ -21,9 +21,9 @@
 #include <cstdlib>
 
 //only use with small numbers!
-inline unsigned uint_pow(unsigned base, unsigned exponent) {
-    unsigned result = 1;
-    for (unsigned times = 0; times < exponent; ++times) {
+inline uint32_t uint_pow(uint32_t base, uint32_t exponent) {
+    uint32_t result = 1;
+    for (uint32_t times = 0; times < exponent; ++times) {
         result *= base;
     }
     return result;
@@ -37,7 +37,7 @@ std::string numToString(T i) {
 }
 
 template<typename T> inline
-std::string numToString(T i, unsigned floatPrecision) {
+std::string numToString(T i, uint32_t floatPrecision) {
     std::stringstream s;
     s.precision(floatPrecision);
     s.setf(std::ios::scientific, std::ios::floatfield);
@@ -78,7 +78,7 @@ void destroyAll(std::vector<T*>& vec) {
 
 template<typename T> inline
 void printVector(const std::vector<T>& vec) {
-    for (unsigned n = 0; n < vec.size(); ++n) {
+    for (uint32_t n = 0; n < vec.size(); ++n) {
         std::cout << vec[n] << "\t";
     }
     std::cout << std::endl;

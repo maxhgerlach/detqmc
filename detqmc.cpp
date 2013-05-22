@@ -51,7 +51,7 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 
 	if (parsmc.specified.count("rngSeed") == 0) {
 		cout << "No rng seed specified, will use std::time(0)" << endl;
-		parsmc.rngSeed = (long unsigned) std::time(0);
+		parsmc.rngSeed = (uint32_t) std::time(0);
 	}
 	rng = RngWrapper(parsmc.rngSeed);
 
@@ -234,7 +234,7 @@ void DetQMC::run() {
 		finishedStage();
 	}
 
-	const unsigned SavetyMinutes = 30;
+	const uint32_t SavetyMinutes = 30;
 
 	while (stage != Stage::F) {				//big loop
 		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
@@ -342,7 +342,7 @@ void DetQMC::saveResults() {
 	currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
 	currentState["sweepsDone"] = numToString(sweepsDone);
 
-	unsigned long cwts = curWalltimeSecs();
+	uint32_t cwts = curWalltimeSecs();
 	totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
 	walltimeSecsLastSaveResults = cwts;
 

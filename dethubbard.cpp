@@ -59,12 +59,12 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 
 
 DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
-		DetModelGC<2>(pars, static_cast<unsigned>(uint_pow(pars.L,pars.d))),
+		DetModelGC<2>(pars, static_cast<uint32_t>(uint_pow(pars.L,pars.d))),
 		rng(rng_),
 		checkerboard(pars.checkerboard),
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
 		z(2*d), //coordination number: 2*d
-		N(static_cast<unsigned>(uint_pow(L,d))),
+		N(static_cast<uint32_t>(uint_pow(L,d))),
 //		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		neigh(d, L),
@@ -94,18 +94,18 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	setupRandomAuxfield();
 	if (pars.checkerboard) {
 		setupPropTmat_checkerboard();
-		computeBmat[GreenCompSpinUp] = [this](unsigned k2, unsigned k1) {
+		computeBmat[GreenCompSpinUp] = [this](uint32_t k2, uint32_t k1) {
 			return computeBmat_checkerBoard(k2, k1, Spin::Up);
 		};
-		computeBmat[GreenCompSpinDown] = [this](unsigned k2, unsigned k1) {
+		computeBmat[GreenCompSpinDown] = [this](uint32_t k2, uint32_t k1) {
 			return computeBmat_checkerBoard(k2, k1, Spin::Down);
 		};
 	} else {
 		setupPropTmat_direct();
-		computeBmat[GreenCompSpinUp] = [this](unsigned k2, unsigned k1) {
+		computeBmat[GreenCompSpinUp] = [this](uint32_t k2, uint32_t k1) {
 			return computeBmat_direct(k2, k1, Spin::Up);
 		};
-		computeBmat[GreenCompSpinDown] = [this](unsigned k2, unsigned k1) {
+		computeBmat[GreenCompSpinDown] = [this](uint32_t k2, uint32_t k1) {
 			return computeBmat_direct(k2, k1, Spin::Down);
 		};
 	}
@@ -131,7 +131,7 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	if (timedisplaced) {
 		obsScalar += ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
 		if (d == 2) {
-			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 				gf_dt[timeslice - 1] = dtau * timeslice;
 			}
 			gf_dt.reshape(gf_dt.n_elem, 1);		//column vector
@@ -167,13 +167,13 @@ MetadataMap DetHubbard::prepareModelMetadataMap() const {
 	return meta;
 }
 
-void DetHubbard::updateInSlice(unsigned timeslice) {
+void DetHubbard::updateInSlice(uint32_t timeslice) {
 	// picking sites linearly: system seemed to alternate between two configurations
 	// sweep after sweep
-//	for (unsigned site = 0; site < N; ++site) {
+//	for (uint32_t site = 0; site < N; ++site) {
 //	std::cout << timeslice << " ";  //DEBUG
-	for (unsigned count = 0; count < N; ++count) {
-		unsigned site = rng.randInt(0, N-1);
+	for (uint32_t count = 0; count < N; ++count) {
+		uint32_t site = rng.randInt(0, N-1);
 
 		num ratio =  weightRatioSingleFlip(site, timeslice);
 
@@ -201,14 +201,14 @@ void DetHubbard::updateInSlice(unsigned timeslice) {
 
 //
 //void DetHubbard::sweepSimple() {
-//	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+//	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 //		gUp.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Up);
 //		gDn.slice(timeslice) = computeGreenFunctionNaive(timeslice, Spin::Down);
 //		updateInSlice(timeslice);
 //	}
 //}
 
-unsigned DetHubbard::getSystemN() const {
+uint32_t DetHubbard::getSystemN() const {
 	return N;
 }
 
@@ -295,7 +295,7 @@ unsigned DetHubbard::getSystemN() const {
 //		storage[0] = eye_UdV;
 //		storage[1] = udvNumDecompose(computeBmatFunc(s, 0, spinz));
 //
-//		for (unsigned l = 1; l <= n - 1; ++l) {
+//		for (uint32_t l = 1; l <= n - 1; ++l) {
 //			const MatNum& U_l = storage[l].U;
 //			const VecNum& d_l = storage[l].d;
 //			const MatNum& V_l = storage[l].V;
@@ -317,14 +317,14 @@ unsigned DetHubbard::getSystemN() const {
 //void DetHubbard::debugCheckBeforeSweepDown() {
 //	std::cout << "Before sweep down:\n";
 //	std::cout << "up: ";
-//	for (unsigned l = 0; l <= n; ++l) {
+//	for (uint32_t l = 0; l <= n; ++l) {
 //		UdVnum udv = UdVStorageUp[l];
 //		MatNum diff = computeBmatFunc(l*s, 0, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 //		std::cout << diff.max() << " ";
 //	}
 //	std::cout << "\n";
 //	std::cout << "down: ";
-//	for (unsigned l = 0; l <= n; ++l) {
+//	for (uint32_t l = 0; l <= n; ++l) {
 //		UdVnum udv = UdVStorageDn[l];
 //		MatNum diff = computeBmatFunc(l*s, 0, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 //		std::cout << diff.max() << " ";
@@ -335,14 +335,14 @@ unsigned DetHubbard::getSystemN() const {
 //void DetHubbard::debugCheckBeforeSweepUp() {
 //	std::cout << "Before sweep up:\n";
 //	std::cout << "up: ";
-//	for (unsigned l = 0; l <= n; ++l) {
+//	for (uint32_t l = 0; l <= n; ++l) {
 //		UdVnum udv = UdVStorageUp[l];
 //		MatNum diff = computeBmatFunc(m, l*s, Spin::Up) - udv.U * arma::diagmat(udv.d) * udv.V;
 //		std::cout << diff.max() << " ";
 //	}
 //	std::cout << "\n";
 //	std::cout << "down: ";
-//	for (unsigned l = 0; l <= n; ++l) {
+//	for (uint32_t l = 0; l <= n; ++l) {
 //		UdVnum udv = UdVStorageDn[l];
 //		MatNum diff = computeBmatFunc(m, l*s, Spin::Down) - udv.U * arma::diagmat(udv.d) * udv.V;
 //		std::cout << diff.max() << " ";
@@ -355,14 +355,14 @@ unsigned DetHubbard::getSystemN() const {
 //void DetHubbard::debugCheckGreenFunctions() {
 //	std::cout << "debugCheckGreenFunctions:\n";
 //	std::cout << "up: ";
-//	for (unsigned k = 1; k <= m; ++k) {
+//	for (uint32_t k = 1; k <= m; ++k) {
 //		MatNum green = gUp.slice(k);
 //		MatNum reldiff = (computeGreenFunctionNaive(k, Spin::Up) - green) / green;
 //		std::cout << reldiff.max() << " ";
 //	}
 //	std::cout << "\n";
 //	std::cout << "down: ";
-//	for (unsigned k = 1; k <= m; ++k) {
+//	for (uint32_t k = 1; k <= m; ++k) {
 //		MatNum green = gDn.slice(k);
 //		MatNum reldiff = (computeGreenFunctionNaive(k, Spin::Down) - green) / green;
 //		std::cout << reldiff.max() << " ";
@@ -377,7 +377,7 @@ unsigned DetHubbard::getSystemN() const {
 //
 //	//compute the green function in timeslice s*(l-1) from scratch with the help
 //	//of the B-matrices computed before in the last up-sweep
-//	auto advanceDownGreen = [this](unsigned l, std::vector<UdVnum>& storage,
+//	auto advanceDownGreen = [this](uint32_t l, std::vector<UdVnum>& storage,
 //			CubeNum& green, CubeNum& greenFwd,
 //			CubeNum& greenBwd, Spin spinz) -> void {
 //		MatNum B_l = computeBmatFunc(s*l, s*(l - 1), spinz);
@@ -394,14 +394,14 @@ unsigned DetHubbard::getSystemN() const {
 //		//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
 //		const UdVnum& UdV_R = storage[l - 1];
 //
-//		unsigned next = s * (l - 1);
+//		uint32_t next = s * (l - 1);
 //		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 //				greenFromUdV_timedisplaced(UdV_L, UdV_R);
 //		storage[l - 1] = UdV_L;
 //	};
 //
 //	//compute the green function at k-1 by wrapping the one at k (accumulates rounding errors)
-//	auto wrapDownGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+//	auto wrapDownGreen = [this](uint32_t k, CubeNum& green, CubeNum& greenFwd,
 //			CubeNum& greenBwd, Spin spinz) -> void {
 //		MatNum B_k = computeBmatFunc(k, k - 1, spinz);
 //		green.slice(k - 1) = arma::inv(B_k) * green.slice(k) * B_k;
@@ -411,7 +411,7 @@ unsigned DetHubbard::getSystemN() const {
 //
 //	//update the green function in timeslice s*(l+1) from scratch with the help
 //	//of B-matrices computed before
-//	auto advanceUpGreen = [this](unsigned l, const std::vector<UdVnum>& storage,
+//	auto advanceUpGreen = [this](uint32_t l, const std::vector<UdVnum>& storage,
 //			CubeNum& green, CubeNum& greenFwd,
 //			CubeNum& greenBwd, Spin spinz) -> void {
 //		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
@@ -428,7 +428,7 @@ unsigned DetHubbard::getSystemN() const {
 //		UdVnum UdV_temp = udvNumDecompose(((B_lp1 * U_l) * arma::diagmat(d_l)));
 //		UdV_temp.V *= V_l;
 //
-//		unsigned next = s * (l + 1);
+//		uint32_t next = s * (l + 1);
 //		tie(ignore, greenBwd.slice(next), greenFwd.slice(next), green.slice(next)) =
 //				greenFromUdV_timedisplaced(UdV_lp1, UdV_temp);
 //
@@ -437,7 +437,7 @@ unsigned DetHubbard::getSystemN() const {
 //
 //	//Given B(l*s*dtau, 0) from the last step in the storage, compute
 //	//B((l+1)*s*dtau, 0) and put it into storage
-//	auto advanceUpUpdateStorage = [this](unsigned l, std::vector<UdVnum>& storage,
+//	auto advanceUpUpdateStorage = [this](uint32_t l, std::vector<UdVnum>& storage,
 //			Spin spinz) -> void {
 //		MatNum B_lp1 = computeBmatFunc(s*(l + 1), s*l, spinz);
 //		//from the last step the following are B(l*s*dtau, 0):
@@ -450,7 +450,7 @@ unsigned DetHubbard::getSystemN() const {
 //	};
 //
 //	//compute the green function at k+1 by wrapping the one at k (accumulates rounding errors)
-//	auto wrapUpGreen = [this](unsigned k, CubeNum& green, CubeNum& greenFwd,
+//	auto wrapUpGreen = [this](uint32_t k, CubeNum& green, CubeNum& greenFwd,
 //			CubeNum& greenBwd, Spin spinz) -> void {
 //		MatNum B_kp1 = computeBmatFunc(k + 1, k, spinz);
 //		green.slice(k + 1) = B_kp1 * green.slice(k) * arma::inv(B_kp1);
@@ -470,9 +470,9 @@ unsigned DetHubbard::getSystemN() const {
 //				greenFromUdV_timedisplaced(eye_UdV, UdVStorageDn[n]);
 //		UdVStorageUp[n] = eye_UdV;
 //		UdVStorageDn[n] = eye_UdV;
-//		for (unsigned l = n; l >= 1; --l) {
+//		for (uint32_t l = n; l >= 1; --l) {
 //			updateInSlice(l*s);
-//			for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
+//			for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
 //				wrapDownGreen(k + 1, gUp, gFwdUp, gBwdUp, Spin::Up);
 //				wrapDownGreen(k + 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 //				updateInSlice(k);
@@ -489,7 +489,7 @@ unsigned DetHubbard::getSystemN() const {
 ////		debugCheckBeforeSweepUp();
 //		//We need to have computed the Green function for time slice k=0 so that the first
 //		//wrap-up step is correct.
-//		for (unsigned k = 1; k <= s-1; ++k) {
+//		for (uint32_t k = 1; k <= s-1; ++k) {
 //			wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
 //			wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 //			updateInSlice(k);
@@ -497,13 +497,13 @@ unsigned DetHubbard::getSystemN() const {
 //		//set storage at k=0 to unity for the upcoming sweep:
 //		UdVStorageUp[0] = eye_UdV;
 //		UdVStorageDn[0] = eye_UdV;
-//		for (unsigned l = 1; l < n; ++l) {
+//		for (uint32_t l = 1; l < n; ++l) {
 //			advanceUpGreen(l-1, UdVStorageUp, gUp, gFwdUp, gBwdUp, Spin::Up);
 //			advanceUpGreen(l-1, UdVStorageDn, gDn, gFwdDn, gBwdDn, Spin::Down);
 //			updateInSlice(l*s);
 //			advanceUpUpdateStorage(l - 1, UdVStorageUp, Spin::Up);
 //			advanceUpUpdateStorage(l - 1, UdVStorageDn, Spin::Down);
-//			for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
+//			for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
 //				wrapUpGreen(k - 1, gUp, gFwdUp, gBwdUp, Spin::Up);
 //				wrapUpGreen(k - 1, gDn, gFwdDn, gBwdDn, Spin::Down);
 //				updateInSlice(k);
@@ -528,16 +528,16 @@ void DetHubbard::measure() {
 	num sum_GiiUpDn = 0;
 	//FORMULA-TEST -- made no difference
 //	num sum_doubleoccupancy = 0;
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		for (unsigned site = 0; site < N; ++site) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for (uint32_t site = 0; site < N; ++site) {
 			//use diagonal elements of Green functions:
 			sum_GiiUp += gUp(site, site, timeslice);
 			sum_GiiDn += gDn(site, site, timeslice);
 			sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
 			//use nearest neighbor elements of Green functions:
-//			for (unsigned neighIndex = 0; neighIndex < z; ++neighIndex) {
+//			for (uint32_t neighIndex = 0; neighIndex < z; ++neighIndex) {
 			for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(site); ++p) {
-				unsigned neigh = *p;
+				uint32_t neigh = *p;
 				sum_GneighUp += gUp(site, neigh, timeslice);
 				sum_GneighDn += gDn(site, neigh, timeslice);
 			}
@@ -569,7 +569,7 @@ void DetHubbard::measure() {
 	if (timedisplaced) {
 		auto sumTrace = [m](const CubeNum& green) {
 			num sum = 0;
-			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 				sum += arma::trace(green.slice(timeslice));
 			}
 			return sum;
@@ -578,7 +578,7 @@ void DetHubbard::measure() {
 		num sumTrGreenDn = sumTrace(gDn);
 		auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
 			num sum = 0;
-			for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
 			}
 			return sum;
@@ -594,11 +594,11 @@ void DetHubbard::measure() {
 
 	// vector observables
 	zcorr.zeros();
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 		num gUp_00 = gUp(0,0, timeslice);
 		num gDn_00 = gDn(0,0, timeslice);
 		zcorr[0] += -2.0 * gUp_00 * gDn_00 + gUp_00 + gDn_00;
-		for (unsigned siteJ = 1; siteJ < N; ++siteJ) {
+		for (uint32_t siteJ = 1; siteJ < N; ++siteJ) {
 			num gUp_0j = gUp(0,siteJ,     timeslice);
 			num gDn_0j = gDn(0,siteJ,     timeslice);
 			num gUp_jj = gUp(siteJ,siteJ, timeslice);
@@ -615,13 +615,13 @@ void DetHubbard::measure() {
 		//k = (pi/3, 2*pi/3) at some preset values of tau
 		const num kx = M_PI / 3.0;
 		const num ky = 2.0 * M_PI / 3.0;
-		for (unsigned timeslice = 1; timeslice < m; ++timeslice) {
+		for (uint32_t timeslice = 1; timeslice < m; ++timeslice) {
 //			std::complex<num> sum(0,0);
 			num sum = 0.0;
-			for (unsigned siteI = 0; siteI < N; ++siteI) {
+			for (uint32_t siteI = 0; siteI < N; ++siteI) {
 				const num yI = siteI / L;
 				const num xI = siteI % L;
-				for (unsigned siteJ = 0; siteJ < N; ++siteJ) {
+				for (uint32_t siteJ = 0; siteJ < N; ++siteJ) {
 					const num yJ = siteJ / L;
 					const num xJ = siteJ % L;
 //					const std::complex<num> expFactor =
@@ -642,8 +642,8 @@ void DetHubbard::measure() {
 
 
 void DetHubbard::setupRandomAuxfield() {
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		for (unsigned site = 0; site < N; ++site) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for (uint32_t site = 0; site < N; ++site) {
 			if (rng.rand01() <= 0.5) {
 				auxfield(site, timeslice) = +1;
 			} else {
@@ -656,7 +656,7 @@ void DetHubbard::setupRandomAuxfield() {
 void DetHubbard::setupPropTmat_direct() {
 	MatNum tmat = -mu * arma::eye(N, N);
 
-	for (unsigned site = 0; site < N; ++site) {
+	for (uint32_t site = 0; site < N; ++site) {
 		//hopping between nearest neighbors
 		for (auto p = neigh.beginNeighbors(site);
 				 p != neigh.endNeighbors(site); ++p) {
@@ -671,37 +671,37 @@ void DetHubbard::setupPropTmat_checkerboard() {
 	//Checkerboard break up as in dos Santos 2003
 
 	assert(d == 2);
-	auto xyToSite = [L](unsigned x, unsigned y) {
+	auto xyToSite = [L](uint32_t x, uint32_t y) {
 		return y * L + x;
 	};
 	SpMatNum kxa = SpMatNum(N, N);
 	SpMatNum kxb = SpMatNum(N, N);
 	SpMatNum kya = SpMatNum(N, N);
 	SpMatNum kyb = SpMatNum(N, N);
-	for (unsigned y = 0; y < L; ++y) {
-		for (unsigned x = 0; x < L; x += 2) {
+	for (uint32_t y = 0; y < L; ++y) {
+		for (uint32_t x = 0; x < L; x += 2) {
 			//sub board a
-			unsigned siteA = xyToSite(x, y);
-			unsigned neighA = neigh(NeighDir::XPLUS, siteA);
+			uint32_t siteA = xyToSite(x, y);
+			uint32_t neighA = neigh(NeighDir::XPLUS, siteA);
 			kxa(siteA, neighA) = 1.0;
 			kxa(neighA, siteA) = 1.0;
 			//sub board b
-			unsigned siteB = neighA;
-			unsigned neighB = neigh(NeighDir::XPLUS, siteB);
+			uint32_t siteB = neighA;
+			uint32_t neighB = neigh(NeighDir::XPLUS, siteB);
 			kxb(siteB, neighB) = 1.0;
 			kxb(neighB, siteB) = 1.0;
 		}
 	}
-	for (unsigned x = 0; x < L; ++x) {
-		for (unsigned y = 0; y < L; y += 2) {
+	for (uint32_t x = 0; x < L; ++x) {
+		for (uint32_t y = 0; y < L; y += 2) {
 			//sub board a
-			unsigned siteA = xyToSite(x, y);
-			unsigned neighA = neigh(NeighDir::YPLUS, siteA);
+			uint32_t siteA = xyToSite(x, y);
+			uint32_t neighA = neigh(NeighDir::YPLUS, siteA);
 			kya(siteA, neighA) = 1.0;
 			kya(neighA, siteA) = 1.0;
 			//sub board b
-			unsigned siteB = neighA;
-			unsigned neighB = neigh(NeighDir::YPLUS, siteB);
+			uint32_t siteB = neighA;
+			uint32_t neighB = neigh(NeighDir::YPLUS, siteB);
 			kyb(siteB, neighB) = 1.0;
 			kyb(neighB, siteB) = 1.0;
 		}
@@ -722,7 +722,7 @@ void DetHubbard::setupPropTmat_checkerboard() {
              + pow(sh, 4) * kxa*kxb*kya*kyb;
 }
 
-inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const {
+inline MatNum DetHubbard::computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const {
 	using namespace arma;
 
 	if (k2 == k1) {
@@ -736,7 +736,7 @@ inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spin
 	num sign = num(int(spinz));
 
 	//Propagator using the HS-field potential for the given timeslice
-	auto singleTimeslicePropagator = [this, sign](unsigned timeslice) -> MatNum {
+	auto singleTimeslicePropagator = [this, sign](uint32_t timeslice) -> MatNum {
 		//the cast with conv_to is necessary here, else everything would result in integers!
 		//-- an Armadillo bug IMHO
 		return diagmat(exp(sign * alpha *
@@ -745,14 +745,14 @@ inline MatNum DetHubbard::computeBmat_direct(unsigned k2, unsigned k1, Spin spin
 
 	MatNum B = singleTimeslicePropagator(k2);
 
-	for (unsigned k = k2 - 1; k >= k1 + 1; --k) {
+	for (uint32_t k = k2 - 1; k >= k1 + 1; --k) {
 		B *= singleTimeslicePropagator(k);
 	}
 
 	return B;
 }
 
-MatNum DetHubbard::computeBmat_checkerBoard(unsigned k2, unsigned k1,
+MatNum DetHubbard::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
 		Spin spinz) const {
 	//for now: in the checkerboard decomposition we generate the same type
 	//of proptmat as with the direct calculation
@@ -765,7 +765,7 @@ MatNum DetHubbard::computeBmat_checkerBoard(unsigned k2, unsigned k1,
 //	return arma::inv(arma::eye(N,N) + bTau0 * bBetaTau);
 //}
 //
-//inline MatNum DetHubbard::computeGreenFunctionNaive(unsigned timeslice,
+//inline MatNum DetHubbard::computeGreenFunctionNaive(uint32_t timeslice,
 //		Spin spinz) const {
 //	//TODO: should use stored B-matrices, for the timeslices that have not changed
 //	return computeGreenFunctionNaive(computeBmat_direct(timeslice, 0, spinz),
@@ -790,7 +790,7 @@ MatNum DetHubbard::computeBmat_checkerBoard(unsigned k2, unsigned k1,
 //	return ratioUp * ratioDown;
 //}
 
-inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) const {
+inline num DetHubbard::weightRatioSingleFlip(uint32_t site, uint32_t timeslice) const {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
 
@@ -807,15 +807,15 @@ inline num DetHubbard::weightRatioSingleFlip(unsigned site, unsigned timeslice) 
 	return ratioUp * ratioDown;
 }
 
-inline void DetHubbard::updateGreenFunctionWithFlip(unsigned site, unsigned timeslice) {
+inline void DetHubbard::updateGreenFunctionWithFlip(uint32_t site, uint32_t timeslice) {
 	auto update = [this, site](MatNum& green, num deltaSite) {
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
 		const MatNum oneMinusGreenOld = arma::eye(N,N) - greenOld;
 		num divisor = 1.0 + deltaSite * oneMinusGreenOld(site, site);
 		num greenFactor = deltaSite / divisor;
-		for (unsigned y = 0; y < N; ++y) {
-			for (unsigned x = 0; x < N; ++x) {
+		for (uint32_t y = 0; y < N; ++y) {
+			for (uint32_t x = 0; x < N; ++x) {
 				greenNew(x, y) -=  greenOld(x, site) * greenFactor *
 						oneMinusGreenOld(site, y);
 

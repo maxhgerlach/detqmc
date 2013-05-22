@@ -31,7 +31,7 @@ private:
 	}
 
 	template<class Archive>
-	void serialize(Archive& ar, const unsigned int version) {
+	void serialize(Archive& ar, const uint32_t version) {
 		(void)version;
 		ar & sampleSize & samplesAdded
 		   & values & runningAverage;

@@ -62,10 +62,10 @@ public:
 	// pass the number of the current sweep.
 	// Measurements do not need to be stored at every sweep, but the number of skipped
 	// sweeps must be constant.
-	void insertValue(unsigned curSweep) {
+	void insertValue(uint32_t curSweep) {
 		ObsType const value = obs.valRef;
-		unsigned curJkBlock = curSweep / jkBlockSizeSweeps;
-		for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
+		uint32_t curJkBlock = curSweep / jkBlockSizeSweeps;
+		for (uint32_t jb = 0; jb < jkBlockCount; ++jb) {
 			if (jb != curJkBlock) {
 				jkBlockValues[jb] += value;
 			}
@@ -87,11 +87,11 @@ public:
 			//after the first sweep lastSweepLogged==1 and so on --> here the simulation is finished.
 			//we can only calculate an error estimate if we have multiple jackknife blocks
 			if (jkBlockCount > 1 and not mcparams.sweepsHasChanged) {
-				unsigned jkBlockSizeSamples = countValues / jkBlockCount;
-				unsigned jkTotalSamples = countValues - jkBlockSizeSamples;
+				uint32_t jkBlockSizeSamples = countValues / jkBlockCount;
+				uint32_t jkTotalSamples = countValues - jkBlockSizeSamples;
 //				std::cout << jkTotalSamples << std::endl;
 				std::vector<ObsType> jkBlockAverages = jkBlockValues;	//copy
-				for (unsigned jb = 0; jb < jkBlockCount; ++jb) {
+				for (uint32_t jb = 0; jb < jkBlockCount; ++jb) {
 					jkBlockAverages[jb] /= jkTotalSamples;
 				}
 				error = jackknife(jkBlockAverages, mean, zero);
@@ -108,11 +108,11 @@ protected:
 
 	MCParams mcparams;
 	MetadataMap metaModel, metaMC;
-	unsigned jkBlockCount;
-	unsigned jkBlockSizeSweeps;
+	uint32_t jkBlockCount;
+	uint32_t jkBlockSizeSweeps;
 
-	unsigned lastSweepLogged;
-	unsigned countValues;
+	uint32_t lastSweepLogged;
+	uint32_t countValues;
 
 	std::vector<ObsType> jkBlockValues;			// running counts of jackknife block values
 	ObsType total;								// running accumulation regardless of jackknife block
@@ -154,7 +154,7 @@ public:
 	}
 
 	//in addition to base class functionality supports adding to the timeseries buffer
-	void insertValue(unsigned curSweep) {
+	void insertValue(uint32_t curSweep) {
 		num value = obs.valRef;
 		if (mcparams.timeseries) {
 			timeseriesBuffer.push_back(value);
@@ -248,17 +248,17 @@ public:
 				arma::zeros<arma::Col<num>>(observable.vectorSize)),
 		  vsize(observable.vectorSize), indexes(vsize), indexName("site")
 	{
-		for (unsigned counter = 0; counter < vsize; ++counter) {
+		for (uint32_t counter = 0; counter < vsize; ++counter) {
 			indexes[counter] = counter;
 		}
 	}
-	unsigned getVectorSize() {
+	uint32_t getVectorSize() {
 		return vsize;
 	}
 	friend void ::outputResults(
 			const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
 protected:
-	unsigned vsize;
+	uint32_t vsize;
 	arma::Col<num> indexes;
 	std::string indexName;
 };

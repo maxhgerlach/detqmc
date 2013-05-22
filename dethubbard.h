@@ -55,7 +55,7 @@ public:
 	friend std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
 	virtual ~DetHubbard();
 
-	virtual unsigned getSystemN() const;
+	virtual uint32_t getSystemN() const;
 
 	//Create a MetadataMap describing the parameters of the
 	//simulated model
@@ -72,20 +72,20 @@ protected:
 	const num t;			//hopping energy scale
 	const num U;			//interaction energy scale
 	const num mu;			//chemical potential
-	const unsigned L;	//linear lattice size
-	const unsigned d;	//spatial dimension of lattice
-	const unsigned z;   // lattice coordination number, 2 * d
-	const unsigned N;   // L ** d
+	const uint32_t L;	//linear lattice size
+	const uint32_t d;	//spatial dimension of lattice
+	const uint32_t z;   // lattice coordination number, 2 * d
+	const uint32_t N;   // L ** d
 //	const num beta;		//inverse temperature
-//	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
-//	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
-//	const unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
+//	const uint32_t m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
+//	const uint32_t s;	//interval between time slices where the Green-function is calculated from scratch
+//	const uint32_t n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
 //	const num dtau;     // beta / m
 	const num alpha;    // cosh(alpha) = exp(dtau U / 2)
 
 	PeriodicCubicLatticeNearestNeighbors neigh;
 
-	//std::function<MatNum(unsigned k2, unsigned k1, Spin spinz)> computeBmatFunc;
+	//std::function<MatNum(uint32_t k2, uint32_t k1, Spin spinz)> computeBmatFunc;
 
 	//Matrix representing the kinetic energy part of the hamiltonian: H_t
 	//for spin up or spin down -- tmat
@@ -152,11 +152,11 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	MatNum computeBmat_direct(unsigned k2, unsigned k1, Spin spinz) const;
+	MatNum computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const;
 
 	//compute the latter using a checker board decomposition with systematic
 	//error of O[dtau^2]
-	MatNum computeBmat_checkerBoard(unsigned k2, unsigned k1, Spin spinz) const;
+	MatNum computeBmat_checkerBoard(uint32_t k2, uint32_t k1, Spin spinz) const;
 
 //	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 //	//for the current aux field.
@@ -164,7 +164,7 @@ protected:
 //	MatNum computeGreenFunctionNaive(const MatNum& bTau0, const MatNum& bBetaTau) const;
 //	//Calculate the Green function from scratch for the given timeslice index
 //	//(tau = dtau * timeslice) for spin up or down
-//	MatNum computeGreenFunctionNaive(unsigned timeslice, Spin spinz) const;
+//	MatNum computeGreenFunctionNaive(uint32_t timeslice, Spin spinz) const;
 
 
 	//calculate det[1 + B_after(beta, 0)] / det[1 + B_before(beta,0)]
@@ -177,16 +177,16 @@ protected:
 	//use pre-stored Green functions.
 	//formula independent of system size or number of time slices, in this form
 	//specific to the Hubbard model
-	num weightRatioSingleFlip(unsigned site, unsigned timeslice) const;
+	num weightRatioSingleFlip(uint32_t site, uint32_t timeslice) const;
 
 
 	//Update the stored Green function matrices to reflect the state after
 	//the auxiliary field spin at site in timeslice has been flipped. This
 	//function expects this->auxfield to be in the state before the flip.
-	void updateGreenFunctionWithFlip(unsigned site, unsigned timeslice);
+	void updateGreenFunctionWithFlip(uint32_t site, uint32_t timeslice);
 
 	//update the HS auxiliary field and the green function in the single timeslice
-	void updateInSlice(unsigned timeslice);
+	void updateInSlice(uint32_t timeslice);
 
 	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
 	//calculate a tuple of four NxN matrices (a,b,c,d) with

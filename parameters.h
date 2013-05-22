@@ -36,12 +36,12 @@ struct ModelParams {
 	num U;		//Hubbard
 	num r;		//SDW
 	num mu;
-	unsigned L;
-	unsigned d;
+	uint32_t L;
+	uint32_t d;
 	num beta;
-	unsigned m;		//either specify number of timeslices 'm'
+	uint32_t m;		//either specify number of timeslices 'm'
 	num dtau;		//or timeslice separation 'dtau'
-	unsigned s;		//separation of timeslices where the Green function is calculated
+	uint32_t s;		//separation of timeslices where the Green function is calculated
 					//from scratch
 	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
 
@@ -56,7 +56,7 @@ private:
 	friend class boost::serialization::access;
 
 	template<class Archive>
-	void serialize(Archive& ar, const unsigned int version) {
+	void serialize(Archive& ar, const uint32_t version) {
 		(void)version;
 		ar & model & timedisplaced & checkerboard
 		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio
@@ -67,13 +67,13 @@ private:
 
 // Struct representing Monte Carlo simulation parameters
 struct MCParams {
-	unsigned sweeps;			// number of sweeps used for measurements
-	unsigned thermalization;	// number of warm-up sweeps allowed before equilibrium is assumed
-	unsigned jkBlocks;			// number of jackknife blocks for error estimation
+	uint32_t sweeps;			// number of sweeps used for measurements
+	uint32_t thermalization;	// number of warm-up sweeps allowed before equilibrium is assumed
+	uint32_t jkBlocks;			// number of jackknife blocks for error estimation
 	bool timeseries;			// if true, write time series of individual measurements to disk
-	unsigned measureInterval;	// take measurements every measureInterval sweeps
-	unsigned saveInterval;		// write measurements to disk every saveInterval sweeps
-	unsigned long rngSeed;		// seed for random number generator
+	uint32_t measureInterval;	// take measurements every measureInterval sweeps
+	uint32_t saveInterval;		// write measurements to disk every saveInterval sweeps
+	uint32_t rngSeed;		// seed for random number generator
 
 	std::string greenUpdateType; 	//"simple" or "stabilized"
 
@@ -90,7 +90,7 @@ private:
 	friend class boost::serialization::access;
 
 	template<class Archive>
-	void serialize(Archive& ar, const unsigned int version) {
+	void serialize(Archive& ar, const uint32_t version) {
 		(void)version;
 		ar & sweeps & thermalization & jkBlocks & timeseries
 		   & measureInterval & saveInterval & rngSeed & greenUpdateType

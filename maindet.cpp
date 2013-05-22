@@ -50,13 +50,13 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 			("t", po::value<num>(&modelpar.t), "hopping energy")
 			("U", po::value<num>(&modelpar.U), "potential energy")
 			("mu", po::value<num>(&modelpar.mu), "chemical potential")
-			("L", po::value<unsigned>(&modelpar.L), "linear spatial extent")
-			("d", po::value<unsigned>(&modelpar.d), "spatial dimension")
+			("L", po::value<uint32_t>(&modelpar.L), "linear spatial extent")
+			("d", po::value<uint32_t>(&modelpar.d), "spatial dimension")
 			("beta", po::value<num>(&modelpar.beta), "inverse temperature (in units of 1/t, kB=1)")
 			("temp", po::value<num>(), "temperature (in units of t, kB=1)")
 			("dtau", po::value<num>(&modelpar.dtau), "imaginary time discretization step size (beta = m*dtau). Pass either this or m. If dtau is specified, m is chosen to be compatible with s and beta. In turn the value of dtau actually used in the simulation may be smaller than this.")
-			("m", po::value<unsigned>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau). Pass either this or dtau.")
-			("s", po::value<unsigned>(&modelpar.s)->default_value(1), "separation of timeslices where the Green-function is calculated from scratch with stabilized updates.")
+			("m", po::value<uint32_t>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau). Pass either this or dtau.")
+			("s", po::value<uint32_t>(&modelpar.s)->default_value(1), "separation of timeslices where the Green-function is calculated from scratch with stabilized updates.")
 			("accRatio", po::value<num>(&modelpar.accRatio)->default_value(0.5), "for SDW: target acceptance ratio for tuning spin update box size")
 			;
 
@@ -64,13 +64,13 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 	mcpar.saveInterval = 0;
 	mcOptions.add_options()
 			("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
-			("sweeps", po::value<unsigned>(&mcpar.sweeps), "number of sweeps used for measurements")
-			("thermalization", po::value<unsigned>(&mcpar.thermalization), "number of warm-up sweeps")
-			("jkBlocks", po::value<unsigned>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
+			("sweeps", po::value<uint32_t>(&mcpar.sweeps), "number of sweeps used for measurements")
+			("thermalization", po::value<uint32_t>(&mcpar.thermalization), "number of warm-up sweeps")
+			("jkBlocks", po::value<uint32_t>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
 			("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
-			("measureInterval", po::value<unsigned>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
-			("saveInterval", po::value<unsigned>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
-			("rngSeed", po::value<unsigned long>(&mcpar.rngSeed), "seed for pseudo random number generator")
+			("measureInterval", po::value<uint32_t>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
+			("saveInterval", po::value<uint32_t>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation")
+			("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
 			("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
 					"file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
 			;

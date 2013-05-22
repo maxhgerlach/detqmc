@@ -63,7 +63,7 @@ public:
 
     //write the whole data from the two containers to the file
     void writeData(const Container& dataSeries);
-    void writeData(const Container& dataSeries, unsigned floatPrecision);
+    void writeData(const Container& dataSeries, uint32_t floatPrecision);
 private:
     std::ofstream output;
     std::string header;
@@ -129,7 +129,7 @@ void DataSeriesWriterSuccessive<Container>
 
 template <class Container>
 void DataSeriesWriterSuccessive<Container>
-::writeData(const Container& data, unsigned floatPrecision) {
+::writeData(const Container& data, uint32_t floatPrecision) {
     output.precision(floatPrecision);
     output.setf(std::ios::scientific, std::ios::floatfield);
     for (auto iter = data.cbegin(); iter != data.cend(); ++iter) {

@@ -34,7 +34,7 @@ class DetSDW: public DetModelGC<1, cpx> {
 public:
 	friend std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars);
 	virtual ~DetSDW();
-	virtual unsigned getSystemN() const;
+	virtual uint32_t getSystemN() const;
 	virtual MetadataMap prepareModelMetadataMap() const;
     virtual void measure();
 
@@ -42,11 +42,11 @@ public:
 protected:
 	RngWrapper& rng;
 
-	static const unsigned d = 2;
-	static const unsigned z = 2*d;
+	static const uint32_t d = 2;
+	static const uint32_t z = 2*d;
 	const bool checkerboard;
-	const unsigned L;
-	const unsigned N;
+	const uint32_t L;
+	const uint32_t N;
 	const num r;
 	const num mu;
 	const num c;
@@ -85,7 +85,6 @@ protected:
 	MatNum phiSinh;			// sinh(dtau * |phi|) / |phi|
 
 
-
 	num phiDelta;		//MC step size for field components
 	//used to adjust phiDelta
 	num targetAccRatio;
@@ -117,21 +116,21 @@ protected:
     }
     template<typename Callable>
     void for_each_site(Callable func) {
-    	for (unsigned site = 0; site < N; ++site) {
+    	for (uint32_t site = 0; site < N; ++site) {
     		func(site);
     	}
     }
     template<typename Callable>
     void for_each_timeslice(Callable func) {
-    	for (unsigned k = 1; k <= m; ++k) {
+    	for (uint32_t k = 1; k <= m; ++k) {
     		func(k);
     	}
     }
     template<typename CallableSiteTimeslice, typename V>
     V sumWholeSystem(CallableSiteTimeslice f, V init) {
 #pragma omp parallel for reduction(+:init)
-    	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-    		for (unsigned site = 0; site < N; ++site) {
+    	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+    		for (uint32_t site = 0; site < N; ++site) {
 				init += f(site, timeslice);
 			}
     	}
@@ -162,22 +161,22 @@ protected:
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
-    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1);
-    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, unsigned k2, unsigned k1);
-    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1);
-    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, unsigned k2, unsigned k1);
+    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
 
-	MatCpx computeBmatSDW(unsigned k2, unsigned k1) const;			//compute B-matrix using dense matrix products
-//	MatCpx computeBmatSDW_checkerboard(unsigned k2, unsigned k1) const;
+	MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;			//compute B-matrix using dense matrix products
+//	MatCpx computeBmatSDW_checkerboard(uint32_t k2, uint32_t k1) const;
 
-	virtual void updateInSlice(unsigned timeslice);
+	virtual void updateInSlice(uint32_t timeslice);
 	//this one does some adjusting of the box size from which new fields are chosen:
-	virtual void updateInSliceThermalization(unsigned timeslice);
+	virtual void updateInSliceThermalization(uint32_t timeslice);
 
 	//functions used by updateInSlice:
 	typedef VecNum::fixed<3> Phi;		//value of the three-component field at a single site and timeslice
-	Phi proposeNewField(unsigned site, unsigned timeslice);
-	num deltaSPhi(unsigned site, unsigned timeslice, Phi newphi);
+	Phi proposeNewField(uint32_t site, uint32_t timeslice);
+	num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
 
 	//compute the total value of the action associated with the field phi
 	num phiAction();

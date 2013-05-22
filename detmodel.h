@@ -51,7 +51,7 @@ class SerializeContentsKey;
 class DetModel {
 public:
 	virtual ~DetModel() { };
-	virtual unsigned getSystemN() const = 0;
+	virtual uint32_t getSystemN() const = 0;
 
 	//Create a MetadataMap describing the parameters of the
 	//simulated model
@@ -99,10 +99,10 @@ public:
 //GreenComponents is the number of independent sectors of the Green's function,
 //e.g. in the S=1/2-Hubbard model it is 2 for spin up and spin down
 
-template<unsigned GreenComponents, typename ValueType = num>
+template<uint32_t GreenComponents, typename ValueType = num>
 class DetModelGC : public DetModel {
 protected:
-	DetModelGC(const ModelParams& pars, unsigned greenComponentSize);
+	DetModelGC(const ModelParams& pars, uint32_t greenComponentSize);
 public:
 	virtual ~DetModelGC()
 	{ }
@@ -136,20 +136,20 @@ protected:
     typedef std::tuple<MatV,MatV,MatV,MatV> MatV4;
 
     //update the auxiliary field and the green function in the single timeslice
-	virtual void updateInSlice(unsigned timeslice) = 0;
+	virtual void updateInSlice(uint32_t timeslice) = 0;
 	//separate function to be called during thermalization, by default just do the
 	//same; a derived class may override this to introduce an adaptive behavior
-	virtual void updateInSliceThermalization(unsigned timeslice) {
+	virtual void updateInSliceThermalization(uint32_t timeslice) {
 		updateInSlice(timeslice);
 	}
 
     //functions to compute B-matrices for the different Green function sectors
-    typedef std::function<MatV(unsigned k2, unsigned k1)> FuncComputeBmat;
+    typedef std::function<MatV(uint32_t k2, uint32_t k1)> FuncComputeBmat;
     std::array<FuncComputeBmat, GreenComponents> computeBmat;			// B(k2*dtau, k1*dtau)
 
     //functions that have the same effect as multiplying a B-Matrix (or its inverse) to the left
     //or right of some matrix -- useful if a checkerboard-breakup is performed
-    typedef std::function<MatV(const MatV& A, unsigned k2, unsigned k1)> FuncMultiplyBmat;
+    typedef std::function<MatV(const MatV& A, uint32_t k2, uint32_t k1)> FuncMultiplyBmat;
     std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmat;		// R := B(k2*dtau, k1*dtau) * A
     std::array<FuncMultiplyBmat, GreenComponents> rightMultiplyBmat;	// R := A * B(k2*dtau, k1*dtau)
     std::array<FuncMultiplyBmat, GreenComponents> leftMultiplyBmatInv;	// R := B(k2*dtau, k1*dtau)^-1 * A
@@ -158,7 +158,7 @@ protected:
     //functions that compute Green functions from UdV-decomposed matrices L/R
     //for a single timeslice
     //and update the member variables green -- and if desired -- greenFwd and greenBwd
-    typedef std::function<void(unsigned targetSlice, const UdVV& UdV_L, const UdVV& UdV_R
+    typedef std::function<void(uint32_t targetSlice, const UdVV& UdV_L, const UdVV& UdV_R
     		                   )> FuncUpdateGreenFunctionUdV;
     std::array<FuncUpdateGreenFunctionUdV, GreenComponents> updateGreenFunctionUdV;
 	//Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
@@ -175,7 +175,7 @@ protected:
     //for each greenComponent call a function with the greenComponent as a parameter
     template<typename Callable>
     void for_each_gc(Callable func) {
-    	for (unsigned gc = 0; gc < GreenComponents; ++gc) {
+    	for (uint32_t gc = 0; gc < GreenComponents; ++gc) {
     		func(gc);
     	}
     }
@@ -184,15 +184,15 @@ protected:
     void setupUdVStorage();
 
     //helpers for sweep(), sweepThermalization():
-	void advanceDownGreen(unsigned l, unsigned gc);
-	void wrapDownGreen_timedisplaced(unsigned k, unsigned gc);
-	void wrapDownGreen(unsigned k, unsigned gc);
-	void advanceUpGreen(unsigned l, unsigned gc);
-	void advanceUpUpdateStorage(unsigned l, unsigned gc);
-	void wrapUpGreen_timedisplaced(unsigned k, unsigned gc);
-	void wrapUpGreen(unsigned k, unsigned gc);
+	void advanceDownGreen(uint32_t l, uint32_t gc);
+	void wrapDownGreen_timedisplaced(uint32_t k, uint32_t gc);
+	void wrapDownGreen(uint32_t k, uint32_t gc);
+	void advanceUpGreen(uint32_t l, uint32_t gc);
+	void advanceUpUpdateStorage(uint32_t l, uint32_t gc);
+	void wrapUpGreen_timedisplaced(uint32_t k, uint32_t gc);
+	void wrapUpGreen(uint32_t k, uint32_t gc);
 	//functions to do the wrapping are set at runtime (depending on whether timedisplaced routines are used or not)
-	typedef std::function<void(unsigned k, unsigned greenComponent)> FuncWrapGreen;
+	typedef std::function<void(uint32_t k, uint32_t greenComponent)> FuncWrapGreen;
 	FuncWrapGreen wrapUp;
 	FuncWrapGreen wrapDown;
 	//these receive as a template parameter the function to call for updates in a slice
@@ -200,15 +200,15 @@ protected:
 	template <class CallableUpdateInSlice> void sweepDown(CallableUpdateInSlice funcUpdateInSlice);
 
 	//Green component size, e.g. sz == N for the Hubbard model
-	const unsigned sz;
+	const uint32_t sz;
 
     //some simulation parameters are already relevant for member functions implemented
     //in this base class, the rest will only be used in derived classes
 	const bool timedisplaced;
 	const num beta;		//inverse temperature
-	const unsigned m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
-	const unsigned s;	//interval between time slices where the Green-function is calculated from scratch
-	const unsigned n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
+	const uint32_t m;	//number of imaginary time discretization steps (time slices) beta*m=dtau
+	const uint32_t s;	//interval between time slices where the Green-function is calculated from scratch
+	const uint32_t n;	//number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
 	const num dtau;     // beta / m
 
 
@@ -250,8 +250,8 @@ public:
 };
 
 
-template<unsigned GC, typename V>
-DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSize) :
+template<uint32_t GC, typename V>
+DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
 	computeBmat{}, leftMultiplyBmat{}, rightMultiplyBmat{}, leftMultiplyBmatInv{}, rightMultiplyBmatInv{},
 	updateGreenFunctionUdV{}, wrapUp(), wrapDown(),
 	sz(greenComponentSize),
@@ -261,10 +261,10 @@ DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSiz
 	obsScalar(), obsVector(), obsKeyValue()
 {
 	if (timedisplaced) {
-		wrapUp = [this](unsigned k, unsigned gc) { this->wrapUpGreen_timedisplaced(k, gc); };
-		wrapDown = [this](unsigned k, unsigned gc) { this->wrapDownGreen_timedisplaced(k, gc); };
-		for_each_gc( [this](unsigned gc) {
-			updateGreenFunctionUdV[gc] = [this, gc](unsigned targetSlice,
+		wrapUp = [this](uint32_t k, uint32_t gc) { this->wrapUpGreen_timedisplaced(k, gc); };
+		wrapDown = [this](uint32_t k, uint32_t gc) { this->wrapDownGreen_timedisplaced(k, gc); };
+		for_each_gc( [this](uint32_t gc) {
+			updateGreenFunctionUdV[gc] = [this, gc](uint32_t targetSlice,
 					                                const UdVV& UdV_L, const UdVV& UdV_R) {
 				std::tie(std::ignore, greenBwd[gc].slice(targetSlice),
 						 greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice)) =
@@ -272,10 +272,10 @@ DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSiz
 			};
 		} );
 	} else {
-		wrapUp = [this](unsigned k, unsigned gc) { this->wrapUpGreen(k, gc); };
-		wrapDown = [this](unsigned k, unsigned gc) { this->wrapDownGreen(k, gc); };
-		for_each_gc( [this](unsigned gc) {
-			updateGreenFunctionUdV[gc] = [this, gc](unsigned targetSlice,
+		wrapUp = [this](uint32_t k, uint32_t gc) { this->wrapUpGreen(k, gc); };
+		wrapDown = [this](uint32_t k, uint32_t gc) { this->wrapDownGreen(k, gc); };
+		for_each_gc( [this](uint32_t gc) {
+			updateGreenFunctionUdV[gc] = [this, gc](uint32_t targetSlice,
 					                                const UdVV& UdV_L, const UdVV& UdV_R) {
 				green[gc].slice(targetSlice) = this->greenFromUdV(UdV_L, UdV_R);
 			};
@@ -283,33 +283,33 @@ DetModelGC<GC,V>::DetModelGC(const ModelParams& pars, unsigned greenComponentSiz
 	}
 
 	// Default functors for multiplication with B-matrices
-	for_each_gc( [this](unsigned gc) {
-		leftMultiplyBmat[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+	for_each_gc( [this](uint32_t gc) {
+		leftMultiplyBmat[gc] = [this, gc](const MatV& A, uint32_t k2, uint32_t k1) {
 			return computeBmat[gc](k2, k1) * A;
 		};
-		rightMultiplyBmat[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+		rightMultiplyBmat[gc] = [this, gc](const MatV& A, uint32_t k2, uint32_t k1) {
 			return A * computeBmat[gc](k2, k1);
 		};
-		leftMultiplyBmatInv[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+		leftMultiplyBmatInv[gc] = [this, gc](const MatV& A, uint32_t k2, uint32_t k1) {
 			return arma::inv(computeBmat[gc](k2, k1)) * A;
 		};
-		rightMultiplyBmatInv[gc] = [this, gc](const MatV& A, unsigned k2, unsigned k1) {
+		rightMultiplyBmatInv[gc] = [this, gc](const MatV& A, uint32_t k2, uint32_t k1) {
 			return A * arma::inv(computeBmat[gc](k2, k1));
 		};
 	} );
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 std::vector<ScalarObservable> DetModelGC<GC,V>::getScalarObservables() {
 	return obsScalar;
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 std::vector<VectorObservable> DetModelGC<GC,V>::getVectorObservables() {
 	return obsVector;
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 std::vector<KeyValueObservable> DetModelGC<GC,V>::getKeyValueObservables() {
 	return obsKeyValue;
 }
@@ -318,17 +318,17 @@ std::vector<KeyValueObservable> DetModelGC<GC,V>::getKeyValueObservables() {
 
 
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 void DetModelGC<GC,V>::setupUdVStorage() {
 	timing.start("setupUdVStorage");
-	auto setup = [this](unsigned gc) {
+	auto setup = [this](uint32_t gc) {
 		std::vector<UdVV>& storage = UdVStorage[gc];
 		storage = std::vector<UdVV>(n + 1);
 
 		storage[0] = eye_UdV;
 		storage[1] = udvDecompose(computeBmat[gc](s, 0));
 
-		for (unsigned l = 1; l <= n - 1; ++l) {
+		for (uint32_t l = 1; l <= n - 1; ++l) {
 			const MatV& U_l = storage[l].U;
 			const VecV& d_l = storage[l].d;
 			const MatV& V_l = storage[l].V;
@@ -346,10 +346,10 @@ void DetModelGC<GC,V>::setupUdVStorage() {
 
 
 //warning: the thermalization version below is almost a copy of this
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 void DetModelGC<GC,V>::sweepSimple() {
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		for_each_gc( [this, timeslice](unsigned gc) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for_each_gc( [this, timeslice](uint32_t gc) {
 			green[gc].slice(timeslice) =
 					arma::inv(arma::eye(sz,sz) + computeBmat[gc](timeslice, 0) *
 					                              computeBmat[gc](m, timeslice));
@@ -359,10 +359,10 @@ void DetModelGC<GC,V>::sweepSimple() {
 }
 
 //warning: this is almost a copy of sweepSimple() defined above
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 void DetModelGC<GC,V>::sweepSimpleThermalization() {
-	for (unsigned timeslice = 1; timeslice <= m; ++timeslice) {
-		for_each_gc( [this, timeslice](unsigned gc) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for_each_gc( [this, timeslice](uint32_t gc) {
 			green[gc].slice(timeslice) =
 					arma::inv(arma::eye(sz,sz) + computeBmat[gc](timeslice, 0) *
 					                              computeBmat[gc](m, timeslice));
@@ -373,7 +373,7 @@ void DetModelGC<GC,V>::sweepSimpleThermalization() {
 
 
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 typename DetModelGC<GC,V>::MatV DetModelGC<GC,V>::greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const {
 	timing.start("greenFromUdV");
 	//variable names changed according to labeling in notes
@@ -396,7 +396,7 @@ typename DetModelGC<GC,V>::MatV DetModelGC<GC,V>::greenFromUdV(const UdVV& UdV_l
 }
 
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 typename DetModelGC<GC,V>::MatV4 DetModelGC<GC,V>::greenFromUdV_timedisplaced(
 		const UdVV& UdV_l, const UdVV& UdV_r) const {
 	timing.start("greenFromUdV_timedisplaced");
@@ -409,7 +409,7 @@ typename DetModelGC<GC,V>::MatV4 DetModelGC<GC,V>::greenFromUdV_timedisplaced(
 	const VecV& dr = UdV_r.d;
 	const MatV& Vr = UdV_r.V;
 
-	unsigned sz = Ul.n_rows;
+	uint32_t sz = Ul.n_rows;
 
 	//submatrix view helpers for 2*N x 2*N matrices
 	auto upleft = [sz](MatV& m) {
@@ -457,8 +457,8 @@ typename DetModelGC<GC,V>::MatV4 DetModelGC<GC,V>::greenFromUdV_timedisplaced(
 
 //compute the green function in timeslice s*(l-1) from scratch with the help
 //of the B-matrices computed before in the last up-sweep
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::advanceDownGreen(uint32_t l, uint32_t gc) {
 	timing.start("advanceDownGreen");
 
 	std::vector<UdVV>& storage = UdVStorage[gc];
@@ -477,7 +477,7 @@ void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned gc) {
 
 	//UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
 	const UdVV& UdV_R = storage[l - 1];
-	unsigned next = s * (l - 1);
+	uint32_t next = s * (l - 1);
 	updateGreenFunctionUdV[gc](next, UdV_L, UdV_R);
 	storage[l - 1] = UdV_L;
 
@@ -486,8 +486,8 @@ void DetModelGC<GC,V>::advanceDownGreen(unsigned l, unsigned gc) {
 
 //compute the green function at k-1 by wrapping the one at k (accumulates rounding errors),
 //also compute time-displaced Green functions
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(unsigned k, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(uint32_t k, uint32_t gc) {
 	timing.start("wrapDownGreen_timedisplaced");
 //	MatV B_k = computeBmat[greenComponent](k, k - 1);
 //	MatV B_k_inv = computeBmatInverse[greenComponent](k, k - 1);
@@ -502,8 +502,8 @@ void DetModelGC<GC,V>::wrapDownGreen_timedisplaced(unsigned k, unsigned gc) {
 
 //compute the green function at k-1 by wrapping the one at k (accumulates rounding errors),
 //only equal-time Green functions
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapDownGreen(unsigned k, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::wrapDownGreen(uint32_t k, uint32_t gc) {
 	timing.start("wrapDownGreen");
 //	MatV B_k = computeBmat[greenComponent](k, k - 1);
 //	green[greenComponent].slice(k - 1) = arma::inv(B_k) * green[greenComponent].slice(k) * B_k;
@@ -514,8 +514,8 @@ void DetModelGC<GC,V>::wrapDownGreen(unsigned k, unsigned gc) {
 
 //update the green function in timeslice s*(l+1) from scratch with the help
 //of B-matrices computed before
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::advanceUpGreen(uint32_t l, uint32_t gc) {
 	timing.start("advanceUpGreen");
 
 	std::vector<UdVV>& storage = UdVStorage[gc];
@@ -535,7 +535,7 @@ void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned gc) {
 	UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat[gc](U_l, s*(l+1), s*l) * arma::diagmat(d_l));
 	UdV_temp.V *= V_l;
 
-	unsigned next = s * (l + 1);
+	uint32_t next = s * (l + 1);
 	updateGreenFunctionUdV[gc](next, UdV_lp1, UdV_temp);
 
 	//storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
@@ -545,8 +545,8 @@ void DetModelGC<GC,V>::advanceUpGreen(unsigned l, unsigned gc) {
 
 //Given B(l*s*dtau, 0) from the last step in the storage, compute
 //B((l+1)*s*dtau, 0) and put it into storage
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::advanceUpUpdateStorage(unsigned l, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::advanceUpUpdateStorage(uint32_t l, uint32_t gc) {
 	timing.start("advanceUpUpdateStorage");
 
 	std::vector<UdVV>& storage = UdVStorage[gc];
@@ -566,8 +566,8 @@ void DetModelGC<GC,V>::advanceUpUpdateStorage(unsigned l, unsigned gc) {
 
 //compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
 //also handle the time-displaced Green functions
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(unsigned k, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(uint32_t k, uint32_t gc) {
 	timing.start("wrapUpGreen_timedisplaced");
 //	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
@@ -582,8 +582,8 @@ void DetModelGC<GC,V>::wrapUpGreen_timedisplaced(unsigned k, unsigned gc) {
 
 //compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
 //only compute equal-time Green functions
-template<unsigned GC, typename V>
-void DetModelGC<GC,V>::wrapUpGreen(unsigned k, unsigned gc) {
+template<uint32_t GC, typename V>
+void DetModelGC<GC,V>::wrapUpGreen(uint32_t k, uint32_t gc) {
 	timing.start("wrapUpGreen");
 //	MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //	green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
@@ -592,75 +592,75 @@ void DetModelGC<GC,V>::wrapUpGreen(unsigned k, unsigned gc) {
 	timing.stop("wrapUpGreen");
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 template<class CallableUpdateInSlice>
 void DetModelGC<GC,V>::sweepUp(CallableUpdateInSlice funcUpdateInSlice) {
 	//We need to have computed the Green function for time slice k=0 so that the first
 	//wrap-up step is correct.
-	for (unsigned k = 1; k <= s-1; ++k) {
-		for_each_gc( [this, k](unsigned gc) { wrapUp(k - 1, gc); } );
+	for (uint32_t k = 1; k <= s-1; ++k) {
+		for_each_gc( [this, k](uint32_t gc) { wrapUp(k - 1, gc); } );
 		funcUpdateInSlice(k);
 	}
 	//set storage at k=0 to unity for the upcoming sweep:
-	for_each_gc( [this](unsigned gc) { UdVStorage[gc][0] = eye_UdV; } );
-	for (unsigned l = 1; l < n; ++l) {
-		for_each_gc( [this, l](unsigned gc) { this->advanceUpGreen(l-1, gc); });
+	for_each_gc( [this](uint32_t gc) { UdVStorage[gc][0] = eye_UdV; } );
+	for (uint32_t l = 1; l < n; ++l) {
+		for_each_gc( [this, l](uint32_t gc) { this->advanceUpGreen(l-1, gc); });
 		funcUpdateInSlice(l*s);
-		for_each_gc( [this, l](unsigned gc) { this->advanceUpUpdateStorage(l-1, gc); });
-		for (unsigned k = l*s + 1; k <= l*s + (s-1); ++k) {
-			for_each_gc( [this, k](unsigned gc) { wrapUp(k - 1, gc); } );
+		for_each_gc( [this, l](uint32_t gc) { this->advanceUpUpdateStorage(l-1, gc); });
+		for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
+			for_each_gc( [this, k](uint32_t gc) { wrapUp(k - 1, gc); } );
 			funcUpdateInSlice(k);
 		}
 	}
 	funcUpdateInSlice(n*s);
-	for_each_gc( [this](unsigned gc) { this->advanceUpUpdateStorage(n - 1, gc); } );
+	for_each_gc( [this](uint32_t gc) { this->advanceUpUpdateStorage(n - 1, gc); } );
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 template <class CallableUpdateInSlice>
 void DetModelGC<GC,V>::sweepDown(CallableUpdateInSlice funcUpdateInSlice) {
 	//to compute green function for timeslice tau=beta:
 	//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 	//The latter is given in storage slice m from the last sweep.
-	for_each_gc( [this](unsigned gc) { updateGreenFunctionUdV[gc](m, eye_UdV, UdVStorage[gc][n]); } );
-	for_each_gc( [this](unsigned gc) { UdVStorage[gc][n] = eye_UdV; } );
-	for (unsigned l = n; l >= 1; --l) {
+	for_each_gc( [this](uint32_t gc) { updateGreenFunctionUdV[gc](m, eye_UdV, UdVStorage[gc][n]); } );
+	for_each_gc( [this](uint32_t gc) { UdVStorage[gc][n] = eye_UdV; } );
+	for (uint32_t l = n; l >= 1; --l) {
 		funcUpdateInSlice(l*s);
-		for (unsigned k = l*s - 1; k >= (l-1)*s + 1; --k) {
-			for_each_gc( [this, k](unsigned gc) { wrapDown(k + 1, gc); } );
+		for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
+			for_each_gc( [this, k](uint32_t gc) { wrapDown(k + 1, gc); } );
 			funcUpdateInSlice(k);
 		}
 		//TODO: this will also compute the Green function at k=0, which technically is not necessary
 		//but sensible for the following sweep up
 		//TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
-		for_each_gc( [this, l](unsigned gc) { this->advanceDownGreen(l, gc); } );
+		for_each_gc( [this, l](uint32_t gc) { this->advanceDownGreen(l, gc); } );
 	}
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 void DetModelGC<GC,V>::sweep() {
 	timing.start("sweep");
 
 	if (lastSweepDir == SweepDirection::Up) {
-		sweepDown([this](unsigned k){ this->updateInSlice(k); });
+		sweepDown([this](uint32_t k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
-		sweepUp([this](unsigned k){ this->updateInSlice(k); });
+		sweepUp([this](uint32_t k){ this->updateInSlice(k); });
 		lastSweepDir = SweepDirection::Up;
 	}
 
 	timing.stop("sweep");
 }
 
-template<unsigned GC, typename V>
+template<uint32_t GC, typename V>
 void DetModelGC<GC,V>::sweepThermalization() {
 	timing.start("sweep");
 
 	if (lastSweepDir == SweepDirection::Up) {
-		sweepDown([this](unsigned k){ this->updateInSliceThermalization(k); });
+		sweepDown([this](uint32_t k){ this->updateInSliceThermalization(k); });
 		lastSweepDir = SweepDirection::Down;
 	} else if (lastSweepDir == SweepDirection::Down) {
-		sweepUp([this](unsigned k){ this->updateInSliceThermalization(k); });
+		sweepUp([this](uint32_t k){ this->updateInSliceThermalization(k); });
 		lastSweepDir = SweepDirection::Up;
 	}
 

@@ -24,9 +24,9 @@ template<typename T>
 T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T()) {
 	using std::pow;
 	using arma::pow;
-	unsigned N = numbers.size();
+	uint32_t N = numbers.size();
     T sum = zeroValue;
-    for (unsigned i = 0; i < N; ++i) {
+    for (uint32_t i = 0; i < N; ++i) {
         sum += pow(numbers[i] - meanValue, 2);
     }
     return sum / (N-1);
@@ -37,23 +37,23 @@ T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T())
 // to the data
 template<typename T>
 std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
-		const std::vector<T>& data, unsigned jkBlocks) {
+		const std::vector<T>& data, uint32_t jkBlocks) {
 	std::vector<T> blockEstimates(jkBlocks, T(0));
-	unsigned jkBlockSize = data.size() / jkBlocks;
+	uint32_t jkBlockSize = data.size() / jkBlocks;
 	//if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
-	unsigned totalSamples = jkBlocks * jkBlockSize;
+	uint32_t totalSamples = jkBlocks * jkBlockSize;
 
-	for (unsigned i = 0; i < totalSamples; ++i) {
+	for (uint32_t i = 0; i < totalSamples; ++i) {
 		T value = func(data[i]);
-		unsigned curBlock = i / jkBlockSize;
-		for (unsigned jb = 0; jb < jkBlocks; ++jb) {
+		uint32_t curBlock = i / jkBlockSize;
+		for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
 			if (jb != curBlock) {
 				blockEstimates[jb] += value;
 			}
 		}
 	}
 
-	unsigned jkTotalSamples = totalSamples - jkBlockSize;
+	uint32_t jkTotalSamples = totalSamples - jkBlockSize;
 	for (T& blockEstimate : blockEstimates) {
 		blockEstimate /= T(jkTotalSamples);
 	}
@@ -65,7 +65,7 @@ std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
 
 // Compute jackknife-block-wise estimates of the average of data
 template<typename T>
-std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, unsigned jkBlocks) {
+std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, uint32_t jkBlocks) {
 	return jackknifeBlockEstimates<T>([](T v) { return v; },	//identity lambda function
 			data, jkBlocks);
 }
@@ -81,9 +81,9 @@ T jackknife(
     using std::sqrt;
     using arma::pow;
     using arma::sqrt;
-	unsigned bc = blockValues.size();
+	uint32_t bc = blockValues.size();
     T squaredDeviation = zeroValue;
-    for (unsigned b = 0; b < bc; ++b) {
+    for (uint32_t b = 0; b < bc; ++b) {
         squaredDeviation += pow(blockAverage - blockValues[b], 2);
     }
     return sqrt((double(bc - 1) / double(bc)) * squaredDeviation);
@@ -96,8 +96,8 @@ T jackknife(
 //template<typename T>
 //std::tuple<T,T> jackknife(const std::vector<T>& blockValues, const T& zeroValue = T()) {
 //    T outBlockAverage = zeroValue;
-//	unsigned bc = blockValues.size();
-//    for (unsigned b = 0; b < bc; ++b) {
+//	uint32_t bc = blockValues.size();
+//    for (uint32_t b = 0; b < bc; ++b) {
 //        outBlockAverage += blockValues[b];
 //    }
 //    outBlockAverage /= static_cast<T>(bc);

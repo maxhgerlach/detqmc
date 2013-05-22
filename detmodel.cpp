@@ -53,7 +53,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 		if (pars.s * pars.dtau > pars.beta) {
 			throw ParameterWrong("Parameters are incompatible: s * dtau > beta !");
 		}
-		unsigned n = unsigned(std::ceil(pars.beta / (pars.s * pars.dtau)));
+		uint32_t n = uint32_t(std::ceil(pars.beta / (pars.s * pars.dtau)));
 		pars.m = pars.s * n;
 	} else if (pars.specified.count("m") == 0) {
 		throw ParameterMissing("m");

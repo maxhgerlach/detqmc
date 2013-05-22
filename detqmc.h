@@ -77,19 +77,19 @@ protected:
 	typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
 	std::vector<ObsPtr> obsHandlers;
 	std::vector<VecObsPtr> vecObsHandlers;		//need to be pointers: holds both KeyValueObservableHandlers and VectorObservableHandlers
-	unsigned sweepsDone;						//Measurement sweeps done
-	unsigned sweepsDoneThermalization;			//thermalization sweeps done
+	uint32_t sweepsDone;						//Measurement sweeps done
+	uint32_t sweepsDoneThermalization;			//thermalization sweeps done
 
-	unsigned swCounter;			//helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
+	uint32_t swCounter;			//helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
 
 	boost::timer::cpu_timer elapsedTimer;			//during this simulation run
-	unsigned long curWalltimeSecs() {
+	uint32_t curWalltimeSecs() {
 		return elapsedTimer.elapsed().wall / 1000 / 1000 / 1000; // ns->mus->ms->s
 	}
-	unsigned long totalWalltimeSecs;				//this is serialized and carries the elapsed walltime in seconds
+	uint32_t totalWalltimeSecs;				//this is serialized and carries the elapsed walltime in seconds
 													//accumulated over all runs, updated on call of saveResults()
-	unsigned long walltimeSecsLastSaveResults;		//timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
-	unsigned long grantedWalltimeSecs;				//walltime the simulation is allowed to run
+	uint32_t walltimeSecsLastSaveResults;		//timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
+	uint32_t grantedWalltimeSecs;				//walltime the simulation is allowed to run
 
 
 	MetadataMap prepareMCMetadataMap() const;

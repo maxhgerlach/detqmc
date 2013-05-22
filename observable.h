@@ -33,9 +33,9 @@ typedef Observable<num> ScalarObservable;
 
 
 struct VectorObservable : public Observable<arma::Col<num>> {
-	unsigned vectorSize;
+	uint32_t vectorSize;
 
-	VectorObservable(RefType v, unsigned vectorSize_,
+	VectorObservable(RefType v, uint32_t vectorSize_,
 			const std::string& name_, const std::string& short_)
 		: Observable<arma::Col<num>>(v, name_, short_),
 		  vectorSize(vectorSize_)

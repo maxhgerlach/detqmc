@@ -25,20 +25,20 @@ struct UdV {
 	//default constructor: leaves everything empty
 	UdV() : U(), d(), V() {}
 	//specify matrix size: initialize to identity
-	UdV(unsigned size) :
+	UdV(uint32_t size) :
 		U(arma::eye(size,size)), d(arma::ones(size)), V(arma::eye(size,size))
 	{ }
 private:
     //for serialization with Boost
 	friend class boost::serialization::access;
 	template<class Archive>
-	void serialize(Archive& ar, const unsigned int /* version */) {
+	void serialize(Archive& ar, const uint32_t /* version */) {
 		ar & U & d & V;
 	}
 };
 
 template<> inline
-UdV<std::complex<double>>::UdV(unsigned size) :
+UdV<std::complex<double>>::UdV(uint32_t size) :
 	U(arma::eye(size,size), arma::zeros(size,size)),
 	d(arma::ones(size), arma::zeros(size)),
 	V(arma::eye(size,size), arma::zeros(size,size))
@@ -60,7 +60,7 @@ UdV<num> udvDecompose(const arma::Mat<num>& mat) {
 	timing.stop("qr");
 	//normalize rows of V to obtain scales in d:
 	result.d = arma::Col<num>(mat.n_rows);
-	for (unsigned rown = 0; rown < mat.n_rows; ++rown) {
+	for (uint32_t rown = 0; rown < mat.n_rows; ++rown) {
 		const num norm = arma::norm(result.V.row(rown), 2);
 		result.d[rown] = norm;
 		result.V.row(rown) /= norm;

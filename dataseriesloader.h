@@ -42,8 +42,8 @@ class DataSeriesLoader {
     MetadataMap meta;
 public:
     DataSeriesLoader();
-    void readFromFile(const std::string& filename, unsigned subsample = 1,
-            unsigned discardData = 0, unsigned sizeHint = 0) throw (ReadError);
+    void readFromFile(const std::string& filename, uint32_t subsample = 1,
+            uint32_t discardData = 0, uint32_t sizeHint = 0) throw (ReadError);
 
     int getColumns();
     std::vector<ValueType>* getData(int column = 0);
@@ -75,7 +75,7 @@ int DataSeriesLoader<ValueType>::getColumns() {
 
 template <typename ValueType>
 void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
-        unsigned subsample, unsigned discardData, unsigned sizeHint)
+        uint32_t subsample, uint32_t discardData, uint32_t sizeHint)
         throw (ReadError) {
     using namespace std;
     ifstream input(filename.c_str());
@@ -121,14 +121,14 @@ void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
         //the line that was already read in earlier has to be discarded:
         for (int c = 0; c < columns; ++c) data->at(c)->pop_back();
 
-        for (unsigned linesRead = 1; linesRead < discardData; ++linesRead) {
+        for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
             getline(input, line);
         }
     }
 
     //read in the remaining data
     if (subsample > 1) {
-        unsigned samples = 1;
+        uint32_t samples = 1;
         while (getline(input, line)) {
             if (samples == subsample) {
                 samples = 0;
@@ -181,7 +181,7 @@ typedef DataSeriesLoader<double> DoubleSeriesLoader;
 //for doubles use a faster implementation
 template<> inline
 void DataSeriesLoader<double>::readFromFile(const std::string& filename,
-        unsigned subsample, unsigned discardData, unsigned sizeHint)
+        uint32_t subsample, uint32_t discardData, uint32_t sizeHint)
         throw (ReadError) {
     using namespace std;
     ifstream input(filename.c_str());
@@ -230,7 +230,7 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
         //the line that was already read in earlier has to be discarded:
         for (int c = 0; c < columns; ++c) data->at(c)->pop_back();
 
-        for (unsigned linesRead = 1; linesRead < discardData; ++linesRead) {
+        for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
             getline(input, line);
         }
     }
@@ -244,7 +244,7 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
     while (isspace(input.peek())) {
         input.seekg(-1, ios::cur);
     }
-    unsigned long length = input.tellg() - startPos + 1;     //length of data to be read in
+    std::size_t length = input.tellg() - startPos + 1;     //length of data to be read in
     input.seekg(startPos);
     char* buffer = new char[length + 1];
     input.read(buffer, length);
@@ -253,11 +253,11 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
 
 //  if (meta.count("samples")) {
 //      //time series file tells us how many samples are contained -> preallocate vector
-//      unsigned samples = fromString<unsigned>(meta["samples"]);
+//      uint32_t samples = fromString<uint32_t>(meta["samples"]);
 //      for (int c = 0; c < columns; ++c) {
 //          (*data)[c]->resize(samples);
 //      }
-//      unsigned index = 1;
+//      uint32_t index = 1;
 //      while (tokenPointer < buffer + length) {
 //          for (int c = 0; c < columns; ++c) {
 //              double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
@@ -268,7 +268,7 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
 
     //number of samples not known beforehand, resize on the go:
     if (subsample > 1) {
-        unsigned samples = 1;
+        uint32_t samples = 1;
         while (tokenPointer < buffer + length) {
             if (samples == subsample) {
                 samples = 0;

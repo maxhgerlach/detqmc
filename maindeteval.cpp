@@ -26,9 +26,9 @@
 #include "statistics.h"
 
 int main(int argc, char **argv) {
-	unsigned discard = 0;
-	unsigned subsample = 1;
-	unsigned jkBlocks = 1;
+	uint32_t discard = 0;
+	uint32_t subsample = 1;
+	uint32_t jkBlocks = 1;
 	bool notau = false;
 	bool noexp = false;
 
@@ -39,11 +39,11 @@ int main(int argc, char **argv) {
 	evalOptions.add_options()
 			("help", "print help on allowed options and exit")
 			("version,v", "print version information (git hash, build date) and exit")
-			("discard,d", po::value<unsigned>(&discard)->default_value(0),
+			("discard,d", po::value<uint32_t>(&discard)->default_value(0),
 					"number of initial time series entries to discard (additional thermalization)")
-			("subsample,s", po::value<unsigned>(&subsample)->default_value(1),
+			("subsample,s", po::value<uint32_t>(&subsample)->default_value(1),
 					"take only every s'th sample into account")
-			("jkblocks,j", po::value<unsigned>(&jkBlocks)->default_value(1),
+			("jkblocks,j", po::value<uint32_t>(&jkBlocks)->default_value(1),
 					"number of jackknife blocks to use")
 			("notau", po::bool_switch(&notau)->default_value(false),
 					"switch of estimation of integrated autocorrelation times")
@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 			meta.erase(key);
 		}
 	}
-	unsigned guessedLength = static_cast<unsigned>(fromString<double>(meta.at("sweeps")) /
+	uint32_t guessedLength = static_cast<uint32_t>(fromString<double>(meta.at("sweeps")) /
 			fromString<double>(meta.at("measureInterval")));
 
 	//Store averages / nonlinear estimates, jackknife errors,
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
 				estimates["normPhiBinder"] = 1.0 - (3.0*estimates["normPhiFourth"]) /
 						(5.0*pow(estimates["normPhiSquared"], 2));
 				jkBlockEstimates["normPhiBinder"] = std::vector<double>(jkBlocks, 0);
-				for (unsigned jb = 0; jb < jkBlocks; ++jb) {
+				for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
 					jkBlockEstimates["normPhiBinder"][jb] =
 							1.0 - (3.0*jkBlockEstimates["normPhiFourth"][jb]) /
 							(5.0*pow(jkBlockEstimates["normPhiSquared"][jb], 2));
