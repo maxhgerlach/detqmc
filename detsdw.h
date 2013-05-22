@@ -161,10 +161,10 @@ protected:
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
-    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
 
 	MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;			//compute B-matrix using dense matrix products
 //	MatCpx computeBmatSDW_checkerboard(uint32_t k2, uint32_t k1) const;

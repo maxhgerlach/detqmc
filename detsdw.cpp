@@ -100,29 +100,29 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		return this->computeBmatSDW(k2, k1);
 	};
 	if (checkerboard) {
-		leftMultiplyBmat[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmat[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return this->checkerboardLeftMultiplyBmat(A, k2, k1);
 		};
-		rightMultiplyBmat[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmat[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return this->checkerboardRightMultiplyBmat(A, k2, k1);
 		};
-		leftMultiplyBmatInv[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmatInv[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return this->checkerboardLeftMultiplyBmatInv(A, k2, k1);
 		};
-		rightMultiplyBmatInv[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmatInv[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return this->checkerboardRightMultiplyBmatInv(A, k2, k1);
 		};
 	} else {
-		leftMultiplyBmat[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmat[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return this->computeBmatSDW(k2, k1) * A;
 		};
-		rightMultiplyBmat[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmat[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return A * this->computeBmatSDW(k2, k1);
 		};
-		leftMultiplyBmatInv[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		leftMultiplyBmatInv[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return arma::inv(this->computeBmatSDW(k2, k1)) * A;
 		};
-		rightMultiplyBmatInv[0] = [this](const MatCpx& A, uint32_t k2, uint32_t k1) {
+		rightMultiplyBmatInv[0] = [this](const MatCpx A, uint32_t k2, uint32_t k1) {
 			return A * arma::inv(this->computeBmatSDW(k2, k1));
 		};
 	}
@@ -435,7 +435,7 @@ MatCpx DetSDW::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 
 
 
-MatCpx DetSDW::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+MatCpx DetSDW::checkerboardLeftMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1) {
 	assert(k2 > k1);
 	assert(k2 <= m);
 
@@ -494,7 +494,7 @@ MatCpx DetSDW::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32
 }
 
 
-MatCpx DetSDW::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+MatCpx DetSDW::checkerboardLeftMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1) {
 	assert(k2 > k1);
 	assert(k2 <= m);
 
@@ -552,7 +552,7 @@ MatCpx DetSDW::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uin
 	return result;
 }
 
-MatCpx DetSDW::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+MatCpx DetSDW::checkerboardRightMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1) {
 	assert(k2 > k1);
 	assert(k2 <= m);
 
@@ -611,7 +611,7 @@ MatCpx DetSDW::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint3
 }
 
 
-MatCpx DetSDW::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+MatCpx DetSDW::checkerboardRightMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1) {
 	assert(k2 > k1);
 	assert(k2 <= m);
 
