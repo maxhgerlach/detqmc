@@ -255,7 +255,17 @@ void DetSDW::setupPropK() {
 		for_each_site( [this, band, &k, &t](unsigned site) {
 			for (unsigned dir = 0; dir < z; ++dir) {
 				unsigned neigh = spaceNeigh(dir, site);
-				k(site, neigh) -= t[band][dir];
+				num hop = t[band][dir];
+				if (antiperiodic) {
+					unsigned siteY = site / L;
+					unsigned siteX = site % L;
+					if ((siteX == 0 and dir == XMINUS) or (siteX == L-1 and dir == XPLUS) or
+						(siteY == 0 and dir == YMINUS) or (siteY == L-1 and dir == YPLUS)) {
+						//crossing boundaries
+						hop *= -1;
+					}
+				}
+				k(site, neigh) -= hop;
 			}
 		} );
 //		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
