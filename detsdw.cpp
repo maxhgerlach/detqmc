@@ -31,12 +31,21 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "mu", "L", "r", "accRatio";
+	neededModelPars += "mu", "L", "r", "accRatio", "bc";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
 		}
 	}
+
+	if (pars.bc != "pbc" and pars.bc != "apbc") {
+		throw ParameterWrong("bc", pars.bc);
+	}
+
+	if (pars.checkerboard and pars.L % 2 != 0) {
+		throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
+	}
+
 #define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
 #define CHECK_POSITIVE(x) 	{  					  						\
 								IF_NOT_POSITIVE(x) {  					\
@@ -54,6 +63,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		DetModelGC<1,cpx>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
+		antiperiodic(false),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
@@ -66,6 +76,9 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
 		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
 {
+	if (pars.bc == "apbc") {
+		antiperiodic = true;
+	}
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
 		gFwd = CubeCpx(4*N,4*N, m+1);
@@ -82,7 +95,6 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
 			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc");
-
 
 	kOccX.zeros(N);
 	kOccY.zeros(N);

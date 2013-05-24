@@ -52,10 +52,13 @@ protected:
 	const num u;
 	const num lambda;
 
+	bool antiperiodic;
+
+	enum Band {XBAND = 0, YBAND = 1};
+
 	PeriodicSquareLatticeNearestNeighbors spaceNeigh;
 	PeriodicChainNearestNeighbors<1> timeNeigh;
 
-	enum {XBAND = 0, YBAND = 1};
 	std::array<MatNum, 2> propK;
 	MatNum& propKx;
 	MatNum& propKy;

@@ -45,11 +45,13 @@ struct ModelParams {
 					//from scratch
 	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
 
+	std::string bc;	//boundary conditions: For SDW: "pbc" or "apbc"
+
 	std::set<std::string> specified;
 
 	ModelParams() :
 			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
-			beta(), m(), dtau(), s(), accRatio(), specified() {
+			beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
 	}
 
 private:
