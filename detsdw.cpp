@@ -126,6 +126,7 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 	MetadataMap meta;
 	meta["model"] = "sdw";
 	meta["timedisplaced"] = (timedisplaced ? "true" : "false");
+	meta["bc"] = (antiperiodic ? "apbc" : "pbc");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(targetAccRatio);
 	META_INSERT(r);
@@ -175,11 +176,12 @@ void DetSDW::measure() {
 	kOccXimag.zeros(N);
 	kOccYimag.zeros(N);
 	static const num pi = M_PI;
+	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
 #pragma omp parallel for
 	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
-		num ky = 2 * pi * num(ksitey) / num(L);
+		num ky = 2 * pi * (num(ksitey) + offset) / num(L);
 		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
-			num kx = 2 * pi * num(ksitex) / num(L);
+			num kx = 2 * pi * (num(ksitex) + offset) / num(L);
 			unsigned ksite = L*ksitey + ksitex;
 			for (unsigned l = 1; l <= m; ++l) {					//timeslices
 				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
