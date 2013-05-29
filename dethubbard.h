@@ -252,7 +252,7 @@ public:
     // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
     void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<2>::serializeContents(sck, ar);		//base class
+    	DetModelGC<2,num,TimeDisplaced>::serializeContents(sck, ar);		//base class
 		ar & auxfield;
 		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
 		   & occDouble & localMoment & suscq0;
