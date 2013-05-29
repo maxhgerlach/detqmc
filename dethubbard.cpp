@@ -53,7 +53,19 @@ std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
-	return std::unique_ptr<DetModel>(new DetHubbard<pars.timedisplaced, pars.checkerboard>(rng, pars));
+	//since pars is not a constant expression, we need this stupid if:
+	if (pars.timedisplaced == true and pars.checkerboard == true) {
+		return std::unique_ptr<DetModel>(new DetHubbard<true,true>(rng, pars));
+	} else
+	if (pars.timedisplaced == true and pars.checkerboard == false) {
+		return std::unique_ptr<DetModel>(new DetHubbard<true,false>(rng, pars));
+	} else
+	if (pars.timedisplaced == false and pars.checkerboard == true) {
+		return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
+	} else
+	if (pars.timedisplaced == false and pars.checkerboard == false) {
+		return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
+	}
 }
 
 
