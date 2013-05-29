@@ -262,7 +262,7 @@ protected:
 		hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
 			return hubbardComputeBmat(parent)(gc, k2, k1) * mat;
 		}
 	};
@@ -272,7 +272,7 @@ protected:
 		hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
 			return mat * hubbardComputeBmat(parent)(gc, k2, k1);
 		}
 	};
@@ -282,7 +282,7 @@ protected:
 		hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
 			return arma::inv(hubbardComputeBmat(parent)(gc, k2, k1)) * mat;
 		}
 	};
@@ -292,7 +292,7 @@ protected:
 		hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
 			return mat * arma::inv(hubbardComputeBmat(parent)(gc, k2, k1));
 		}
 	};
@@ -302,7 +302,7 @@ public:
     // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
     void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<2,num,TimeDisplaced>::serializeContents(sck, ar);		//base class
+    	Base::serializeContents(sck, ar);		//base class
 		ar & auxfield;
 		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
 		   & occDouble & localMoment & suscq0;
