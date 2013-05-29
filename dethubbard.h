@@ -89,7 +89,6 @@ protected:
     using Base::beta;
     using Base::s;
 
-
 	enum class Spin: int {Up = +1, Down = -1};
 	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
 	RngWrapper& rng;
