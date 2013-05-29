@@ -44,11 +44,11 @@ UdV<std::complex<double>>::UdV(uint32_t size) :
 	V(arma::eye(size,size), arma::zeros(size,size))
 { }
 
-template <typename num>
-UdV<num> udvDecompose(arma::Mat<num> mat) {
+template <typename Val>
+UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
 	timing.start("udvDecompose");
 
-	typedef UdV<num> UdV;
+	typedef UdV<Val> UdV;
 	UdV result;
 
 //	ArmaMat V_transpose;
@@ -59,9 +59,9 @@ UdV<num> udvDecompose(arma::Mat<num> mat) {
 	arma::qr(result.U, result.V, mat);
 	timing.stop("qr");
 	//normalize rows of V to obtain scales in d:
-	result.d = arma::Col<num>(mat.n_rows);
+	result.d = arma::Col<Val>(mat.n_rows);
 	for (uint32_t rown = 0; rown < mat.n_rows; ++rown) {
-		const num norm = arma::norm(result.V.row(rown), 2);
+		const Val norm = arma::norm(result.V.row(rown), 2);
 		result.d[rown] = norm;
 		result.V.row(rown) /= norm;
 	}
