@@ -184,16 +184,16 @@ protected:
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
-    MatCpx checkerboardLeftMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
 
     //helpers for the checkerboardMultiplyFunctions
-    MatCpx rightMultiplyBk(const MatCpx orig, uint32_t k);		//multiply B(k,k-1) from right to orig, return result
-    MatCpx rightMultiplyBkInv(const MatCpx orig, uint32_t k);	//multiply B(k,k-1)^-1 from right to orig, return result
-    MatCpx leftMultiplyBk(const MatCpx orig, uint32_t k);		//multiply B(k,k-1) from left to orig, return result
-    MatCpx leftMultiplyBkInv(const MatCpx orig, uint32_t k);	//multiply B(k,k-1)^-1 from left to orig, return result
+    MatCpx rightMultiplyBk(const MatCpx& orig, uint32_t k);		//multiply B(k,k-1) from right to orig, return result
+    MatCpx rightMultiplyBkInv(const MatCpx& orig, uint32_t k);	//multiply B(k,k-1)^-1 from right to orig, return result
+    MatCpx leftMultiplyBk(const MatCpx& orig, uint32_t k);		//multiply B(k,k-1) from left to orig, return result
+    MatCpx leftMultiplyBkInv(const MatCpx& orig, uint32_t k);	//multiply B(k,k-1)^-1 from left to orig, return result
 
 
 	MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;			//compute B-matrix using dense matrix products
