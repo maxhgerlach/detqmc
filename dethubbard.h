@@ -38,21 +38,24 @@
 
 class SerializeContentsKey;
 
-class DetHubbard;			//defined below in this file
-
-//factory function to init DetHubbard from parameter struct
+// factory function to init DetHubbard from parameter struct
 //
-//(in the future: possibly create such factories for different models)
-//will do parameter checking etc
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+// will do parameter checking etc
+//
+// either create a DetHubbard<TimeDisplaced, CheckerBoard>
+// return a polymorphic unique_ptr
+std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
-class DetHubbard : public DetModelGC<2> {
+
+// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
+template <bool TimeDisplaced, bool CheckerBoard>
+class DetHubbard : public DetModelGC<2, num, TimeDisplaced> {
 private:
 	//only initialize with the "factory" function ::createDetHubbard() declared above.
 	//Give a reference to the RNG instance to be used
 	DetHubbard(RngWrapper& rng, const ModelParams& pars);
 public:
-	friend std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+	friend std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
 	virtual ~DetHubbard();
 
 	virtual uint32_t getSystemN() const;
@@ -63,12 +66,18 @@ public:
 
 	//perform measurements of all observables
     virtual void measure();
+
+    virtual void sweep();
+    virtual void sweepThermalization();
+    virtual void sweepSimple();
+    virtual void sweepSimpleThermalization();
 protected:
 	enum class Spin: int {Up = +1, Down = -1};
 	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
 	RngWrapper& rng;
 	//parameters:
 	const bool checkerboard;
+	const bool timedisplaced;
 	const num t;			//hopping energy scale
 	const num U;			//interaction energy scale
 	const num mu;			//chemical potential
@@ -203,6 +212,40 @@ protected:
 //	void debugCheckBeforeSweepDown();
 //	void debugCheckBeforeSweepUp();
 //	void debugCheckGreenFunctions();
+
+	//wrappers to use to instantiate template functions of the base class
+	MatNum hubbardComputeBmat(uint32_t gc, uint32_t k2, uint32_t k1) {
+		assert(gc == 0 or gc == 1);
+		if (CheckerBoard) {
+			if (gc == GreenCompSpinUp) {
+				return computeBmat_checkerBoard(k2, k1, Spin::Up);
+			} else if (gc == GreenCompSpinDown) {
+				return computeBmat_checkerBoard(k2, k1, Spin::Down);
+			}
+		} else {
+			if (gc == GreenCompSpinUp) {
+				return computeBmat_direct(k2, k1, Spin::Up);
+			} else if (gc == GreenCompSpinDown) {
+				return computeBmat_direct(k2, k1, Spin::Down);
+			}
+		}
+	}
+
+	MatNum hubbardLeftMultiplyBmat(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		return hubbardComputeBmat(gc, k2, k1) * mat;
+	}
+
+	MatNum hubbardRightMultiplyBmat(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		return mat * hubbardComputeBmat(gc, k2, k1);
+	}
+
+	MatNum hubbardLeftMultiplyBmatInv(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		return arma::inv(hubbardComputeBmat(gc, k2, k1)) * mat;
+	}
+
+	MatNum hubbardRightMultiplyBmatInv(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+		return mat * arma::inv(hubbardComputeBmat(gc, k2, k1));
+	}
 
 public:
     // only functions that can pass the key to this function have access
