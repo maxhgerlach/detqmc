@@ -228,7 +228,7 @@ protected:
 		sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatCpx operator()(uint32_t gc, const MatCpx mat, uint32_t k2, uint32_t k1) {
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
 			(void)gc;
 			assert(gc == 0);
 			if (CheckerBoard) {
@@ -244,7 +244,7 @@ protected:
 		sdwRightMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatCpx operator()(uint32_t gc, const MatCpx mat, uint32_t k2, uint32_t k1) {
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
 			(void)gc;
 			assert(gc == 0);
 			if (CheckerBoard) {
@@ -260,7 +260,7 @@ protected:
 		sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatCpx operator()(uint32_t gc, const MatCpx mat, uint32_t k2, uint32_t k1) {
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
 			(void)gc;
 			assert(gc == 0);
 			if (CheckerBoard) {
@@ -276,7 +276,7 @@ protected:
 		sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
 			parent(parent)
 		{ }
-		MatCpx operator()(uint32_t gc, const MatCpx mat, uint32_t k2, uint32_t k1) {
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
 			(void)gc;
 			assert(gc == 0);
 			if (CheckerBoard) {
@@ -292,7 +292,7 @@ public:
     // only functions that can pass the key to this function have access
     // -- in this way access is granted only to DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    void serializeContents(SerializeContentsKey const& sck, Archive& ar) {
     	Base::serializeContents(sck, ar);			//base class
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
