@@ -65,6 +65,9 @@ std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
 	} else
 	if (pars.timedisplaced == false and pars.checkerboard == false) {
 		return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
+	} else {
+		//this can't be reached
+		return 0;
 	}
 }
 
@@ -103,9 +106,9 @@ DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	} else {
 		setupPropTmat_direct();
 	}
-	setupUdVStorage_skeleton(hubbardComputeBmat);
+	setupUdVStorage_skeleton(hubbardComputeBmat(this));
 
-	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
+	lastSweepDir = Base::SweepDirection::Up;		//first sweep will be downwards
 
 	using namespace boost::assign;         // bring operator+=() into scope
 	using std::cref;
@@ -566,18 +569,19 @@ void DetHubbard<TD,CB>::measure() {
 
 	//susceptibility
 	if (timedisplaced) {
-		auto sumTrace = [m](const CubeNum& green) {
+		uint32_t mm = m;		// I don't understand why m can't be captured for the lambda without this line
+		auto sumTrace = [this, mm](const CubeNum& green) {
 			num sum = 0;
-			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green.slice(timeslice));
 			}
 			return sum;
 		};
 		num sumTrGreenUp = sumTrace(gUp);
 		num sumTrGreenDn = sumTrace(gDn);
-		auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
+		auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) {
 			num sum = 0;
-			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
 			}
 			return sum;
@@ -841,23 +845,23 @@ inline void DetHubbard<TD,CB>::updateGreenFunctionWithFlip(uint32_t site, uint32
 
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepSimple() {
-	sweepSimple_skeleton(hubbardComputeBmat);
+	sweepSimple_skeleton(hubbardComputeBmat(this));
 }
 
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepSimpleThermalization() {
-	sweepSimpleThermalization_skeleton(hubbardComputeBmat);
+	sweepSimpleThermalization_skeleton(hubbardComputeBmat(this));
 }
 
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweep() {
-	sweep_skeleton(hubbardLeftMultiplyBmat, hubbardRightMultiplyBmat,
-				   hubbardLeftMultiplyBmatInv, hubbardRightMultiplyBmatInv);
+	sweep_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
+				   hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
 }
 
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepThermalization() {
-	sweepThermalization_skeleton(hubbardLeftMultiplyBmat, hubbardRightMultiplyBmat,
-								 hubbardLeftMultiplyBmatInv, hubbardRightMultiplyBmatInv);
+	sweepThermalization_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
+								 hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
 }
 

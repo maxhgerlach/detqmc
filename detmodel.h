@@ -146,8 +146,8 @@ public:
 			 class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1>
     void sweep_skeleton(a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
     					b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-    					a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-    					b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv);
+    					c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+    					d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv);
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters
 	template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
@@ -155,8 +155,8 @@ public:
     void sweepThermalization_skeleton(
     					a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
     					b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-    					a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-    					b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv);
+    					c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+    					d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv);
 protected:
     typedef ValueType V;
     typedef arma::Mat<ValueType> MatV;
@@ -343,7 +343,7 @@ template<class Callable_GC_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
 		Callable_GC_k2_k1 computeBmat) {
 	timing.start("setupUdVStorage");
-	auto setup = [this, computeBmat](uint32_t gc) {
+	auto setup = [this, &computeBmat](uint32_t gc) {
 		std::vector<UdVV>& storage = UdVStorage[gc];
 		storage = std::vector<UdVV>(n + 1);
 
@@ -373,7 +373,7 @@ template<class Callable_GC_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::sweepSimple_skeleton(
 		Callable_GC_k2_k1 computeBmat) {
 	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-		for_each_gc( [this, timeslice, computeBmat](uint32_t gc) {
+		for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
 			green[gc].slice(timeslice) =
 					arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
 					                              computeBmat(gc, m, timeslice));
@@ -388,7 +388,7 @@ template<class Callable_GC_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
 		Callable_GC_k2_k1 computeBmat) {
 	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-		for_each_gc( [this, timeslice, computeBmat](uint32_t gc) {
+		for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
 			green[gc].slice(timeslice) =
 					arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
 					                              computeBmat(gc, m, timeslice));
@@ -741,34 +741,34 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
 	//We need to have computed the Green function for time slice k=0 so that the first
 	//wrap-up step is correct.
 	for (uint32_t k = 1; k <= s-1; ++k) {
-		for_each_gc( [this, k, leftMultiplyBmat, rightMultiplyBmatInv](uint32_t gc) {
+		for (uint32_t gc = 0; gc < GC; ++gc) {
 			wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-		} );
+		}
 		funcUpdateInSlice(k);
 	}
 	//set storage at k=0 to unity for the upcoming sweep:
-	for_each_gc( [this](uint32_t gc) {
-		UdVStorage[gc][0] = eye_UdV; }
-	);
+	for (uint32_t gc = 0; gc < GC; ++gc) {
+		UdVStorage[gc][0] = eye_UdV;
+	}
 	for (uint32_t l = 1; l < n; ++l) {
-		for_each_gc( [this, l, leftMultiplyBmat](uint32_t gc) {
+		for (uint32_t gc = 0; gc < GC; ++gc) {
 			advanceUpGreen(leftMultiplyBmat, l-1, gc);
-		} );
+		}
 		funcUpdateInSlice(l*s);
-		for_each_gc( [this, l, leftMultiplyBmat](uint32_t gc) {
+		for (uint32_t gc = 0; gc < GC; ++gc) {
 			advanceUpUpdateStorage(leftMultiplyBmat, l-1, gc);
-		} );
+		}
 		for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
-			for_each_gc( [this, k, leftMultiplyBmat, rightMultiplyBmatInv](uint32_t gc) {
+			for (uint32_t gc = 0; gc < GC; ++gc) {
 				wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-			} );
+			}
 			funcUpdateInSlice(k);
 		}
 	}
 	funcUpdateInSlice(n*s);
-	for_each_gc( [this, leftMultiplyBmat](uint32_t gc) {
+	for (uint32_t gc = 0; gc < GC; ++gc) {
 		advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
-	} );
+	}
 }
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
@@ -781,26 +781,26 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 	//to compute green function for timeslice tau=beta:
 	//we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
 	//The latter is given in storage slice m from the last sweep.
-	for_each_gc( [this](uint32_t gc) {
+	for (uint32_t gc = 0; gc < GC; ++gc) {
 		updateGreenFunctionUdV(gc, m, eye_UdV, UdVStorage[gc][n]);
-	} );
-	for_each_gc( [this](uint32_t gc) {
+	}
+	for (uint32_t gc = 0; gc < GC; ++gc) {
 		UdVStorage[gc][n] = eye_UdV;
-	} );
+	}
 	for (uint32_t l = n; l >= 1; --l) {
 		funcUpdateInSlice(l*s);
 		for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
-			for_each_gc( [this, k, leftMultiplyBmatInv, rightMultiplyBmat](uint32_t gc) {
+			for (uint32_t gc = 0; gc < GC; ++gc) {
 				wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
-			} );
+			}
 			funcUpdateInSlice(k);
 		}
 		//TODO: this will also compute the Green function at k=0, which technically is not necessary
 		//but sensible for the following sweep up
 		//TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
-		for_each_gc( [this, l, rightMultiplyBmat](uint32_t gc) {
+		for (uint32_t gc = 0; gc < GC; ++gc) {
 			advanceDownGreen(rightMultiplyBmat, l, gc);
-		} );
+		}
 	}
 }
 
@@ -810,8 +810,8 @@ template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
 void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
 		a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
 		b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-		a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-		b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv)
+		c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+		d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv)
 {
 	timing.start("sweep");
 
@@ -834,8 +834,8 @@ template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
 void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 		a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
 		b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-		a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-		b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv)
+		c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+		d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv)
 {
 	timing.start("sweep");
 

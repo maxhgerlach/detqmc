@@ -45,7 +45,7 @@ UdV<std::complex<double>>::UdV(uint32_t size) :
 { }
 
 template <typename num>
-UdV<num> udvDecompose(const arma::Mat<num>& mat) {
+UdV<num> udvDecompose(arma::Mat<num> mat) {
 	timing.start("udvDecompose");
 
 	typedef UdV<num> UdV;

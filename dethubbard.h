@@ -72,6 +72,24 @@ public:
     virtual void sweepSimple();
     virtual void sweepSimpleThermalization();
 protected:
+    typedef DetModelGC<2, num, TimeDisplaced> Base;
+    // stupid C++ weirdness forces us to explicitly "import" these protected base
+    // class member variables:
+    // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
+    using Base::dtau;
+    using Base::m;
+    using Base::green;
+    using Base::greenFwd;
+    using Base::greenBwd;
+    using Base::UdVStorage;
+    using Base::lastSweepDir;
+    using Base::obsScalar;
+    using Base::obsVector;
+    using Base::obsKeyValue;
+    using Base::beta;
+    using Base::s;
+
+
 	enum class Spin: int {Up = +1, Down = -1};
 	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
 	RngWrapper& rng;
@@ -214,38 +232,71 @@ protected:
 //	void debugCheckGreenFunctions();
 
 	//wrappers to use to instantiate template functions of the base class
-	MatNum hubbardComputeBmat(uint32_t gc, uint32_t k2, uint32_t k1) {
-		assert(gc == 0 or gc == 1);
-		if (CheckerBoard) {
-			if (gc == GreenCompSpinUp) {
-				return computeBmat_checkerBoard(k2, k1, Spin::Up);
-			} else if (gc == GreenCompSpinDown) {
-				return computeBmat_checkerBoard(k2, k1, Spin::Down);
-			}
-		} else {
-			if (gc == GreenCompSpinUp) {
-				return computeBmat_direct(k2, k1, Spin::Up);
-			} else if (gc == GreenCompSpinDown) {
-				return computeBmat_direct(k2, k1, Spin::Down);
+	struct hubbardComputeBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardComputeBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+		MatNum operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
+			assert(gc == GreenCompSpinUp or gc == GreenCompSpinDown);
+			if (CheckerBoard) {
+				if (gc == GreenCompSpinUp) {
+					return parent->computeBmat_checkerBoard(k2, k1, Spin::Up);
+				} else if (gc == GreenCompSpinDown) {
+					return parent->computeBmat_checkerBoard(k2, k1, Spin::Down);
+				}
+			} else {
+				if (gc == GreenCompSpinUp) {
+					return parent->computeBmat_direct(k2, k1, Spin::Up);
+				} else if (gc == GreenCompSpinDown) {
+					return parent->computeBmat_direct(k2, k1, Spin::Down);
+				}
 			}
 		}
-	}
+#pragma GCC diagnostic pop
+	};
 
-	MatNum hubbardLeftMultiplyBmat(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
-		return hubbardComputeBmat(gc, k2, k1) * mat;
-	}
+	struct hubbardLeftMultiplyBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+			return hubbardComputeBmat(parent)(gc, k2, k1) * mat;
+		}
+	};
 
-	MatNum hubbardRightMultiplyBmat(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
-		return mat * hubbardComputeBmat(gc, k2, k1);
-	}
+	struct hubbardRightMultiplyBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+			return mat * hubbardComputeBmat(parent)(gc, k2, k1);
+		}
+	};
 
-	MatNum hubbardLeftMultiplyBmatInv(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
-		return arma::inv(hubbardComputeBmat(gc, k2, k1)) * mat;
-	}
+	struct hubbardLeftMultiplyBmatInv {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+			return arma::inv(hubbardComputeBmat(parent)(gc, k2, k1)) * mat;
+		}
+	};
 
-	MatNum hubbardRightMultiplyBmatInv(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
-		return mat * arma::inv(hubbardComputeBmat(gc, k2, k1));
-	}
+	struct hubbardRightMultiplyBmatInv {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum mat, uint32_t k2, uint32_t k1) {
+			return mat * arma::inv(hubbardComputeBmat(parent)(gc, k2, k1));
+		}
+	};
 
 public:
     // only functions that can pass the key to this function have access
