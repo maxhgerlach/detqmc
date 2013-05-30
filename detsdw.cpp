@@ -445,7 +445,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -507,7 +507,7 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2,
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -567,7 +567,7 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -625,7 +625,7 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
