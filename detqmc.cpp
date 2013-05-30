@@ -63,9 +63,9 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
 	}
 
 	if (parsmc.greenUpdateType == "simple") {
-		greenUpdateType = GreenUpdateType::Simple;
+		greenUpdateType = GreenUpdateTypeSimple;
 	} else if (parsmc.greenUpdateType == "stabilized") {
-		greenUpdateType = GreenUpdateType::Stabilized;
+		greenUpdateType = GreenUpdateTypeStabilized;
 	} else {
 		throw ParameterWrong("greenUpdateType", parsmc.greenUpdateType);
 	}
@@ -210,20 +210,20 @@ DetQMC::~DetQMC() {
 
 
 void DetQMC::run() {
-	enum class Stage { T, M, F };		//Thermalization, Measurement, Finished
-	Stage stage = Stage::T;
+	enum Stage { T, M, F };		//Thermalization, Measurement, Finished
+	Stage stage = T;
 
 	//local helper functions to initialize a "stage" of the big loop
-	auto thermalizationStage = [&stage, parsmc]() {
-		stage = Stage::T;
+	auto thermalizationStage = [&stage, this]() {
+		stage = T;
 		cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
 	};
-	auto measurementsStage = [&stage, parsmc]() {
-		stage = Stage::M;
+	auto measurementsStage = [&stage, this]() {
+		stage = M;
 		cout << "Measurements for " << parsmc.sweeps << " sweeps..." << endl;
 	};
 	auto finishedStage = [&stage]() {
-		stage = Stage::F;
+		stage = F;
 		cout << "Measurements finished\n" << endl;
 	};
 
@@ -237,12 +237,12 @@ void DetQMC::run() {
 
 	const uint32_t SavetyMinutes = 30;
 
-	while (stage != Stage::F) {				//big loop
+	while (stage != F) {				//big loop
 		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
 			cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n"
 				 << "Save state / results and exit gracefully."
 				 << endl;
-			if (stage == Stage::M) {
+			if (stage == M) {
 				saveResults();
 			}
 			saveState();
@@ -252,12 +252,12 @@ void DetQMC::run() {
 		//thermalization & measurement stages
 		switch (stage) {
 
-		case Stage::T:
+		case T:
 			switch(greenUpdateType) {
-			case GreenUpdateType::Simple:
+			case GreenUpdateType::GreenUpdateTypeSimple:
 				replica->sweepSimpleThermalization();
 				break;
-			case GreenUpdateType::Stabilized:
+			case GreenUpdateType::GreenUpdateTypeStabilized:
 				replica->sweepThermalization();
 				break;
 			}
@@ -277,12 +277,12 @@ void DetQMC::run() {
 			}
 			break;	//case
 
-		case Stage::M:
+		case M:
 			switch(greenUpdateType) {
-			case GreenUpdateType::Simple:
+			case GreenUpdateTypeSimple:
 				replica->sweepSimple();
 				break;
-			case GreenUpdateType::Stabilized:
+			case GreenUpdateTypeStabilized:
 				replica->sweep();
 				break;
 			}
@@ -310,7 +310,7 @@ void DetQMC::run() {
 			}
 			break;	//case
 
-		case Stage::F:
+		case F:
 			break;	//case
 
 		}

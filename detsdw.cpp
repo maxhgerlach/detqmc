@@ -194,10 +194,16 @@ void DetSDW<TD,CB>::measure() {
 			occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
 		}
 	}
-	using std::ref;
-	for (VecNum& occ : {ref(occX), ref(occY), ref(occXimag), ref(occYimag)}) {
-		occ /= num(m) * num(N);
-	}
+	//not working with icpc 13.1:
+//	using std::ref;
+//	for (VecNum& occ : {ref(occX), ref(occY), ref(occXimag), ref(occYimag)}) {
+//		occ /= num(m) * num(N);
+//	}
+	occX /= num(m) * num(N);
+	occY /= num(m) * num(N);
+	occXimag /= num(m) * num(N);
+	occYimag /= num(m) * num(N);
+
 
 	//fermion occupation number -- k-space
 	kOccX.zeros(N);
@@ -240,10 +246,14 @@ void DetSDW<TD,CB>::measure() {
 			}
 		}
 	}
-	using std::ref;
-	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
-		kocc /= num(m) * num(N);
-	}
+//	using std::ref;
+//	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
+//		kocc /= num(m) * num(N);
+//	}
+	kOccX /= num(m) * num(N);
+	kOccY /= num(m) * num(N);
+	kOccXimag /= num(m) * num(N);
+	kOccYimag /= num(m) * num(N);
 
 	//sdw-susceptibility
 	uint32_t mm = m;
@@ -281,7 +291,9 @@ void DetSDW<TD,CB>::setupPropK() {
 	t[YBAND][XPLUS] = t[YBAND][XMINUS] = hopHor[YBAND];
 	t[YBAND][YPLUS] = t[YBAND][YMINUS] = hopVer[YBAND];
 
-	for (auto band : {XBAND, YBAND}) {
+//	for (auto band : {XBAND, YBAND}) {
+	Band bands[2] = {XBAND, YBAND};
+	for (Band band : bands) {
 		MatNum k = -mu * arma::eye(N,N);
 		for (uint32_t site = 0; site < N; ++site) {
 			for (uint32_t dir = 0; dir < z; ++dir) {
@@ -308,12 +320,12 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) const {
 	assert(k2 <= m);
 
 	//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-	auto singleTimesliceProp = [this, N](uint32_t k) {
+	auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
 		timing.start("singleTimesliceProp_direct");
 		MatCpx result(4*N, 4*N);
 
 		//submatrix view helper for a 4N*4N matrix
-		auto block = [&result, N](uint32_t row, uint32_t col) {
+		auto block = [&result, this](uint32_t row, uint32_t col) {
 			return result.submat(row * N, col * N,
 					             (row + 1) * N - 1, (col + 1) * N - 1);
 		};
@@ -433,7 +445,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [N](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -495,7 +507,7 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2,
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [N](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -555,42 +567,42 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [N](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
-        const auto& kphi0 = phi0.col(k);
-        const auto& kphi1 = phi1.col(k);
-        const auto& kphi2 = phi2.col(k);
-        const auto& c = phiCosh.col(k);			// cosh(dtau * |phi|)
-        const auto& kphiSinh = phiSinh.col(k);	// sinh(dtau * |phi|) / |phi|
-        VecNum ax  =  kphi2 % kphiSinh;
-        VecNum max = -kphi2 % kphiSinh;
-        VecCpx bx  {kphi0, -kphi1};
-        VecCpx bcx {kphi0, kphi1};
+	const auto& kphi0 = phi0.col(k);
+	const auto& kphi1 = phi1.col(k);
+	const auto& kphi2 = phi2.col(k);
+	const auto& c = phiCosh.col(k);			// cosh(dtau * |phi|)
+	const auto& kphiSinh = phiSinh.col(k);	// sinh(dtau * |phi|) / |phi|
+	VecNum ax  =  kphi2 % kphiSinh;
+	VecNum max = -kphi2 % kphiSinh;
+	VecCpx bx  {kphi0, -kphi1};
+	VecCpx bcx {kphi0, kphi1};
 
-        MatCpx result(4*N, 4*N);
+	MatCpx result(4*N, 4*N);
 
-        for (uint32_t row = 0; row < 4; ++row) {
-                using arma::diagmat;
-                //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-                block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(c),   XBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  XBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 3) * diagmat(bcx), XBAND, -1);
+	for (uint32_t row = 0; row < 4; ++row) {
+			using arma::diagmat;
+			//only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+			block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(c),   XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(bcx), XBAND, -1);
 
-                block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(c),   XBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 2) * diagmat(bx),  XBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1);
+			block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(c),   XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(bx),  XBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1);
 
-                block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(ax),  YBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 1) * diagmat(bcx), YBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 2) * diagmat(c),   YBAND, -1);
+			block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(ax),  YBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(bcx), YBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(c),   YBAND, -1);
 
-                block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(bx),  YBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 1) * diagmat(max), YBAND, -1)
-                                      + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),   YBAND, -1);
-        }
-        return result;
+			block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(bx),  YBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(max), YBAND, -1)
+								  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),   YBAND, -1);
+	}
+	return result;
 }
 
 template<bool TD, bool CB>
@@ -613,7 +625,7 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [N](MatCpx mat, uint32_t row, uint32_t col) {
+	auto block = [this](MatCpx mat, uint32_t row, uint32_t col) {
 		return mat.submat( row * N, col * N,
 		                  (row + 1) * N - 1, (col + 1) * N - 1);
 	};
@@ -948,10 +960,11 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32
 	(void) site; (void) timeslice;
 	//TODO: make this smarter!
 
-	Phi phi = { phi0(site, timeslice),
-			    phi1(site, timeslice),
-			    phi2(site, timeslice)
-	          };
+	Phi phi;
+	phi[0] = phi0(site, timeslice);
+	phi[1] = phi1(site, timeslice);
+    phi[2] = phi2(site, timeslice);
+
 
 //	static int comp = 0;
 //	num r = rng.randRange(-PhiDelta, +PhiDelta);
@@ -971,9 +984,11 @@ num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi
 	//switched to asymmetric numerical derivative
 	using arma::dot;
 
-	const Phi oldphi = {phi0(site, timeslice),
-					    phi1(site, timeslice),
-					    phi2(site, timeslice)};
+	Phi oldphi;
+	oldphi[0] = phi0(site, timeslice);
+	oldphi[1] = phi1(site, timeslice);
+    oldphi[2] = phi2(site, timeslice);
+
 	Phi phiDiff = newphi - oldphi;
 
 	num oldphiSq = dot(oldphi, oldphi);
@@ -985,23 +1000,28 @@ num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi
 	num phiPow4Diff = newphiPow4 - oldphiPow4;
 
 	uint32_t kEarlier = timeNeigh(ChainDir::MINUS, timeslice);
-	Phi phiEarlier = Phi{phi0(site, kEarlier),
-					     phi1(site, kEarlier),
-					     phi2(site, kEarlier)};
+	Phi phiEarlier;
+	phiEarlier[0] = phi0(site, kEarlier);
+	phiEarlier[1] = phi1(site, kEarlier);
+	phiEarlier[2] = phi2(site, kEarlier);
 	uint32_t kLater = timeNeigh(ChainDir::PLUS, timeslice);
-	Phi phiLater = Phi{phi0(site, kLater),
-					   phi1(site, kLater),
-					   phi2(site, kLater)};
+	Phi phiLater;
+	phiLater[0] = phi0(site, kLater);
+	phiLater[1] = phi1(site, kLater);
+	phiLater[2] = phi2(site, kLater);
 	Phi phiTimeNeigh = phiLater + phiEarlier;
 
+	Phi phiZero;
+	phiZero[0] = phiZero[1] = phiZero[2] = 0;
 	Phi phiSpaceNeigh = std::accumulate(
 			spaceNeigh.beginNeighbors(site),
 			spaceNeigh.endNeighbors(site),
-			Phi{0,0,0},
-			[this, timeslice] (Phi accum, uint32_t neighSite) {
-				return accum + Phi{phi0(neighSite, timeslice),
-					phi1(neighSite, timeslice),
-					phi2(neighSite, timeslice)};
+			phiZero,
+			[this, timeslice] (Phi accum, uint32_t neighSite) -> Phi{
+				accum[0] += phi0(neighSite, timeslice);
+				accum[1] += phi1(neighSite, timeslice);
+				accum[2] += phi2(neighSite, timeslice);
+				return accum;
 			}
 	);
 

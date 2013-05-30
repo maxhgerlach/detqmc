@@ -570,7 +570,7 @@ void DetHubbard<TD,CB>::measure() {
 	//susceptibility
 	if (timedisplaced) {
 		uint32_t mm = m;		// I don't understand why m can't be captured for the lambda without this line
-		auto sumTrace = [this, mm](const CubeNum& green) {
+		auto sumTrace = [this, mm](const CubeNum& green) -> num {
 			num sum = 0;
 			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green.slice(timeslice));
@@ -579,7 +579,7 @@ void DetHubbard<TD,CB>::measure() {
 		};
 		num sumTrGreenUp = sumTrace(gUp);
 		num sumTrGreenDn = sumTrace(gDn);
-		auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) {
+		auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) -> num {
 			num sum = 0;
 			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
@@ -678,7 +678,7 @@ void DetHubbard<TD,CB>::setupPropTmat_checkerboard() {
 	//Checkerboard break up as in dos Santos 2003
 
 	assert(d == 2);
-	auto xyToSite = [L](uint32_t x, uint32_t y) {
+	auto xyToSite = [this](uint32_t x, uint32_t y) {
 		return y * L + x;
 	};
 	SpMatNum kxa = SpMatNum(N, N);

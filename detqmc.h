@@ -62,7 +62,7 @@ protected:
 	ModelParams parsmodel;
 	MCParams parsmc;
 
-	enum class GreenUpdateType {Simple, Stabilized};
+	enum GreenUpdateType {GreenUpdateTypeSimple, GreenUpdateTypeStabilized};
 	GreenUpdateType greenUpdateType;
 //	std::function<void()> sweepFunc;	//the replica member function that will be called
 //										//to perform a sweep (depending on greenUpdate).

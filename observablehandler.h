@@ -145,7 +145,7 @@ public:
 			const MCParams& simulationParameters,
 			const MetadataMap& metadataToStoreModel,
 			const MetadataMap& metadataToStoreMC)
-		: ObservableHandlerCommon(observable, simulationParameters,
+		: ObservableHandlerCommon<num>(observable, simulationParameters,
 				metadataToStoreModel, metadataToStoreMC),
 		timeseriesBuffer(),			//empty by default
 		storage(),					//initialize to something like a nullptr

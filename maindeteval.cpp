@@ -72,9 +72,10 @@ int main(int argc, char **argv) {
 
 	//take simulation metadata from file info.dat, remove some unnecessary parts
 	MetadataMap meta = readOnlyMetadata("info.dat");
-	for ( std::string key : {"buildDate", "buildHost", "buildTime",
-							 "cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
-							 "sweepsDone", "sweepsDoneThermalization", "totalWallTimeSecs"} ) {
+	std::string keys[] = {"buildDate", "buildHost", "buildTime",
+			"cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
+			"sweepsDone", "sweepsDoneThermalization", "totalWallTimeSecs"};
+	for ( std::string key : keys) {
 		if (meta.count(key)) {
 			meta.erase(key);
 		}
