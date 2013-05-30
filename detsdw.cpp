@@ -445,10 +445,11 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
-		return mat.submat( row * N, col * N,
-		                  (row + 1) * N - 1, (col + 1) * N - 1);
-	};
+//	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
+//		return mat.submat( row * N, col * N,
+//		                  (row + 1) * N - 1, (col + 1) * N - 1);
+//	};
+#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 
 	const auto& kphi0 = phi0.col(k);
 	const auto& kphi1 = phi1.col(k);
@@ -481,6 +482,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 							  + diagmat(max) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
 							  + diagmat(c)   * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
 	}
+#undef block
 	return result;
 }
 
@@ -507,11 +509,11 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2,
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
-		return mat.submat( row * N, col * N,
-		                  (row + 1) * N - 1, (col + 1) * N - 1);
-	};
-
+//	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
+//		return mat.submat( row * N, col * N,
+//		                  (row + 1) * N - 1, (col + 1) * N - 1);
+//	};
+#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 	const auto& kphi0 = phi0.col(k);
 	const auto& kphi1 = phi1.col(k);
 	const auto& kphi2 = phi2.col(k);
@@ -543,6 +545,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 							  + cbLMultHoppingExp(diagmat(ax)   * block(orig, 1, col), YBAND, +1)
 							  + cbLMultHoppingExp(diagmat(c)    * block(orig, 3, col), YBAND, +1);
 	}
+#undef block
 	return result;
 }
 
@@ -567,10 +570,12 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
-		return mat.submat( row * N, col * N,
-		                  (row + 1) * N - 1, (col + 1) * N - 1);
-	};
+//	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
+//		return mat.submat( row * N, col * N,
+//		                  (row + 1) * N - 1, (col + 1) * N - 1);
+//	};
+#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+
 	const auto& kphi0 = phi0.col(k);
 	const auto& kphi1 = phi1.col(k);
 	const auto& kphi2 = phi2.col(k);
@@ -602,6 +607,8 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 								  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(max), YBAND, -1)
 								  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),   YBAND, -1);
 	}
+
+#undef block
 	return result;
 }
 
@@ -625,10 +632,11 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2
 template<bool TD, bool CB> inline
 MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 	//helper: submatrix block for a matrix
-	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
-		return mat.submat( row * N, col * N,
-		                  (row + 1) * N - 1, (col + 1) * N - 1);
-	};
+//	auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
+//		return mat.submat( row * N, col * N,
+//		                  (row + 1) * N - 1, (col + 1) * N - 1);
+//	};
+#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 
 	const auto& kphi0 = phi0.col(k);
 	const auto& kphi1 = phi1.col(k);
@@ -662,7 +670,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 				    		  + cbRMultHoppingExp(block(orig, row, 3), YBAND, +1) * diagmat(c);
 	}
 	return result;
-
+#undef block
 }
 
 template<bool TD, bool CB>
