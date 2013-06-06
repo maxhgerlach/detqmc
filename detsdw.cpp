@@ -66,6 +66,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		antiperiodic(false),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
+		propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
+		propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
 		g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
 		phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
 		phiDelta(InitialPhiDelta),
@@ -149,6 +151,33 @@ void DetSDW::measure() {
 	meanPhi[1] = averageWholeSystem(phi1, 0.0);
 	meanPhi[2] = averageWholeSystem(phi2, 0.0);
 	normPhi = arma::norm(meanPhi, 2);
+
+
+	//experimental:  Shift green function
+
+	//submatrix view helper for a 4N*4N matrix
+#define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+	for (unsigned l = 1; l <= m; ++l) {
+		MatCpx tempG(4*N, 4*N);
+		const MatCpx& oldG = g.slice(l);
+		//multiply e^(dtau/2 K) from the right
+		for (unsigned row = 0; row < 4; ++row) {
+			block(tempG, 0, row) = block(oldG, 0, row) * propKx_half_inv;
+			block(tempG, 1, row) = block(oldG, 1, row) * propKx_half_inv;
+			block(tempG, 2, row) = block(oldG, 2, row) * propKy_half_inv;
+			block(tempG, 3, row) = block(oldG, 3, row) * propKy_half_inv;
+		}
+		//multiply e^(-dtau/2 K) from the left
+		MatCpx& newG = g.slice(l);
+		for (unsigned col = 0; col < 4; ++col) {
+			block(newG, col, 0) = propKx_half * block(tempG, col, 0);
+			block(newG, col, 1) = propKx_half * block(tempG, col, 1);
+			block(newG, col, 2) = propKy_half * block(tempG, col, 2);
+			block(newG, col, 3) = propKy_half * block(tempG, col, 3);
+		}
+	}
+#undef block
+
 
 	//fermion occupation number -- real space
 	//probably not very interesting data
@@ -314,6 +343,10 @@ void DetSDW::setupPropK() {
 //		std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
 //		debugSaveMatrix(k, name);
 		propK[band] = computePropagator(dtau, k);
+
+		propK_half[band] = computePropagator(dtau / 2.0, k);
+		propK_half_inv[band] = computePropagator(-dtau / 2.0, k);
+
 //		debugSaveMatrix(propK[band], "prop" + name);
 	} );
 }

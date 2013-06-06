@@ -63,6 +63,15 @@ protected:
 	MatNum& propKx;
 	MatNum& propKy;
 
+	//for shifting green functions to obtain equivalency of symmetric Trotter decomposition
+	//[checker board decomposition could be applied alternatively]
+	std::array<MatNum, 2> propK_half;		//factor of -dtau/2 in exponential
+	MatNum& propKx_half;
+	MatNum& propKy_half;
+	std::array<MatNum, 2> propK_half_inv;	//factor of +dtau/2 in exponential
+	MatNum& propKx_half_inv;
+	MatNum& propKy_half_inv;
+
 	CubeCpx& g;
 	CubeCpx& gFwd;
 	CubeCpx& gBwd;
