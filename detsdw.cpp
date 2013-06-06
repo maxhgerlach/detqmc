@@ -171,50 +171,93 @@ void DetSDW::measure() {
 	}
 
 	//fermion occupation number -- k-space
-	kOccX.zeros(N);
-	kOccY.zeros(N);
-	kOccXimag.zeros(N);
-	kOccYimag.zeros(N);
+//	kOccX.zeros(N);
+//	kOccY.zeros(N);
+//	kOccXimag.zeros(N);
+//	kOccYimag.zeros(N);
+//	static const num pi = M_PI;
+//	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
+//#pragma omp parallel for
+//	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
+//		num ky = 2 * pi * (num(ksitey) + offset) / num(L);
+//		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
+//			num kx = 2 * pi * (num(ksitex) + offset) / num(L);
+//			unsigned ksite = L*ksitey + ksitex;
+//			for (unsigned l = 1; l <= m; ++l) {					//timeslices
+//				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
+//					for (unsigned jx = 0; jx < L; ++jx) {
+//						unsigned j = L*jy + jx;
+//						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
+//							for (unsigned ix = 0; ix < L; ++ix) {
+//								unsigned i = L*iy + ix;
+//								cpx phase = std::exp(cpx(0, kx * (ix - jx) + ky * (iy - jy)));//hier probleme wegen unsigned?!
+//								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
+//								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
+//								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
+//								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
+//								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
+//								kOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
+//																  + diracDelta - greenEntryXBandSpinDown));
+//								kOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
+//																  + diracDelta - greenEntryYBandSpinDown));
+//								//imaginary parts should add up to zero..., but for now check:
+//								kOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
+//																  	  + diracDelta - greenEntryXBandSpinDown));
+//								kOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
+//																  	  + diracDelta - greenEntryYBandSpinDown));
+//							}
+//						}
+//					}
+//				}
+//			}
+//		}
+//	}
+
 	static const num pi = M_PI;
 	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
-#pragma omp parallel for
-	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
-		num ky = 2 * pi * (num(ksitey) + offset) / num(L);
-		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
-			num kx = 2 * pi * (num(ksitex) + offset) / num(L);
-			unsigned ksite = L*ksitey + ksitex;
-			for (unsigned l = 1; l <= m; ++l) {					//timeslices
-				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
-					for (unsigned jx = 0; jx < L; ++jx) {
-						unsigned j = L*jy + jx;
-						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
-							for (unsigned ix = 0; ix < L; ++ix) {
-								unsigned i = L*iy + ix;
-								cpx phase = std::exp(cpx(0, kx * (ix - jx) + ky * (iy - jy)));
-								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
-								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
-								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
-								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
-								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
-								kOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
-																  + diracDelta - greenEntryXBandSpinDown));
-								kOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
-																  + diracDelta - greenEntryYBandSpinDown));
-								//imaginary parts should add up to zero..., but for now check:
-								kOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
-																  	  + diracDelta - greenEntryXBandSpinDown));
-								kOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
-																  	  + diracDelta - greenEntryYBandSpinDown));
-							}
-						}
-					}
+	for (unsigned ksite = 0; ksite < N; ++ksite) {
+		//try a slightly alternative approach..
+		unsigned ksitey = ksite / L;
+		unsigned ksitex = ksite % L;
+		num ky = -pi + (num(ksitey) + offset) * pi / num(L);
+		num kx = -pi + (num(ksitex) + offset) * pi / num(L);
+
+		kOccX[ksite] = 0.0;
+		kOccY[ksite] = 0.0;
+		kOccXimag[ksite] = 0.0;
+		kOccYimag[ksite] = 0.0;
+
+		for (unsigned i = 0; i < N; ++i) {
+			num iy = num(i / L);
+			num ix = num(i % L);
+			for (unsigned j = 0; j  < N; ++j) {
+				num jy = num(j / L);
+				num jx = num(j % L);
+
+				num argument = kx * (ix - jx) + ky * (iy - jy);
+				cpx phase = cpx(std::cos(argument), std::sin(argument));
+
+				for (unsigned l = 1; l <= m; ++l) {
+					cpx green_x_up   = g.slice(l)(i, j);
+					cpx green_x_down = g.slice(l)(i + N, j + N);
+					cpx green_y_up   = g.slice(l)(i + 2*N, j + 2*N);
+					cpx green_y_down = g.slice(l)(i + 3*N, j + 3*N);
+
+					cpx x_cpx = phase * (green_x_up + green_x_down);
+					cpx y_cpx = phase * (green_y_up + green_y_down);
+
+					kOccX[ksite] += std::real(x_cpx);
+					kOccY[ksite] += std::real(y_cpx);
+					kOccXimag[ksite] += std::imag(x_cpx);
+					kOccYimag[ksite] += std::imag(y_cpx);
 				}
 			}
 		}
-	}
-	using std::ref;
-	for (VecNum& kocc : {ref(kOccX), ref(kOccY), ref(kOccXimag), ref(kOccYimag)}) {
-		kocc /= num(m) * num(N);
+
+		kOccX[ksite] = 1.0 - kOccX[ksite] / num(m * N);
+		kOccY[ksite] = 1.0 - kOccY[ksite] / num(m * N);
+		kOccXimag[ksite] = 1.0 - kOccX[ksite] / num(m * N);
+		kOccYimag[ksite] = 1.0 - kOccY[ksite] / num(m * N);
 	}
 
 	//sdw-susceptibility
