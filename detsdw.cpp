@@ -248,8 +248,8 @@ void DetSDW::measure() {
 		//try a slightly alternative approach..
 		unsigned ksitey = ksite / L;
 		unsigned ksitex = ksite % L;
-		num ky = -pi + (num(ksitey) + offset) * pi / num(L);
-		num kx = -pi + (num(ksitex) + offset) * pi / num(L);
+		num ky = -pi + (num(ksitey) + offset) * 2*pi / num(L);
+		num kx = -pi + (num(ksitex) + offset) * 2*pi / num(L);
 
 		kOccX[ksite] = 0.0;
 		kOccY[ksite] = 0.0;
@@ -285,8 +285,8 @@ void DetSDW::measure() {
 
 		kOccX[ksite] = 1.0 - kOccX[ksite] / num(m * N);
 		kOccY[ksite] = 1.0 - kOccY[ksite] / num(m * N);
-		kOccXimag[ksite] = 1.0 - kOccX[ksite] / num(m * N);
-		kOccYimag[ksite] = 1.0 - kOccY[ksite] / num(m * N);
+		kOccXimag[ksite] = 1.0 - kOccXimag[ksite] / num(m * N);
+		kOccYimag[ksite] = 1.0 - kOccYimag[ksite] / num(m * N);
 	}
 
 	//sdw-susceptibility
