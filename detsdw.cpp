@@ -199,49 +199,8 @@ void DetSDW::measure() {
 		occ /= num(m) * num(N);
 	}
 
-	//fermion occupation number -- k-space
-//	kOccX.zeros(N);
-//	kOccY.zeros(N);
-//	kOccXimag.zeros(N);
-//	kOccYimag.zeros(N);
-//	static const num pi = M_PI;
-//	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
-//#pragma omp parallel for
-//	for (unsigned ksitey = 0; ksitey < L; ++ksitey) {			//k-vectors
-//		num ky = 2 * pi * (num(ksitey) + offset) / num(L);
-//		for (unsigned ksitex = 0; ksitex < L; ++ksitex) {
-//			num kx = 2 * pi * (num(ksitex) + offset) / num(L);
-//			unsigned ksite = L*ksitey + ksitex;
-//			for (unsigned l = 1; l <= m; ++l) {					//timeslices
-//				for (unsigned jy = 0; jy < L; ++jy) {			//sites j
-//					for (unsigned jx = 0; jx < L; ++jx) {
-//						unsigned j = L*jy + jx;
-//						for (unsigned iy = 0; iy < L; ++iy) {	//sites i
-//							for (unsigned ix = 0; ix < L; ++ix) {
-//								unsigned i = L*iy + ix;
-//								cpx phase = std::exp(cpx(0, kx * (ix - jx) + ky * (iy - jy)));//hier probleme wegen unsigned?!
-//								cpx diracDelta = cpx((i == j ? 1.0 : 0.0), 0);
-//								cpx greenEntryXBandSpinUp   = g.slice(l)(i, j);
-//								cpx greenEntryXBandSpinDown = g.slice(l)(i + N, j + N);
-//								cpx greenEntryYBandSpinUp   = g.slice(l)(i + 2*N, j + 2*N);
-//								cpx greenEntryYBandSpinDown = g.slice(l)(i + 3*N, j + 3*N);
-//								kOccX[ksite] += std::real(phase * ( diracDelta - greenEntryXBandSpinUp
-//																  + diracDelta - greenEntryXBandSpinDown));
-//								kOccY[ksite] += std::real(phase * ( diracDelta - greenEntryYBandSpinUp
-//																  + diracDelta - greenEntryYBandSpinDown));
-//								//imaginary parts should add up to zero..., but for now check:
-//								kOccXimag[ksite] += std::imag(phase * ( diracDelta - greenEntryXBandSpinUp
-//																  	  + diracDelta - greenEntryXBandSpinDown));
-//								kOccYimag[ksite] += std::imag(phase * ( diracDelta - greenEntryYBandSpinUp
-//																  	  + diracDelta - greenEntryYBandSpinDown));
-//							}
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
 
+	//fermion occupation number -- k-space
 	static const num pi = M_PI;
 	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
 	for (unsigned ksite = 0; ksite < N; ++ksite) {
