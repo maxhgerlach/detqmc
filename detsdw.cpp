@@ -264,7 +264,8 @@ void DetSDW::measure() {
 				num jx = num(j % L);
 
 				num argument = kx * (ix - jx) + ky * (iy - jy);
-				cpx phase = cpx(std::cos(argument), std::sin(argument));
+//				cpx phase = cpx(std::cos(argument), std::sin(argument));
+				cpx phase = std::exp(cpx(0, argument));
 
 				for (unsigned l = 1; l <= m; ++l) {
 					cpx green_x_up   = g.slice(l)(i, j);
