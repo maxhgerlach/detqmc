@@ -273,8 +273,10 @@ void DetSDW::measure() {
 					cpx green_y_up   = g.slice(l)(i + 2*N, j + 2*N);
 					cpx green_y_down = g.slice(l)(i + 3*N, j + 3*N);
 
-					cpx x_cpx = phase * (green_x_up + green_x_down);
-					cpx y_cpx = phase * (green_y_up + green_y_down);
+					cpx delta = cpx(i==j ? 1 : 0, 0);
+
+					cpx x_cpx = delta - phase * (green_x_up + green_x_down);
+					cpx y_cpx = delta - phase * (green_y_up + green_y_down);
 
 					kOccX[ksite] += std::real(x_cpx);
 					kOccY[ksite] += std::real(y_cpx);
@@ -284,10 +286,15 @@ void DetSDW::measure() {
 			}
 		}
 
-		kOccX[ksite] = 1.0 - kOccX[ksite] / num(m * N);
-		kOccY[ksite] = 1.0 - kOccY[ksite] / num(m * N);
-		kOccXimag[ksite] = 1.0 - kOccXimag[ksite] / num(m * N);
-		kOccYimag[ksite] = 1.0 - kOccYimag[ksite] / num(m * N);
+//		kOccX[ksite] = 1.0 - kOccX[ksite] / num(m * N);
+//		kOccY[ksite] = 1.0 - kOccY[ksite] / num(m * N);
+//		kOccXimag[ksite] = 1.0 - kOccXimag[ksite] / num(m * N);
+//		kOccYimag[ksite] = 1.0 - kOccYimag[ksite] / num(m * N);
+
+		kOccX[ksite] /= num(m*N);
+		kOccY[ksite] /= num(m*N);
+		kOccXimag[ksite] /= num(m*N);
+		kOccYimag[ksite] /= num(m*N);
 	}
 
 	//sdw-susceptibility
