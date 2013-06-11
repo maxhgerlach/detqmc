@@ -318,15 +318,22 @@ void DetSDW::setupPropK() {
 			for (unsigned dir = 0; dir < z; ++dir) {
 				unsigned neigh = spaceNeigh(dir, site);
 				num hop = t[band][dir];
-				if (antiperiodic) {
-					unsigned siteY = site / L;
-					unsigned siteX = site % L;
-					if ((siteX == 0 and dir == XMINUS) or (siteX == L-1 and dir == XPLUS) or
-						(siteY == 0 and dir == YMINUS) or (siteY == L-1 and dir == YPLUS)) {
-						//crossing boundaries
+
+				unsigned siteY = site / L;
+				unsigned siteX = site % L;
+				if (bc == APBC_X or bc == APBC_XY) {
+					if ((siteX == 0 and dir == XMINUS) or (siteX == L-1 and dir == XPLUS)) {
+						//crossing x-boundary
 						hop *= -1;
 					}
 				}
+				if (bc == APBC_Y or bc == APBC_XY) {
+					if ((siteY == 0 and dir == YMINUS) or (siteY == L-1 and dir == YPLUS)) {
+						//crossing y-boundary
+						hop *= -1;
+					}
+				}
+
 				k(site, neigh) -= hop;
 			}
 		} );
