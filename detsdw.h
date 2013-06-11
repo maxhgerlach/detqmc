@@ -52,7 +52,8 @@ protected:
 	const num u;
 	const num lambda;
 
-	bool antiperiodic;
+	enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
+	BC_Type bc;
 
 	enum Band {XBAND = 0, YBAND = 1};
 

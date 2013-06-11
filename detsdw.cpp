@@ -68,7 +68,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		DetModelGC<1,cpx>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
 		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
-		antiperiodic(false),
+		bc(PBC),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
@@ -83,8 +83,17 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
 		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
 {
-	if (pars.bc == "apbc") {
-		antiperiodic = true;
+	if (pars.bc == "pbc") {
+		bc = PBC;
+	} else if (pars.bc == "apbc-x") {
+		bc = APBC_X;
+	} else if (pars.bc == "apbc-y") {
+		bc = APBC_Y;
+	} else if (pars.bc == "apbc-xy") {
+		bc = APBC_XY;
+	} else {
+		// "safe default"
+		bc = PBC;
 	}
 	g = CubeCpx(4*N,4*N, m+1);
 	if (pars.timedisplaced) {
@@ -133,7 +142,15 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 	MetadataMap meta;
 	meta["model"] = "sdw";
 	meta["timedisplaced"] = (timedisplaced ? "true" : "false");
-	meta["bc"] = (antiperiodic ? "apbc" : "pbc");
+	if (bc == PBC) {
+		meta["bc"] = "pbc";
+	} else if (bc == APBC_X) {
+		meta["bc"] = "apbc-x";
+	} else if (bc == APBC_Y) {
+		meta["bc"] = "apbc-y";
+	} else if (bc == APBC_XY) {
+		meta["bc"] = "apbc-xy";
+	}
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(targetAccRatio);
 	META_INSERT(r);
