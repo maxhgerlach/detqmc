@@ -237,8 +237,8 @@ void DetSDW::measure() {
 		//try a slightly alternative approach..
 		unsigned ksitey = ksite / L;
 		unsigned ksitex = ksite % L;
-		num ky = -pi + (num(ksitey) + offset_x) * 2*pi / num(L);
-		num kx = -pi + (num(ksitex) + offset_y) * 2*pi / num(L);
+		num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
+		num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
 
 		kOccX[ksite] = 0.0;
 		kOccY[ksite] = 0.0;
