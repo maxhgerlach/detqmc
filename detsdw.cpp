@@ -38,7 +38,12 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 		}
 	}
 
-	if (pars.bc != "pbc" and pars.bc != "apbc") {
+	std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
+	bool bc_is_one_of_the_possible = false;
+	for (const std::string& bc : possibleBC) {
+		if (pars.bc == bc) bc_is_one_of_the_possible = true;
+	}
+	if (not bc_is_one_of_the_possible) {
 		throw ParameterWrong("bc", pars.bc);
 	}
 

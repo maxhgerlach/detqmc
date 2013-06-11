@@ -45,7 +45,7 @@ struct ModelParams {
 					//from scratch
 	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
 
-	std::string bc;	//boundary conditions: For SDW: "pbc" or "apbc"
+	std::string bc;	//boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
 	std::set<std::string> specified;
 
@@ -61,7 +61,7 @@ private:
 	void serialize(Archive& ar, const unsigned int version) {
 		(void)version;
 		ar & model & timedisplaced & checkerboard
-		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio
+		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio & bc
 		   & specified;
 	}
 };
