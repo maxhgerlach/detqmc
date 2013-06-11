@@ -224,13 +224,21 @@ void DetSDW::measure() {
 
 	//fermion occupation number -- k-space
 	static const num pi = M_PI;
-	num offset = (antiperiodic ? 0.5 : 0);				//offset k-components for antiperiodic bc
+	//offset k-components for antiperiodic bc
+	num offset_x = 0.0;
+	num offset_y = 0.0;
+	if (bc == APBC_X or bc == APBC_XY) {
+		offset_x = 0.5;
+	}
+	if (bc == APBC_Y or bc == APBC_XY) {
+		offset_y = 0.5;
+	}
 	for (unsigned ksite = 0; ksite < N; ++ksite) {
 		//try a slightly alternative approach..
 		unsigned ksitey = ksite / L;
 		unsigned ksitex = ksite % L;
-		num ky = -pi + (num(ksitey) + offset) * 2*pi / num(L);
-		num kx = -pi + (num(ksitex) + offset) * 2*pi / num(L);
+		num ky = -pi + (num(ksitey) + offset_x) * 2*pi / num(L);
+		num kx = -pi + (num(ksitex) + offset_y) * 2*pi / num(L);
 
 		kOccX[ksite] = 0.0;
 		kOccY[ksite] = 0.0;
