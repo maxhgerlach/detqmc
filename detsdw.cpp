@@ -157,6 +157,10 @@ MetadataMap DetSDW::prepareModelMetadataMap() const {
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
 	META_INSERT(targetAccRatio);
 	META_INSERT(r);
+	META_INSERT(txhor);
+	META_INSERT(txver);
+	META_INSERT(tyhor);
+	META_INSERT(tyver);
 	META_INSERT(mu);
 	META_INSERT(L);
 	META_INSERT(d);
