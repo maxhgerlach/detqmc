@@ -35,6 +35,10 @@ struct ModelParams {
 	num t;		//Hubbard
 	num U;		//Hubbard
 	num r;		//SDW
+	num txhor;  //SDW: hopping constants depending on direction and band
+	num txver;  //SDW
+	num tyhor;  //SDW
+	num tyver;  //SDW
 	num mu;
 	unsigned L;
 	unsigned d;
@@ -50,7 +54,9 @@ struct ModelParams {
 	std::set<std::string> specified;
 
 	ModelParams() :
-			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
+			model(), timedisplaced(), checkerboard(), t(), U(), r(),
+			txhor(), txver(), tyhor(), tyver(),
+			mu(), L(), d(),
 			beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
 	}
 
@@ -61,7 +67,8 @@ private:
 	void serialize(Archive& ar, const unsigned int version) {
 		(void)version;
 		ar & model & timedisplaced & checkerboard
-		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio & bc
+		   & t & U & r & txhor & txver & tyhor & tyver
+		   & mu & L & d & beta & m & dtau & s & accRatio & bc
 		   & specified;
 	}
 };

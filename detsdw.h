@@ -47,6 +47,10 @@ protected:
 	const unsigned L;
 	const unsigned N;
 	const num r;
+	const num txhor;
+	const num txver;
+	const num tyhor;
+	const num tyver;
 	const num mu;
 	const num c;
 	const num u;

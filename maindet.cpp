@@ -59,6 +59,10 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
 			("s", po::value<unsigned>(&modelpar.s)->default_value(1), "separation of timeslices where the Green-function is calculated from scratch with stabilized updates.")
 			("accRatio", po::value<num>(&modelpar.accRatio)->default_value(0.5), "for SDW: target acceptance ratio for tuning spin update box size")
 			("bc", po::value<string>(&modelpar.bc)->default_value("pbc"), "for SDW: boundary conditions to use: pbc (periodic), apbc-x, apbc-y or apbc-xy (anti-periodic in x- and/or y-direction)")
+			("txhor", po::value<num>(&modelpar.txhor)->default_value(1.0), "SDW: hopping x left-right")
+			("txver", po::value<num>(&modelpar.txver)->default_value(0.5), "SDW: hopping x up-down")
+			("tyhor", po::value<num>(&modelpar.tyhor)->default_value(-0.5), "SDW: hopping y left-right")
+			("tyver", po::value<num>(&modelpar.tyver)->default_value(-1.0), "SDW: hopping y up-down")
 			;
 
 	po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");

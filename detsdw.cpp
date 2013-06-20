@@ -31,7 +31,7 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 	//check parameters: passed all that are necessary
 	using namespace boost::assign;
 	std::vector<std::string> neededModelPars;
-	neededModelPars += "mu", "L", "r", "accRatio", "bc";
+	neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver";
 	for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
 		if (pars.specified.count(*p) == 0) {
 			throw ParameterMissing(*p);
@@ -67,7 +67,10 @@ std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars) {
 DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		DetModelGC<1,cpx>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
-		L(pars.L), N(L*L), r(pars.r), mu(pars.mu), c(1), u(1), lambda(1), //TODO: make these controllable by parameter
+		L(pars.L), N(L*L), r(pars.r),
+		txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
+		mu(pars.mu),
+		c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		bc(PBC),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
@@ -307,10 +310,10 @@ void DetSDW::setupRandomPhi() {
 
 void DetSDW::setupPropK() {
 	std::array<std::array<num,z>, 2> t;
-	t[XBAND][XPLUS] = t[XBAND][XMINUS] = -1.0;
-	t[XBAND][YPLUS] = t[XBAND][YMINUS] = -0.5;
-	t[YBAND][XPLUS] = t[YBAND][XMINUS] =  0.5;
-	t[YBAND][YPLUS] = t[YBAND][YMINUS] =  1.0;
+	t[XBAND][XPLUS] = t[XBAND][XMINUS] = txhor;
+	t[XBAND][YPLUS] = t[XBAND][YMINUS] = txver;
+	t[YBAND][XPLUS] = t[YBAND][XMINUS] = tyhor;
+	t[YBAND][YPLUS] = t[YBAND][YMINUS] = tyver;
 
 	for_each_band( [this, &t](unsigned band) {
 		MatNum k = -mu * arma::eye(N,N);
