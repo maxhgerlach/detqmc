@@ -84,7 +84,9 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 		kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
 		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
-		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND])
+		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
+		pairPlusMax(0.0), pairMinusMax(0.0), pairPlusMaximag(0.0), pairMinusMaximag(0.0),
+		pairPlus(), pairMinus(), pairPlusimag(), pairMinusimag()
 {
 	if (pars.bc == "pbc") {
 		bc = PBC;
@@ -113,7 +115,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	using std::cref;
 	using namespace boost::assign;
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
-			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc");
+			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
+			ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
+			ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax");
+			ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
+			ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag");
 
 	kOccX.zeros(N);
 	kOccY.zeros(N);
@@ -132,6 +138,15 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	occYimag.zeros(N);
 	obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
 			VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
+
+	pairPlus.zeros(N);
+	pairMinus.zeros(N);
+	pairPlusimag.zeros(N);
+	pairMinusimag.zeros(N);
+	obsVector += VectorObservable(cref(pairPlus), N, "pairPlus", "pp"),
+			VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
+			VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
+			VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 }
 
 DetSDW::~DetSDW() {
@@ -293,6 +308,76 @@ void DetSDW::measure() {
 												 + phi2(site, timeslice) * phi2(0, m);
 										},
 									0.0);
+
+	//equal-time pairing-correlations
+	//-------------------------------
+	pairPlus.zeros(N);
+	pairMinus.zeros(N);
+	pairPlusimag.zeros(N);
+	pairMinusimag.zeros(N);
+	for (unsigned l = 1; l <= m; ++l) {
+		//helper to access the green function
+		auto gl = [this, l](unsigned site1, Band band1, Spin spin1,
+						   unsigned site2, Band band2, Spin spin2) -> cpx {
+			return g.slice(l)(site1 + 2*N*band1 + N*spin1, site2 + 2*N*band2 + N*spin2);
+		};
+
+		for (unsigned i = 0; i < N; ++i) {
+			// the following two unwieldy sums have been evaluated with the Mathematica
+			// notebook pairing-corr.nb
+			cpx pairPlusCpx = (
+					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
+					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) +
+					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) -
+					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, YBAND, SPINUP) +
+					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, XBAND, SPINDOWN) -
+					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, XBAND, SPINUP) +
+					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
+					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
+			);
+			pairPlus[i] += -4.0 * std::real(pairPlusCpx);
+			pairPlusimag[i] += -4.0 * std::imag(pairPlusCpx);
+
+			cpx pairMinusCpx = (
+					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
+					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) -
+					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) +
+					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, YBAND, SPINUP) -
+					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, XBAND, SPINDOWN) +
+					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, XBAND, SPINUP) +
+					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
+					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
+			);
+			pairMinus[i] += -4.0 * std::real(pairMinusCpx);
+			pairMinusimag[i] += -4.0 * std::imag(pairMinusCpx);
+		}
+	}
+	pairPlus /= m;
+	pairPlusimag /= m;
+	pairMinus /= m;
+	pairMinusimag /= m;
+
+	// sites around the maximum range L/2, L/2
+	static const unsigned numSitesFar = 9;
+	unsigned sitesfar[numSitesFar] = {
+			coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
+			coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
+			coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
+	};
+	pairPlusMax = 0;
+	pairPlusMaximag = 0;
+	pairMinusMax = 0;
+	pairMinusMaximag = 0;
+	for (unsigned i : sitesfar) {
+		pairPlusMax += pairPlus[i];
+		pairPlusMaximag += pairPlusimag[i];
+		pairMinusMax += pairMinus[i];
+		pairMinusMaximag += pairMinusimag[i];
+	}
+	pairPlusMax /= numSitesFar;
+	pairPlusMaximag /= numSitesFar;
+	pairMinusMax /= numSitesFar;
+	pairMinusMaximag /= numSitesFar;
 
 	timing.stop("sdw-measure");
 }

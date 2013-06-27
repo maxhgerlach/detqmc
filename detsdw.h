@@ -117,6 +117,17 @@ protected:
 	VecNum& occXimag;
 	VecNum& occYimag;
 
+	//pairing correlations near maximum range x_max = (L/2, L/2)
+	num pairPlusMax;
+	num pairMinusMax;
+	num pairPlusMaximag;
+	num pairMinusMaximag;
+	//and between site 0 and any other site
+	VecNum pairPlus;
+	VecNum pairMinus;
+	VecNum pairPlusimag;
+	VecNum pairMinusimag;
+
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);
@@ -148,6 +159,10 @@ protected:
     V averageWholeSystem(CallableSiteTimeslice f, V init) {
     	V sum = sumWholeSystem(f, init);
     	return sum / num(m * N);
+    }
+
+    unsigned coordsToSite(unsigned x, unsigned y) {
+    	return y*L + x;
     }
 
     void setupRandomPhi();
