@@ -60,6 +60,7 @@ protected:
 	BC_Type bc;
 
 	enum Band {XBAND = 0, YBAND = 1};
+	enum Spin {SPINUP = 0, SPINDOWN = 1};
 
 	PeriodicSquareLatticeNearestNeighbors spaceNeigh;
 	PeriodicChainNearestNeighbors<1> timeNeigh;
