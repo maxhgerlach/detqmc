@@ -117,7 +117,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
 			ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
 			ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
-			ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax");
+			ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
 			ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
 			ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag");
 
@@ -144,7 +144,7 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	pairPlusimag.zeros(N);
 	pairMinusimag.zeros(N);
 	obsVector += VectorObservable(cref(pairPlus), N, "pairPlus", "pp"),
-			VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
+			VectorObservable(cref(pairMinus), N, "pairMinus", "pm"),
 			VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 			VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 }
