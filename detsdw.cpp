@@ -139,6 +139,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 	obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
 			VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
 
+	//attention:
+	// these do not have valid entries for site 0
 	pairPlus.zeros(N);
 	pairMinus.zeros(N);
 	pairPlusimag.zeros(N);
