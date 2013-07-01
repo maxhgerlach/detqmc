@@ -321,7 +321,8 @@ void DetSDW::measure() {
 		//helper to access the green function
 		auto gl = [this, l](unsigned site1, Band band1, Spin spin1,
 						   unsigned site2, Band band2, Spin spin2) -> cpx {
-			return g.slice(l)(site1 + 2*N*band1 + N*spin1, site2 + 2*N*band2 + N*spin2);
+			return g.slice(l)(site1 + 2*N*band1 + N*spin1,
+					          site2 + 2*N*band2 + N*spin2);
 		};
 
 		for (unsigned i = 0; i < N; ++i) {
