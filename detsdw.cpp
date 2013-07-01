@@ -328,7 +328,7 @@ void DetSDW::measure() {
 		for (unsigned i = 0; i < N; ++i) {
 			// the following two unwieldy sums have been evaluated with the Mathematica
 			// notebook pairing-corr.nb
-			cpx pairPlusCpx = (
+			cpx pairPlusCpx = cpx(-4.0, 0) * (
 					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
 					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) +
 					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) -
@@ -338,10 +338,10 @@ void DetSDW::measure() {
 					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
 					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
 			);
-			pairPlus[i] += -4.0 * std::real(pairPlusCpx);
-			pairPlusimag[i] += -4.0 * std::imag(pairPlusCpx);
+			pairPlus[i] += std::real(pairPlusCpx);
+			pairPlusimag[i] += std::imag(pairPlusCpx);
 
-			cpx pairMinusCpx = (
+			cpx pairMinusCpx = cpx(-4.0, 0) * (
 					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
 					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) -
 					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) +
@@ -351,8 +351,8 @@ void DetSDW::measure() {
 					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
 					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
 			);
-			pairMinus[i] += -4.0 * std::real(pairMinusCpx);
-			pairMinusimag[i] += -4.0 * std::imag(pairMinusCpx);
+			pairMinus[i] += std::real(pairMinusCpx);
+			pairMinusimag[i] += std::imag(pairMinusCpx);
 		}
 	}
 	pairPlus /= m;
