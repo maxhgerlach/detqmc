@@ -8,6 +8,8 @@
 #include <cmath>
 #include <numeric>
 #include <functional>
+#include <array>
+#include <tuple>
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
 #include "observable.h"
 #include "detsdw.h"
@@ -319,6 +321,8 @@ void DetSDW::measure() {
 	pairMinusimag.zeros(N);
 	for (unsigned l = 1; l <= m; ++l) {
 		//helper to access the green function
+		// *1 is for the row index,
+		// *2 is for the column index
 		auto gl = [this, l](unsigned site1, Band band1, Spin spin1,
 						   unsigned site2, Band band2, Spin spin2) -> cpx {
 			return g.slice(l)(site1 + 2*N*band1 + N*spin1,
@@ -326,31 +330,44 @@ void DetSDW::measure() {
 		};
 
 		for (unsigned i = 0; i < N; ++i) {
-			// the following two unwieldy sums have been evaluated with the Mathematica
-			// notebook pairing-corr.nb
-			cpx pairPlusCpx = cpx(-4.0, 0) * (
-					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
-					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) +
-					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) -
-					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, YBAND, SPINUP) +
-					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, XBAND, SPINDOWN) -
-					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, XBAND, SPINUP) +
-					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
-					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
-			);
+			std::array<std::tuple<unsigned,unsigned>, 2> sitePairs = {{
+					std::make_tuple(i, 0), std::make_tuple(0, i)
+			}};
+
+			cpx pairPlusCpx(0, 0);
+			cpx pairMinusCpx(0, 0);
+
+			for (auto sites : sitePairs) {
+				unsigned siteA = std::get<0>(sites);
+				unsigned siteB = std::get<1>(sites);
+
+				// the following two unwieldy sums have been evaluated with the Mathematica
+				// notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
+				pairPlusCpx += cpx(-4.0, 0) * (
+						gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+						gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
+						gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+						gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
+						gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+						gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+						gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+						gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+				);
+
+				pairMinusCpx += cpx(-4.0, 0) * (
+						gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+						gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
+						gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
+						gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
+						gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
+						gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+						gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+						gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+				);
+			}
+
 			pairPlus[i] += std::real(pairPlusCpx);
 			pairPlusimag[i] += std::imag(pairPlusCpx);
-
-			cpx pairMinusCpx = cpx(-4.0, 0) * (
-					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, XBAND, SPINDOWN) -
-					gl(i, XBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, XBAND, SPINUP) -
-					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, XBAND, SPINUP, 0, YBAND, SPINDOWN) +
-					gl(i, XBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, XBAND, SPINUP, 0, YBAND, SPINUP) -
-					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, XBAND, SPINDOWN) +
-					gl(i, YBAND, SPINDOWN, 0, XBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, XBAND, SPINUP) +
-					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINUP)*gl(i, YBAND, SPINUP, 0, YBAND, SPINDOWN) -
-					gl(i, YBAND, SPINDOWN, 0, YBAND, SPINDOWN)*gl(i, YBAND, SPINUP, 0, YBAND, SPINUP)
-			);
 			pairMinus[i] += std::real(pairMinusCpx);
 			pairMinusimag[i] += std::imag(pairMinusCpx);
 		}
