@@ -128,6 +128,13 @@ protected:
 	VecNum pairPlusimag;
 	VecNum pairMinusimag;
 
+	//fermion energy
+	num fermionEkinetic;		//kinetic
+	num fermionEkinetic_imag;
+	num fermionEcouple;			//coupling
+	num fermionEcouple_imag;
+
+
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);

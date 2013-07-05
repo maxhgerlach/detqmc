@@ -88,7 +88,8 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		occ(), occX(occ[XBAND]), occY(occ[YBAND]),
 		occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
 		pairPlusMax(0.0), pairMinusMax(0.0), pairPlusMaximag(0.0), pairMinusMaximag(0.0),
-		pairPlus(), pairMinus(), pairPlusimag(), pairMinusimag()
+		pairPlus(), pairMinus(), pairPlusimag(), pairMinusimag(),
+		fermionEkinetic(0), fermionEkinetic_imag(0), fermionEcouple(0), fermionEcouple_imag(0)
 {
 	if (pars.bc == "pbc") {
 		bc = PBC;
@@ -121,7 +122,11 @@ DetSDW::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 			ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
 			ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
 			ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
-			ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag");
+			ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag"),
+			ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
+			ScalarObservable(cref(fermionEkinetic_imag), "fermionEkineticimag", "fEkinimag"),
+			ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple"),
+			ScalarObservable(cref(fermionEcouple_imag), "fermionEcoupleimag", "fEcoupleimag");
 
 	kOccX.zeros(N);
 	kOccY.zeros(N);
@@ -398,6 +403,69 @@ void DetSDW::measure() {
 	pairPlusMaximag /= numSitesFar;
 	pairMinusMax /= numSitesFar;
 	pairMinusMaximag /= numSitesFar;
+
+
+	// Fermionic energy contribution
+	// -----------------------------
+	fermionEkinetic = 0;
+	fermionEkinetic_imag = 0;
+	for (unsigned l = 1; l <= m; ++l) {
+		auto glij = [this, l](unsigned site1, unsigned site2, Band band, Spin spin) -> cpx {
+			return g.slice(l)(site1 + 2*N*band + N*spin,
+					          site2 + 2*N*band + N*spin);
+		};
+		for (unsigned i = 0; i < N; ++i) {
+			//TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
+			Spin spins[] = {SPINUP, SPINDOWN};
+			for (auto spin: spins) {
+				cpx e = cpx(txhor,0) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
+				      + cpx(txhor,0) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
+				      + cpx(txver,0) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
+				      + cpx(txver,0) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
+				      + cpx(tyhor,0) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
+				      + cpx(tyhor,0) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
+				      + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
+				      + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
+				fermionEkinetic += std::real(e);
+				fermionEkinetic_imag += std::real(e);
+			}
+		}
+	}
+	fermionEkinetic /= num(m*N);
+	fermionEkinetic_imag /= num(m*N);
+
+	fermionEcouple = 0;
+	fermionEcouple_imag = 0;
+	for (unsigned l = 1; l <= m; ++l) {
+		for (unsigned i = 0; i < N; ++i) {
+			auto glbs = [this, l,i](Band band1, Spin spin1,
+					                Band band2, Spin spin2) -> cpx {
+				return g.slice(l)(i + 2*N*band1 + N*spin1,
+						          i + 2*N*band2 + N*spin2);
+			};
+
+			//factors for different combinations of spins
+			//overall factor of -1 included
+			cpx up_up(-phi2(l,i), 0);
+			cpx up_dn(-phi0(l,i), +phi1(l,i));
+			cpx dn_up(-phi0(l,i), -phi1(l,i));
+			cpx dn_dn(+phi2(l,i), 0);
+
+			cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
+					         glbs(YBAND, SPINUP, XBAND, SPINUP))
+				  + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
+					         glbs(YBAND, SPINUP, XBAND, SPINDOWN))
+				  + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
+					         glbs(YBAND, SPINDOWN, XBAND, SPINUP))
+				  + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
+					         glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
+			fermionEcouple += std::real(e);
+			fermionEcouple_imag += std::imag(e);
+		}
+
+	}
+	fermionEcouple /= num(m*N);
+	fermionEcouple_imag /= num(m*N);
 
 	timing.stop("sdw-measure");
 }
