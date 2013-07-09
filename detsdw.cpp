@@ -379,9 +379,9 @@ void DetSDW<TD,CB>::measure() {
         };
 
         for (uint32_t i = 0; i < N; ++i) {
-            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {{
+            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
                     std::make_tuple(i, 0), std::make_tuple(0, i)
-            }};
+            };
 
             cpx pairPlusCpx(0, 0);
             cpx pairMinusCpx(0, 0);
@@ -490,10 +490,10 @@ void DetSDW<TD,CB>::measure() {
 
             //factors for different combinations of spins
             //overall factor of -1 included
-            cpx up_up(-phi2(l,i), 0);
-            cpx up_dn(-phi0(l,i), +phi1(l,i));
-            cpx dn_up(-phi0(l,i), -phi1(l,i));
-            cpx dn_dn(+phi2(l,i), 0);
+            cpx up_up(-phi2(i,l), 0);
+            cpx up_dn(-phi0(i,l), +phi1(i,l));
+            cpx dn_up(-phi0(i,l), -phi1(i,l));
+            cpx dn_dn(+phi2(i,l), 0);
 
             cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
                              glbs(YBAND, SPINUP, XBAND, SPINUP))
