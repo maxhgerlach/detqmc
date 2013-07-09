@@ -86,7 +86,7 @@ void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
     string line;
     string configLines;
     while (getline(input, line)) {
-    	boost::algorithm::trim_left(line);
+        boost::algorithm::trim_left(line);
         if (line[0] == '#') {
             //interpret lines starting with # as meta data (only at the beginning of the file)
             line[0] = ' ';

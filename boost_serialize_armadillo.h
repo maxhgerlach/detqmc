@@ -21,28 +21,28 @@ namespace boost { namespace serialization {
 
 template<class Archive, class T>
 inline void save(Archive& ar,
-				 const arma::Col<T>& vec,
-				 const uint32_t /*version*/) {
-	std::ostringstream outStream;
-	vec.save(outStream, arma::arma_binary);
-	std::string outString = outStream.str();
-	ar << outString;
+                 const arma::Col<T>& vec,
+                 const uint32_t /*version*/) {
+    std::ostringstream outStream;
+    vec.save(outStream, arma::arma_binary);
+    std::string outString = outStream.str();
+    ar << outString;
 }
 
 template<class Archive, class T>
 inline void load(Archive& ar,
-				 arma::Col<T>& vec,
-				 const uint32_t /*version*/) {
-	std::string inString;
-	ar >> inString;
-	std::istringstream inStream(inString);
-	vec.load(inStream, arma::arma_binary);
+                 arma::Col<T>& vec,
+                 const uint32_t /*version*/) {
+    std::string inString;
+    ar >> inString;
+    std::istringstream inStream(inString);
+    vec.load(inStream, arma::arma_binary);
 }
 
 template<class Archive, class T>
 inline void serialize(Archive& ar,
-					  arma::Col<T>& vec,
-					  const uint32_t file_version) {
+                      arma::Col<T>& vec,
+                      const uint32_t file_version) {
     boost::serialization::split_free(ar, vec, file_version);
 }
 
@@ -52,28 +52,28 @@ inline void serialize(Archive& ar,
 
 template<class Archive, class T>
 inline void save(Archive& ar,
-				 const arma::Mat<T>& mat,
-				 const uint32_t /*version*/) {
-	std::ostringstream outStream;
-	mat.save(outStream, arma::arma_binary);
-	std::string outString = outStream.str();
-	ar << outString;
+                 const arma::Mat<T>& mat,
+                 const uint32_t /*version*/) {
+    std::ostringstream outStream;
+    mat.save(outStream, arma::arma_binary);
+    std::string outString = outStream.str();
+    ar << outString;
 }
 
 template<class Archive, class T>
 inline void load(Archive& ar,
-				 arma::Mat<T>& mat,
-				 const uint32_t /*version*/) {
-	std::string inString;
-	ar >> inString;
-	std::istringstream inStream(inString);
-	mat.load(inStream, arma::arma_binary);
+                 arma::Mat<T>& mat,
+                 const uint32_t /*version*/) {
+    std::string inString;
+    ar >> inString;
+    std::istringstream inStream(inString);
+    mat.load(inStream, arma::arma_binary);
 }
 
 template<class Archive, class T>
 inline void serialize(Archive& ar,
-					  arma::Mat<T>& mat,
-					  const uint32_t file_version) {
+                      arma::Mat<T>& mat,
+                      const uint32_t file_version) {
     boost::serialization::split_free(ar, mat, file_version);
 }
 
@@ -83,28 +83,28 @@ inline void serialize(Archive& ar,
 
 template<class Archive, class T>
 inline void save(Archive& ar,
-				 const arma::Cube<T>& cube,
-				 const uint32_t /*version*/) {
-	std::ostringstream outStream;
-	cube.save(outStream, arma::arma_binary);
-	std::string outString = outStream.str();
-	ar << outString;
+                 const arma::Cube<T>& cube,
+                 const uint32_t /*version*/) {
+    std::ostringstream outStream;
+    cube.save(outStream, arma::arma_binary);
+    std::string outString = outStream.str();
+    ar << outString;
 }
 
 template<class Archive, class T>
 inline void load(Archive& ar,
-				 arma::Cube<T>& cube,
-				 const uint32_t /*version*/) {
-	std::string inString;
-	ar >> inString;
-	std::istringstream inStream(inString);
-	cube.load(inStream, arma::arma_binary);
+                 arma::Cube<T>& cube,
+                 const uint32_t /*version*/) {
+    std::string inString;
+    ar >> inString;
+    std::istringstream inStream(inString);
+    cube.load(inStream, arma::arma_binary);
 }
 
 template<class Archive, class T>
 inline void serialize(Archive& ar,
-					  arma::Cube<T>& cube,
-					  const uint32_t file_version) {
+                      arma::Cube<T>& cube,
+                      const uint32_t file_version) {
     boost::serialization::split_free(ar, cube, file_version);
 }
 

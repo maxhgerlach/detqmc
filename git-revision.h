@@ -12,15 +12,15 @@ extern const char CXXFLAGS[];
 #include "metadata.h"
 #include "tools.h"
 inline MetadataMap collectVersionInfo() {
-	MetadataMap meta;
-	meta["gitBranch"] = numToString(GIT_BRANCH);
-	meta["gitRevisionHash"] = numToString(GIT_REVISION_HASH);
-	meta["buildHost"] = numToString(HOST_NAME);
-	meta["buildDate"] = numToString(BUILD_DATE);
-	meta["buildTime"] = numToString(BUILD_TIME);
-	meta["cppflags"] = numToString(CPPFLAGS);
-	meta["cxxflags"] = numToString(CXXFLAGS);
-	return meta;
+    MetadataMap meta;
+    meta["gitBranch"] = numToString(GIT_BRANCH);
+    meta["gitRevisionHash"] = numToString(GIT_REVISION_HASH);
+    meta["buildHost"] = numToString(HOST_NAME);
+    meta["buildDate"] = numToString(BUILD_DATE);
+    meta["buildTime"] = numToString(BUILD_TIME);
+    meta["cppflags"] = numToString(CPPFLAGS);
+    meta["cxxflags"] = numToString(CXXFLAGS);
+    return meta;
 }
 
 

@@ -23,90 +23,90 @@
 // at the appropriate point in the program if a parameter is missing.
 //TODO: Find a more elegant solution.
 
-typedef double num;		//possibility to switch to single precision if ever desired
+typedef double num;     //possibility to switch to single precision if ever desired
 
 // Struct representing model specific parameters
 struct ModelParams {
-	//TODO: split this up so that model specific parameters are in substructs
+    //TODO: split this up so that model specific parameters are in substructs
 
-	std::string model;
-	bool timedisplaced;		//also evaluate timedisplaced Green functions and derived quantities
-	bool checkerboard;		//Hubbard: use a checkerboard decomposition for computing the propagator
-	num t;		//Hubbard
-	num U;		//Hubbard
-	num r;		//SDW
-	num txhor;  //SDW: hopping constants depending on direction and band
-	num txver;  //SDW
-	num tyhor;  //SDW
-	num tyver;  //SDW
-	num mu;
-	uint32_t L;
-	uint32_t d;
-	num beta;
-	uint32_t m;		//either specify number of timeslices 'm'
-	num dtau;		//or timeslice separation 'dtau'
-	uint32_t s;		//separation of timeslices where the Green function is calculated
-					//from scratch
-	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
+    std::string model;
+    bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
+    bool checkerboard;      //Hubbard: use a checkerboard decomposition for computing the propagator
+    num t;      //Hubbard
+    num U;      //Hubbard
+    num r;      //SDW
+    num txhor;  //SDW: hopping constants depending on direction and band
+    num txver;  //SDW
+    num tyhor;  //SDW
+    num tyver;  //SDW
+    num mu;
+    uint32_t L;
+    uint32_t d;
+    num beta;
+    uint32_t m;     //either specify number of timeslices 'm'
+    num dtau;       //or timeslice separation 'dtau'
+    uint32_t s;     //separation of timeslices where the Green function is calculated
+                    //from scratch
+    num accRatio;   //for SDW: target acceptance ratio for tuning spin update box size
 
-	std::string bc;	//boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
+    std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
-	std::set<std::string> specified;
+    std::set<std::string> specified;
 
-	ModelParams() :
-			model(), timedisplaced(), checkerboard(), t(), U(), r(),
-			txhor(), txver(), tyhor(), tyver(),
-			mu(), L(), d(),
-			beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
-	}
+    ModelParams() :
+            model(), timedisplaced(), checkerboard(), t(), U(), r(),
+            txhor(), txver(), tyhor(), tyver(),
+            mu(), L(), d(),
+            beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
+    }
 
 private:
-	friend class boost::serialization::access;
+    friend class boost::serialization::access;
 
-	template<class Archive>
-	void serialize(Archive& ar, const uint32_t version) {
-		(void)version;
-		ar & model & timedisplaced & checkerboard
-		   & t & U & r & txhor & txver & tyhor & tyver
-		   & mu & L & d & beta & m & dtau & s & accRatio & bc
-		   & specified;
-	}
+    template<class Archive>
+    void serialize(Archive& ar, const uint32_t version) {
+        (void)version;
+        ar & model & timedisplaced & checkerboard
+           & t & U & r & txhor & txver & tyhor & tyver
+           & mu & L & d & beta & m & dtau & s & accRatio & bc
+           & specified;
+    }
 };
 
 
 // Struct representing Monte Carlo simulation parameters
 struct MCParams {
-	uint32_t sweeps;			// number of sweeps used for measurements
-	uint32_t thermalization;	// number of warm-up sweeps allowed before equilibrium is assumed
-	uint32_t jkBlocks;			// number of jackknife blocks for error estimation
-	bool timeseries;			// if true, write time series of individual measurements to disk
-	uint32_t measureInterval;	// take measurements every measureInterval sweeps
-	uint32_t saveInterval;		// write measurements to disk every saveInterval sweeps
-	uint32_t rngSeed;		// seed for random number generator
+    uint32_t sweeps;            // number of sweeps used for measurements
+    uint32_t thermalization;    // number of warm-up sweeps allowed before equilibrium is assumed
+    uint32_t jkBlocks;          // number of jackknife blocks for error estimation
+    bool timeseries;            // if true, write time series of individual measurements to disk
+    uint32_t measureInterval;   // take measurements every measureInterval sweeps
+    uint32_t saveInterval;      // write measurements to disk every saveInterval sweeps
+    uint32_t rngSeed;       // seed for random number generator
 
-	std::string greenUpdateType; 	//"simple" or "stabilized"
+    std::string greenUpdateType;    //"simple" or "stabilized"
 
-	std::string stateFileName;		//for serialization dumps
-	bool sweepsHasChanged;			//true, if the number of target sweeps has changed after resuming
+    std::string stateFileName;      //for serialization dumps
+    bool sweepsHasChanged;          //true, if the number of target sweeps has changed after resuming
 
-	std::set<std::string> specified;
+    std::set<std::string> specified;
 
-	MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-			rngSeed(), greenUpdateType(), stateFileName(), sweepsHasChanged(false), specified()
-	{ }
+    MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
+            rngSeed(), greenUpdateType(), stateFileName(), sweepsHasChanged(false), specified()
+    { }
 
 private:
-	friend class boost::serialization::access;
+    friend class boost::serialization::access;
 
-	template<class Archive>
-	void serialize(Archive& ar, const uint32_t version) {
-		(void)version;
-		ar & sweeps & thermalization & jkBlocks & timeseries
-		   & measureInterval & saveInterval & rngSeed & greenUpdateType
-		   & stateFileName
-		   & sweepsHasChanged
-		   & specified;
-	}
+    template<class Archive>
+    void serialize(Archive& ar, const uint32_t version) {
+        (void)version;
+        ar & sweeps & thermalization & jkBlocks & timeseries
+           & measureInterval & saveInterval & rngSeed & greenUpdateType
+           & stateFileName
+           & sweepsHasChanged
+           & specified;
+    }
 };
 
 

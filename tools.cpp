@@ -6,7 +6,7 @@
  */
 
 #include "tools.h"
-#include <glob.h>			//POSIX glob()
+#include <glob.h>           //POSIX glob()
 
 // Taken from:
 // http://stackoverflow.com/questions/8401777/simple-glob-in-c-on-unix-system

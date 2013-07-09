@@ -22,18 +22,18 @@ namespace boost { namespace serialization {
 
 template<class Archive, class T, class Allocator>
 inline void save(Archive& ar,
-				 const std::vector<std::unique_ptr<T>, Allocator>& vec,
-				 const uint32_t /*version*/) {
-	collection_size_type count = vec.size();
-	ar << BOOST_SERIALIZATION_NVP(count);
-	for (auto it = vec.begin(), end = vec.end(); it != end; ++it)
-		ar << boost::serialization::make_nvp("item", (*it));
+                 const std::vector<std::unique_ptr<T>, Allocator>& vec,
+                 const uint32_t /*version*/) {
+    collection_size_type count = vec.size();
+    ar << BOOST_SERIALIZATION_NVP(count);
+    for (auto it = vec.begin(), end = vec.end(); it != end; ++it)
+        ar << boost::serialization::make_nvp("item", (*it));
 }
 
 template<class Archive, class T, class Allocator>
 inline void load(Archive& ar,
-				 std::vector<std::unique_ptr<T>, Allocator>& vec,
-				 const uint32_t /*version*/) {
+                 std::vector<std::unique_ptr<T>, Allocator>& vec,
+                 const uint32_t /*version*/) {
     collection_size_type count;
     ar >> BOOST_SERIALIZATION_NVP(count);
     vec.clear();
@@ -47,8 +47,8 @@ inline void load(Archive& ar,
 
 template<class Archive, class T, class Allocator>
 inline void serialize(Archive& ar,
-					  std::vector<std::unique_ptr<T>, Allocator>& t,
-					  const uint32_t file_version) {
+                      std::vector<std::unique_ptr<T>, Allocator>& t,
+                      const uint32_t file_version) {
     boost::serialization::split_free(ar, t, file_version);
 }
 

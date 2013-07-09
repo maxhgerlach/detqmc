@@ -44,7 +44,7 @@ public:
 
     //return a floating point random number from (low, high)
     double randRange(double low, double high) {
-    	return low + (high - low) * rand01();
+        return low + (high - low) * rand01();
     }
 
     //return an integer random number from the discrete uniform distribution over the integers
@@ -59,24 +59,24 @@ public:
 
 private:
     //for serialization with Boost
-	friend class boost::serialization::access;
+    friend class boost::serialization::access;
 
     std::string stateToString() const;
     void stringToState(const std::string& stateString);
 
     template<class Archive>
-	void save(Archive& ar, const uint32_t /* version */) const {
-    	ar << seed << processIndex;
-    	std::string stateString = stateToString();
-    	ar << stateString;
+    void save(Archive& ar, const uint32_t /* version */) const {
+        ar << seed << processIndex;
+        std::string stateString = stateToString();
+        ar << stateString;
     }
 
     template<class Archive>
-	void load(Archive& ar, const uint32_t /* version */) {
-    	ar >> seed >> processIndex;
-    	std::string stateString;
-    	ar >> stateString;
-    	stringToState(stateString);
+    void load(Archive& ar, const uint32_t /* version */) {
+        ar >> seed >> processIndex;
+        std::string stateString;
+        ar >> stateString;
+        stringToState(stateString);
     }
 
     BOOST_SERIALIZATION_SPLIT_MEMBER()

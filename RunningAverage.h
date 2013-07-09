@@ -21,27 +21,27 @@ public:
     int getSamplesAdded();
 
 private:
-	friend class boost::serialization::access;
+    friend class boost::serialization::access;
 
-	RunningAverage() :
-		sampleSize(), samplesAdded(), values(),
-		runningAverage()
-	{
-		//private default constructor, just for serialization
-	}
+    RunningAverage() :
+        sampleSize(), samplesAdded(), values(),
+        runningAverage()
+    {
+        //private default constructor, just for serialization
+    }
 
-	template<class Archive>
-	void serialize(Archive& ar, const uint32_t version) {
-		(void)version;
-		ar & sampleSize & samplesAdded
-		   & values & runningAverage;
-	}
+    template<class Archive>
+    void serialize(Archive& ar, const uint32_t version) {
+        (void)version;
+        ar & sampleSize & samplesAdded
+           & values & runningAverage;
+    }
 };
 
 template<typename Val>
 RunningAverage<Val>::RunningAverage(int sampleSize_) :
-	sampleSize(sampleSize_), samplesAdded(0), values(),
-	runningAverage(0)
+    sampleSize(sampleSize_), samplesAdded(0), values(),
+    runningAverage(0)
 {
 }
 
@@ -66,7 +66,7 @@ Val RunningAverage<Val>::get() {
 
 template<typename Val>
 int RunningAverage<Val>::getSamplesAdded() {
-	return samplesAdded;
+    return samplesAdded;
 }
 
 }

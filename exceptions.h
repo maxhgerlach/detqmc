@@ -13,74 +13,74 @@
 #include "tools.h"
 
 class GeneralError : public std::exception {
-	std::string message;
+    std::string message;
 public:
-	GeneralError(const std::string& msg) : message(msg) {}
-	virtual ~GeneralError() throw () { }
-	virtual const char* what() const throw () {
-		return message.c_str();
-	}
+    GeneralError(const std::string& msg) : message(msg) {}
+    virtual ~GeneralError() throw () { }
+    virtual const char* what() const throw () {
+        return message.c_str();
+    }
 };
 
 class WrongObsIndex : public std::exception {
-	int oi;
-	bool vec;
+    int oi;
+    bool vec;
 public:
-	WrongObsIndex(int obsIndex, bool vector=false) : oi(obsIndex), vec(vector) {}
+    WrongObsIndex(int obsIndex, bool vector=false) : oi(obsIndex), vec(vector) {}
     virtual const char* what() const throw () {
         return ((vec ? "Vector " : "") + std::string("Observable index ") + numToString(oi) +
-        		" not supported").c_str();
+                " not supported").c_str();
     }
 };
 
 
 class ParameterMissing : public std::exception {
-	std::string par;
+    std::string par;
 public:
-	ParameterMissing(const std::string& par) : par(par) {}
-	virtual ~ParameterMissing() throw () { }
-	virtual const char* what() const throw () {
-		return ("Parameter " + par + " not given.").c_str();
-	}
+    ParameterMissing(const std::string& par) : par(par) {}
+    virtual ~ParameterMissing() throw () { }
+    virtual const char* what() const throw () {
+        return ("Parameter " + par + " not given.").c_str();
+    }
 };
 
 
 class ParameterWrong : public std::exception {
-	std::string message;
+    std::string message;
 public:
-	template <typename ValType>
-	ParameterWrong(const std::string& par, const ValType& val) :
-			message("Parameter " + par + " has incorrect value "
-					+ numToString(val)) {
-	}
-	ParameterWrong(const std::string& msg) : message(msg) {
-	}
-	virtual ~ParameterWrong() throw () { }
-	virtual const char* what() const throw () {
-		return message.c_str();
-	}
+    template <typename ValType>
+    ParameterWrong(const std::string& par, const ValType& val) :
+            message("Parameter " + par + " has incorrect value "
+                    + numToString(val)) {
+    }
+    ParameterWrong(const std::string& msg) : message(msg) {
+    }
+    virtual ~ParameterWrong() throw () { }
+    virtual const char* what() const throw () {
+        return message.c_str();
+    }
 };
 
 
 class ConfigurationError : public std::exception {
-	std::string message;
+    std::string message;
 public:
-	ConfigurationError(const std::string& msg) : message(msg) {}
-	virtual ~ConfigurationError() throw () { }
-	virtual const char* what() const throw () {
-		return message.c_str();
-	}
+    ConfigurationError(const std::string& msg) : message(msg) {}
+    virtual ~ConfigurationError() throw () { }
+    virtual const char* what() const throw () {
+        return message.c_str();
+    }
 };
 
 
 class SerializationError : public std::exception {
-	std::string message;
+    std::string message;
 public:
-	SerializationError(const std::string& msg) : message(msg) {}
-	virtual ~SerializationError() throw () { }
-	virtual const char* what() const throw () {
-		return message.c_str();
-	}
+    SerializationError(const std::string& msg) : message(msg) {}
+    virtual ~SerializationError() throw () { }
+    virtual const char* what() const throw () {
+        return message.c_str();
+    }
 };
 
 

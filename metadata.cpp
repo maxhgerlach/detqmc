@@ -21,13 +21,13 @@
 //key = value
 //into a map string->string
 MetadataMap parseMetadataBlock(std::string& lines) {
-	namespace bpt = boost::property_tree;
-	bpt::ptree pt;
+    namespace bpt = boost::property_tree;
+    bpt::ptree pt;
     std::istringstream linesStream(lines);
     bpt::ini_parser::read_ini(linesStream, pt);
     MetadataMap meta;
     for (bpt::ptree::const_iterator p = pt.begin(); p != pt.end(); ++p) {
-    	meta[p->first] = p->second.data();
+        meta[p->first] = p->second.data();
     }
     return meta;
 }
@@ -79,14 +79,14 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
     }
 //    auto openMode = std::ios::out;
 //    if (appendToEndOfFile) {
-//    	openMode |= std::ios::ate;
+//      openMode |= std::ios::ate;
 //    }
 //    std::ofstream outFile(filename.c_str(), openMode);
     std::ofstream outFile;
     if (appendToEndOfFile) {
-    	outFile.open(filename.c_str(), std::ios::app);
+        outFile.open(filename.c_str(), std::ios::app);
     } else {
-    	outFile.open(filename.c_str(), std::ios::out);
+        outFile.open(filename.c_str(), std::ios::out);
     }
     outFile << comments;
     outFile << metadataToString(meta, "# ");

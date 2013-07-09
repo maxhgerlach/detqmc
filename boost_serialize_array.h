@@ -18,7 +18,7 @@ namespace boost { namespace serialization {
 
 template <class Archive, class T, std::size_t N>
 void serialize(Archive& ar, checkarray<T,N>& a, const uint32_t /* version */) {
-	ar & boost::serialization::make_array(a.data(), a.size());
+    ar & boost::serialization::make_array(a.data(), a.size());
 }
 
 } } //namespace boost::serialization

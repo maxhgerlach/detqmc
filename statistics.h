@@ -22,9 +22,9 @@
 
 template<typename T>
 T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T()) {
-	using std::pow;
-	using arma::pow;
-	uint32_t N = numbers.size();
+    using std::pow;
+    using arma::pow;
+    uint32_t N = numbers.size();
     T sum = zeroValue;
     for (uint32_t i = 0; i < N; ++i) {
         sum += pow(numbers[i] - meanValue, 2);
@@ -37,28 +37,28 @@ T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T())
 // to the data
 template<typename T>
 std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
-		const std::vector<T>& data, uint32_t jkBlocks) {
-	std::vector<T> blockEstimates(jkBlocks, T(0));
-	uint32_t jkBlockSize = data.size() / jkBlocks;
-	//if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
-	uint32_t totalSamples = jkBlocks * jkBlockSize;
+        const std::vector<T>& data, uint32_t jkBlocks) {
+    std::vector<T> blockEstimates(jkBlocks, T(0));
+    uint32_t jkBlockSize = data.size() / jkBlocks;
+    //if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
+    uint32_t totalSamples = jkBlocks * jkBlockSize;
 
-	for (uint32_t i = 0; i < totalSamples; ++i) {
-		T value = func(data[i]);
-		uint32_t curBlock = i / jkBlockSize;
-		for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-			if (jb != curBlock) {
-				blockEstimates[jb] += value;
-			}
-		}
-	}
+    for (uint32_t i = 0; i < totalSamples; ++i) {
+        T value = func(data[i]);
+        uint32_t curBlock = i / jkBlockSize;
+        for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+            if (jb != curBlock) {
+                blockEstimates[jb] += value;
+            }
+        }
+    }
 
-	uint32_t jkTotalSamples = totalSamples - jkBlockSize;
-	for (T& blockEstimate : blockEstimates) {
-		blockEstimate /= T(jkTotalSamples);
-	}
+    uint32_t jkTotalSamples = totalSamples - jkBlockSize;
+    for (T& blockEstimate : blockEstimates) {
+        blockEstimate /= T(jkTotalSamples);
+    }
 
-	return blockEstimates;
+    return blockEstimates;
 }
 
 
@@ -66,8 +66,8 @@ std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
 // Compute jackknife-block-wise estimates of the average of data
 template<typename T>
 std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, uint32_t jkBlocks) {
-	return jackknifeBlockEstimates<T>([](T v) { return v; },	//identity lambda function
-			data, jkBlocks);
+    return jackknifeBlockEstimates<T>([](T v) { return v; },    //identity lambda function
+            data, jkBlocks);
 }
 
 
@@ -81,7 +81,7 @@ T jackknife(
     using std::sqrt;
     using arma::pow;
     using arma::sqrt;
-	uint32_t bc = blockValues.size();
+    uint32_t bc = blockValues.size();
     T squaredDeviation = zeroValue;
     for (uint32_t b = 0; b < bc; ++b) {
         squaredDeviation += pow(blockAverage - blockValues[b], 2);
@@ -96,7 +96,7 @@ T jackknife(
 //template<typename T>
 //std::tuple<T,T> jackknife(const std::vector<T>& blockValues, const T& zeroValue = T()) {
 //    T outBlockAverage = zeroValue;
-//	uint32_t bc = blockValues.size();
+//  uint32_t bc = blockValues.size();
 //    for (uint32_t b = 0; b < bc; ++b) {
 //        outBlockAverage += blockValues[b];
 //    }
@@ -112,7 +112,7 @@ T jackknife(
 // - more generic version that applies a function to each element before taking the average
 template<typename T>
 T average(const std::function<T(T)>& func,
-		const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
+        const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
     if (end==0) {
         end = vec.size();
     }
@@ -130,7 +130,7 @@ T average(const std::function<T(T)>& func,
 //else compute average for elements at start, start+1, ..., end-1
 template<typename T>
 T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
-	return average<T>( [](T v) { return v; }, vec, start, end );
+    return average<T>( [](T v) { return v; }, vec, start, end );
 }
 
 

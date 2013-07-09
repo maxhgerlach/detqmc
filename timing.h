@@ -19,29 +19,29 @@
 
 class Timing {
 public:
-	Timing() : insertOrder(), timers() {
-	}
-	//on destruction print timing summary
-	~Timing() {
-		std::cout << "\nTimings:\n";
-		for (const auto& timerName : insertOrder) {
-			std::cout << timerName << ": " << timers[timerName].format();
-		}
-	}
-	//start or resume a timer:
-	void start(const std::string& timerKey) {
-		if (timers.count(timerKey) == 0) {
-			insertOrder.push_back(timerKey);
-			timers[timerKey] = boost::timer::cpu_timer();
-		}
-		timers[timerKey].resume();
-	}
-	void stop(const std::string& timerKey) {
-		timers.at(timerKey).stop();
-	}
+    Timing() : insertOrder(), timers() {
+    }
+    //on destruction print timing summary
+    ~Timing() {
+        std::cout << "\nTimings:\n";
+        for (const auto& timerName : insertOrder) {
+            std::cout << timerName << ": " << timers[timerName].format();
+        }
+    }
+    //start or resume a timer:
+    void start(const std::string& timerKey) {
+        if (timers.count(timerKey) == 0) {
+            insertOrder.push_back(timerKey);
+            timers[timerKey] = boost::timer::cpu_timer();
+        }
+        timers[timerKey].resume();
+    }
+    void stop(const std::string& timerKey) {
+        timers.at(timerKey).stop();
+    }
 private:
-	std::vector<std::string> insertOrder;
-	std::map<std::string,boost::timer::cpu_timer> timers;
+    std::vector<std::string> insertOrder;
+    std::map<std::string,boost::timer::cpu_timer> timers;
 };
 
 #else
@@ -49,21 +49,21 @@ private:
 #include <string>
 class Timing {
 public:
-	Timing() {
-	}
-	~Timing() {
-	}
-	void start(const std::string& timerKey) {
-		(void)timerKey;
-	}
-	void stop(const std::string& timerKey) {
-		(void)timerKey;
-	}
+    Timing() {
+    }
+    ~Timing() {
+    }
+    void start(const std::string& timerKey) {
+        (void)timerKey;
+    }
+    void stop(const std::string& timerKey) {
+        (void)timerKey;
+    }
 };
 
 #endif //TIMING
 
-extern Timing timing;		//one global timing object, defined in timing.cpp
+extern Timing timing;       //one global timing object, defined in timing.cpp
 
 
 

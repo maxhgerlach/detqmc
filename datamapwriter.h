@@ -129,13 +129,13 @@ void DataMapWriter<Key,Value>::writeToFile(const std::string& filename) {
 
 template<typename Key, typename Value>
 inline std::string DataMapWriter<Key, Value>::getHeader() {
-	return header;
+    return header;
 }
 
 template<typename Key, typename Value>
 inline void DataMapWriter<Key, Value>::addHeaderDirectly(
-		const std::string& headerNew) {
-	header += headerNew;
+        const std::string& headerNew) {
+    header += headerNew;
 }
 
 typedef DataMapWriter<double, double> DoubleMapWriter;
