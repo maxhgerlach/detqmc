@@ -106,12 +106,32 @@ private:
 
 		//The template member functions saveContents(Archive&) cannot be virtual,
     	//so we have to resort to RTTI to serialize the right object.
-    	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
+    	//Unfortunately this is fugly.
+    	if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
     		p->loadContents(SerializeContentsKey(), ar);
-    	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
+    	} else
+    	if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<true, true>* p = dynamic_cast<DetSDW<true, true>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<true, false>* p = dynamic_cast<DetSDW<true, false>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<false, true>* p = dynamic_cast<DetSDW<false, true>*>(replica.get())) {
+    		p->loadContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<false, false>* p = dynamic_cast<DetSDW<false, false>*>(replica.get())) {
     		p->loadContents(SerializeContentsKey(), ar);
     	} else {
-    		throw SerializationError("Tried to save contents of unsupported replica");
+    		throw SerializationError("Tried to load contents of unsupported replica");
     	}
 	}
 
@@ -123,30 +143,30 @@ private:
     	//so we have to resort to RTTI to serialize the right object.
     	//Unfortunately this is fugly.
     	if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetSDW<true, true>* p = dynamic_cast<DetSDW<true, true>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetSDW<true, false>* p = dynamic_cast<DetSDW<true, false>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetSDW<false, true>* p = dynamic_cast<DetSDW<false, true>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else
     	if (DetSDW<false, false>* p = dynamic_cast<DetSDW<false, false>*>(replica.get())) {
-    		p->serializeContents(SerializeContentsKey(), ar);
+    		p->saveContents(SerializeContentsKey(), ar);
     	} else {
-    		throw SerializationError("Tried to serialize contents of unsupported replica");
+    		throw SerializationError("Tried to save contents of unsupported replica");
     	}
 	}
 
