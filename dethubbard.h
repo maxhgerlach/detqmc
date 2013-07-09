@@ -314,7 +314,7 @@ public:
       serializeContentsCommon(sck, ar);
       //the fields now have a valid state, update UdV-storage to start
       //sweeping again
-      setupUdVStorage();
+      setupUdVStorage_skeleton(hubbardComputeBmat(this));
       //now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
     }
 
