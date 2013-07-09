@@ -87,7 +87,7 @@ public:
     virtual void thermalizationOver() {
     }
 public:
-    // only functions that can pass the key to these functions have access
+    // only functions that can pass the key have access to these methods
     // -- in this way access is granted only to restricted DetQMC methods
     template<class Archive>
     void saveContents(SerializeContentsKey const&, Archive &) {
