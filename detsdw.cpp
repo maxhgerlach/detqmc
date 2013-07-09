@@ -15,6 +15,7 @@
 #include "detsdw.h"
 #include "exceptions.h"
 #include "timing.h"
+#include "checkarray.h"
 
 //initial values for field components chosen from this range:
 const num PhiLow = -1;
@@ -128,10 +129,10 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
 	//hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
 	//So for actual calculations an additional minus-sign needs to be included.
-	hopHor[XBAND] = -1.0;
-	hopVer[XBAND] = -0.5;
-	hopHor[YBAND] =  0.5;
-	hopVer[YBAND] =  1.0;
+	hopHor[XBAND] = txhor;
+	hopVer[XBAND] = txver;
+	hopHor[YBAND] = tyhor;
+	hopVer[YBAND] = tyver;
 	//precalculate hyperbolic functions, used in checkerboard decomposition
 	using std::sinh; using std::cosh;
 	num dtauHere = dtau;				// to fix capture issues
@@ -378,7 +379,7 @@ void DetSDW<TD,CB>::measure() {
 		};
 
 		for (uint32_t i = 0; i < N; ++i) {
-			std::array<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {{
+			checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {{
 					std::make_tuple(i, 0), std::make_tuple(0, i)
 			}};
 

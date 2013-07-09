@@ -16,6 +16,7 @@
 #include "detmodel.h"
 #include "neighbortable.h"
 #include "RunningAverage.h"
+#include "checkarray.h"
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
@@ -79,12 +80,13 @@ protected:
 	const num u;
 	const num lambda;
 
-        enum Band {XBAND = 0, YBAND = 1};
+	enum Band {XBAND = 0, YBAND = 1};
 	enum Spin {SPINUP = 0, SPINDOWN = 1};
 	enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
 	BC_Type bc;
         
 	//hopping constants for XBAND and YBAND
+	//these just contain the same values as t{x|y}{hor|ver} for historical reasons
 	checkarray<num,2> hopHor;
 	checkarray<num,2> hopVer;
 	// sinh|cosh(dtau * hop..)
@@ -101,10 +103,10 @@ protected:
 
 	//for shifting green functions to obtain equivalency of symmetric Trotter decomposition
 	//[checker board decomposition could be applied alternatively]
-	std::array<MatNum, 2> propK_half;		//factor of -dtau/2 in exponential
+	checkarray<MatNum, 2> propK_half;		//factor of -dtau/2 in exponential
 	MatNum& propKx_half;
 	MatNum& propKy_half;
-	std::array<MatNum, 2> propK_half_inv;	//factor of +dtau/2 in exponential
+	checkarray<MatNum, 2> propK_half_inv;	//factor of +dtau/2 in exponential
 	MatNum& propKx_half_inv;
 	MatNum& propKy_half_inv;
 
