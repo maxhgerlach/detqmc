@@ -175,7 +175,7 @@ protected:
     	return sum / num(m * N);
     }
 
-    unsigned coordsToSite(unsigned x, unsigned y) {
+    uint32_t coordsToSite(uint32_t x, uint32_t y) {
     	return y*L + x;
     }
 

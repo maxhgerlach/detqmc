@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
 	typedef std::map<std::string, std::vector<double>> ObsVecMap;
 	ObsVecMap jkBlockEstimates;
 
-	unsigned evalSamples = 0;
+	uint32_t evalSamples = 0;
 
 	//process time series files
 	std::vector<std::string> filenames = glob("*.series");

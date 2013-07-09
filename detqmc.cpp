@@ -245,7 +245,7 @@ void DetQMC::run() {
 		finishedStage();
 	}
 
-	const unsigned SavetyMinutes = 35;
+	const uint32_t SavetyMinutes = 35;
 
 	while (stage != Stage::F) {				//big loop
 		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {

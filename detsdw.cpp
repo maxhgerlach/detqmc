@@ -255,11 +255,11 @@ void DetSDW::measure() {
 
 	//submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
-	for (unsigned l = 1; l <= m; ++l) {
+	for (uint32_t l = 1; l <= m; ++l) {
 		MatCpx tempG(4*N, 4*N);
 		const MatCpx& oldG = g.slice(l);
 		//multiply e^(dtau/2 K) from the right
-		for (unsigned row = 0; row < 4; ++row) {
+		for (uint32_t row = 0; row < 4; ++row) {
 			block(tempG, 0, row) = block(oldG, 0, row) * propKx_half_inv;
 			block(tempG, 1, row) = block(oldG, 1, row) * propKx_half_inv;
 			block(tempG, 2, row) = block(oldG, 2, row) * propKy_half_inv;
@@ -267,7 +267,7 @@ void DetSDW::measure() {
 		}
 		//multiply e^(-dtau/2 K) from the left
 		MatCpx& newG = g.slice(l);
-		for (unsigned col = 0; col < 4; ++col) {
+		for (uint32_t col = 0; col < 4; ++col) {
 			block(newG, col, 0) = propKx_half * block(tempG, col, 0);
 			block(newG, col, 1) = propKx_half * block(tempG, col, 1);
 			block(newG, col, 2) = propKy_half * block(tempG, col, 2);
@@ -309,10 +309,10 @@ void DetSDW::measure() {
 	if (bc == APBC_Y or bc == APBC_XY) {
 		offset_y = 0.5;
 	}
-	for (unsigned ksite = 0; ksite < N; ++ksite) {
+	for (uint32_t ksite = 0; ksite < N; ++ksite) {
 		//try a slightly alternative approach..
-		unsigned ksitey = ksite / L;
-		unsigned ksitex = ksite % L;
+		uint32_t ksitey = ksite / L;
+		uint32_t ksitex = ksite % L;
 		num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
 		num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
 
@@ -321,17 +321,17 @@ void DetSDW::measure() {
 		kOccXimag[ksite] = 0.0;
 		kOccYimag[ksite] = 0.0;
 
-		for (unsigned i = 0; i < N; ++i) {
+		for (uint32_t i = 0; i < N; ++i) {
 			num iy = num(i / L);
 			num ix = num(i % L);
-			for (unsigned j = 0; j  < N; ++j) {
+			for (uint32_t j = 0; j  < N; ++j) {
 				num jy = num(j / L);
 				num jx = num(j % L);
 
 				num argument = kx * (ix - jx) + ky * (iy - jy);
 				cpx phase = std::exp(cpx(0, argument));
 
-				for (unsigned l = 1; l <= m; ++l) {
+				for (uint32_t l = 1; l <= m; ++l) {
 					cpx green_x_up   = g.slice(l)(i, j);
 					cpx green_x_down = g.slice(l)(i + N, j + N);
 					cpx green_y_up   = g.slice(l)(i + 2*N, j + 2*N);
@@ -369,18 +369,18 @@ void DetSDW::measure() {
 	pairMinus.zeros(N);
 	pairPlusimag.zeros(N);
 	pairMinusimag.zeros(N);
-	for (unsigned l = 1; l <= m; ++l) {
+	for (uint32_t l = 1; l <= m; ++l) {
 		//helper to access the green function
 		// *1 is for the row index,
 		// *2 is for the column index
-		auto gl = [this, l](unsigned site1, Band band1, Spin spin1,
-						   unsigned site2, Band band2, Spin spin2) -> cpx {
+		auto gl = [this, l](uint32_t site1, Band band1, Spin spin1,
+						   uint32_t site2, Band band2, Spin spin2) -> cpx {
 			return g.slice(l)(site1 + 2*N*band1 + N*spin1,
 					          site2 + 2*N*band2 + N*spin2);
 		};
 
-		for (unsigned i = 0; i < N; ++i) {
-			std::array<std::tuple<unsigned,unsigned>, 2> sitePairs = {{
+		for (uint32_t i = 0; i < N; ++i) {
+			std::array<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {{
 					std::make_tuple(i, 0), std::make_tuple(0, i)
 			}};
 
@@ -388,8 +388,8 @@ void DetSDW::measure() {
 			cpx pairMinusCpx(0, 0);
 
 			for (auto sites : sitePairs) {
-				unsigned siteA = std::get<0>(sites);
-				unsigned siteB = std::get<1>(sites);
+				uint32_t siteA = std::get<0>(sites);
+				uint32_t siteB = std::get<1>(sites);
 
 				// the following two unwieldy sums have been evaluated with the Mathematica
 				// notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
@@ -428,8 +428,8 @@ void DetSDW::measure() {
 	pairMinusimag /= m;
 
 	// sites around the maximum range L/2, L/2
-	static const unsigned numSitesFar = 9;
-	unsigned sitesfar[numSitesFar] = {
+	static const uint32_t numSitesFar = 9;
+	uint32_t sitesfar[numSitesFar] = {
 			coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
 			coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
 			coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
@@ -438,7 +438,7 @@ void DetSDW::measure() {
 	pairPlusMaximag = 0;
 	pairMinusMax = 0;
 	pairMinusMaximag = 0;
-	for (unsigned i : sitesfar) {
+	for (uint32_t i : sitesfar) {
 		pairPlusMax += pairPlus[i];
 		pairPlusMaximag += pairPlusimag[i];
 		pairMinusMax += pairMinus[i];
@@ -454,12 +454,12 @@ void DetSDW::measure() {
 	// -----------------------------
 	fermionEkinetic = 0;
 	fermionEkinetic_imag = 0;
-	for (unsigned l = 1; l <= m; ++l) {
-		auto glij = [this, l](unsigned site1, unsigned site2, Band band, Spin spin) -> cpx {
+	for (uint32_t l = 1; l <= m; ++l) {
+		auto glij = [this, l](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
 			return g.slice(l)(site1 + 2*N*band + N*spin,
 					          site2 + 2*N*band + N*spin);
 		};
-		for (unsigned i = 0; i < N; ++i) {
+		for (uint32_t i = 0; i < N; ++i) {
 			//TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
 			Spin spins[] = {SPINUP, SPINDOWN};
 			for (auto spin: spins) {
@@ -481,8 +481,8 @@ void DetSDW::measure() {
 
 	fermionEcouple = 0;
 	fermionEcouple_imag = 0;
-	for (unsigned l = 1; l <= m; ++l) {
-		for (unsigned i = 0; i < N; ++i) {
+	for (uint32_t l = 1; l <= m; ++l) {
+		for (uint32_t i = 0; i < N; ++i) {
 			auto glbs = [this, l,i](Band band1, Spin spin1,
 					                Band band2, Spin spin2) -> cpx {
 				return g.slice(l)(i + 2*N*band1 + N*spin1,
@@ -539,13 +539,13 @@ void DetSDW::setupPropK() {
 
 	for_each_band( [this, &t](uint32_t band) {
 		MatNum k = -mu * arma::eye(N,N);
-		for_each_site( [this, band, &k, &t](unsigned site) {
-			for (unsigned dir = 0; dir < z; ++dir) {
-				unsigned neigh = spaceNeigh(dir, site);
+		for_each_site( [this, band, &k, &t](uint32_t site) {
+			for (uint32_t dir = 0; dir < z; ++dir) {
+				uint32_t neigh = spaceNeigh(dir, site);
 				num hop = t[band][dir];
 
-				unsigned siteY = site / L;
-				unsigned siteX = site % L;
+				uint32_t siteY = site / L;
+				uint32_t siteX = site % L;
 				if (bc == APBC_X or bc == APBC_XY) {
 					if ((siteX == 0 and dir == XMINUS) or (siteX == L-1 and dir == XPLUS)) {
 						//crossing x-boundary
