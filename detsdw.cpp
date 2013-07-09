@@ -84,12 +84,12 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 		DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
 		rng(rng_),
 		checkerboard(pars.checkerboard),
-		hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
 		L(pars.L), N(L*L), r(pars.r),
 		txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
 		mu(pars.mu),
 		c(1), u(1), lambda(1), //TODO: make these controllable by parameter
 		bc(PBC),
+		hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
 		spaceNeigh(L), timeNeigh(m),
 		propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
 		propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
