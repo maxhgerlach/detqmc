@@ -35,6 +35,10 @@ struct ModelParams {
 	num t;		//Hubbard
 	num U;		//Hubbard
 	num r;		//SDW
+	num txhor;  //SDW: hopping constants depending on direction and band
+	num txver;  //SDW
+	num tyhor;  //SDW
+	num tyver;  //SDW
 	num mu;
 	uint32_t L;
 	uint32_t d;
@@ -45,11 +49,15 @@ struct ModelParams {
 					//from scratch
 	num accRatio;	//for SDW: target acceptance ratio for tuning spin update box size
 
+	std::string bc;	//boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
+
 	std::set<std::string> specified;
 
 	ModelParams() :
-			model(), timedisplaced(), checkerboard(), t(), U(), r(), mu(), L(), d(),
-			beta(), m(), dtau(), s(), accRatio(), specified() {
+			model(), timedisplaced(), checkerboard(), t(), U(), r(),
+			txhor(), txver(), tyhor(), tyver(),
+			mu(), L(), d(),
+			beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
 	}
 
 private:
@@ -59,7 +67,8 @@ private:
 	void serialize(Archive& ar, const uint32_t version) {
 		(void)version;
 		ar & model & timedisplaced & checkerboard
-		   & t & U & r & mu & L & d & beta & m & dtau & s & accRatio
+		   & t & U & r & txhor & txver & tyhor & tyver
+		   & mu & L & d & beta & m & dtau & s & accRatio & bc
 		   & specified;
 	}
 };

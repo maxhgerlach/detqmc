@@ -48,13 +48,20 @@ protected:
 	const uint32_t L;
 	const uint32_t N;
 	const num r;
+	const num txhor;
+	const num txver;
+	const num tyhor;
+	const num tyver;
 	const num mu;
 	const num c;
 	const num u;
 	const num lambda;
 
-	enum Band {XBAND = 0, YBAND = 1};
-
+        enum Band {XBAND = 0, YBAND = 1};
+	enum Spin {SPINUP = 0, SPINDOWN = 1};
+	enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
+	BC_Type bc;
+        
 	//hopping constants for XBAND and YBAND
 	checkarray<num,2> hopHor;
 	checkarray<num,2> hopVer;
@@ -63,13 +70,21 @@ protected:
 	checkarray<num,2> sinhHopVer;
 	checkarray<num,2> coshHopHor;
 	checkarray<num,2> coshHopVer;
-
 	PeriodicSquareLatticeNearestNeighbors spaceNeigh;
 	PeriodicChainNearestNeighbors<1> timeNeigh;
 
 	checkarray<MatNum, 2> propK;
 	MatNum& propKx;
 	MatNum& propKy;
+
+	//for shifting green functions to obtain equivalency of symmetric Trotter decomposition
+	//[checker board decomposition could be applied alternatively]
+	std::array<MatNum, 2> propK_half;		//factor of -dtau/2 in exponential
+	MatNum& propKx_half;
+	MatNum& propKy_half;
+	std::array<MatNum, 2> propK_half_inv;	//factor of +dtau/2 in exponential
+	MatNum& propKx_half_inv;
+	MatNum& propKy_half_inv;
 
 	CubeCpx& g;
 	CubeCpx& gFwd;
@@ -109,6 +124,24 @@ protected:
 	VecNum& occXimag;
 	VecNum& occYimag;
 
+	//pairing correlations near maximum range x_max = (L/2, L/2)
+	num pairPlusMax;
+	num pairMinusMax;
+	num pairPlusMaximag;
+	num pairMinusMaximag;
+	//and between site 0 and any other site
+	VecNum pairPlus;
+	VecNum pairMinus;
+	VecNum pairPlusimag;
+	VecNum pairMinusimag;
+
+	//fermion energy
+	num fermionEkinetic;		//kinetic
+	num fermionEkinetic_imag;
+	num fermionEcouple;			//coupling
+	num fermionEcouple_imag;
+
+
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);
@@ -140,6 +173,10 @@ protected:
     V averageWholeSystem(CallableSiteTimeslice f, V init) {
     	V sum = sumWholeSystem(f, init);
     	return sum / num(m * N);
+    }
+
+    unsigned coordsToSite(unsigned x, unsigned y) {
+    	return y*L + x;
     }
 
     void setupRandomPhi();
@@ -182,11 +219,28 @@ protected:
 	num phiAction();
 
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // only functions that can pass the key to these functions have access
+    // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<1,cpx>::serializeContents(sck, ar);			//base class
+    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::saveContents(sck, ar);			//base class
+    	serializeContentsCommon(sck, ar);
+    }
+
+    //after loadContents() a sweep must be performed before any measurements are taken:
+    //else the green function would not be in a valid state
+    template<class Archive>
+    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
+    	DetModelGC<1,cpx>::loadContents(sck, ar);			//base class
+    	serializeContentsCommon(sck, ar);
+    	//the fields now have a valid state, update UdV-storage to start
+    	//sweeping again
+    	setupUdVStorage();
+    	//now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
+    }
+
+    template<class Archive>
+    void serializeContentsCommon(SerializeContentsKey const &, Archive &ar) {
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;

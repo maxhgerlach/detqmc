@@ -91,6 +91,8 @@ int main(int argc, char **argv) {
 	typedef std::map<std::string, std::vector<double>> ObsVecMap;
 	ObsVecMap jkBlockEstimates;
 
+	unsigned evalSamples = 0;
+
 	//process time series files
 	std::vector<std::string> filenames = glob("*.series");
 	for (std::string fn : filenames) {
@@ -137,6 +139,8 @@ int main(int argc, char **argv) {
 			tauints[obsName] = tauint(*data);
 		}
 
+		evalSamples = data->size();
+
 		reader.deleteData();
 
 		std::cout << std::endl;
@@ -157,6 +161,7 @@ int main(int argc, char **argv) {
 		resultsWriter.addMeta("eval-jackknife-blocks", jkBlocks);
 		resultsWriter.addMeta("eval-discard", discard);
 		resultsWriter.addMeta("eval-subsample", subsample);
+		resultsWriter.addMeta("eval-samples", evalSamples);
 		if (jkBlocks > 1) {
 			resultsWriter.addHeaderText("Averages and jackknife error bars computed from time series");
 			resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
@@ -173,6 +178,7 @@ int main(int argc, char **argv) {
 		tauintWriter.addMetadataMap(meta);
 		tauintWriter.addMeta("eval-discard", discard);
 		tauintWriter.addMeta("eval-subsample", subsample);
+		tauintWriter.addMeta("eval-samples", evalSamples);
 		tauintWriter.addHeaderText("Tauint estimates computed from time series");
 		tauintWriter.setData(std::make_shared<ObsValMap>(tauints));
 		tauintWriter.writeToFile("eval-tauint.values");

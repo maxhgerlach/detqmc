@@ -40,6 +40,9 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 	if (pars.checkerboard and pars.d != 2) {
 		throw ParameterWrong("Checker board decomposition only supported for 2d lattices");
 	}
+	if (pars.bc != "pbc") {
+		throw ParameterWrong("Boundary conditions " + pars.bc + " not supported for Hubbard model (only pbc)");
+	}
 
 	//check that only positive values are passed for certain parameters
 #define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
