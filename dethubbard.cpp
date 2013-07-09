@@ -21,7 +21,7 @@
 
 
 
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) {
+std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
 	pars = updateTemperatureParameters(pars);
 
 	//check parameters: passed all that are necessary
@@ -56,33 +56,42 @@ std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars) 
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
-	return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
+	//since pars is not a constant expression, we need this stupid if:
+	if (pars.timedisplaced == true and pars.checkerboard == true) {
+		return std::unique_ptr<DetModel>(new DetHubbard<true,true>(rng, pars));
+	} else
+	if (pars.timedisplaced == true and pars.checkerboard == false) {
+		return std::unique_ptr<DetModel>(new DetHubbard<true,false>(rng, pars));
+	} else
+	if (pars.timedisplaced == false and pars.checkerboard == true) {
+		return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
+	} else
+	if (pars.timedisplaced == false and pars.checkerboard == false) {
+		return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
+	} else {
+		//this can't be reached
+		return 0;
+	}
 }
 
 
-
-DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
-		DetModelGC<2>(pars, static_cast<uint32_t>(uint_pow(pars.L,pars.d))),
+template <bool TD, bool CB>
+DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
+		DetModelGC<2,num,TD>(pars, static_cast<uint32_t>(uint_pow(pars.L,pars.d))),
 		rng(rng_),
-		checkerboard(pars.checkerboard),
+		checkerboard(CB),
+		timedisplaced(TD),
 		t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
 		z(2*d), //coordination number: 2*d
 		N(static_cast<uint32_t>(uint_pow(L,d))),
 //		beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
 		alpha(acosh(std::exp(dtau * U * 0.5))),
 		neigh(d, L),
-//		computeBmatFunc(),
 		proptmat(N,N),
 		auxfield(N, m+1),                //m+1 columns of N rows
 		gUp(green[GreenCompSpinUp]), gDn(green[GreenCompSpinDown]),
 		gFwdUp(greenFwd[GreenCompSpinUp]), gFwdDn(greenFwd[GreenCompSpinDown]),
 		gBwdUp(greenBwd[GreenCompSpinUp]), gBwdDn(greenBwd[GreenCompSpinDown]),
-//
-//		gUp(N,N,m+1), gDn(N,N,m+1),      //m+1 slices of N columns x N rows
-//		gFwdUp(N,N,m+1), gFwdDn(N,N,m+1),
-//		gBwdUp(N,N,m+1), gBwdDn(N,N,m+1),
-//
-//		eye_UdV(N),
 		UdVStorageUp(UdVStorage[GreenCompSpinUp]), UdVStorageDn(UdVStorage[GreenCompSpinDown]),
 		occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
 		occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m)
@@ -95,26 +104,14 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	gBwdDn = CubeNum(N,N,m+1);
 
 	setupRandomAuxfield();
-	if (pars.checkerboard) {
+	if (CB) {
 		setupPropTmat_checkerboard();
-		computeBmat[GreenCompSpinUp] = [this](uint32_t k2, uint32_t k1) {
-			return computeBmat_checkerBoard(k2, k1, Spin::Up);
-		};
-		computeBmat[GreenCompSpinDown] = [this](uint32_t k2, uint32_t k1) {
-			return computeBmat_checkerBoard(k2, k1, Spin::Down);
-		};
 	} else {
 		setupPropTmat_direct();
-		computeBmat[GreenCompSpinUp] = [this](uint32_t k2, uint32_t k1) {
-			return computeBmat_direct(k2, k1, Spin::Up);
-		};
-		computeBmat[GreenCompSpinDown] = [this](uint32_t k2, uint32_t k1) {
-			return computeBmat_direct(k2, k1, Spin::Down);
-		};
 	}
+	setupUdVStorage_skeleton(hubbardComputeBmat(this));
 
-	setupUdVStorage();
-	lastSweepDir = SweepDirection::Up;		//first sweep will be downwards
+	lastSweepDir = Base::SweepDirection::Up;		//first sweep will be downwards
 
 	using namespace boost::assign;         // bring operator+=() into scope
 	using std::cref;
@@ -145,11 +142,13 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
 	}
 }
 
-DetHubbard::~DetHubbard() {
+template <bool TD, bool CB>
+DetHubbard<TD,CB>::~DetHubbard() {
 }
 
 
-MetadataMap DetHubbard::prepareModelMetadataMap() const {
+template <bool TD, bool CB>
+MetadataMap DetHubbard<TD,CB>::prepareModelMetadataMap() const {
 	MetadataMap meta;
 	meta["model"] = "hubbard";
 	meta["checkerboard"] = (checkerboard ? "true" : "false");
@@ -170,7 +169,8 @@ MetadataMap DetHubbard::prepareModelMetadataMap() const {
 	return meta;
 }
 
-void DetHubbard::updateInSlice(uint32_t timeslice) {
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::updateInSlice(uint32_t timeslice) {
 	// picking sites linearly: system seemed to alternate between two configurations
 	// sweep after sweep
 //	for (uint32_t site = 0; site < N; ++site) {
@@ -211,7 +211,8 @@ void DetHubbard::updateInSlice(uint32_t timeslice) {
 //	}
 //}
 
-uint32_t DetHubbard::getSystemN() const {
+template <bool TD, bool CB>
+uint32_t DetHubbard<TD,CB>::getSystemN() const {
 	return N;
 }
 
@@ -520,7 +521,8 @@ uint32_t DetHubbard::getSystemN() const {
 ////	std::cout << std::endl;		//DEBUG
 //}
 
-void DetHubbard::measure() {
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::measure() {
 	//used to measure occupation:
 	num sum_GiiUp = 0;
 	num sum_GiiDn = 0;
@@ -570,18 +572,19 @@ void DetHubbard::measure() {
 
 	//susceptibility
 	if (timedisplaced) {
-		auto sumTrace = [m](const CubeNum& green) {
+		uint32_t mm = m;		// I don't understand why m can't be captured for the lambda without this line
+		auto sumTrace = [this, mm](const CubeNum& green) -> num {
 			num sum = 0;
-			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green.slice(timeslice));
 			}
 			return sum;
 		};
 		num sumTrGreenUp = sumTrace(gUp);
 		num sumTrGreenDn = sumTrace(gDn);
-		auto sumProdTrace = [m](const CubeNum& green1, const CubeNum& green2) {
+		auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) -> num {
 			num sum = 0;
-			for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
 				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
 			}
 			return sum;
@@ -644,7 +647,8 @@ void DetHubbard::measure() {
 }
 
 
-void DetHubbard::setupRandomAuxfield() {
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::setupRandomAuxfield() {
 	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
 		for (uint32_t site = 0; site < N; ++site) {
 			if (rng.rand01() <= 0.5) {
@@ -656,7 +660,8 @@ void DetHubbard::setupRandomAuxfield() {
 	}
 }
 
-void DetHubbard::setupPropTmat_direct() {
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::setupPropTmat_direct() {
 	MatNum tmat = -mu * arma::eye(N, N);
 
 	for (uint32_t site = 0; site < N; ++site) {
@@ -670,11 +675,13 @@ void DetHubbard::setupPropTmat_direct() {
 	proptmat = computePropagator(dtau, tmat);
 }
 
-void DetHubbard::setupPropTmat_checkerboard() {
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::setupPropTmat_checkerboard() {
 	//Checkerboard break up as in dos Santos 2003
 
 	assert(d == 2);
-	auto xyToSite = [L](uint32_t x, uint32_t y) {
+	auto xyToSite = [this](uint32_t x, uint32_t y) {
 		return y * L + x;
 	};
 	SpMatNum kxa = SpMatNum(N, N);
@@ -725,7 +732,8 @@ void DetHubbard::setupPropTmat_checkerboard() {
              + pow(sh, 4) * kxa*kxb*kya*kyb;
 }
 
-inline MatNum DetHubbard::computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const {
+template <bool TD, bool CB>
+inline MatNum DetHubbard<TD,CB>::computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const {
 	using namespace arma;
 
 	if (k2 == k1) {
@@ -755,7 +763,8 @@ inline MatNum DetHubbard::computeBmat_direct(uint32_t k2, uint32_t k1, Spin spin
 	return B;
 }
 
-MatNum DetHubbard::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
+template <bool TD, bool CB>
+MatNum DetHubbard<TD,CB>::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
 		Spin spinz) const {
 	//for now: in the checkerboard decomposition we generate the same type
 	//of proptmat as with the direct calculation
@@ -793,7 +802,8 @@ MatNum DetHubbard::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
 //	return ratioUp * ratioDown;
 //}
 
-inline num DetHubbard::weightRatioSingleFlip(uint32_t site, uint32_t timeslice) const {
+template <bool TD, bool CB>
+inline num DetHubbard<TD,CB>::weightRatioSingleFlip(uint32_t site, uint32_t timeslice) const {
 	using std::exp;
 	//TODO: possibly precompute the exponential factors (auxfield is either +/- 1), would require an if though.
 
@@ -810,7 +820,8 @@ inline num DetHubbard::weightRatioSingleFlip(uint32_t site, uint32_t timeslice) 
 	return ratioUp * ratioDown;
 }
 
-inline void DetHubbard::updateGreenFunctionWithFlip(uint32_t site, uint32_t timeslice) {
+template <bool TD, bool CB>
+inline void DetHubbard<TD,CB>::updateGreenFunctionWithFlip(uint32_t site, uint32_t timeslice) {
 	auto update = [this, site](MatNum& green, num deltaSite) {
 		const MatNum& greenOld = green;		//reference
 		MatNum greenNew = green;			//copy
@@ -835,4 +846,25 @@ inline void DetHubbard::updateGreenFunctionWithFlip(uint32_t site, uint32_t time
 	update(gDn.slice(timeslice), exp(+2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
 }
 
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::sweepSimple() {
+	sweepSimple_skeleton(hubbardComputeBmat(this));
+}
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::sweepSimpleThermalization() {
+	sweepSimpleThermalization_skeleton(hubbardComputeBmat(this));
+}
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::sweep() {
+	sweep_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
+				   hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
+}
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::sweepThermalization() {
+	sweepThermalization_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
+								 hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
+}
 

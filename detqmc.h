@@ -22,6 +22,7 @@
 #include "rngwrapper.h"
 #include "exceptions.h"
 
+#include "boost/preprocessor/comma.hpp"
 #include "boost/timer/timer.hpp"
 #include "boost/serialization/split_member.hpp"
 
@@ -61,7 +62,7 @@ protected:
 	ModelParams parsmodel;
 	MCParams parsmc;
 
-	enum class GreenUpdateType {Simple, Stabilized};
+	enum GreenUpdateType {GreenUpdateTypeSimple, GreenUpdateTypeStabilized};
 	GreenUpdateType greenUpdateType;
 //	std::function<void()> sweepFunc;	//the replica member function that will be called
 //										//to perform a sweep (depending on greenUpdate).
@@ -120,12 +121,32 @@ private:
 
 		//The template member functions saveContents(Archive&) cannot be virtual,
     	//so we have to resort to RTTI to serialize the right object.
-    	if (DetHubbard* p = dynamic_cast<DetHubbard*>(replica.get())) {
-    		p->saveContents(SerializeContentsKey(), ar);
-    	} else if (DetSDW* p = dynamic_cast<DetSDW*>(replica.get())) {
-    		p->saveContents(SerializeContentsKey(), ar);
+    	//Unfortunately this is fugly.
+    	if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<true, true>* p = dynamic_cast<DetSDW<true, true>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<true, false>* p = dynamic_cast<DetSDW<true, false>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<false, true>* p = dynamic_cast<DetSDW<false, true>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
+    	} else
+    	if (DetSDW<false, false>* p = dynamic_cast<DetSDW<false, false>*>(replica.get())) {
+    		p->serializeContents(SerializeContentsKey(), ar);
     	} else {
-    		throw SerializationError("Tried to save contents of unsupported replica");
+    		throw SerializationError("Tried to serialize contents of unsupported replica");
     	}
 	}
 

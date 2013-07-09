@@ -38,21 +38,24 @@
 
 class SerializeContentsKey;
 
-class DetHubbard;			//defined below in this file
-
-//factory function to init DetHubbard from parameter struct
+// factory function to init DetHubbard from parameter struct
 //
-//(in the future: possibly create such factories for different models)
-//will do parameter checking etc
-std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+// will do parameter checking etc
+//
+// either create a DetHubbard<TimeDisplaced, CheckerBoard>
+// return a polymorphic unique_ptr
+std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
-class DetHubbard : public DetModelGC<2> {
+
+// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
+template <bool TimeDisplaced, bool CheckerBoard>
+class DetHubbard : public DetModelGC<2, num, TimeDisplaced> {
 private:
 	//only initialize with the "factory" function ::createDetHubbard() declared above.
 	//Give a reference to the RNG instance to be used
 	DetHubbard(RngWrapper& rng, const ModelParams& pars);
 public:
-	friend std::unique_ptr<DetHubbard> createDetHubbard(RngWrapper& rng, ModelParams pars);
+	friend std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
 	virtual ~DetHubbard();
 
 	virtual uint32_t getSystemN() const;
@@ -63,12 +66,35 @@ public:
 
 	//perform measurements of all observables
     virtual void measure();
+
+    virtual void sweep();
+    virtual void sweepThermalization();
+    virtual void sweepSimple();
+    virtual void sweepSimpleThermalization();
 protected:
+    typedef DetModelGC<2, num, TimeDisplaced> Base;
+    // stupid C++ weirdness forces us to explicitly "import" these protected base
+    // class member variables:
+    // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
+    using Base::dtau;
+    using Base::m;
+    using Base::green;
+    using Base::greenFwd;
+    using Base::greenBwd;
+    using Base::UdVStorage;
+    using Base::lastSweepDir;
+    using Base::obsScalar;
+    using Base::obsVector;
+    using Base::obsKeyValue;
+    using Base::beta;
+    using Base::s;
+
 	enum class Spin: int {Up = +1, Down = -1};
 	enum {GreenCompSpinUp = 0, GreenCompSpinDown = 1};
 	RngWrapper& rng;
 	//parameters:
 	const bool checkerboard;
+	const bool timedisplaced;
 	const num t;			//hopping energy scale
 	const num U;			//interaction energy scale
 	const num mu;			//chemical potential
@@ -204,29 +230,79 @@ protected:
 //	void debugCheckBeforeSweepUp();
 //	void debugCheckGreenFunctions();
 
+	//wrappers to use to instantiate template functions of the base class
+	struct hubbardComputeBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardComputeBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+		MatNum operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
+			assert(gc == GreenCompSpinUp or gc == GreenCompSpinDown);
+			if (CheckerBoard) {
+				if (gc == GreenCompSpinUp) {
+					return parent->computeBmat_checkerBoard(k2, k1, Spin::Up);
+				} else if (gc == GreenCompSpinDown) {
+					return parent->computeBmat_checkerBoard(k2, k1, Spin::Down);
+				}
+			} else {
+				if (gc == GreenCompSpinUp) {
+					return parent->computeBmat_direct(k2, k1, Spin::Up);
+				} else if (gc == GreenCompSpinDown) {
+					return parent->computeBmat_direct(k2, k1, Spin::Down);
+				}
+			}
+		}
+#pragma GCC diagnostic pop
+	};
+
+	struct hubbardLeftMultiplyBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
+			return hubbardComputeBmat(parent)(gc, k2, k1) * mat;
+		}
+	};
+
+	struct hubbardRightMultiplyBmat {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
+			return mat * hubbardComputeBmat(parent)(gc, k2, k1);
+		}
+	};
+
+	struct hubbardLeftMultiplyBmatInv {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
+			return arma::inv(hubbardComputeBmat(parent)(gc, k2, k1)) * mat;
+		}
+	};
+
+	struct hubbardRightMultiplyBmatInv {
+		DetHubbard<TimeDisplaced,CheckerBoard>* parent;
+		hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
+			return mat * arma::inv(hubbardComputeBmat(parent)(gc, k2, k1));
+		}
+	};
+
 public:
     // only functions that can pass the key to these functions have access
     // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
-    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<2>::saveContents(sck, ar);		//base class
-    	serializeContentsCommon(sck, ar);
-    }
-
-    //after loadContents() a sweep must be performed before any measurements are taken:
-    //else the green function would not be in a valid state
-    template<class Archive>
-    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<2>::loadContents(sck, ar);		//base class
-    	serializeContentsCommon(sck, ar);
-    	//the fields now have a valid state, update UdV-storage to start
-    	//sweeping again
-    	setupUdVStorage();
-    	//now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
-    }
-
-    template<class Archive>
-    void serializeContentsCommon(SerializeContentsKey const &, Archive &ar) {
+    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
+    	Base::serializeContents(sck, ar);		//base class
 		ar & auxfield;
 		ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
 		   & occDouble & localMoment & suscq0;

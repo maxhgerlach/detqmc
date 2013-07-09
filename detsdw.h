@@ -25,21 +25,43 @@ typedef arma::Cube<cpx> CubeCpx;
 
 class SerializeContentsKey;
 
-class DetSDW;
-std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars);
+std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 
-
-class DetSDW: public DetModelGC<1, cpx> {
+// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
+template <bool TimeDisplaced, bool CheckerBoard>
+class DetSDW: public DetModelGC<1, cpx, TimeDisplaced> {
 	DetSDW(RngWrapper& rng, const ModelParams& pars	);
 public:
-	friend std::unique_ptr<DetSDW> createDetSDW(RngWrapper& rng, ModelParams pars);
+	friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 	virtual ~DetSDW();
 	virtual uint32_t getSystemN() const;
 	virtual MetadataMap prepareModelMetadataMap() const;
     virtual void measure();
 
     virtual void thermalizationOver();
+
+    virtual void sweep();
+    virtual void sweepThermalization();
+    virtual void sweepSimple();
+    virtual void sweepSimpleThermalization();
 protected:
+    typedef DetModelGC<1, cpx, TimeDisplaced> Base;
+    // stupid C++ weirdness forces us to explicitly "import" these protected base
+    // class member variables:
+    // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
+    using Base::dtau;
+    using Base::m;
+    using Base::green;
+    using Base::greenFwd;
+    using Base::greenBwd;
+    using Base::UdVStorage;
+    using Base::lastSweepDir;
+    using Base::obsScalar;
+    using Base::obsVector;
+    using Base::obsKeyValue;
+    using Base::beta;
+    using Base::s;
+
 	RngWrapper& rng;
 
 	static const uint32_t d = 2;
@@ -141,7 +163,7 @@ protected:
 	num fermionEcouple;			//coupling
 	num fermionEcouple_imag;
 
-
+	//these for_each functions don't really work well with the class template
     template<typename Callable>
     void for_each_band(Callable func) {
     	func(XBAND);
@@ -198,13 +220,19 @@ protected:
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
-    MatCpx checkerboardLeftMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmat(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+
+    //helpers for the checkerboardMultiplyFunctions
+    MatCpx rightMultiplyBk(const MatCpx& orig, uint32_t k);		//multiply B(k,k-1) from right to orig, return result
+    MatCpx rightMultiplyBkInv(const MatCpx& orig, uint32_t k);	//multiply B(k,k-1)^-1 from right to orig, return result
+    MatCpx leftMultiplyBk(const MatCpx& orig, uint32_t k);		//multiply B(k,k-1) from left to orig, return result
+    MatCpx leftMultiplyBkInv(const MatCpx& orig, uint32_t k);	//multiply B(k,k-1)^-1 from left to orig, return result
+
 
 	MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;			//compute B-matrix using dense matrix products
-//	MatCpx computeBmatSDW_checkerboard(uint32_t k2, uint32_t k1) const;
 
 	virtual void updateInSlice(uint32_t timeslice);
 	//this one does some adjusting of the box size from which new fields are chosen:
@@ -217,6 +245,84 @@ protected:
 
 	//compute the total value of the action associated with the field phi
 	num phiAction();
+
+	//wrappers to use to instantiate template functions of the base class
+	struct sdwComputeBmat {
+		DetSDW<TimeDisplaced,CheckerBoard>* parent;
+		sdwComputeBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
+			(void)gc;
+			assert(gc == 0);
+			return parent->computeBmatSDW(k2, k1);
+		}
+	};
+
+	struct sdwLeftMultiplyBmat {
+		DetSDW<TimeDisplaced,CheckerBoard>* parent;
+		sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+			(void)gc;
+			assert(gc == 0);
+			if (CheckerBoard) {
+				return parent->checkerboardLeftMultiplyBmat(mat, k2, k1);
+			} else {
+				return parent->computeBmatSDW(k2, k1) * mat;
+			}
+		}
+	};
+
+	struct sdwRightMultiplyBmat {
+		DetSDW<TimeDisplaced,CheckerBoard>* parent;
+		sdwRightMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+			(void)gc;
+			assert(gc == 0);
+			if (CheckerBoard) {
+				return parent->checkerboardRightMultiplyBmat(mat, k2, k1);
+			} else {
+				return mat * parent->computeBmatSDW(k2, k1);
+			}
+		}
+	};
+
+	struct sdwLeftMultiplyBmatInv {
+		DetSDW<TimeDisplaced,CheckerBoard>* parent;
+		sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+			(void)gc;
+			assert(gc == 0);
+			if (CheckerBoard) {
+				return parent->checkerboardLeftMultiplyBmatInv(mat, k2, k1);
+			} else {
+				return arma::inv(parent->computeBmatSDW(k2, k1)) * mat;
+			}
+		}
+	};
+
+	struct sdwRightMultiplyBmatInv {
+		DetSDW<TimeDisplaced,CheckerBoard>* parent;
+		sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+			parent(parent)
+		{ }
+		MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+			(void)gc;
+			assert(gc == 0);
+			if (CheckerBoard) {
+				return parent->checkerboardRightMultiplyBmatInv(mat, k2, k1);
+			} else {
+				return mat * arma::inv(parent->computeBmatSDW(k2, k1));
+			}
+		}
+	};
+
 
 public:
     // only functions that can pass the key to these functions have access
@@ -240,7 +346,8 @@ public:
     }
 
     template<class Archive>
-    void serializeContentsCommon(SerializeContentsKey const &, Archive &ar) {
+    void serializeContents(SerializeContentsKey const& sck, Archive& ar) {
+    	Base::serializeContents(sck, ar);			//base class
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;
