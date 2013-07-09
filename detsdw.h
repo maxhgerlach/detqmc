@@ -354,8 +354,6 @@ public:
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;
 		ar & accRatioRA;
-		ar & normPhi & sdwSusc;
-		ar & kOcc & kOccImag;
     }
 };
 
