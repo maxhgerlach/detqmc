@@ -733,7 +733,7 @@ void DetHubbard<TD,CB>::setupPropTmat_checkerboard() {
 }
 
 template <bool TD, bool CB>
-inline MatNum DetHubbard<TD,CB>::computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const {
+inline MatNum DetHubbard<TD,CB>::computeBmat(uint32_t k2, uint32_t k1, Spin spinz) const {
 	using namespace arma;
 
 	if (k2 == k1) {
@@ -763,13 +763,13 @@ inline MatNum DetHubbard<TD,CB>::computeBmat_direct(uint32_t k2, uint32_t k1, Sp
 	return B;
 }
 
-template <bool TD, bool CB>
-MatNum DetHubbard<TD,CB>::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
-		Spin spinz) const {
-	//for now: in the checkerboard decomposition we generate the same type
-	//of proptmat as with the direct calculation
-	return computeBmat_direct(k2, k1, spinz);
-}
+//template <bool TD, bool CB>
+//MatNum DetHubbard<TD,CB>::computeBmat_checkerBoard(uint32_t k2, uint32_t k1,
+//		Spin spinz) const {
+//	//for now: in the checkerboard decomposition we generate the same type
+//	//of proptmat as with the direct calculation
+//	return computeBmat_direct(k2, k1, spinz);
+//}
 //
 //
 //inline MatNum DetHubbard::computeGreenFunctionNaive(

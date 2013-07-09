@@ -178,11 +178,12 @@ protected:
 	// e^{-dtau T} = proptmat
 	//Here the V(s_n) are computed for either the up or down Hubbard spins.
 	//These functions naively multiply the matrices, which can be unstable.
-	MatNum computeBmat_direct(uint32_t k2, uint32_t k1, Spin spinz) const;
+	MatNum computeBmat(uint32_t k2, uint32_t k1, Spin spinz) const;
 
 	//compute the latter using a checker board decomposition with systematic
 	//error of O[dtau^2]
-	MatNum computeBmat_checkerBoard(uint32_t k2, uint32_t k1, Spin spinz) const;
+	// -- for now this is just the same code
+//	MatNum computeBmat_checkerBoard(uint32_t k2, uint32_t k1, Spin spinz) const;
 
 //	//Calculate (1 + B_s(tau, 0)*B_s(beta, tau))^(-1) from the given matrices
 //	//for the current aux field.
@@ -240,18 +241,10 @@ protected:
 #pragma GCC diagnostic ignored "-Wreturn-type"
 		MatNum operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
 			assert(gc == GreenCompSpinUp or gc == GreenCompSpinDown);
-			if (CheckerBoard) {
-				if (gc == GreenCompSpinUp) {
-					return parent->computeBmat_checkerBoard(k2, k1, Spin::Up);
-				} else if (gc == GreenCompSpinDown) {
-					return parent->computeBmat_checkerBoard(k2, k1, Spin::Down);
-				}
-			} else {
-				if (gc == GreenCompSpinUp) {
-					return parent->computeBmat_direct(k2, k1, Spin::Up);
-				} else if (gc == GreenCompSpinDown) {
-					return parent->computeBmat_direct(k2, k1, Spin::Down);
-				}
+			if (gc == GreenCompSpinUp) {
+				return parent->computeBmat(k2, k1, Spin::Up);
+			} else if (gc == GreenCompSpinDown) {
+				return parent->computeBmat(k2, k1, Spin::Down);
 			}
 		}
 #pragma GCC diagnostic pop
@@ -302,7 +295,7 @@ public:
     // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
       void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-      DetModelGC<2>::saveContents(sck, ar);		//base class
+      Base::saveContents(sck, ar);		//base class
       serializeContentsCommon(sck, ar);
     }
 
@@ -310,7 +303,7 @@ public:
     //else the green function would not be in a valid state
     template<class Archive>
       void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-      DetModelGC<2>::loadContents(sck, ar);		//base class
+      Base::loadContents(sck, ar);		//base class
       serializeContentsCommon(sck, ar);
       //the fields now have a valid state, update UdV-storage to start
       //sweeping again

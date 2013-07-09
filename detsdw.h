@@ -329,7 +329,7 @@ public:
     // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
     void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<1,cpx>::saveContents(sck, ar);			//base class
+    	Base::saveContents(sck, ar);			//base class
     	serializeContentsCommon(sck, ar);
     }
 
@@ -337,7 +337,7 @@ public:
     //else the green function would not be in a valid state
     template<class Archive>
     void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-    	DetModelGC<1,cpx>::loadContents(sck, ar);			//base class
+    	Base::loadContents(sck, ar);			//base class
     	serializeContentsCommon(sck, ar);
     	//the fields now have a valid state, update UdV-storage to start
     	//sweeping again
@@ -346,8 +346,7 @@ public:
     }
 
     template<class Archive>
-    void serializeContents(SerializeContentsKey const& sck, Archive& ar) {
-    	Base::serializeContents(sck, ar);			//base class
+    void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
 		ar & phi0 & phi1 & phi2;
 		ar & phiCosh & phiSinh;
 		ar & phiDelta & targetAccRatio & lastAccRatio;
