@@ -471,7 +471,7 @@ void DetSDW<TD,CB>::measure() {
                       + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
                       + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
                 fermionEkinetic += std::real(e);
-                fermionEkinetic_imag += std::real(e);
+                fermionEkinetic_imag += std::imag(e);
             }
         }
     }
