@@ -2,8 +2,11 @@
 //used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
 //contact: maxgerlach@gmail.com
 
-#include <deque>
-#include <boost/serialization/deque.hpp>
+//#include <deque>
+//#include <boost/serialization/deque.hpp>
+
+#include <list>
+#include <boost/serialization/list.hpp>
 
 namespace RA {
 
@@ -11,7 +14,7 @@ template<typename Val>
 class RunningAverage {
     int sampleSize;
     int samplesAdded;
-    std::deque<Val> values;
+    std::list<Val> values;					//deque was problematic when serialized in a debug build
     Val runningAverage;
 public:
     RunningAverage(int sampleSize_);
