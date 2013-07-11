@@ -691,16 +691,20 @@ template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
-    auto applyBondFactorsRight = [this, band, &result](NeighDir neigh, num ch, num sh) {
+    auto applyBondFactorsRight = [this, &result](NeighDir neigh, num ch, num sh) {
+    	arma::Col<cpx> new_col_i(N);
         for (uint32_t i = 0; i < N; ++i) {
             uint32_t j = spaceNeigh(neigh, i);
             //change columns i and j of result
-            for (uint32_t row = 0; row < N; ++row) {
-                cpx new_rowi = ch * result(row, i) + sh * result(row, i);
-                cpx new_rowj = sh * result(row, i) + ch * result(row, j);
-                result(row,i) = new_rowi;
-                result(row,j) = new_rowj;
-            }
+//            for (uint32_t row = 0; row < N; ++row) {
+//                cpx new_rowi = ch * result(row, i) + sh * result(row, i);
+//                cpx new_rowj = sh * result(row, i) + ch * result(row, j);
+//                result(row,i) = new_rowi;
+//                result(row,j) = new_rowj;
+//            }
+            new_col_i     = ch * result.col(i) + sh * result.col(j);
+            result.col(j) = sh * result.col(i) + ch * result.col(j);
+            result.col(i) = new_col_i;
         }
     };
 
