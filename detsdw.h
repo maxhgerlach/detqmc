@@ -89,7 +89,7 @@ protected:
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
     checkarray<num,2> hopHor;
     checkarray<num,2> hopVer;
-    // sinh|cosh(dtau * hop..)
+    // sinh|cosh(-dtau * hop..)
     checkarray<num,2> sinhHopHor;
     checkarray<num,2> sinhHopVer;
     checkarray<num,2> coshHopHor;
@@ -209,7 +209,7 @@ protected:
 //  void setupPropK_checkerboard();
 
 
-    //the following are template function to allow applying them
+    //the following are template functions to allow applying them
     //to submatrices as well
     //"cb" = "checkerboard"
     //Reminder: These do not include chemical potential
