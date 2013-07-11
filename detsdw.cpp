@@ -727,32 +727,36 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 
+	num muTerm = std::exp(dtau*mu);			// include chemical potential here
+
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const auto& c = phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  kphi2 % kphiSinh;
-    VecNum max = -kphi2 % kphiSinh;
-    VecCpx bx  {kphi0, -kphi1};
-    VecCpx bcx {kphi0, kphi1};
+    const VecNum c = muTerm * phiCosh.col(k);   // cosh(dtau * |phi|)
+    const auto& kphiSinh = phiSinh.col(k);  	// sinh(dtau * |phi|) / |phi|
+    VecNum ax  =  muTerm * kphi2 % kphiSinh;
+    VecNum max = -muTerm * kphi2 % kphiSinh;
+    VecCpx b  {kphi0, -kphi1};
+    VecCpx bc {kphi0, kphi1};
+    VecCpx bx  = muTerm * b  % kphiSinh;
+    VecCpx bcx = muTerm * bc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-        block(result, 0, col) = diagmat(c)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
-                              + diagmat(ax) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
-                              + diagmat(bx) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+        block(result, 0, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+                              + diagmat(ax)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
+                              + diagmat(bx)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
 
         block(result, 1, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
                               + diagmat(bcx) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
                               + diagmat(max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
 
-        block(result, 2, col) = diagmat(ax) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
-                              + diagmat(bx) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
-                              + diagmat(c)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1);
+        block(result, 2, col) = diagmat(ax)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+                              + diagmat(bx)  * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+                              + diagmat(c)   * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1);
 
         block(result, 3, col) = diagmat(bcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
                               + diagmat(max) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
@@ -775,8 +779,8 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2,
         result = leftMultiplyBk(result, k);
     }
 
-    //chemical potential terms:
-    result *= std::exp(+dtau * (k2 - k1) * mu);
+    //chemical potential terms included by leftMultiplyBk
+    //result *= std::exp(+dtau * (k2 - k1) * mu);
 
     return result;
 }
@@ -790,15 +794,20 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
 #define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+
+	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
+
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const auto& c = phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  kphi2 % kphiSinh;
-    VecNum max = -kphi2 % kphiSinh;
-    VecCpx mbx  {-kphi0, kphi1};
-    VecCpx mbcx {kphi0, -kphi1};
+    const VecNum c = muTerm * phiCosh.col(k);     // cosh(dtau * |phi|)
+    const auto& kphiSinh = phiSinh.col(k);  	  // sinh(dtau * |phi|) / |phi|
+    VecNum ax  =  muTerm * kphi2 % kphiSinh;
+    VecNum max = -muTerm * kphi2 % kphiSinh;
+    VecCpx mb  {-kphi0,  kphi1};
+    VecCpx mbc {-kphi0, -kphi1};
+    VecCpx mbx  = muTerm * mb  % kphiSinh;
+    VecCpx mbcx = muTerm * mbc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
@@ -837,8 +846,8 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
         result = leftMultiplyBkInv(result, k);
     }
 
-    //chemical potential terms:
-    result *= std::exp(-dtau * (k2 - k1) * mu);
+    //chemical potential terms already included
+    //result *= std::exp(-dtau * (k2 - k1) * mu);
 
     return result;
 }
@@ -852,15 +861,19 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 
+	num muTerm = std::exp(dtau*mu);			// include chemical potential here
+
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const auto& c = phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  kphi2 % kphiSinh;
-    VecNum max = -kphi2 % kphiSinh;
-    VecCpx bx  {kphi0, -kphi1};
-    VecCpx bcx {kphi0, kphi1};
+    VecNum c = muTerm * phiCosh.col(k);         // cosh(dtau * |phi|)
+    const auto& kphiSinh = phiSinh.col(k);      // sinh(dtau * |phi|) / |phi|
+    VecNum ax  =  muTerm * kphi2 % kphiSinh;
+    VecNum max = -muTerm * kphi2 % kphiSinh;
+    VecCpx b  {kphi0, -kphi1};
+    VecCpx bc {kphi0, kphi1};
+    VecCpx bx  = muTerm * b  % kphiSinh;
+    VecCpx bcx = muTerm * bc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
@@ -899,8 +912,8 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2
         result = rightMultiplyBk(result, k);
     }
 
-    //chemical potential terms:
-    result *= std::exp(+dtau * (k2 - k1) * mu);
+    //chemical potential terms included above
+    //result *= std::exp(+dtau * (k2 - k1) * mu);
 
     return result;
 }
@@ -914,15 +927,19 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
 
+	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
+
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const auto& c = phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  kphi2 % kphiSinh;
-    VecNum max = -kphi2 % kphiSinh;
-    VecCpx mbx  {-kphi0, kphi1};
-    VecCpx mbcx {kphi0, -kphi1};
+    const VecNum c = muTerm * phiCosh.col(k);         // cosh(dtau * |phi|)
+    const auto& kphiSinh = phiSinh.col(k);  		  // sinh(dtau * |phi|) / |phi|
+    VecNum ax  =  muTerm * kphi2 % kphiSinh;
+    VecNum max = -muTerm * kphi2 % kphiSinh;
+    VecCpx mb  {-kphi0, kphi1};
+    VecCpx mbc {-kphi0, -kphi1};
+    VecCpx mbx  = muTerm * mb  % kphiSinh;
+    VecCpx mbcx = muTerm * mbc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
@@ -960,8 +977,8 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t
         result = rightMultiplyBkInv(result, k);
     }
 
-    //chemical potential terms:
-    result *= std::exp(-dtau * (k2 - k1) * mu);
+    //chemical potential terms included above
+    //result *= std::exp(-dtau * (k2 - k1) * mu);
 
     return result;
 }
