@@ -81,7 +81,13 @@ protected:
     const num lambda;
 
     enum Band {XBAND = 0, YBAND = 1};
+    static inline std::string bandstr(Band b) {
+    	return (b == XBAND) ? "x" : (b == YBAND ? "y" : "N");
+    }
     enum Spin {SPINUP = 0, SPINDOWN = 1};
+    static inline std::string spinstr(Spin s) {
+    	return (s == SPINUP) ? "up" : (s == SPINDOWN ? "dn" : "N");
+    }
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
         
