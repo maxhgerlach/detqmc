@@ -804,10 +804,10 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
     const auto& kphiSinh = phiSinh.col(k);  	  // sinh(dtau * |phi|) / |phi|
     VecNum ax  =  muTerm * kphi2 % kphiSinh;
     VecNum max = -muTerm * kphi2 % kphiSinh;
-    VecCpx mb  {-kphi0,  kphi1};
-    VecCpx mbc {-kphi0, -kphi1};
-    VecCpx mbx  = muTerm * mb  % kphiSinh;
-    VecCpx mbcx = muTerm * mbc % kphiSinh;
+    VecCpx b  {kphi0, -kphi1};
+    VecCpx bc {kphi0, +kphi1};
+    VecCpx bx  = muTerm * b  % kphiSinh;
+    VecCpx bcx = muTerm * bc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
@@ -815,20 +815,20 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(dtau*V) matrix
         block(result, 0, col) = cbLMultHoppingExp(diagmat(c)   * block(orig, 0, col), XBAND, +1)
-                              + cbLMultHoppingExp(diagmat(max) * block(orig, 2, col), XBAND, +1)
-                              + cbLMultHoppingExp(diagmat(mbx) * block(orig, 3, col), XBAND, +1);
+                              + cbLMultHoppingExp(diagmat(ax)  * block(orig, 2, col), XBAND, +1)
+                              + cbLMultHoppingExp(diagmat(bx)  * block(orig, 3, col), XBAND, +1);
 
-        block(result, 1, col) = cbLMultHoppingExp(diagmat(c)    * block(orig, 1, col), XBAND, +1)
-                              + cbLMultHoppingExp(diagmat(mbcx) * block(orig, 2, col), XBAND, +1)
-                              + cbLMultHoppingExp(diagmat(ax)   * block(orig, 3, col), XBAND, +1);
+        block(result, 1, col) = cbLMultHoppingExp(diagmat(c)   * block(orig, 1, col), XBAND, +1)
+                              + cbLMultHoppingExp(diagmat(bcx) * block(orig, 2, col), XBAND, +1)
+                              + cbLMultHoppingExp(diagmat(max) * block(orig, 3, col), XBAND, +1);
 
-        block(result, 2, col) = cbLMultHoppingExp(diagmat(max) * block(orig, 0, col), YBAND, +1)
-                              + cbLMultHoppingExp(diagmat(mbx) * block(orig, 1, col), YBAND, +1)
+        block(result, 2, col) = cbLMultHoppingExp(diagmat(ax)  * block(orig, 0, col), YBAND, +1)
+                              + cbLMultHoppingExp(diagmat(bx)  * block(orig, 1, col), YBAND, +1)
                               + cbLMultHoppingExp(diagmat(c)   * block(orig, 2, col), YBAND, +1);
 
-        block(result, 3, col) = cbLMultHoppingExp(diagmat(mbcx) * block(orig, 0, col), YBAND, +1)
-                              + cbLMultHoppingExp(diagmat(ax)   * block(orig, 1, col), YBAND, +1)
-                              + cbLMultHoppingExp(diagmat(c)    * block(orig, 3, col), YBAND, +1);
+        block(result, 3, col) = cbLMultHoppingExp(diagmat(bcx) * block(orig, 0, col), YBAND, +1)
+                              + cbLMultHoppingExp(diagmat(max) * block(orig, 1, col), YBAND, +1)
+                              + cbLMultHoppingExp(diagmat(c)   * block(orig, 3, col), YBAND, +1);
     }
 #undef block
     return result;
