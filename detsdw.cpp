@@ -738,8 +738,8 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
     VecNum max = -muTerm * kphi2 % kphiSinh;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx bx  = muTerm * b  % kphiSinh;
-    VecCpx bcx = muTerm * bc % kphiSinh;
+    VecCpx mbx  = muTerm * -b  % kphiSinh;
+    VecCpx mbcx = muTerm * -bc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
@@ -747,19 +747,19 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
         block(result, 0, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
-                              + diagmat(ax)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
-                              + diagmat(bx)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+                              + diagmat(max)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
+                              + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
 
         block(result, 1, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
-                              + diagmat(bcx) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
-                              + diagmat(max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
+                              + diagmat(mbcx) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1)
+                              + diagmat(ax) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
 
-        block(result, 2, col) = diagmat(ax)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
-                              + diagmat(bx)  * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+        block(result, 2, col) = diagmat(max)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+                              + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
                               + diagmat(c)   * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1);
 
-        block(result, 3, col) = diagmat(bcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
-                              + diagmat(max) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
+        block(result, 3, col) = diagmat(mbcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1)
+                              + diagmat(ax) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1)
                               + diagmat(c)   * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1);
     }
 #undef block
