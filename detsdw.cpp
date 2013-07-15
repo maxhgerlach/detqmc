@@ -872,29 +872,29 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
     VecNum max = -muTerm * kphi2 % kphiSinh;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx bx  = muTerm * b  % kphiSinh;
-    VecCpx bcx = muTerm * bc % kphiSinh;
+    VecCpx mbx  = muTerm * -b  % kphiSinh;
+    VecCpx mbcx = muTerm * -bc % kphiSinh;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t row = 0; row < 4; ++row) {
             using arma::diagmat;
             //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(c),   XBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  XBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(bcx), XBAND, -1);
+            block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(c),    XBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(max),  XBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbcx), XBAND, -1);
 
-            block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(c),   XBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(bx),  XBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1);
+            block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(c),    XBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbx),  XBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(ax),   XBAND, -1);
 
-            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(ax),  YBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(bcx), YBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(c),   YBAND, -1);
+            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(c),    YBAND, -1);
 
-            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(bx),  YBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(max), YBAND, -1)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),   YBAND, -1);
+            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1)
+                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),    YBAND, -1);
     }
 
 #undef block
