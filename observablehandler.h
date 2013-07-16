@@ -207,7 +207,7 @@ public:
         }
     }
 
-    friend void ::outputResults(
+    friend void outputResults(
             const std::vector<std::unique_ptr<ScalarObservableHandler>>& obsHandlers);
 protected:
     std::vector<num> timeseriesBuffer;      // time series entries added since last call to writeData()
@@ -255,7 +255,7 @@ public:
     uint32_t getVectorSize() {
         return vsize;
     }
-    friend void ::outputResults(
+    friend void outputResults(
             const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
 protected:
     uint32_t vsize;
