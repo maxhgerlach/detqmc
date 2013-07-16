@@ -743,6 +743,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
+    #pragma omp parallel for
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
@@ -811,6 +812,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
+    #pragma omp parallel for
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(dtau*V) matrix
@@ -877,6 +879,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
+    #pragma omp parallel for
     for (uint32_t row = 0; row < 4; ++row) {
             using arma::diagmat;
             //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
@@ -943,6 +946,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
+    #pragma omp parallel for
     for (uint32_t row = 0; row < 4; ++row) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(+dtau*V) matrix
