@@ -1214,6 +1214,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
             rows[2][site + 2*N] -= 1;
             rows[3][site + 3*N] -= 1;
             //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
+            // [O(N^2)]
             MatCpx gTimesInvRows(4*N, 4*N);
             const auto& G = g.slice(timeslice);
 #pragma omp parallel for

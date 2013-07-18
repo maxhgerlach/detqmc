@@ -45,16 +45,21 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
-
     if (pars.specified.count("dtau") != 0) {
         if (pars.specified.count("m")) {
             throw ParameterWrong("Only specify one of the parameters m and dtau");
         }
         if (pars.s * pars.dtau > pars.beta) {
-            throw ParameterWrong("Parameters are incompatible: s * dtau > beta !");
+        	//s was chosen too large, choose smaller value of s, such that
+        	// beta / (s * dtau) = 1
+        	pars.s = uint32_t(std::ceil(pars.beta / pars.dtau));
+        	//adapt parameter dtau -- may now be a bit smaller than original choice
+        	pars.dtau = pars.beta / pars.s;
+        	pars.m = pars.s;
+        } else {
+        	uint32_t n = uint32_t(std::ceil(pars.beta / (pars.s * pars.dtau)));
+        	pars.m = pars.s * n;
         }
-        uint32_t n = uint32_t(std::ceil(pars.beta / (pars.s * pars.dtau)));
-        pars.m = pars.s * n;
     } else if (pars.specified.count("m") == 0) {
         throw ParameterMissing("m");
     }
