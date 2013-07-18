@@ -202,6 +202,11 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 
     initFromParameters(parsmodel_, parsmc_);
     loadContents(ia);
+
+    std::cout << "\n"
+    		  << "State of previous simulation has been loaded.\n"
+    		  << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
+    		  << "  sweepsDone: " << sweepsDone << std::endl;
 }
 
 void DetQMC::saveState() {
