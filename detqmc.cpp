@@ -217,6 +217,7 @@ void DetQMC::saveState() {
     boost::archive::binary_oarchive oa(ofs);
     oa << parsmodel << parsmc;
     saveContents(oa);
+    std::cout << "State has been saved." << std::endl;
     timing.stop("saveState");
 }
 
