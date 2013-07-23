@@ -143,33 +143,33 @@ protected:
     checkarray<VecNum, 2> kOcc;     //Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
     VecNum& kOccX;
     VecNum& kOccY;
-    checkarray<VecNum, 2> kOccImag;
-    VecNum& kOccXimag;
-    VecNum& kOccYimag;
+//    checkarray<VecNum, 2> kOccImag;
+//    VecNum& kOccXimag;
+//    VecNum& kOccYimag;
 
     checkarray<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
     VecNum& occX;
     VecNum& occY;
-    checkarray<VecNum, 2> occImag;
-    VecNum& occXimag;
-    VecNum& occYimag;
+//    checkarray<VecNum, 2> occImag;
+//    VecNum& occXimag;
+//    VecNum& occYimag;
 
     //pairing correlations near maximum range x_max = (L/2, L/2)
     num pairPlusMax;
     num pairMinusMax;
-    num pairPlusMaximag;
-    num pairMinusMaximag;
+//    num pairPlusMaximag;
+//    num pairMinusMaximag;
     //and between site 0 and any other site
     VecNum pairPlus;
     VecNum pairMinus;
-    VecNum pairPlusimag;
-    VecNum pairMinusimag;
+//    VecNum pairPlusimag;
+//    VecNum pairMinusimag;
 
     //fermion energy
     num fermionEkinetic;        //kinetic
-    num fermionEkinetic_imag;
+//    num fermionEkinetic_imag;
     num fermionEcouple;         //coupling
-    num fermionEcouple_imag;
+//    num fermionEcouple_imag;
 
     //these for_each functions don't really work well with the class template
     template<typename Callable>

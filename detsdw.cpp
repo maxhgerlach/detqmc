@@ -101,12 +101,12 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
         normPhi(), sdwSusc(),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
-        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
+//        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
         occ(), occX(occ[XBAND]), occY(occ[YBAND]),
-        occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
-        pairPlusMax(0.0), pairMinusMax(0.0), pairPlusMaximag(0.0), pairMinusMaximag(0.0),
-        pairPlus(), pairMinus(), pairPlusimag(), pairMinusimag(),
-        fermionEkinetic(0), fermionEkinetic_imag(0), fermionEcouple(0), fermionEcouple_imag(0)
+//        occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
+        pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
+        pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
+        fermionEkinetic(0), fermionEcouple(0)//, fermionEkinetic_imag(0), fermionEcouple_imag(0)
 {
     if (pars.bc == "pbc") {
         bc = PBC;
@@ -153,41 +153,41 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
             ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
             ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
             ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
-            ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
-            ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag"),
+            //ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
+            //ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag"),
             ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
-            ScalarObservable(cref(fermionEkinetic_imag), "fermionEkineticimag", "fEkinimag"),
-            ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple"),
-            ScalarObservable(cref(fermionEcouple_imag), "fermionEcoupleimag", "fEcoupleimag");
+            //ScalarObservable(cref(fermionEkinetic_imag), "fermionEkineticimag", "fEkinimag"),
+            ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
+            //ScalarObservable(cref(fermionEcouple_imag), "fermionEcoupleimag", "fEcoupleimag");
 
     kOccX.zeros(N);
     kOccY.zeros(N);
     obsVector += VectorObservable(cref(kOccX), N, "kOccX", "nkx"),
             VectorObservable(cref(kOccY), N, "kOccY", "nky");
-    kOccXimag.zeros(N);
-    kOccYimag.zeros(N);
-    obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
-            VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
+//    kOccXimag.zeros(N);
+//    kOccYimag.zeros(N);
+//    obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
+//            VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
 
     occX.zeros(N);
     occY.zeros(N);
     obsVector += VectorObservable(cref(occX), N, "occX", "nx"),
             VectorObservable(cref(occY), N, "occY", "ny");
-    occXimag.zeros(N);
-    occYimag.zeros(N);
-    obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
-            VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
+//    occXimag.zeros(N);
+//    occYimag.zeros(N);
+//    obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
+//            VectorObservable(cref(occYimag), N, "occYimag", "nyimag");
 
     //attention:
     // these do not have valid entries for site 0
     pairPlus.zeros(N);
     pairMinus.zeros(N);
-    pairPlusimag.zeros(N);
-    pairMinusimag.zeros(N);
+//    pairPlusimag.zeros(N);
+//    pairMinusimag.zeros(N);
     obsVector += VectorObservable(cref(pairPlus), N, "pairPlus", "pp"),
-            VectorObservable(cref(pairMinus), N, "pairMinus", "pm"),
-            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
-            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
+            VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
+//            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
+//            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 }
 
 template<bool TD, bool CB>
@@ -273,15 +273,15 @@ void DetSDW<TD,CB>::measure() {
     //probably not very interesting data
     occX.zeros(N);
     occY.zeros(N);
-    occXimag.zeros(N);
-    occYimag.zeros(N);
+//    occXimag.zeros(N);
+//    occYimag.zeros(N);
 #pragma omp parallel for
     for (uint32_t l = 1; l <= m; ++l) {
         for (uint32_t i = 0; i < N; ++i) {
             occX[i] += std::real(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
             occY[i] += std::real(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
-            occXimag[i] += std::imag(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
-            occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
+//            occXimag[i] += std::imag(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
+//            occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
         }
     }
     //not working with icpc 13.1:
@@ -291,8 +291,8 @@ void DetSDW<TD,CB>::measure() {
 //  }
     occX /= num(m) * num(N);
     occY /= num(m) * num(N);
-    occXimag /= num(m) * num(N);
-    occYimag /= num(m) * num(N);
+//    occXimag /= num(m) * num(N);
+//    occYimag /= num(m) * num(N);
 
 
 
@@ -316,8 +316,8 @@ void DetSDW<TD,CB>::measure() {
 
         kOccX[ksite] = 0.0;
         kOccY[ksite] = 0.0;
-        kOccXimag[ksite] = 0.0;
-        kOccYimag[ksite] = 0.0;
+//        kOccXimag[ksite] = 0.0;
+//        kOccYimag[ksite] = 0.0;
 
         for (uint32_t i = 0; i < N; ++i) {
             num iy = num(i / L);
@@ -340,8 +340,8 @@ void DetSDW<TD,CB>::measure() {
 
                     kOccX[ksite] += std::real(x_cpx);
                     kOccY[ksite] += std::real(y_cpx);
-                    kOccXimag[ksite] += std::imag(x_cpx);
-                    kOccYimag[ksite] += std::imag(y_cpx);
+//                    kOccXimag[ksite] += std::imag(x_cpx);
+//                    kOccYimag[ksite] += std::imag(y_cpx);
                 }
             }
         }
@@ -349,8 +349,8 @@ void DetSDW<TD,CB>::measure() {
         // add 2.0 and not 1.0 because spin is included
         kOccX[ksite] = 2.0 - kOccX[ksite] / num(m * N);
         kOccY[ksite] = 2.0 - kOccY[ksite] / num(m * N);
-        kOccXimag[ksite] =  -kOccXimag[ksite] / num(m * N);
-        kOccYimag[ksite] =  -kOccYimag[ksite] / num(m * N);
+//        kOccXimag[ksite] =  -kOccXimag[ksite] / num(m * N);
+//        kOccYimag[ksite] =  -kOccYimag[ksite] / num(m * N);
     }
 
     //sdw-susceptibility
@@ -366,8 +366,8 @@ void DetSDW<TD,CB>::measure() {
     //-------------------------------
     pairPlus.zeros(N);
     pairMinus.zeros(N);
-    pairPlusimag.zeros(N);
-    pairMinusimag.zeros(N);
+//    pairPlusimag.zeros(N);
+//    pairMinusimag.zeros(N);
     for (uint32_t l = 1; l <= m; ++l) {
         //helper to access the green function
         // *1 is for the row index,
@@ -416,15 +416,15 @@ void DetSDW<TD,CB>::measure() {
             }
 
             pairPlus[i] += std::real(pairPlusCpx);
-            pairPlusimag[i] += std::imag(pairPlusCpx);
+//            pairPlusimag[i] += std::imag(pairPlusCpx);
             pairMinus[i] += std::real(pairMinusCpx);
-            pairMinusimag[i] += std::imag(pairMinusCpx);
+//            pairMinusimag[i] += std::imag(pairMinusCpx);
         }
     }
     pairPlus /= m;
-    pairPlusimag /= m;
+//    pairPlusimag /= m;
     pairMinus /= m;
-    pairMinusimag /= m;
+//    pairMinusimag /= m;
 
     // sites around the maximum range L/2, L/2
     static const uint32_t numSitesFar = 9;
@@ -434,25 +434,25 @@ void DetSDW<TD,CB>::measure() {
             coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
     };
     pairPlusMax = 0;
-    pairPlusMaximag = 0;
+//    pairPlusMaximag = 0;
     pairMinusMax = 0;
-    pairMinusMaximag = 0;
+//    pairMinusMaximag = 0;
     for (uint32_t i : sitesfar) {
         pairPlusMax += pairPlus[i];
-        pairPlusMaximag += pairPlusimag[i];
+//        pairPlusMaximag += pairPlusimag[i];
         pairMinusMax += pairMinus[i];
-        pairMinusMaximag += pairMinusimag[i];
+//        pairMinusMaximag += pairMinusimag[i];
     }
     pairPlusMax /= numSitesFar;
-    pairPlusMaximag /= numSitesFar;
+//    pairPlusMaximag /= numSitesFar;
     pairMinusMax /= numSitesFar;
-    pairMinusMaximag /= numSitesFar;
+//    pairMinusMaximag /= numSitesFar;
 
 
     // Fermionic energy contribution
     // -----------------------------
     fermionEkinetic = 0;
-    fermionEkinetic_imag = 0;
+//    fermionEkinetic_imag = 0;
     for (uint32_t l = 1; l <= m; ++l) {
         auto glij = [this, l](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
             return g.slice(l)(site1 + 2*N*band + N*spin,
@@ -471,15 +471,15 @@ void DetSDW<TD,CB>::measure() {
                       + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
                       + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
                 fermionEkinetic += std::real(e);
-                fermionEkinetic_imag += std::imag(e);
+//                fermionEkinetic_imag += std::imag(e);
             }
         }
     }
     fermionEkinetic /= num(m*N);
-    fermionEkinetic_imag /= num(m*N);
+//    fermionEkinetic_imag /= num(m*N);
 
     fermionEcouple = 0;
-    fermionEcouple_imag = 0;
+//    fermionEcouple_imag = 0;
     for (uint32_t l = 1; l <= m; ++l) {
         for (uint32_t i = 0; i < N; ++i) {
             auto glbs = [this, l,i](Band band1, Spin spin1,
@@ -504,12 +504,12 @@ void DetSDW<TD,CB>::measure() {
                   + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
                              glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
             fermionEcouple += std::real(e);
-            fermionEcouple_imag += std::imag(e);
+//            fermionEcouple_imag += std::imag(e);
         }
 
     }
     fermionEcouple /= num(m*N);
-    fermionEcouple_imag /= num(m*N);
+//    fermionEcouple_imag /= num(m*N);
 
     timing.stop("sdw-measure");
 }
