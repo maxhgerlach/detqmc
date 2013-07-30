@@ -1,0 +1,1 @@
+GTAGSFORECPP=1 gtags -v --gtagsconf gtags.conf 
