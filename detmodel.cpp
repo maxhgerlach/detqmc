@@ -56,7 +56,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
         	// for this beta and dtau (or slightly smaller dtau)
         	uint32_t mI = uint32_t(std::ceil(pars.beta/pars.dtau));  // -> division rounded up --> m not too small
         	pars.s = uint32_t(std::ceil(mI / 2.0));                  // -> we want m >= 2*s !
-        	pars.m = 2 * s;
+        	pars.m = 2 * pars.s;
         	pars.dtau = pars.beta / pars.m;
         } else {
         	//this may give rather low values of dtau -- but not for integer inverse temperatures
