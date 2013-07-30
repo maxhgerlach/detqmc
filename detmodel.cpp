@@ -49,21 +49,25 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
         if (pars.specified.count("m")) {
             throw ParameterWrong("Only specify one of the parameters m and dtau");
         }
-        if (pars.s * pars.dtau > pars.beta) {
-        	//s was chosen too large, choose smaller value of s, such that
-        	// beta / (s * dtau) = 1
-        	pars.s = uint32_t(std::ceil(pars.beta / pars.dtau));
-        	//adapt parameter dtau -- may now be a bit smaller than original choice
-        	pars.dtau = pars.beta / pars.s;
-        	pars.m = pars.s;
+        //require: at least m >= 2*s --> green function calculated from scratch at least for
+        //two actual 2 time slices
+        if (pars.s * pars.dtau >= pars.beta) {
+        	// given value of s too high, find pair of m and s that works
+        	// for this beta and dtau (or slightly smaller dtau)
+        	uint32_t mI = uint32_t(std::ceil(pars.beta/pars.dtau));  // -> division rounded up --> m not too small
+        	pars.s = uint32_t(std::ceil(mI / 2.0));                  // -> we want m >= 2*s !
+        	pars.m = 2 * s;
+        	pars.dtau = pars.beta / pars.m;
         } else {
+        	//this may give rather low values of dtau -- but not for integer inverse temperatures
         	uint32_t n = uint32_t(std::ceil(pars.beta / (pars.s * pars.dtau)));
         	pars.m = pars.s * n;
+        	pars.dtau = pars.beta / pars.m;
         }
     } else if (pars.specified.count("m") == 0) {
         throw ParameterMissing("m");
     }
-    if (pars.m % pars.s != 0) {
+    if (pars.m % pars.s != 0 or pars.m / pars.s < 2) {
         throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
                 + " do not agree.");
     }
