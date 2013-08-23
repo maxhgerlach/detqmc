@@ -868,9 +868,9 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 }
 
 
-//Special handling to allow passing either 'm' or 'dtau', but not both.
-//Also check that 's' is set matchingly.  Else adapt the parameters accordingly,
-//so that a valid simulation can be run.
+//Special handling to allow passing either 'm' or 'beta', but not both.
+//'dtau' must always be given.
+//Also check that 's' is set matching.
 ModelParams updateTemperatureParameters(ModelParams pars);
 
 
