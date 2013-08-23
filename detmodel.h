@@ -312,7 +312,7 @@ public:
 template<uint32_t GC, typename V, bool TimeDisplaced>
     DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
     sz(greenComponentSize),
-    timedisplaced(TimeDisplaced), beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
+    timedisplaced(TimeDisplaced), beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(pars.dtau),
     green(), greenFwd(), greenBwd(), eye_UdV(sz), UdVStorage(),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
