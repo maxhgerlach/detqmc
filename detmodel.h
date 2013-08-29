@@ -612,7 +612,7 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 }
 
 
-//update the green function in timeslice s*(l+1) from scratch with the help
+//update the green function in timeslice s*(l+1) [or m] from scratch with the help
 //of B-matrices computed before
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_mat_k2_k1>
@@ -624,26 +624,24 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 
     std::vector<UdVV>& storage = UdVStorage[gc];
 
-//  MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
+    const uint32_t k_l = s*l;
+    const uint32_t k_lp1 = ((l < n) ? (s*(l+1)) : (m));
 
-    //The following is B(beta, (l+1)*s*dtau), valid from the last sweep
+    //The following is B(beta, k_lp1*dtau), valid from the last sweep
     const UdVV& UdV_lp1 = storage[l + 1];
 
-    //from the last step the following are B(l*s*dtau, 0):
+    //from the last step the following are B(k_l*dtau, 0):
     const MatV& U_l = storage[l].U;
     const VecV& d_l = storage[l].d;
     const MatV& V_l = storage[l].V;
 
-    //UdV_temp will be the new B((l+1)*s*dtau, 0):
-//  UdVV UdV_temp = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
-
-    UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, s*(l+1), s*l) *
+    //UdV_temp will be the new B(k_lp1*dtau, 0):
+    UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l) *
                                     arma::diagmat(d_l));
 
     UdV_temp.V *= V_l;
 
-    uint32_t next = s * (l + 1);
-    updateGreenFunctionUdV(gc, next, UdV_lp1, UdV_temp);
+    updateGreenFunctionUdV(gc, k_lp1, UdV_lp1, UdV_temp);
 
     //storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
 
