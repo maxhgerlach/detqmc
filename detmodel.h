@@ -649,7 +649,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 }
 
 //Given B(l*s*dtau, 0) from the last step in the storage, compute
-//B((l+1)*s*dtau, 0) and put it into storage
+//B([(l+1)*s or m]*dtau, 0) and put it into storage
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
@@ -660,15 +660,15 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
 
     std::vector<UdVV>& storage = UdVStorage[gc];
 
-//  MatV B_lp1 = computeBmat[greenComponent](s*(l + 1), s*l);
-    //from the last step the following are B(l*s*dtau, 0):
+    const uint32_t k_l = s*l;
+    const uint32_t k_lp1 = ((l < n) ? (s*(l+1)) : (m));
+
+    //from the last step the following are B(k_l*dtau, 0):
     const MatV& U_l = storage[l].U;
     const VecV& d_l = storage[l].d;
     const MatV& V_l = storage[l].V;
-    //the new B((l+1)*s*dtau, 0):
-//  storage[l+1] = udvDecompose<V>(((B_lp1 * U_l) * arma::diagmat(d_l)));
-
-    storage[l+1] = udvDecompose<V>(leftMultiplyBmat(gc, U_l, s*(l+1), s*l)
+    //the new B(k_lp1*dtau, 0):
+    storage[l+1] = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l)
                                    * arma::diagmat(d_l));
 
     storage[l+1].V *= V_l;
