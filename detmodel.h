@@ -113,7 +113,7 @@ public:
 //functions like sweep()
 
 template<uint32_t GreenComponents, typename ValueType = num, bool TimeDisplaced = false>
-class : public DetModel {
+class DetModelGC: public DetModel {
 protected:
     DetModelGC(const ModelParams& pars, uint32_t greenComponentSize);
 public:
@@ -310,7 +310,7 @@ public:
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
-    DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
+DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
     sz(greenComponentSize),
     timedisplaced(TimeDisplaced),
     beta(pars.beta), m(pars.m), s(pars.s),
