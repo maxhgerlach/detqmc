@@ -541,8 +541,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 
     //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
     const UdVV& UdV_R = storage[l - 1];
-    uint32_t next = s * (l - 1);
-    updateGreenFunctionUdV(gc, next, UdV_L, UdV_R);
+    updateGreenFunctionUdV(gc, k_lm1, UdV_L, UdV_R);
     storage[l - 1] = UdV_L;
 
     timing.stop("advanceDownGreen");
