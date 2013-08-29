@@ -525,24 +525,21 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 
     std::vector<UdVV>& storage = UdVStorage[gc];
 
-//  MatV B_l = computeBmat[greenComponent](s*l, s*(l - 1));
+    const uint32_t k_l = ((l < n) ? (s*l) : (m));
+    const uint32_t k_lm1 = s*(l-1);
 
-    //U_l, d_l, V_l correspond to B(beta,l*s*dtau) [set in the last step]
+    //U_l, d_l, V_l correspond to B(beta,k_l*dtau) [set in the last step]
     const MatV& U_l = storage[l].U;
     const VecV& d_l = storage[l].d;
     const MatV& V_l = storage[l].V;
 
-    //UdV_L will correspond to B(beta,(l-1)*s*dtau)
-//  UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (V_l * B_l));
-
-
-    //UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) * (rightMultiplyBmat[gc](V_l, s*l, s*(l-1))));
+    //UdV_L will correspond to B(beta,k_lm1*dtau)
     UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) *
-                                 rightMultiplyBmat(gc, V_l, s*l, s*(l-1)));
+                                 rightMultiplyBmat(gc, V_l, k_l, k_lm1));
 
     UdV_L.U = U_l * UdV_L.U;
 
-    //UdV_R corresponds to B((l-1)*s*dtau,0) [set in last sweep]
+    //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
     const UdVV& UdV_R = storage[l - 1];
     uint32_t next = s * (l - 1);
     updateGreenFunctionUdV(gc, next, UdV_L, UdV_R);
