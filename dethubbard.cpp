@@ -84,7 +84,6 @@ DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
         t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
         z(2*d), //coordination number: 2*d
         N(static_cast<uint32_t>(uint_pow(L,d))),
-//      beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(beta/m),
         alpha(acosh(std::exp(dtau * U * 0.5))),
         neigh(d, L),
         proptmat(N,N),
