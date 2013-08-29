@@ -742,9 +742,6 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
     timing.stop("wrapUpGreen");
 }
 
-
-
-
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1, class CallableUpdateInSlice>
 void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
