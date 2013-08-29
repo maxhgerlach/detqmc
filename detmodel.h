@@ -760,11 +760,11 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
         }
         funcUpdateInSlice(k);
     }
-    //set storage at k=0 to unity for the upcoming sweep:
+    //set storage at k=0 to unity for the up-coming sweep:
     for (uint32_t gc = 0; gc < GC; ++gc) {
         UdVStorage[gc][0] = eye_UdV;
     }
-    for (uint32_t l = 1; l < n; ++l) {
+    for (uint32_t l = 1; l < n - 1; ++l) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceUpGreen(leftMultiplyBmat, l-1, gc);
         }
@@ -780,9 +780,24 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
         }
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
+    	advanceUpGreen(leftMultiplyBmat, n - 2, gc);
+    }
+    funcUpdateInSlice(s*(n-1));
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+        advanceUpUpdateStorage(leftMultiplyBmat, n - 2, gc);
+    }
+    // at the highest timeslices the green-function-recalculation-from-scratch may
+    // occur after less than s timeslices:
+    for (uint32_t k = (n-1)*s + 1; k < m; ++k) {
+    	for (uint32_t gc = 0; gc < GC; ++gc) {
+    		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
+    	}
+    	funcUpdateInSlice(k);
+    }
+    for (uint32_t gc = 0; gc < GC; ++gc) {
     	advanceUpGreen(leftMultiplyBmat, n - 1, gc);
     }
-    funcUpdateInSlice(n*s);
+    funcUpdateInSlice(m);
     for (uint32_t gc = 0; gc < GC; ++gc) {
         advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
     }
@@ -797,14 +812,27 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 {
     //to compute green function for timeslice tau=beta:
     //we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
-    //The latter is given in storage slice m from the last sweep.
+    //The latter is given in storage slice n from the last sweep.
     for (uint32_t gc = 0; gc < GC; ++gc) {
         updateGreenFunctionUdV(gc, m, eye_UdV, UdVStorage[gc][n]);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
         UdVStorage[gc][n] = eye_UdV;
     }
-    for (uint32_t l = n; l >= 1; --l) {
+    // Handle timeslices between l=n (-> k=m) and l=n-1 (-> k=s*(n-1)).
+    // in contrast to the lower values of l, this may be less than s
+    funcUpdateInSlice(m);
+    for (uint32_t k = m - 1; k >= (n-1)*s + 1; --k) {
+    	for (uint32_t gc = 0; gc < GC; ++gc) {
+    		wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
+    	}
+    	funcUpdateInSlice(k);
+    }
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+    	advanceDownGreen(rightMultiplyBmat, n, gc);
+    }
+    // Handle the remaining timeslices.
+    for (uint32_t l = n - 1; l >= 1; --l) {
         funcUpdateInSlice(l*s);
         for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
             for (uint32_t gc = 0; gc < GC; ++gc) {
