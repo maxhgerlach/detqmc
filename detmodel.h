@@ -113,7 +113,7 @@ public:
 //functions like sweep()
 
 template<uint32_t GreenComponents, typename ValueType = num, bool TimeDisplaced = false>
-class DetModelGC : public DetModel {
+class : public DetModel {
 protected:
     DetModelGC(const ModelParams& pars, uint32_t greenComponentSize);
 public:
@@ -254,8 +254,8 @@ protected:
     const bool timedisplaced;
     const num beta;     //inverse temperature
     const uint32_t m;   //number of imaginary time discretization steps (time slices) beta*m=dtau
-    const uint32_t s;   //interval between time slices where the Green-function is calculated from scratch
-    const uint32_t n;   //number of time slices where the Green-function is calculated from scratch n*s*dtau=beta
+    const uint32_t s;   //maximum interval between time slices where the Green-function is calculated from scratch
+    const uint32_t n;   //number of time slices where the Green-function is calculated from scratch == ceil(m/s)
     const num dtau;     // beta / m
 
 
@@ -312,7 +312,10 @@ public:
 template<uint32_t GC, typename V, bool TimeDisplaced>
     DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
     sz(greenComponentSize),
-    timedisplaced(TimeDisplaced), beta(pars.beta), m(pars.m), s(pars.s), n(m / s), dtau(pars.dtau),
+    timedisplaced(TimeDisplaced),
+    beta(pars.beta), m(pars.m), s(pars.s),
+    n(uint32_t(std::ceil(double(m) / s))),
+    dtau(pars.dtau),
     green(), greenFwd(), greenBwd(), eye_UdV(sz), UdVStorage(),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
