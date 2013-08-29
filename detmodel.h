@@ -779,7 +779,10 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
             }
             funcUpdateInSlice(k);
         }
-    } // TODO: fehlt hier nicht ein Advance-Schritt?
+    }
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+    	advanceUpGreen(leftMultiplyBmat, n - 1, gc);
+    }
     funcUpdateInSlice(n*s);
     for (uint32_t gc = 0; gc < GC; ++gc) {
         advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
