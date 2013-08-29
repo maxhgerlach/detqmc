@@ -779,7 +779,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
             }
             funcUpdateInSlice(k);
         }
-    }
+    } // TODO: fehlt hier nicht ein Advance-Schritt?
     funcUpdateInSlice(n*s);
     for (uint32_t gc = 0; gc < GC; ++gc) {
         advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
@@ -810,9 +810,10 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
             }
             funcUpdateInSlice(k);
         }
-        //TODO: this will also compute the Green function at k=0, which technically is not necessary
-        //but sensible for the following sweep up
-        //TODO: alternatively just copy the k=m Green function to k=0  -- would that be up-to-date?
+        //this will also compute the Green function at k==0, which is used
+        //for the following sweep up; storing it instead at k==m -- which would for sure
+        //improve consistency -- would mainly save some memory, but the processing would
+        //have to be done in any case
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceDownGreen(rightMultiplyBmat, l, gc);
         }
