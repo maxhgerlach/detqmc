@@ -373,7 +373,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
             const VecV& d_l = storage[l].d;
             const MatV& V_l = storage[l].V;
             const uint32_t k_l = s*l;
-            const uint32_t k_lp1 = ((l < n) ? (s*(l+1)) : (m));
+            const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
             MatV B_lp1 = computeBmat(gc, k_lp1, k_l);
             UdVV UdV_temp = udvDecompose<V>((B_lp1 * U_l) * arma::diagmat(d_l));
             storage[l+1].U = UdV_temp.U;
@@ -627,7 +627,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     std::vector<UdVV>& storage = UdVStorage[gc];
 
     const uint32_t k_l = s*l;
-    const uint32_t k_lp1 = ((l < n) ? (s*(l+1)) : (m));
+    const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
 
     //The following is B(beta, k_lp1*dtau), valid from the last sweep
     const UdVV& UdV_lp1 = storage[l + 1];
@@ -663,7 +663,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
     std::vector<UdVV>& storage = UdVStorage[gc];
 
     const uint32_t k_l = s*l;
-    const uint32_t k_lp1 = ((l < n) ? (s*(l+1)) : (m));
+    const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
 
     //from the last step the following are B(k_l*dtau, 0):
     const MatV& U_l = storage[l].U;
