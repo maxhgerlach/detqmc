@@ -657,28 +657,86 @@ template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
-
-    auto applyBondFactorsLeft = [this, &result](NeighDir neigh, num ch, num sh) {
+    auto applyBondFactorsLeftPBC = [this, &result](NeighDir neigh, num ch, num sh) {
     	arma::Row<cpx> new_row_i(N);
-//    	arma::Row<cpx> new_row_j(N);
         for (uint32_t i = 0; i < N; ++i) {
             uint32_t j = spaceNeigh(neigh, i);
             //change rows i and j of result
-//            for (uint32_t col = 0; col < N; ++col) {
-//                new_row_i[col] = ch * result(i, col) + sh * result(j, col);
-//                new_row_j[col] = sh * result(i, col) + ch * result(j, col);
-//            }
             new_row_i     = ch * result.row(i) + sh * result.row(j);
             result.row(j) = sh * result.row(i) + ch * result.row(j);
             result.row(i) = new_row_i;
         }
     };
 
-    //horizontal bonds
-    applyBondFactorsLeft(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](num ch, num sh) {
+    	arma::Col<cpx> new_row_i(N);
+    	for (uint32_t y = 0; y < L; ++y) {
+    		for (uint32_t x = 0; x < L - 1; ++x) {   // all but the right-most site on the row
+    			uint32_t i = y*L + x;
+    			uint32_t j = y*L + x + 1;
+    			//change rows i and j of result, periodic
+    			new_row_i     = ch * result.row(i) + sh * result.row(j);
+    			result.row(j) = sh * result.row(i) + ch * result.row(j);
+    			result.row(i) = new_row_i;
+    		}
+    		uint32_t i = y*L + L - 1;		// right-most site: encode APBC
+    		uint32_t j = y*L;
+    		//change rows i and j of result, anti-periodic
+    		new_row_i     =   ch * result.row(i) - sh * result.row(j);
+            result.row(j) = - sh * result.row(i) + ch * result.row(j);
+            result.row(i) = new_row_i;
+    	}
+    };
 
-    //vertical bonds
-    applyBondFactorsLeft(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    auto applyBondFactorsLeft_YPLUS_APBC = [this, &result](num ch, num sh) {
+    	arma::Col<cpx> new_row_i(N);
+    	for (uint32_t y = 0; y < L - 1; ++y) {		 // all but the top-row
+    		for (uint32_t x = 0; x < L; ++x) {
+    			uint32_t i = y*L + x;
+    			uint32_t j = (y+1)*L + x;
+    			//change rows i and j of result, periodic
+    			new_row_i     = ch * result.row(i) + sh * result.row(j);
+    			result.row(j) = sh * result.row(i) + ch * result.row(j);
+    			result.row(i) = new_row_i;
+    		}
+    	}
+    	// top-row y=L-1: encode APBC
+    	for (uint32_t x = 0; x < L; ++x) {
+    		uint32_t i = (L-1)*L + x;
+    		uint32_t j = 0 + x;
+    		//change rows i and j of result, anti-periodic
+    		new_row_i     =   ch * result.row(i) - sh * result.row(j);
+            result.row(j) = - sh * result.row(i) + ch * result.row(j);
+            result.row(i) = new_row_i;
+    	}
+    };
+
+    switch (bc) {
+    case PBC:
+    	//horizontal bonds
+    	applyBondFactorsLeftPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds
+    	applyBondFactorsLeftPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_X:
+    	//horizontal bonds, anti-periodic
+    	applyBondFactorsLeft_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds
+    	applyBondFactorsLeftPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_Y:
+    	//horizontal bonds
+    	applyBondFactorsLeftPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds, anti-periodic
+    	applyBondFactorsLeft_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_XY:
+    	//horizontal bonds, anti-periodic
+    	applyBondFactorsLeft_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds, anti-periodic
+    	applyBondFactorsLeft_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    }
 
     return result;
 }
@@ -691,28 +749,86 @@ template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
-    auto applyBondFactorsRight = [this, &result](NeighDir neigh, num ch, num sh) {
+    auto applyBondFactorsRightPBC = [this, &result](NeighDir neigh, num ch, num sh) {
     	arma::Col<cpx> new_col_i(N);
-        for (uint32_t i = 0; i < N; ++i) {
-            uint32_t j = spaceNeigh(neigh, i);
-            //change columns i and j of result
-//            for (uint32_t row = 0; row < N; ++row) {
-//                cpx new_rowi = ch * result(row, i) + sh * result(row, i);
-//                cpx new_rowj = sh * result(row, i) + ch * result(row, j);
-//                result(row,i) = new_rowi;
-//                result(row,j) = new_rowj;
-//            }
-            new_col_i     = ch * result.col(i) + sh * result.col(j);
-            result.col(j) = sh * result.col(i) + ch * result.col(j);
-            result.col(i) = new_col_i;
-        }
+    	for (uint32_t i = 0; i < N; ++i) {
+    		uint32_t j = spaceNeigh(neigh, i);
+    		//change columns i and j of result
+    		new_col_i     = ch * result.col(i) + sh * result.col(j);
+    		result.col(j) = sh * result.col(i) + ch * result.col(j);
+    		result.col(i) = new_col_i;
+    	}
     };
 
-    //horizontal bonds
-    applyBondFactorsRight(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    auto applyBondFactorsRight_XPLUS_APBC = [this, &result](num ch, num sh) {
+    	arma::Col<cpx> new_col_i(N);
+    	for (uint32_t y = 0; y < L; ++y) {
+    		for (uint32_t x = 0; x < L - 1; ++x) {   // all but the right-most site on the row
+    			uint32_t i = y*L + x;
+    			uint32_t j = y*L + x + 1;
+    			//change columns i and j of result, periodic
+    			new_col_i     = ch * result.col(i) + sh * result.col(j);
+    			result.col(j) = sh * result.col(i) + ch * result.col(j);
+    			result.col(i) = new_col_i;
+    		}
+    		uint32_t i = y*L + L - 1;		// right-most site: encode APBC
+    		uint32_t j = y*L;
+    		//change columns i and j of result, anti-periodic
+    		new_col_i     =   ch * result.col(i) - sh * result.col(j);
+    		result.col(j) = - sh * result.col(i) + ch * result.col(j);
+    		result.col(i) = new_col_i;
+    	}
+    };
 
-    //vertical bonds
-    applyBondFactorsRight(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    auto applyBondFactorsRight_YPLUS_APBC = [this, &result](num ch, num sh) {
+    	arma::Col<cpx> new_col_i(N);
+    	for (uint32_t y = 0; y < L - 1; ++y) {		 // all but the top-row
+    		for (uint32_t x = 0; x < L; ++x) {
+    			uint32_t i = y*L + x;
+    			uint32_t j = (y+1)*L + x;
+    			//change columns i and j of result, periodic
+    			new_col_i     = ch * result.col(i) + sh * result.col(j);
+    			result.col(j) = sh * result.col(i) + ch * result.col(j);
+    			result.col(i) = new_col_i;
+    		}
+    	}
+    	// top-row y=L-1: encode APBC
+    	for (uint32_t x = 0; x < L; ++x) {
+    		uint32_t i = (L-1)*L + x;
+    		uint32_t j = 0 + x;
+    		//change columns i and j of result, anti-periodic
+    		new_col_i     =   ch * result.col(i) - sh * result.col(j);
+    		result.col(j) = - sh * result.col(i) + ch * result.col(j);
+    		result.col(i) = new_col_i;
+    	}
+    };
+
+    switch (bc) {
+    case PBC:
+    	//horizontal bonds
+    	applyBondFactorsRightPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds
+    	applyBondFactorsRightPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_X:
+    	//horizontal bonds, antiperiodic
+    	applyBondFactorsRight_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds
+    	applyBondFactorsRightPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_Y:
+    	//horizontal bonds
+    	applyBondFactorsRightPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds, antiperiodic
+    	applyBondFactorsRight_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    case APBC_XY:
+    	//horizontal bonds, antiperiodic
+    	applyBondFactorsRight_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
+    	//vertical bonds, antiperiodic
+    	applyBondFactorsRight_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
+    	break;
+    }
 
     return result;
 }
