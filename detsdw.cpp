@@ -10,6 +10,7 @@
 #include <functional>
 #include <array>
 #include <tuple>
+#include <cassert>
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
 #include "observable.h"
 #include "detsdw.h"
@@ -108,6 +109,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
         fermionEkinetic(0), fermionEcouple(0)//, fermionEkinetic_imag(0), fermionEcouple_imag(0)
 {
+	assert(pars.checkerboard == CB);
+
     if (pars.bc == "pbc") {
         bc = PBC;
     } else if (pars.bc == "apbc-x") {
@@ -129,6 +132,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
     //So for actual calculations an additional minus-sign needs to be included.
+    //In the case of anti-periodic boundaries between i and j, another extra minus-sign
+    //must be added.
     hopHor[XBAND] = txhor;
     hopVer[XBAND] = txver;
     hopHor[YBAND] = tyhor;
