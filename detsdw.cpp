@@ -846,7 +846,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1 )
 
 	num muTerm = std::exp(dtau*mu);			// include chemical potential here
 
