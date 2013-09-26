@@ -1074,6 +1074,8 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
         checkarray<VecCpx, 4> rows {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
 #pragma omp parallel for
         for (uint32_t r = 0; r < 4; ++r) {
+        	//TODO: Here are some unnecessary operations: deltanonzero contains many repeated
+        	//elements, and even some zeros
             for (uint32_t col = 0; col < 4*N; ++col) {
                 rows[r][col] = -deltanonzero(r,0) * g.slice(timeslice).col(col)[site];
             }
