@@ -31,7 +31,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 // template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
 template <bool TimeDisplaced, bool CheckerBoard>
 class DetSDW: public DetModelGC<1, cpx, TimeDisplaced> {
-    DetSDW(RngWrapper& rng, const ModelParams& pars );
+    DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
     friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
     virtual ~DetSDW();
