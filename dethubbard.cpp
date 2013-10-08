@@ -70,7 +70,8 @@ std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
         return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
     } else {
         //this can't be reached
-        return 0;
+        //return 0;
+    	return std::unique_ptr<DetModel>();
     }
 }
 
