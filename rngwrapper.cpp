@@ -30,8 +30,12 @@ RngWrapper::RngWrapper(uint32_t seed_, uint32_t processIndex_)
 
     //this is not a very rigorous approach to have independent random
     //number generators (taken from Katzgraber's introduction to PRNG)
-    uint32_t mySeed = (uint32_t) std::abs(
-            ((seed * 181) * ((processIndex - 83) * 359)) % 104729);
+
+	//compiler started to choke on the std::abs(); since the variables
+	//put into the calculation are unsigned anyway now, just drop it..
+	//    uint32_t mySeed = (uint32_t) std::abs(
+	//            ((seed * 181) * ((processIndex - 83) * 359)) % 104729);
+	uint32_t mySeed = ((seed * 181) * ((processIndex - 83) * 359)) % 104729;
 
     dsfmt_init_gen_rand(&dsfmt, mySeed);
 }
