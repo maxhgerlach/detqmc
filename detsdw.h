@@ -242,6 +242,11 @@ protected:
 
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;          //compute B-matrix using dense matrix products
 
+    //Try a global move, where all the phi-fields of a timeslice are multiplied
+    //by a common factor.
+    //called from updateInSlice()
+    void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
+
     virtual void updateInSlice(uint32_t timeslice);
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);

@@ -1266,6 +1266,26 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
 }
 
 
+template<bool TD, bool CB>
+inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num factor) {
+	//see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
+
+	//original fields
+	//TODO: unnecessary copies
+	const VecNum a  {phi2.col(timeslice)};
+	const VecCpx b  {phi0.col(timeslice), -phi1.col(timeslice)};
+	const VecCpx bc {phi0.col(timeslice), +phi1.col(timeslice)};
+	const VecNum x  {phiSinh.col(timeslice)};
+	const VecNum c  {phiCosh.col(timeslice)};
+
+	//rescaled fields
+	const VecNum ra  {factor * a};
+	const VecCpx rb  {factor * b};
+	const VecCpx rbc {factor * bc};
+
+
+	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
+}
 
 
 
