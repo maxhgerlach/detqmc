@@ -76,7 +76,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         return std::unique_ptr<DetModel>(new DetSDW<false,false>(rng, pars));
     } else {
         //this can't be reached
-        return 0;
+        //return 0;
+        return std::unique_ptr<DetModel>();
     }
 }
 
@@ -379,9 +380,14 @@ void DetSDW<TD,CB>::measure() {
         };
 
         for (uint32_t i = 0; i < N; ++i) {
-            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
-                    std::make_tuple(i, 0), std::make_tuple(0, i)
-            };
+//            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
+//                    std::make_tuple(i, 0), std::make_tuple(0, i)
+//            };
+        	//compiler-compatibilty fix
+        	std::tuple<uint32_t,uint32_t> sitePairs[2] = {
+        			std::tuple<uint32_t,uint32_t>(i, 0),
+        			std::tuple<uint32_t,uint32_t>(0, i)
+        	};
 
             cpx pairPlusCpx(0, 0);
             cpx pairMinusCpx(0, 0);
