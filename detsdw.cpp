@@ -1358,8 +1358,20 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 #undef Mblock
 
 	// 3) Compute probability of accepting the global rescale move
+	num probFermion = arma::det(M).real();
+	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
+	num prob = probFermion * probBoson;
 
-	num propFermion = arma::det(M).real();
+	if (prob > 1.0 or rng.rand01() < prob) {
+		//TODO: count accepted update somehow
+
+		phi0.col(timeslice) = rphi0;
+		phi1.col(timeslice) = rphi1;
+		phi2.col(timeslice) = rphi2;
+
+		using arma::trans; using arma::solve;
+		g.slice(timeslice) = trans(solve(M, trans(g.slice(timeslice))));
+	}
 }
 
 

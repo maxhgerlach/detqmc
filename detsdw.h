@@ -242,11 +242,6 @@ protected:
 
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;          //compute B-matrix using dense matrix products
 
-    //Try a global move, where all the phi-fields of a timeslice are multiplied
-    //by a common factor.
-    //called from updateInSlice()
-    void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
-
     virtual void updateInSlice(uint32_t timeslice);
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);
@@ -255,6 +250,10 @@ protected:
     typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     Phi proposeNewField(uint32_t site, uint32_t timeslice);
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
+    //Try a global move, where all the phi-fields of a timeslice are multiplied
+    //by a common factor.
+    void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
+    num deltaSPhiGlobalRescale(uint32_t timeslice, num factor);
 
     //compute the total value of the action associated with the field phi
     num phiAction();
