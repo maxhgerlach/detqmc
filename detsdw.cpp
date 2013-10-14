@@ -1024,8 +1024,8 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
 //      debugSaveMatrix(newphi2, "new_phi2");
 
         num dsphi = deltaSPhi(site, timeslice, newphi);
-        num propSPhi = std::exp(-dsphi);
-//      std::cout << propSPhi << std::endl;
+        num probSPhi = std::exp(-dsphi);
+//      std::cout << probSPhi << std::endl;
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
@@ -1186,11 +1186,11 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
         //END-DEBUG-CHECK
         //****
 
-        num propSFermion = det.real();
+        num probSFermion = det.real();
 
-        num prop = propSPhi * propSFermion;
+        num prob = probSPhi * probSFermion;
 
-        if (prop > 1.0 or rng.rand01() < prop) {
+        if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
             lastAccRatio += 1.0;
 
@@ -1356,6 +1356,9 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		}
 	}
 #undef Mblock
+
+	// 3) Compute probability of accepting the global rescale move
+
 }
 
 
