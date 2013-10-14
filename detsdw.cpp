@@ -1279,10 +1279,16 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum c  {phiCosh.col(timeslice)};
 
 	//rescaled fields
-	const VecNum ra  {factor * a};
-	const VecCpx rb  {factor * b};
-	const VecCpx rbc {factor * bc};
-
+	const VecNum rphi0 {factor * phi0.col(timeslice)};
+	const VecNum rphi1 {factor * phi1.col(timeslice)};
+	const VecNum rphi2 {factor * phi2.col(timeslice)};
+	const VecNum ra  {rphi2};
+	const VecCpx rb  {rphi0, -rphi1};
+	const VecCpx rbc {rphi0, +rphi1};
+	using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
+	const VecCpx rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
+	const VecCpx rx    { sinh(dtau * rnorm) / rnorm };
+	const VecCpx rc    { cosh(dtau * rnorm) };
 
 	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
 }
