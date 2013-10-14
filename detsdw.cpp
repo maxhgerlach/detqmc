@@ -1287,10 +1287,17 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecCpx rbc {rphi0, +rphi1};
 	using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
 	const VecCpx rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
-	const VecCpx rx    { sinh(dtau * rnorm) / rnorm };
-	const VecCpx rc    { cosh(dtau * rnorm) };
+	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
+	const VecNum rc    { cosh(dtau * rnorm) };
 
 	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
+	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
+	// 4 blocks are zero, apart from that there are 5 different blocks:
+	const VecNum delta_a  { rc % a % x - ra % rx % c };
+	const VecCpx delta_b  { rc % b % x - rb % rx % c };
+	const VecCpx delta_bc { arma::conj(delta_b) };
+	const VecNum delta_ma { -delta_a };
+	const VecNum delta_c  { rc % c - ra % rx % a % x - rb % rx % bc % x - arma::ones(N) };
 }
 
 
