@@ -1294,10 +1294,20 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
 	// 4 blocks are zero, apart from that there are 5 different blocks:
 	const VecNum delta_a  { rc % a % x - ra % rx % c };
-	const VecCpx delta_b  { rc % b % x - rb % rx % c };
-	const VecCpx delta_bc { arma::conj(delta_b) };
 	const VecNum delta_ma { -delta_a };
 	const VecNum delta_c  { rc % c - ra % rx % a % x - rb % rx % bc % x - arma::ones(N) };
+	// the block diagonals that are complex are stored with real and imaginary parts
+	// separated:
+	using arma::real; using arma::imag;
+	const VecNum delta_b_r  { rc % real(b) % x - real(rb) % rx % c };
+	const VecNum delta_b_i  { rc % imag(b) % x - imag(rb) % rx % c };
+	const VecNum delta_bc_r { delta_b_r };
+	const VecNum delta_bc_i { -delta_b_i };
+
+	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
+	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
+	MatCpx M(4*N, 4*N);
+
 }
 
 
