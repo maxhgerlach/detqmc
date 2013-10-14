@@ -99,7 +99,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
         phiDelta(InitialPhiDelta),
-        targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
+        targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
         normPhi(), sdwSusc(),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
@@ -216,7 +216,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
           meta["bc"] = "apbc-xy";
     }
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
-    META_INSERT(targetAccRatio);
+    META_INSERT(targetAccRatioLocal);
     META_INSERT(r);
     META_INSERT(txhor);
     META_INSERT(txver);
@@ -1002,7 +1002,7 @@ template<bool TD, bool CB>
 void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
-    lastAccRatio = 0;
+    lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi = proposeNewField(site, timeslice);
 
@@ -1192,7 +1192,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
 
         if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
-            lastAccRatio += 1.0;
+            lastAccRatioLocal += 1.0;
 
 //          num phisBefore = phiAction();
             phi0(site, timeslice) = newphi[0];
@@ -1245,7 +1245,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
             //****
         }
     }
-    lastAccRatio /= num(N);
+    lastAccRatioLocal /= num(N);
 
     timing.stop("sdw-updateInSlice");
 }
@@ -1254,12 +1254,12 @@ template<bool TD, bool CB>
 void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
-    accRatioRA.addValue(lastAccRatio);
-    if (accRatioRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
-        num avgAccRatio = accRatioRA.get();
-        if (avgAccRatio < targetAccRatio) {
+    accRatioLocalRA.addValue(lastAccRatioLocal);
+    if (accRatioLocalRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
+        num avgAccRatio = accRatioLocalRA.get();
+        if (avgAccRatio < targetAccRatioLocal) {
             phiDelta *= phiDeltaShrinkFactor;
-        } else if (avgAccRatio > targetAccRatio) {
+        } else if (avgAccRatio > targetAccRatioLocal) {
             phiDelta *= phiDeltaGrowFactor;
         }
     }
@@ -1531,7 +1531,7 @@ num DetSDW<TD,CB>::phiAction() {
 template<bool TD, bool CB>
 void DetSDW<TD,CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
-              << "lastAccRatio = " << lastAccRatio
+              << "lastAccRatio = " << lastAccRatioLocal
               << std::endl;
 }
 

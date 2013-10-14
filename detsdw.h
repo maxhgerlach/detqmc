@@ -131,10 +131,10 @@ protected:
 
 
     num phiDelta;       //MC step size for field components
-    //used to adjust phiDelta
-    num targetAccRatio;
-    num lastAccRatio;
-    RunningAverage accRatioRA;
+    //used to adjust phiDelta; acceptance ratios for local field updates
+    num targetAccRatioLocal;
+    num lastAccRatioLocal;
+    RunningAverage accRatioLocalRA;
 
     //Observables:
     num normPhi;        //magnitude of averaged field
@@ -362,8 +362,8 @@ public:
       (void)sck;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
-        ar & phiDelta & targetAccRatio & lastAccRatio;
-        ar & accRatioRA;
+        ar & phiDelta & targetAccRatioLocal & lastAccRatioLocal;
+        ar & accRatioLocalRA;
     }
 };
 
