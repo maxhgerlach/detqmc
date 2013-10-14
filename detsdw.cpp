@@ -1304,10 +1304,58 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum delta_bc_r { delta_b_r };
 	const VecNum delta_bc_i { -delta_b_i };
 
+	// real part of matrix represented by 4x4 array of references to vectors
+	using std::array; using std::cref;
+	array< array<std::reference_wrapper<const VecNum>, 4>, 4> delta_r;
+	delta_r[0][0] = cref(delta_c);
+	//delta_r[0][1] is zero
+	delta_r[0][2] = cref(delta_a);
+	delta_r[0][3] = cref(delta_b_r);
+	//delta_r[1][0] is zero
+	delta_r[1][1] = cref(delta_c);
+	delta_r[1][2] = cref(delta_bc_r);
+	delta_r[1][3] = cref(delta_ma);
+	delta_r[2][0] = cref(delta_a);
+	delta_r[2][1] = cref(delta_b_r);
+	delta_r[2][2] = cref(delta_c);
+	//delta[2][3] is zero
+	delta_r[3][0] = cref(delta_bc_r);
+	delta_r[3][1] = cref(delta_ma);
+	//delta_r[3][2] is zero
+	delta_r[3][3] = cref(delta_c);
+
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
 	MatCpx M(4*N, 4*N);
-
+#define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+	for (uint32_t row = 0; row < 4; ++row) {
+		for (uint32_t col = 0; col < 4; ++col) {
+			//skip the zero blocks of delta:
+			uint32_t skip_i;
+			switch (row) {
+			case 0: skip_i = 1; break;
+			case 1: skip_i = 0; break;
+			case 2: skip_i = 3; break;
+			case 3: skip_i = 2; break;
+			}
+			uint32_t start_i;
+			if (0 != skip_i) {
+				block(M,row,col) = arma::diagmat(static_cast<const VecNum&>(delta_r[row][0])) *
+						block(oneMinusG, 0, col);
+				start_i = 1;
+			} else {
+				block(M,row,col) = arma::diagmat(static_cast<const VecNum&>(delta_r[row][1])) *
+						block(oneMinusG, 1, col);
+				start_i = 2;
+			}
+			for (uint32_t i = start_i; i < 4; ++i) {
+				if (i == skip_i) continue;
+				block(M,row,col) += arma::diagmat(static_cast<const VecNum&>(delta_r[row][i])) *
+						block(oneMinusG, i, col);
+			}
+		}
+	}
+#undef Mblock
 }
 
 
