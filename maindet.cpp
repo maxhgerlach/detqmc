@@ -64,7 +64,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("tyhor", po::value<num>(&modelpar.tyhor)->default_value(0.5), "SDW: hopping y left-right")
             ("tyver", po::value<num>(&modelpar.tyver)->default_value(1.0), "SDW: hopping y up-down")
             ("rescale", po::value<bool>(&modelpar.rescale)->default_value(false), "SDW: perform global rescale move?")
-            ("rescaleFrequency", po::value<uint32_t>(&modelpar.rescaleFrequency)->default_value(100), "attempt global rescale move every # sweeps")
+            ("rescaleInterval", po::value<uint32_t>(&modelpar.rescaleInterval)->default_value(100), "attempt global rescale move every # sweeps")
             ("rescaleGrowthFactor", po::value<num>(&modelpar.rescaleGrowthFactor)->default_value(1.05), "factor by which to attempt to grow the fields")
             ("rescaleShrinkFactor", po::value<num>(&modelpar.rescaleShrinkFactor)->default_value(0.95), "factor by which to attempt to shrink the fields")
             ;

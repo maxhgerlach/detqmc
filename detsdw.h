@@ -92,7 +92,7 @@ protected:
     BC_Type bc;
 
     const bool rescale;
-    const uint32_t rescaleFrequency;
+    const uint32_t rescaleInterval;
     const num rescaleGrowthFactor;
     const num rescaleShrinkFactor;
 

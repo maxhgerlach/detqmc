@@ -91,7 +91,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
         bc(PBC),
-        rescale(pars.rescale), rescaleFrequency(pars.rescaleFrequency),
+        rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         spaceNeigh(L), timeNeigh(m),
@@ -235,7 +235,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(s);
     META_INSERT(rescale);
     if (rescale) {
-    	META_INSERT(rescaleFrequency);
+    	META_INSERT(rescaleInterval);
     	META_INSERT(rescaleGrowthFactor);
     	META_INSERT(rescaleShrinkFactor);
     }
