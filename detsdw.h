@@ -141,6 +141,8 @@ protected:
     num lastAccRatioLocal;
     RunningAverage accRatioLocalRA;
 
+    uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
+
     //Observables:
     num normPhi;        //magnitude of averaged field
     num sdwSusc;        //spin-density-wave susceptibility
@@ -364,11 +366,12 @@ public:
 
     template<class Archive>
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
-      (void)sck;
+    	(void)sck;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
         ar & phiDelta & targetAccRatioLocal & lastAccRatioLocal;
         ar & accRatioLocalRA;
+        ar & performedSweeps;
     }
 };
 

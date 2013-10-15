@@ -76,7 +76,7 @@ private:
         ar & model & timedisplaced & checkerboard
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
-           & rescale & rescaleFrequency & rescaleGrowthFactor & rescaleShrinkFactor &
+           & rescale & rescaleFrequency & rescaleGrowthFactor & rescaleShrinkFactor
            & specified;
     }
 };

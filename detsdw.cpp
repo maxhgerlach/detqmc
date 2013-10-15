@@ -102,6 +102,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
         phiDelta(InitialPhiDelta),
         targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
+        performedSweeps(0),
         normPhi(), sdwSusc(),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
@@ -1548,23 +1549,27 @@ void DetSDW<TD,CB>::thermalizationOver() {
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepSimple() {
     sweepSimple_skeleton(sdwComputeBmat(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepSimpleThermalization() {
     sweepSimpleThermalization_skeleton(sdwComputeBmat(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweep() {
     sweep_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
+    ++performedSweeps;
 }
 
 
