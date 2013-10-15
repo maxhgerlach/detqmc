@@ -1256,6 +1256,15 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     }
     lastAccRatioLocal /= num(N);
 
+    if (performedSweeps % rescaleInterval == 0) {
+    	num rnd = rng.rand01();
+    	if (rnd <= 0.5) {
+    		attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    	} else {
+    		attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    	}
+    }
+
     timing.stop("sdw-updateInSlice");
 }
 
@@ -1277,6 +1286,8 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
 
 template<bool TD, bool CB>
 inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num factor) {
+	timing.start("sdw-attemptGlobalRescaleMove");
+
 	//see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
 
 	//original fields
@@ -1295,7 +1306,7 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecCpx rb  {rphi0, -rphi1};
 	const VecCpx rbc {rphi0, +rphi1};
 	using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
-	const VecCpx rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
+	const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
 	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
 	const VecNum rc    { cosh(dtau * rnorm) };
 
@@ -1304,10 +1315,10 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	// 4 blocks are zero, apart from that there are 5 different blocks:
 	const VecNum delta_a  { rc % a % x - ra % rx % c };
 	const VecNum delta_ma { -delta_a };
-	const VecNum delta_c  { rc % c - ra % rx % a % x - rb % rx % bc % x - arma::ones(N) };
+	using arma::real; using arma::imag;
+	const VecNum delta_c  { rc % c - ra % rx % a % x - rx % real(rb % bc) % x - arma::ones<VecNum>(N) };	//Note: rb % bc will result in a purely real result
 	// the block diagonals that are complex are stored with real and imaginary parts
 	// separated:
-	using arma::real; using arma::imag;
 	const VecNum delta_b_r  { rc % real(b) % x - real(rb) % rx % c };
 	const VecNum delta_b_i  { rc % imag(b) % x - imag(rb) % rx % c };
 	const VecNum delta_bc_r { delta_b_r };
@@ -1381,6 +1392,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		using arma::trans; using arma::solve;
 		g.slice(timeslice) = trans(solve(M, trans(g.slice(timeslice))));
 	}
+
+	timing.stop("sdw-attemptGlobalRescaleMove");
 }
 
 
