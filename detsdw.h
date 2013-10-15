@@ -90,7 +90,12 @@ protected:
     }
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
-        
+
+    const bool rescale;
+    const uint32_t rescaleFrequency;
+    const num rescaleGrowthFactor;
+    const num rescaleShrinkFactor;
+
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
     checkarray<num,2> hopHor;

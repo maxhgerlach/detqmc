@@ -34,7 +34,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver";
+    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver", "rescale";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -91,6 +91,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
         bc(PBC),
+        rescale(pars.rescale), rescaleFrequency(pars.rescaleFrequency),
+        rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         spaceNeigh(L), timeNeigh(m),
         propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
@@ -230,6 +232,12 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(m);
     META_INSERT(dtau);
     META_INSERT(s);
+    META_INSERT(rescale);
+    if (rescale) {
+    	META_INSERT(rescaleFrequency);
+    	META_INSERT(rescaleGrowthFactor);
+    	META_INSERT(rescaleShrinkFactor);
+    }
 #undef META_INSERT
     return meta;
 }
