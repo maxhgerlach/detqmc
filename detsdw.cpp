@@ -1324,25 +1324,25 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum delta_bc_r { delta_b_r };
 	const VecNum delta_bc_i { -delta_b_i };
 
-	// real part of matrix represented by 4x4 array of references to vectors
+	// real part of matrix represented by 4x4 array of pointers to our vectors
 	using std::array; using std::cref;
-	array< array<std::reference_wrapper<const VecNum>, 4>, 4> delta_r;
-	delta_r[0][0] = cref(delta_c);
-	//delta_r[0][1] is zero
-	delta_r[0][2] = cref(delta_a);
-	delta_r[0][3] = cref(delta_b_r);
-	//delta_r[1][0] is zero
-	delta_r[1][1] = cref(delta_c);
-	delta_r[1][2] = cref(delta_bc_r);
-	delta_r[1][3] = cref(delta_ma);
-	delta_r[2][0] = cref(delta_a);
-	delta_r[2][1] = cref(delta_b_r);
-	delta_r[2][2] = cref(delta_c);
-	//delta[2][3] is zero
-	delta_r[3][0] = cref(delta_bc_r);
-	delta_r[3][1] = cref(delta_ma);
-	//delta_r[3][2] is zero
-	delta_r[3][3] = cref(delta_c);
+	array< array<const VecNum*, 4>, 4> delta_r;
+	delta_r[0][0] = &delta_c;
+	delta_r[0][1] = 0;
+	delta_r[0][2] = &delta_a;
+	delta_r[0][3] = &delta_b_r;
+	delta_r[1][0] = 0;
+	delta_r[1][1] = &delta_c;
+	delta_r[1][2] = &delta_bc_r;
+	delta_r[1][3] = &delta_ma;
+	delta_r[2][0] = &delta_a;
+	delta_r[2][1] = &delta_b_r;
+	delta_r[2][2] = &delta_c;
+	delta_r[2][3] = 0;
+	delta_r[3][0] = &delta_bc_r;
+	delta_r[3][1] = &delta_ma;
+	delta_r[3][2] = 0;
+	delta_r[3][3] = &delta_c;
 
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
@@ -1360,17 +1360,17 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 			}
 			uint32_t start_i;
 			if (0 != skip_i) {
-				block(M,row,col) = arma::diagmat(static_cast<const VecNum&>(delta_r[row][0])) *
+				block(M,row,col) = arma::diagmat(*(delta_r[row][0])) *
 						block(oneMinusG, 0, col);
 				start_i = 1;
 			} else {
-				block(M,row,col) = arma::diagmat(static_cast<const VecNum&>(delta_r[row][1])) *
+				block(M,row,col) = arma::diagmat(*(delta_r[row][1])) *
 						block(oneMinusG, 1, col);
 				start_i = 2;
 			}
 			for (uint32_t i = start_i; i < 4; ++i) {
 				if (i == skip_i) continue;
-				block(M,row,col) += arma::diagmat(static_cast<const VecNum&>(delta_r[row][i])) *
+				block(M,row,col) += arma::diagmat(*(delta_r[row][i])) *
 						block(oneMinusG, i, col);
 			}
 		}
