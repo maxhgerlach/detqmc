@@ -1298,6 +1298,14 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum x  {phiSinh.col(timeslice)};
 	const VecNum c  {phiCosh.col(timeslice)};
 
+	//DEBUG
+	VecNum oldphi0 = phi0.col(timeslice);
+	VecNum oldphi1 = phi1.col(timeslice);
+	VecNum oldphi2 = phi2.col(timeslice);
+	debugSaveMatrix(oldphi0, "old_phi0");
+	debugSaveMatrix(oldphi1, "old_phi1");
+	debugSaveMatrix(oldphi2, "old_phi2");
+
 	//rescaled fields
 	const VecNum rphi0 {factor * phi0.col(timeslice)};
 	const VecNum rphi1 {factor * phi1.col(timeslice)};
@@ -1309,6 +1317,11 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
 	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
 	const VecNum rc    { cosh(dtau * rnorm) };
+
+	//DEBUG
+	debugSaveMatrix(rphi0, "new_phi0");
+	debugSaveMatrix(rphi1, "new_phi1");
+	debugSaveMatrix(rphi2, "new_phi2");
 
 	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
 	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
@@ -1390,7 +1403,16 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		phi2.col(timeslice) = rphi2;
 
 		using arma::trans; using arma::solve;
+
+		//DEBUG
+		debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
+		debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
+
 		g.slice(timeslice) = trans(solve(M, trans(g.slice(timeslice))));
+
+		//DEBUG
+		debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
+		debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
 	}
 
 	timing.stop("sdw-attemptGlobalRescaleMove");
