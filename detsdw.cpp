@@ -1425,6 +1425,13 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 			}
 		}
 	}
+	//imaginary parts
+	for (uint32_t rc = 0; rc < 4; ++rc) {       // Unsinn!
+		VecCpx temp { arma::zeros<VecNum>(N), *(delta_i[rc][rc]) };
+		for (uint32_t i = 0; i < 4; ++i) {
+			block(M,rc,i) += arma::diagmat(temp) * block(oneMinusG, rc, i);
+		}
+	}
 #undef Mblock
 
 	// 3) Compute probability of accepting the global rescale move
