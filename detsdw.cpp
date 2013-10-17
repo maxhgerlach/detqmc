@@ -1395,7 +1395,13 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
 	num prob = probFermion * probBoson;
 
+	//DEBUG info
+	std::cout << "Rescale factor " << factor << " -> prob = " << prob << '\n';
+
 	if (prob > 1.0 or rng.rand01() < prob) {
+		//DEBUG info
+		std::cout << "Accepted!" << std::endl;
+
 		//TODO: count accepted update somehow
 
 		phi0.col(timeslice) = rphi0;
@@ -1413,6 +1419,9 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		//DEBUG
 		debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
 		debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
+	} else {
+		//DEBUG info
+		std::cout << "Rejected!" << std::endl;
 	}
 
 	timing.stop("sdw-attemptGlobalRescaleMove");
