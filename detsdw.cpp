@@ -1337,6 +1337,15 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum delta_bc_r { delta_b_r };
 	const VecNum delta_bc_i { -delta_b_i };
 
+	//DEBUG
+//	debugSaveMatrix(delta_a, "delta_a");
+//	debugSaveMatrix(delta_ma, "delta_ma");
+//	debugSaveMatrix(delta_c, "delta_c");
+//	debugSaveMatrix(delta_b_r , "delta_b_r");
+//	debugSaveMatrix(delta_b_i , "delta_b_i");
+//	debugSaveMatrix(delta_bc_r, "delta_bc_r");
+//	debugSaveMatrix(delta_bc_i, "delta_bc_i");
+
 	// real part of matrix represented by 4x4 array of pointers to our vectors
 	using std::array; using std::cref;
 	array< array<const VecNum*, 4>, 4> delta_r;
@@ -1363,6 +1372,26 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	delta_i[1][2] = &delta_bc_i;
 	delta_i[2][1] = &delta_b_i;
 	delta_i[3][0] = &delta_bc_i;
+
+	//DEBUG
+	for (uint32_t r = 0; r < 4; ++r) {
+		for (uint32_t c = 0; c < 4; ++c) {
+			const VecNum* ptr = delta_r[r][c];
+			std::string basename = "delta_r"+numToString(r)+"_c"+numToString(c);
+			if (ptr) {
+				debugSaveMatrix(*ptr, basename);
+			} else {
+				debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename);
+			}
+			const VecNum* ptr2 = delta_i[r][c];
+			std::string basename2 = "delta_i"+numToString(r)+"_c"+numToString(c);
+			if (ptr2) {
+				debugSaveMatrix(*ptr2, basename2);
+			} else {
+				debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename2);
+			}
+		}
+	}
 
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
@@ -1404,7 +1433,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	num prob = probFermion * probBoson;
 
 	//DEBUG info
-	std::cout << "Rescale factor " << factor << " -> prob = " << prob << '\n';
+	std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
+			  << " \tprobBoson = " << probBoson << '\n';
 
 	if (prob > 1.0 or rng.rand01() < prob) {
 		//DEBUG info
