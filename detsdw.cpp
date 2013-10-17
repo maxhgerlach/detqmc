@@ -1344,10 +1344,18 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	delta_r[3][2] = 0;
 	delta_r[3][3] = &delta_c;
 
+	// imaginary part of matrix: only the antidiagonal blocks
+	array< array<const VecNum*, 4>, 4> delta_i {{}};		//init with nulls
+	delta_i[0][3] = &delta_b_i;
+	delta_i[1][2] = &delta_bc_i;
+	delta_i[2][1] = &delta_b_i;
+	delta_i[3][0] = &delta_bc_i;
+
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
-	MatCpx M(4*N, 4*N);
+	MatCpx M(4*N, 4*N) = arma::eye(4*N,4*N);
 #define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+	//real parts
 	for (uint32_t row = 0; row < 4; ++row) {
 		for (uint32_t col = 0; col < 4; ++col) {
 			//skip the zero blocks of delta:
