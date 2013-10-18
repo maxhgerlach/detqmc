@@ -1435,10 +1435,18 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	}
 #undef Mblock
 
+	//DEBUG
+	debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
+	debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
+	debugSaveMatrixCpx(M, "M");
+
 	// 3) Compute probability of accepting the global rescale move
 	num probFermion = arma::det(M).real();
 	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
 	num prob = probFermion * probBoson;
+
+	//DEBUG check probBoson
+	num sphi_old = phiAction();
 
 	//DEBUG info
 	std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
@@ -1454,11 +1462,13 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		phi1.col(timeslice) = rphi1;
 		phi2.col(timeslice) = rphi2;
 
-		using arma::trans; using arma::solve;
+		//DEBUG check probBoson
+		num sphi_new = phiAction();
+		num delta_sphi = sphi_new - sphi_old;
+		num probCheck = std::exp(-delta_sphi);
+		std::cout << "Check probBoson = " << probCheck << std::endl;
 
-		//DEBUG
-		debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_old_real");
-		debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_old_imag");
+		using arma::trans; using arma::solve;
 
 		g.slice(timeslice) = trans(solve(trans(M), trans(g.slice(timeslice))));
 		//TODO: the three transpositions here bug me
