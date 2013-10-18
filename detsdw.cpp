@@ -1353,8 +1353,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
-	MatCpx M(4*N, 4*N) = arma::eye(4*N,4*N);
-#define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+	MatCpx M { arma::eye(4*N,4*N), arma::zeros(4*N,4*N) };
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 	//real parts
 	for (uint32_t row = 0; row < 4; ++row) {
 		for (uint32_t col = 0; col < 4; ++col) {
@@ -1366,16 +1366,17 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 			case 2: skip_i = 3; break;
 			case 3: skip_i = 2; break;
 			}
-			uint32_t start_i;
-			if (0 != skip_i) {
-				block(M,row,col) = arma::diagmat(*(delta_r[row][0])) *
-						block(oneMinusG, 0, col);
-				start_i = 1;
-			} else {
-				block(M,row,col) = arma::diagmat(*(delta_r[row][1])) *
-						block(oneMinusG, 1, col);
-				start_i = 2;
-			}
+//			uint32_t start_i;
+//			if (0 != skip_i) {
+//				block(M,row,col) = arma::diagmat(*(delta_r[row][0])) *
+//						block(oneMinusG, 0, col);
+//				start_i = 1;
+//			} else {
+//				block(M,row,col) = arma::diagmat(*(delta_r[row][1])) *
+//						block(oneMinusG, 1, col);
+//				start_i = 2;
+//			}
+			uint32_t start_i = 0;
 			for (uint32_t i = start_i; i < 4; ++i) {
 				if (i == skip_i) continue;
 				block(M,row,col) += arma::diagmat(*(delta_r[row][i])) *
@@ -1405,7 +1406,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		phi2.col(timeslice) = rphi2;
 
 		using arma::trans; using arma::solve;
-		g.slice(timeslice) = trans(solve(M, trans(g.slice(timeslice))));
+		g.slice(timeslice) = trans(solve(trans(M), trans(g.slice(timeslice))));
+		//TODO: the three transpositions here bug me
 	}
 
 	timing.stop("sdw-attemptGlobalRescaleMove");
