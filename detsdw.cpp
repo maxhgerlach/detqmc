@@ -1435,14 +1435,29 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 
 	num delta3 = 0;
 	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		delta3 += pow(phi0(site_i, timeslice), 4)
-				+ pow(phi1(site_i, timeslice), 4)
-				+ pow(phi2(site_i, timeslice), 4);
+		delta3 += pow(pow(phi0(site_i, timeslice), 2)
+					+ pow(phi1(site_i, timeslice), 2)
+				    + pow(phi2(site_i, timeslice), 2), 2);
+	}
+
+	num delta4 = 0;
+	for (uint32_t site_i = 0; site_i < N; ++site_i) {
+		delta4 += (pow(factor,2) - 1.0) * (
+				      pow(phi0(site_i, timeslice) - phi1(site_i, timeslice), 2)
+					+ pow(phi1(site_i, timeslice) - phi1(site_i, timeslice), 2)
+					+ pow(phi2(site_i, timeslice) - phi2(site_i, timeslice), 2)
+				);
+		delta4 -= (factor - 1.0) * (
+					  phi0(site_i, timeslice) * (phi0(site_i, timeslice - 1) + phi0(site_i, timeslice + 1))
+					+ phi1(site_i, timeslice) * (phi1(site_i, timeslice - 1) + phi1(site_i, timeslice + 1))
+					+ phi2(site_i, timeslice) * (phi2(site_i, timeslice - 1) + phi2(site_i, timeslice + 1))
+				);
 	}
 
 	num delta = (dtau/2.0) * (pow(factor,2) - 1.0) * delta1
 			  + (dtau*r/2.0) * (pow(factor,2) - 1.0) * delta2
-			  + (dtau*u/4.0) * (pow(factor,4) - 1.0) * delta3;
+			  + (dtau*u/4.0) * (pow(factor,4) - 1.0) * delta3
+			  + (1.0/(c*dtau)) * delta4;
 
 	return delta;
 }
