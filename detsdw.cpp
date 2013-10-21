@@ -257,7 +257,7 @@ void DetSDW<TD,CB>::measure() {
     //experimental:  Shift green function
 
     //submatrix view helper for a 4N*4N matrix
-#define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     for (uint32_t l = 1; l <= m; ++l) {
         MatCpx tempG(4*N, 4*N);
         const MatCpx& oldG = g.slice(l);
@@ -741,7 +741,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(dtau*mu);			// include chemical potential here
 
@@ -810,7 +810,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
 
@@ -877,7 +877,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(dtau*mu);			// include chemical potential here
 
@@ -944,7 +944,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
 
