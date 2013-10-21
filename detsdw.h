@@ -95,6 +95,8 @@ protected:
     const uint32_t rescaleInterval;
     const num rescaleGrowthFactor;
     const num rescaleShrinkFactor;
+    uint32_t acceptedRescales;
+    uint32_t attemptedRescales;
 
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
@@ -367,6 +369,7 @@ public:
     template<class Archive>
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
     	(void)sck;
+    	ar & acceptedRescales & attemptedRescales;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
         ar & phiDelta & targetAccRatioLocal & lastAccRatioLocal;

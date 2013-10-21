@@ -93,6 +93,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         bc(PBC),
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
+        acceptedRescales(0), attemptedRescales(0),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         spaceNeigh(L), timeNeigh(m),
         propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
@@ -1399,7 +1400,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	num prob = probFermion * probBoson;
 
 	if (prob > 1.0 or rng.rand01() < prob) {
-		//TODO: count accepted update somehow
+		//count accepted update
+		++acceptedRescales;
 
 		phi0.col(timeslice) = rphi0;
 		phi1.col(timeslice) = rphi1;
@@ -1409,6 +1411,8 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		g.slice(timeslice) = trans(solve(trans(M), trans(g.slice(timeslice))));
 		//TODO: the three transpositions here bug me
 	}
+
+	++attemptedRescales;
 
 	timing.stop("sdw-attemptGlobalRescaleMove");
 }
@@ -1589,6 +1593,11 @@ void DetSDW<TD,CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
               << "recent local accRatio = " << accRatioLocalRA.get()
               << std::endl;
+    if (rescale) {
+    	num ratio = num(acceptedRescales) / num(attemptedRescales);
+    	std::cout << "Global rescale move acceptance ratio = " << ratio
+    			  << std::endl;
+    }
 }
 
 
