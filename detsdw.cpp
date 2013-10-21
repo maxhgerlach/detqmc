@@ -1423,7 +1423,8 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 	using std::pow;
 	num delta1 = 0;
 	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		for (uint32_t site_j : {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)}) {
+		uint32_t neighSites[] = {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)};   //for Icpc
+		for (uint32_t site_j : neighSites) {
 			delta1 += pow(phi0(site_i, timeslice) - phi0(site_j, timeslice), 2)
 					+ pow(phi1(site_i, timeslice) - phi1(site_j, timeslice), 2)
 					+ pow(phi2(site_i, timeslice) - phi2(site_j, timeslice), 2);
