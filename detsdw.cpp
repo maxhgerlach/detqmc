@@ -1491,7 +1491,7 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 	num delta1 = 0;
 	for (uint32_t site_i = 0; site_i < N; ++site_i) {
 		for (uint32_t site_j : {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)}) {
-			delta1 += pow(phi0(site_i, timeslice) - phi1(site_j, timeslice), 2)
+			delta1 += pow(phi0(site_i, timeslice) - phi0(site_j, timeslice), 2)
 					+ pow(phi1(site_i, timeslice) - phi1(site_j, timeslice), 2)
 					+ pow(phi2(site_i, timeslice) - phi2(site_j, timeslice), 2);
 		}
@@ -1512,16 +1512,18 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 	}
 
 	num delta4 = 0;
+	uint32_t timeslicePlus = timeNeigh(ChainDir::PLUS, timeslice);
+	uint32_t timesliceMinus = timeNeigh(ChainDir::MINUS, timeslice);
 	for (uint32_t site_i = 0; site_i < N; ++site_i) {
 		delta4 += (pow(factor,2) - 1.0) * (
-				      pow(phi0(site_i, timeslice) - phi1(site_i, timeslice), 2)
-					+ pow(phi1(site_i, timeslice) - phi1(site_i, timeslice), 2)
-					+ pow(phi2(site_i, timeslice) - phi2(site_i, timeslice), 2)
+				      pow(phi0(site_i, timeslice), 2)
+					+ pow(phi1(site_i, timeslice), 2)
+					+ pow(phi2(site_i, timeslice), 2)
 				);
 		delta4 -= (factor - 1.0) * (
-					  phi0(site_i, timeslice) * (phi0(site_i, timeslice - 1) + phi0(site_i, timeslice + 1))
-					+ phi1(site_i, timeslice) * (phi1(site_i, timeslice - 1) + phi1(site_i, timeslice + 1))
-					+ phi2(site_i, timeslice) * (phi2(site_i, timeslice - 1) + phi2(site_i, timeslice + 1))
+					  phi0(site_i, timeslice) * (phi0(site_i, timesliceMinus) + phi0(site_i, timeslicePlus))
+					+ phi1(site_i, timeslice) * (phi1(site_i, timesliceMinus) + phi1(site_i, timeslicePlus))
+					+ phi2(site_i, timeslice) * (phi2(site_i, timesliceMinus) + phi2(site_i, timeslicePlus))
 				);
 	}
 
