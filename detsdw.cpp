@@ -1658,7 +1658,7 @@ num DetSDW<TD,CB>::phiAction() {
 template<bool TD, bool CB>
 void DetSDW<TD,CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
-              << "lastAccRatio = " << lastAccRatioLocal
+              << "recent local accRatio = " << accRatioLocalRA.get()
               << std::endl;
 }
 
