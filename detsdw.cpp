@@ -1316,13 +1316,11 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	// 4 blocks are zero, apart from that there are 5 different blocks:
 	const VecNum delta_a  { rc % a % x - ra % rx % c };
 	const VecNum delta_ma { -delta_a };
-	using arma::real; using arma::imag;
-	//added explicit VecNum(...) around real(...) and imag(...) to hopefully make Icpc happy
-	const VecNum delta_c  { rc % c - ra % rx % a % x - rx % VecNum(real(rb % bc)) % x - arma::ones<VecNum>(N) };	//Note: rb % bc will result in a purely real result
+	const VecNum delta_c  { rc % c - ra % rx % a % x - rx % arma::real(rb % bc) % x - arma::ones<VecNum>(N) };	//Note: rb % bc will result in a purely real result
 	// the block diagonals that are complex are stored with real and imaginary parts
 	// separated:
-	const VecNum delta_b_r  { rc % VecNum(real(b)) % x - VecNum(real(rb)) % rx % c };
-	const VecNum delta_b_i  { rc % VecNum(imag(b)) % x - VecNum(imag(rb)) % rx % c };
+	const VecNum delta_b_r  { rc % arma::real(b) % x - arma::real(rb) % rx % c };
+	const VecNum delta_b_i  { rc % arma::imag(b) % x - arma::imag(rb) % rx % c };
 	const VecNum delta_bc_r { delta_b_r };
 	const VecNum delta_bc_i { -delta_b_i };
 
