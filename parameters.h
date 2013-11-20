@@ -51,13 +51,20 @@ struct ModelParams {
 
     std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
+    bool rescale;	//perform global rescale move?
+    uint32_t rescaleInterval;		//attempt global rescale move every # sweeps
+    num rescaleGrowthFactor;		// factor by which to size up the fields
+    num rescaleShrinkFactor;		// factor by which to size down the fields
+
     std::set<std::string> specified;
 
     ModelParams() :
             model(), timedisplaced(), checkerboard(), t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
             mu(), L(), d(),
-            beta(), m(), dtau(), s(), accRatio(), bc("pbc"), specified() {
+            beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
+            rescale(), rescaleInterval(), rescaleGrowthFactor(), rescaleShrinkFactor(),
+            specified() {
     }
 
 private:
@@ -69,6 +76,7 @@ private:
         ar & model & timedisplaced & checkerboard
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
+           & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
            & specified;
     }
 };

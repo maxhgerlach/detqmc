@@ -31,7 +31,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 // template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
 template <bool TimeDisplaced, bool CheckerBoard>
 class DetSDW: public DetModelGC<1, cpx, TimeDisplaced> {
-    DetSDW(RngWrapper& rng, const ModelParams& pars );
+    DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
     friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
     virtual ~DetSDW();
@@ -90,7 +90,14 @@ protected:
     }
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
-        
+
+    const bool rescale;
+    const uint32_t rescaleInterval;
+    const num rescaleGrowthFactor;
+    const num rescaleShrinkFactor;
+    uint32_t acceptedRescales;
+    uint32_t attemptedRescales;
+
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
     checkarray<num,2> hopHor;
@@ -131,10 +138,12 @@ protected:
 
 
     num phiDelta;       //MC step size for field components
-    //used to adjust phiDelta
-    num targetAccRatio;
-    num lastAccRatio;
-    RunningAverage accRatioRA;
+    //used to adjust phiDelta; acceptance ratios for local field updates
+    num targetAccRatioLocal;
+    num lastAccRatioLocal;
+    RunningAverage accRatioLocalRA;
+
+    uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
 
     //Observables:
     num normPhi;        //magnitude of averaged field
@@ -250,6 +259,10 @@ protected:
     typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     Phi proposeNewField(uint32_t site, uint32_t timeslice);
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
+    //Try a global move, where all the phi-fields of a timeslice are multiplied
+    //by a common factor.
+    void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
+    num deltaSPhiGlobalRescale(uint32_t timeslice, num factor);
 
     //compute the total value of the action associated with the field phi
     num phiAction();
@@ -355,11 +368,13 @@ public:
 
     template<class Archive>
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
-      (void)sck;
+    	(void)sck;
+    	ar & acceptedRescales & attemptedRescales;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
-        ar & phiDelta & targetAccRatio & lastAccRatio;
-        ar & accRatioRA;
+        ar & phiDelta & targetAccRatioLocal & lastAccRatioLocal;
+        ar & accRatioLocalRA;
+        ar & performedSweeps;
     }
 };
 

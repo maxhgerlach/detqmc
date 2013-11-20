@@ -35,7 +35,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver";
+    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver", "rescale";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -92,6 +92,9 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
         bc(PBC),
+        rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
+        rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
+        acceptedRescales(0), attemptedRescales(0),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         spaceNeigh(L), timeNeigh(m),
         propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
@@ -100,7 +103,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         g(green[0]), gFwd(greenFwd[0]), gBwd(greenBwd[0]),
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
         phiDelta(InitialPhiDelta),
-        targetAccRatio(pars.accRatio), lastAccRatio(0), accRatioRA(AccRatioAdjustmentSamples),
+        targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
+        performedSweeps(0),
         normPhi(), sdwSusc(),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
@@ -221,7 +225,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
           meta["bc"] = "apbc-xy";
     }
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
-    META_INSERT(targetAccRatio);
+    META_INSERT(targetAccRatioLocal);
     META_INSERT(r);
     META_INSERT(txhor);
     META_INSERT(txver);
@@ -235,6 +239,12 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(m);
     META_INSERT(dtau);
     META_INSERT(s);
+    META_INSERT(rescale);
+    if (rescale) {
+    	META_INSERT(rescaleInterval);
+    	META_INSERT(rescaleGrowthFactor);
+    	META_INSERT(rescaleShrinkFactor);
+    }
 #undef META_INSERT
     return meta;
 }
@@ -252,7 +262,7 @@ void DetSDW<TD,CB>::measure() {
     //experimental:  Shift green function
 
     //submatrix view helper for a 4N*4N matrix
-#define block(matrix, row, col) matrix.submat(row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     for (uint32_t l = 1; l <= m; ++l) {
         MatCpx tempG(4*N, 4*N);
         const MatCpx& oldG = g.slice(l);
@@ -852,9 +862,9 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1 )
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	num muTerm = std::exp(dtau*mu);			// include chemical potential here
+    num muTerm = std::exp(dtau*mu);			// include chemical potential here
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -921,7 +931,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
 
@@ -988,7 +998,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(dtau*mu);			// include chemical potential here
 
@@ -1055,7 +1065,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
-#define block(mat,row,col) mat.submat( row * N, col * N, (row + 1) * N - 1, (col + 1) * N - 1)
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
 
@@ -1123,7 +1133,7 @@ template<bool TD, bool CB>
 void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
-    lastAccRatio = 0;
+    lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi = proposeNewField(site, timeslice);
 
@@ -1145,8 +1155,8 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
 //      debugSaveMatrix(newphi2, "new_phi2");
 
         num dsphi = deltaSPhi(site, timeslice, newphi);
-        num propSPhi = std::exp(-dsphi);
-//      std::cout << propSPhi << std::endl;
+        num probSPhi = std::exp(-dsphi);
+//      std::cout << probSPhi << std::endl;
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
@@ -1201,6 +1211,8 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
         checkarray<VecCpx, 4> rows {{VecCpx(4*N), VecCpx(4*N), VecCpx(4*N), VecCpx(4*N)}};
 #pragma omp parallel for
         for (uint32_t r = 0; r < 4; ++r) {
+        	//TODO: Here are some unnecessary operations: deltanonzero contains many repeated
+        	//elements, and even some zeros
             for (uint32_t col = 0; col < 4*N; ++col) {
                 rows[r][col] = -deltanonzero(r,0) * g.slice(timeslice).col(col)[site];
             }
@@ -1305,13 +1317,13 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
         //END-DEBUG-CHECK
         //****
 
-        num propSFermion = det.real();
+        num probSFermion = det.real();
 
-        num prop = propSPhi * propSFermion;
+        num prob = probSPhi * probSFermion;
 
-        if (prop > 1.0 or rng.rand01() < prop) {
+        if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
-            lastAccRatio += 1.0;
+            lastAccRatioLocal += 1.0;
 
 //          num phisBefore = phiAction();
             phi0(site, timeslice) = newphi[0];
@@ -1364,7 +1376,16 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
             //****
         }
     }
-    lastAccRatio /= num(N);
+    lastAccRatioLocal /= num(N);
+
+    if (performedSweeps % rescaleInterval == 0) {
+    	num rnd = rng.rand01();
+    	if (rnd <= 0.5) {
+    		attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    	} else {
+    		attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    	}
+    }
 
     timing.stop("sdw-updateInSlice");
 }
@@ -1373,18 +1394,200 @@ template<bool TD, bool CB>
 void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
-    accRatioRA.addValue(lastAccRatio);
-    if (accRatioRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
-        num avgAccRatio = accRatioRA.get();
-        if (avgAccRatio < targetAccRatio) {
+    accRatioLocalRA.addValue(lastAccRatioLocal);
+    if (accRatioLocalRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
+        num avgAccRatio = accRatioLocalRA.get();
+        if (avgAccRatio < targetAccRatioLocal) {
             phiDelta *= phiDeltaShrinkFactor;
-        } else if (avgAccRatio > targetAccRatio) {
+        } else if (avgAccRatio > targetAccRatioLocal) {
             phiDelta *= phiDeltaGrowFactor;
         }
     }
 }
 
 
+template<bool TD, bool CB>
+inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num factor) {
+	timing.start("sdw-attemptGlobalRescaleMove");
+
+	//see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
+
+	//original fields
+	//TODO: unnecessary copies
+	const VecNum a  {phi2.col(timeslice)};
+	const VecCpx b  {phi0.col(timeslice), -phi1.col(timeslice)};
+	const VecCpx bc {phi0.col(timeslice), +phi1.col(timeslice)};
+	const VecNum x  {phiSinh.col(timeslice)};
+	const VecNum c  {phiCosh.col(timeslice)};
+
+	//rescaled fields
+	const VecNum rphi0 {factor * phi0.col(timeslice)};
+	const VecNum rphi1 {factor * phi1.col(timeslice)};
+	const VecNum rphi2 {factor * phi2.col(timeslice)};
+	const VecNum ra  {rphi2};
+	const VecCpx rb  {rphi0, -rphi1};
+	const VecCpx rbc {rphi0, +rphi1};
+	using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
+	const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
+	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
+	const VecNum rc    { cosh(dtau * rnorm) };
+
+	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
+	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
+	// 4 blocks are zero, apart from that there are 5 different blocks:
+	const VecNum delta_a  { rc % a % x - ra % rx % c };
+	const VecNum delta_ma { -delta_a };
+	const VecNum delta_c  { rc % c - ra % rx % a % x - rx % arma::real(rb % bc) % x - arma::ones<VecNum>(N) };	//Note: rb % bc will result in a purely real result
+	// the block diagonals that are complex are stored with real and imaginary parts
+	// separated:
+	const VecNum delta_b_r  { rc % arma::real(b) % x - arma::real(rb) % rx % c };
+	const VecNum delta_b_i  { rc % arma::imag(b) % x - arma::imag(rb) % rx % c };
+	const VecNum delta_bc_r { delta_b_r };
+	const VecNum delta_bc_i { -delta_b_i };
+
+	// real part of matrix represented by 4x4 array of pointers to our vectors
+	using std::array; using std::cref;
+	array< array<const VecNum*, 4>, 4> delta_r;
+	delta_r[0][0] = &delta_c;
+	delta_r[0][1] = 0;
+	delta_r[0][2] = &delta_a;
+	delta_r[0][3] = &delta_b_r;
+	delta_r[1][0] = 0;
+	delta_r[1][1] = &delta_c;
+	delta_r[1][2] = &delta_bc_r;
+	delta_r[1][3] = &delta_ma;
+	delta_r[2][0] = &delta_a;
+	delta_r[2][1] = &delta_b_r;
+	delta_r[2][2] = &delta_c;
+	delta_r[2][3] = 0;
+	delta_r[3][0] = &delta_bc_r;
+	delta_r[3][1] = &delta_ma;
+	delta_r[3][2] = 0;
+	delta_r[3][3] = &delta_c;
+
+	// imaginary part of matrix: only the antidiagonal blocks
+	array< array<const VecNum*, 4>, 4> delta_i {{}};		//init with nulls
+	delta_i[0][3] = &delta_b_i;
+	delta_i[1][2] = &delta_bc_i;
+	delta_i[2][1] = &delta_b_i;
+	delta_i[3][0] = &delta_bc_i;
+
+	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
+	MatCpx oneMinusG { arma::eye(4*N,4*N) - g.slice(timeslice) };
+	MatCpx M { arma::eye(4*N,4*N), arma::zeros(4*N,4*N) };
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+	//real parts
+	for (uint32_t row = 0; row < 4; ++row) {
+		for (uint32_t col = 0; col < 4; ++col) {
+			//skip the zero blocks of delta:
+			uint32_t skip_i;
+			switch (row) {
+			case 0: skip_i = 1; break;
+			case 1: skip_i = 0; break;
+			case 2: skip_i = 3; break;
+			case 3: skip_i = 2; break;
+			}
+//			uint32_t start_i;
+//			if (0 != skip_i) {
+//				block(M,row,col) = arma::diagmat(*(delta_r[row][0])) *
+//						block(oneMinusG, 0, col);
+//				start_i = 1;
+//			} else {
+//				block(M,row,col) = arma::diagmat(*(delta_r[row][1])) *
+//						block(oneMinusG, 1, col);
+//				start_i = 2;
+//			}
+			uint32_t start_i = 0;
+			for (uint32_t i = start_i; i < 4; ++i) {
+				if (i == skip_i) continue;
+				block(M,row,col) += arma::diagmat(*(delta_r[row][i])) *
+						block(oneMinusG, i, col);
+			}
+		}
+	}
+	//imaginary parts
+	for (uint32_t row = 0; row < 4; ++row) {
+		VecCpx temp { arma::zeros<VecNum>(N), *(delta_i[row][3 - row]) };   //antidiagonal: col = 3 - row
+		for (uint32_t i = 0; i < 4; ++i) {
+			block(M,row,i) += arma::diagmat(temp) * block(oneMinusG, 3 - row, i);
+		}
+	}
+#undef Mblock
+
+	// 3) Compute probability of accepting the global rescale move
+	num probFermion = arma::det(M).real();
+	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
+	num prob = probFermion * probBoson;
+
+	if (prob > 1.0 or rng.rand01() < prob) {
+		//count accepted update
+		++acceptedRescales;
+
+		phi0.col(timeslice) = rphi0;
+		phi1.col(timeslice) = rphi1;
+		phi2.col(timeslice) = rphi2;
+
+		using arma::trans; using arma::solve;
+		g.slice(timeslice) = trans(solve(trans(M), trans(g.slice(timeslice))));
+		//TODO: the three transpositions here bug me
+	}
+
+	++attemptedRescales;
+
+	timing.stop("sdw-attemptGlobalRescaleMove");
+}
+
+
+template<bool TD, bool CB>
+num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
+	using std::pow;
+	num delta1 = 0;
+	for (uint32_t site_i = 0; site_i < N; ++site_i) {
+		uint32_t neighSites[] = {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)};   //for Icpc
+		for (uint32_t site_j : neighSites) {
+			delta1 += pow(phi0(site_i, timeslice) - phi0(site_j, timeslice), 2)
+					+ pow(phi1(site_i, timeslice) - phi1(site_j, timeslice), 2)
+					+ pow(phi2(site_i, timeslice) - phi2(site_j, timeslice), 2);
+		}
+	}
+
+	num delta2 = 0;
+	for (uint32_t site_i = 0; site_i < N; ++site_i) {
+		delta2 += pow(phi0(site_i, timeslice), 2)
+				+ pow(phi1(site_i, timeslice), 2)
+				+ pow(phi2(site_i, timeslice), 2);
+	}
+
+	num delta3 = 0;
+	for (uint32_t site_i = 0; site_i < N; ++site_i) {
+		delta3 += pow(pow(phi0(site_i, timeslice), 2)
+					+ pow(phi1(site_i, timeslice), 2)
+				    + pow(phi2(site_i, timeslice), 2), 2);
+	}
+
+	num delta4 = 0;
+	uint32_t timeslicePlus = timeNeigh(ChainDir::PLUS, timeslice);
+	uint32_t timesliceMinus = timeNeigh(ChainDir::MINUS, timeslice);
+	for (uint32_t site_i = 0; site_i < N; ++site_i) {
+		delta4 += (pow(factor,2) - 1.0) * (
+				      pow(phi0(site_i, timeslice), 2)
+					+ pow(phi1(site_i, timeslice), 2)
+					+ pow(phi2(site_i, timeslice), 2)
+				);
+		delta4 -= (factor - 1.0) * (
+					  phi0(site_i, timeslice) * (phi0(site_i, timesliceMinus) + phi0(site_i, timeslicePlus))
+					+ phi1(site_i, timeslice) * (phi1(site_i, timesliceMinus) + phi1(site_i, timeslicePlus))
+					+ phi2(site_i, timeslice) * (phi2(site_i, timesliceMinus) + phi2(site_i, timeslicePlus))
+				);
+	}
+
+	num delta = (dtau/2.0) * (pow(factor,2) - 1.0) * delta1
+			  + (dtau*r/2.0) * (pow(factor,2) - 1.0) * delta2
+			  + (dtau*u/4.0) * (pow(factor,4) - 1.0) * delta3
+			  + (1.0/(c*dtau)) * delta4;
+
+	return delta;
+}
 
 
 
@@ -1509,8 +1712,13 @@ num DetSDW<TD,CB>::phiAction() {
 template<bool TD, bool CB>
 void DetSDW<TD,CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
-              << "lastAccRatio = " << lastAccRatio
+              << "recent local accRatio = " << accRatioLocalRA.get()
               << std::endl;
+    if (rescale) {
+    	num ratio = num(acceptedRescales) / num(attemptedRescales);
+    	std::cout << "Global rescale move acceptance ratio = " << ratio
+    			  << std::endl;
+    }
 }
 
 
@@ -1518,23 +1726,27 @@ void DetSDW<TD,CB>::thermalizationOver() {
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepSimple() {
     sweepSimple_skeleton(sdwComputeBmat(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepSimpleThermalization() {
     sweepSimpleThermalization_skeleton(sdwComputeBmat(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweep() {
     sweep_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
+    ++performedSweeps;
 }
 
 template <bool TD, bool CB>
 void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
+    ++performedSweeps;
 }
 
 

@@ -21,7 +21,7 @@
 
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
-//return a tuple (runSimulation = true or false, simulationParameterStruct)
+//return a tuple (runSimulation = true or false, simulationParameterStructs)
 std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **argv) {
     bool runSimulation = true;
     bool resumeSimulation = false;
@@ -63,6 +63,10 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("txver", po::value<num>(&modelpar.txver)->default_value(-0.5), "SDW: hopping x up-down")
             ("tyhor", po::value<num>(&modelpar.tyhor)->default_value(0.5), "SDW: hopping y left-right")
             ("tyver", po::value<num>(&modelpar.tyver)->default_value(1.0), "SDW: hopping y up-down")
+            ("rescale", po::value<bool>(&modelpar.rescale)->default_value(false), "SDW: perform global rescale move?")
+            ("rescaleInterval", po::value<uint32_t>(&modelpar.rescaleInterval)->default_value(100), "attempt global rescale move every # sweeps")
+            ("rescaleGrowthFactor", po::value<num>(&modelpar.rescaleGrowthFactor)->default_value(1.05), "factor by which to attempt to grow the fields")
+            ("rescaleShrinkFactor", po::value<num>(&modelpar.rescaleShrinkFactor)->default_value(0.95), "factor by which to attempt to shrink the fields")
             ;
 
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
