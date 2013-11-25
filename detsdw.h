@@ -45,6 +45,9 @@ public:
     virtual void sweepThermalization();
     virtual void sweepSimple();
     virtual void sweepSimpleThermalization();
+
+    //return a copy of all the Green's function matrices
+    virtual CubeCpx get_green();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base

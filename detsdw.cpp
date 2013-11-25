@@ -1751,4 +1751,7 @@ void DetSDW<TD,CB>::sweepThermalization() {
     ++performedSweeps;
 }
 
-
+template <bool TD, bool CB>
+CubeCpx DetSDW<TD,CB>::get_green() {
+	return g;
+}
