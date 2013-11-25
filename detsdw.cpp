@@ -1257,12 +1257,14 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     }
     lastAccRatioLocal /= num(N);
 
-    if (performedSweeps % rescaleInterval == 0) {
-    	num rnd = rng.rand01();
-    	if (rnd <= 0.5) {
-    		attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
-    	} else {
-    		attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    if (rescale) {
+    	if (performedSweeps % rescaleInterval == 0) {
+    		num rnd = rng.rand01();
+    		if (rnd <= 0.5) {
+    			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    		} else {
+    			attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    		}
     	}
     }
 
