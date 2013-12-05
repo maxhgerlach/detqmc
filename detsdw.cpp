@@ -259,30 +259,31 @@ void DetSDW<TD,CB>::measure() {
     normPhi = arma::norm(meanPhi, 2);
 
 
-    //experimental:  Shift green function
-
-    //submatrix view helper for a 4N*4N matrix
-#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-    for (uint32_t l = 1; l <= m; ++l) {
-        MatCpx tempG(4*N, 4*N);
-        const MatCpx& oldG = g.slice(l);
-        //multiply e^(dtau/2 K) from the right
-        for (uint32_t row = 0; row < 4; ++row) {
-            block(tempG, 0, row) = block(oldG, 0, row) * propKx_half_inv;
-            block(tempG, 1, row) = block(oldG, 1, row) * propKx_half_inv;
-            block(tempG, 2, row) = block(oldG, 2, row) * propKy_half_inv;
-            block(tempG, 3, row) = block(oldG, 3, row) * propKy_half_inv;
-        }
-        //multiply e^(-dtau/2 K) from the left
-        MatCpx& newG = g.slice(l);
-        for (uint32_t col = 0; col < 4; ++col) {
-            block(newG, col, 0) = propKx_half * block(tempG, col, 0);
-            block(newG, col, 1) = propKx_half * block(tempG, col, 1);
-            block(newG, col, 2) = propKy_half * block(tempG, col, 2);
-            block(newG, col, 3) = propKy_half * block(tempG, col, 3);
-        }
-    }
-#undef block
+    //TODO: Extract into a separate method.  Use checkerboard decomposition if appropriate.
+//    //experimental:  Shift green function
+//
+//    //submatrix view helper for a 4N*4N matrix
+//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+//    for (uint32_t l = 1; l <= m; ++l) {
+//        MatCpx tempG(4*N, 4*N);
+//        const MatCpx& oldG = g.slice(l);
+//        //multiply e^(dtau/2 K) from the right
+//        for (uint32_t row = 0; row < 4; ++row) {
+//            block(tempG, 0, row) = block(oldG, 0, row) * propKx_half_inv;
+//            block(tempG, 1, row) = block(oldG, 1, row) * propKx_half_inv;
+//            block(tempG, 2, row) = block(oldG, 2, row) * propKy_half_inv;
+//            block(tempG, 3, row) = block(oldG, 3, row) * propKy_half_inv;
+//        }
+//        //multiply e^(-dtau/2 K) from the left
+//        MatCpx& newG = g.slice(l);
+//        for (uint32_t col = 0; col < 4; ++col) {
+//            block(newG, col, 0) = propKx_half * block(tempG, col, 0);
+//            block(newG, col, 1) = propKx_half * block(tempG, col, 1);
+//            block(newG, col, 2) = propKy_half * block(tempG, col, 2);
+//            block(newG, col, 3) = propKy_half * block(tempG, col, 3);
+//        }
+//    }
+//#undef block
 
 
     //fermion occupation number -- real space
