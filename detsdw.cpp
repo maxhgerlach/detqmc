@@ -980,10 +980,16 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
     assert(k2 > k1);
     assert(k2 <= m);
 
-    MatCpx result = leftMultiplyBkInv(A, k1 + 1);
+//    MatCpx result = leftMultiplyBkInv(A, k1 + 1);
+//
+//    for (uint32_t k = k1 + 2; k <= k2; ++k) {
+//        result = leftMultiplyBkInv(result, k);
+//    }
 
-    for (uint32_t k = k1 + 2; k <= k2; ++k) {
-        result = leftMultiplyBkInv(result, k);
+    MatCpx result = leftMultiplyBkInv(A, k2);
+
+    for (uint32_t k = k2 - 1; k >= k1 + 1; --k) {
+    	result = leftMultiplyBkInv(result, k);
     }
 
     //chemical potential terms already included
@@ -1113,10 +1119,16 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t
     assert(k2 > k1);
     assert(k2 <= m);
 
-    MatCpx result = rightMultiplyBkInv(A, k2);
+//    MatCpx result = rightMultiplyBkInv(A, k2);
+//
+//    for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
+//        result = rightMultiplyBkInv(result, k);
+//    }
 
-    for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
-        result = rightMultiplyBkInv(result, k);
+    MatCpx result = rightMultiplyBkInv(A, k1 + 1);
+
+    for (uint32_t k = k1 + 2; k <= k2; ++k) {
+    	result = rightMultiplyBkInv(result, k);
     }
 
     //chemical potential terms included above
