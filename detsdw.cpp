@@ -679,15 +679,45 @@ template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
-    auto applyBondFactorsLeftPBC = [this, &result](NeighDir neigh, num ch, num sh) {
+    //neigh == XNEIGH:
+    //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
+    //   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
+    //neigh == YNEIGH:
+    //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
+    //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
+    auto applyBondFactorsLeftPBC = [this, &result](NeighDir neigh, uint32_t subgroup, num ch, num sh) {
+    	assert(subgroup == 0 or subgroup == 1);
+    	assert(neigh == XPLUS or neigh == YPLUS);
     	arma::Row<cpx> new_row_i(N);
-        for (uint32_t i = 0; i < N; ++i) {
-            uint32_t j = spaceNeigh(neigh, i);
-            //change rows i and j of result
-            new_row_i     = ch * result.row(i) + sh * result.row(j);
-            result.row(j) = sh * result.row(i) + ch * result.row(j);
-            result.row(i) = new_row_i;
-        }
+//        for (uint32_t i = 0; i < N; ++i) {
+//            uint32_t j = spaceNeigh(neigh, i);
+//            //change rows i and j of result
+//            new_row_i     = ch * result.row(i) + sh * result.row(j);
+//            result.row(j) = sh * result.row(i) + ch * result.row(j);
+//            result.row(i) = new_row_i;
+//        }
+    	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+    		for (uint32_t i2 = 0; i2 < L; ++i2) {
+    			uint32_t i;
+    			switch (neigh) {
+    			case XPLUS:
+    				i = this->coordsToSite(i1, i2);
+    				break;
+    			case YPLUS:
+    				i = this->coordsToSite(i2, i1);
+    				break;
+    			default:
+    				i = 0; //should not be reached
+    				break;
+    			}
+    			uint32_t j = spaceNeigh(neigh, i);
+    			//change rows i and j of result
+    			new_row_i     = ch * result.row(i) + sh * result.row(j);
+    			result.row(j) = sh * result.row(i) + ch * result.row(j);
+    			result.row(i) = new_row_i;
+    		}
+    	}
+
     };
 
     auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](num ch, num sh) {
@@ -735,20 +765,28 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
 
     switch (bc) {
     case PBC:
-    	//horizontal bonds
-    	applyBondFactorsLeftPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
-    	//vertical bonds
-    	applyBondFactorsLeftPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	//bond subgroup 0
+    	//  horizontal
+    	applyBondFactorsLeftPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+    	//  vertical
+    	applyBondFactorsLeftPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+    	//bond subgroup 1
+    	//  horizontal
+    	applyBondFactorsLeftPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+    	//  vertical
+    	applyBondFactorsLeftPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     	break;
     case APBC_X:
     	//horizontal bonds, anti-periodic
     	applyBondFactorsLeft_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
     	//vertical bonds
-    	applyBondFactorsLeftPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	applyBondFactorsLeftPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+    	applyBondFactorsLeftPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     	break;
     case APBC_Y:
     	//horizontal bonds
-    	applyBondFactorsLeftPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	applyBondFactorsLeftPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+    	applyBondFactorsLeftPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
     	//vertical bonds, anti-periodic
     	applyBondFactorsLeft_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
     	break;
@@ -771,15 +809,45 @@ template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
-    auto applyBondFactorsRightPBC = [this, &result](NeighDir neigh, num ch, num sh) {
+    //neigh == XNEIGH:
+    //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
+    //   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
+    //neigh == YNEIGH:
+    //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
+    //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
+    auto applyBondFactorsRightPBC = [this, &result](NeighDir neigh, uint32_t subgroup, num ch, num sh) {
+    	assert(subgroup == 0 or subgroup == 1);
+    	assert(neigh == XPLUS or neigh == YPLUS);
     	arma::Col<cpx> new_col_i(N);
-    	for (uint32_t i = 0; i < N; ++i) {
-    		uint32_t j = spaceNeigh(neigh, i);
-    		//change columns i and j of result
-    		new_col_i     = ch * result.col(i) + sh * result.col(j);
-    		result.col(j) = sh * result.col(i) + ch * result.col(j);
-    		result.col(i) = new_col_i;
+//    	for (uint32_t i = 0; i < N; ++i) {
+//    		uint32_t j = spaceNeigh(neigh, i);
+//    		//change columns i and j of result
+//    		new_col_i     = ch * result.col(i) + sh * result.col(j);
+//    		result.col(j) = sh * result.col(i) + ch * result.col(j);
+//    		result.col(i) = new_col_i;
+//    	}
+    	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+    		for (uint32_t i2 = 0; i2 < L; ++i2) {
+    			uint32_t i;
+    			switch (neigh) {
+    			case XPLUS:
+    				i = this->coordsToSite(i1, i2);
+    				break;
+    			case YPLUS:
+    				i = this->coordsToSite(i2, i1);
+    				break;
+    			default:
+    				i = 0; //should not be reached
+    				break;
+    			}
+    			uint32_t j = spaceNeigh(neigh, i);
+    			//change columns i and j of result
+    			new_col_i     = ch * result.col(i) + sh * result.col(j);
+    			result.col(j) = sh * result.col(i) + ch * result.col(j);
+    			result.col(i) = new_col_i;
+    		}
     	}
+
     };
 
     auto applyBondFactorsRight_XPLUS_APBC = [this, &result](num ch, num sh) {
@@ -827,20 +895,28 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 
     switch (bc) {
     case PBC:
-    	//horizontal bonds
-    	applyBondFactorsRightPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
-    	//vertical bonds
-    	applyBondFactorsRightPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	//bond subgroup 0
+    	//  horizontal
+    	applyBondFactorsRightPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+    	//  vertical
+    	applyBondFactorsRightPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+    	//bond subgroup 1
+    	//  horizontal
+    	applyBondFactorsRightPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+    	//  vertical
+    	applyBondFactorsRightPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     	break;
     case APBC_X:
     	//horizontal bonds, antiperiodic
     	applyBondFactorsRight_XPLUS_APBC(coshHopHor[band], sign * sinhHopHor[band]);
     	//vertical bonds
-    	applyBondFactorsRightPBC(YPLUS, coshHopVer[band], sign * sinhHopVer[band]);
+    	applyBondFactorsRightPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+    	applyBondFactorsRightPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     	break;
     case APBC_Y:
     	//horizontal bonds
-    	applyBondFactorsRightPBC(XPLUS, coshHopHor[band], sign * sinhHopHor[band]);
+    	applyBondFactorsRightPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+    	applyBondFactorsRightPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
     	//vertical bonds, antiperiodic
     	applyBondFactorsRight_YPLUS_APBC(coshHopVer[band], sign * sinhHopVer[band]);
     	break;
