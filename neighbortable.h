@@ -13,6 +13,7 @@
 #include <vector>
 #include <utility>
 #include <armadillo>
+#include <string>
 
 #include "tools.h"
 
@@ -24,6 +25,18 @@
 enum NeighDir {
     XPLUS = 0, XMINUS = 1, YPLUS = 2, YMINUS = 3, ZPLUS = 4, ZMINUS = 5
 };
+
+inline std::string neighToString(NeighDir neigh) {
+	switch (neigh) {
+	case XPLUS: return "XPLUS";
+	case XMINUS: return "XMINUS";
+	case YPLUS: return "YPLUS";
+	case YMINUS: return "YMINUS";
+	case ZPLUS: return "ZPLUS";
+	case ZMINUS: return "ZMINUS";
+	default: return "#NODIR";
+	}
+}
 
 typedef arma::Mat<uint32_t> tableSites;
 
