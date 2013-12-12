@@ -718,8 +718,8 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Row<cpx> new_row_i(N);
-    	for (uint32_t y = 0; y < L; ++y) {
-    		for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
+    	for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
+    		for (uint32_t y = 0; y < L; ++y) {
     			uint32_t i = this->coordsToSite(x, y);
     			uint32_t j = this->coordsToSite(x + 1, y);
     			//change rows i and j of result, periodic
@@ -727,7 +727,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			result.row(j) = sh * result.row(i) + ch * result.row(j);
     			result.row(i) = new_row_i;
     		}
-    		if ((L-1) % 2 == subgroup) {
+    	}
+    	if ((L-1) % 2 == subgroup) {
+    		for (uint32_t y = 0; y < L; ++y) {
     			//boundary-crossing bond belongs to current subgroup
     			// -> encode APBC
     			uint32_t ii = this->coordsToSite(L-1, y);
@@ -870,8 +872,8 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsRight_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Col<cpx> new_col_i(N);
-    	for (uint32_t y = 0; y < L; ++y) {
-    		for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
+    	for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most sites
+    		for (uint32_t y = 0; y < L; ++y) {
     			uint32_t i = this->coordsToSite(x, y);
     			uint32_t j = this->coordsToSite(x + 1, y);
     			//change columns i and j of result, periodic
@@ -879,7 +881,9 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			result.col(j) = sh * result.col(i) + ch * result.col(j);
     			result.col(i) = new_col_i;
     		}
-    		if ((L-1) % 2 == subgroup) {
+    	}
+    	if ((L-1) % 2 == subgroup) {
+    		for (uint32_t y = 0; y < L; ++y) {
     			//boundary-crossing bond belongs to current subgroup
     			// -> encode APBC
     			uint32_t ii = this->coordsToSite(L-1, y);
@@ -902,7 +906,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			uint32_t i = this->coordsToSite(x, y);
     			uint32_t j = this->coordsToSite(x, y+1);
     			//change columns i and j of result, periodic
-    			new_col_i      = ch * result.col(i) + sh * result.col(j);
+    			new_col_i     = ch * result.col(i) + sh * result.col(j);
     			result.col(j) = sh * result.col(i) + ch * result.col(j);
     			result.col(i) = new_col_i;
     		}
@@ -934,17 +938,17 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     	//  vertical
     	applyBondFactorsRightPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     	break;
-    case APBC_X:
-    	//bond subgroup 0
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsRight_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds
-    	applyBondFactorsRightPBC(YPLUS,  0, coshHopVer[band], sign * sinhHopVer[band]);
+    case APBC_X:				//order reversed wrt cbLMultHoppingExp
     	//bond subgroup 1
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsRight_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
     	//  vertical bonds
     	applyBondFactorsRightPBC(YPLUS,  1, coshHopVer[band], sign * sinhHopVer[band]);
+    	//  horizontal bonds, anti-periodic
+    	applyBondFactorsRight_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
+    	//bond subgroup 0
+    	//  vertical bonds
+    	applyBondFactorsRightPBC(YPLUS,  0, coshHopVer[band], sign * sinhHopVer[band]);
+    	//  horizontal bonds, anti-periodic
+    	applyBondFactorsRight_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
     	break;
     case APBC_Y:
     	//bond subgroup 0
