@@ -28,8 +28,18 @@ class SerializeContentsKey;
 
 std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 
-// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
-template <bool TimeDisplaced, bool CheckerBoard>
+enum CheckerboardMethod {
+	CB_NONE,				//regular, dense matrix products
+	CB_SANTOS,				//checkerboard, four break-ups in e^{K_*} as described in: R. R. dos Santos, Braz. J. Phys 33, 36 (2003).
+	CB_ASSAAD,				//checkerboard, two break-ups in e^{K_*} as described in: F. F. Assaad, in Quantum Simulations Complex Many-Body Syst. From Theory to Algorithms, edited by J. Grotendorst, D. Marx, and A. Muramatsu (FZ-Jülich, Jülich, Germany, 2002).
+	CB_ASSAAD_BERG,			//checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
+};
+std::string cbmToString(CheckerboardMethod cbm);
+
+
+// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition of
+// which kind?
+template <bool TimeDisplaced, CheckerboardMethod Checkerboard>
 class DetSDW: public DetModelGC<1, cpx, TimeDisplaced> {
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
@@ -71,6 +81,7 @@ protected:
     static const uint32_t d = 2;
     static const uint32_t z = 2*d;
     const bool checkerboard;
+    const std::string checkerboardMethod;
     const uint32_t L;
     const uint32_t N;
     const num r;
@@ -272,8 +283,8 @@ protected:
 
     //wrappers to use to instantiate template functions of the base class
     struct sdwComputeBmat {
-        DetSDW<TimeDisplaced,CheckerBoard>* parent;
-        sdwComputeBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+        DetSDW<TimeDisplaced,Checkerboard>* parent;
+        sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
             parent(parent)
         { }
         MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
@@ -284,14 +295,14 @@ protected:
     };
 
     struct sdwLeftMultiplyBmat {
-        DetSDW<TimeDisplaced,CheckerBoard>* parent;
-        sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+        DetSDW<TimeDisplaced,Checkerboard>* parent;
+        sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
             parent(parent)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
             assert(gc == 0);
-            if (CheckerBoard) {
+            if (Checkerboard != CB_NONE) {
                 return parent->checkerboardLeftMultiplyBmat(mat, k2, k1);
             } else {
                 return parent->computeBmatSDW(k2, k1) * mat;
@@ -300,14 +311,14 @@ protected:
     };
 
     struct sdwRightMultiplyBmat {
-        DetSDW<TimeDisplaced,CheckerBoard>* parent;
-        sdwRightMultiplyBmat(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+        DetSDW<TimeDisplaced,Checkerboard>* parent;
+        sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
             parent(parent)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
             assert(gc == 0);
-            if (CheckerBoard) {
+            if (Checkerboard != CB_NONE) {
                 return parent->checkerboardRightMultiplyBmat(mat, k2, k1);
             } else {
                 return mat * parent->computeBmatSDW(k2, k1);
@@ -316,14 +327,14 @@ protected:
     };
 
     struct sdwLeftMultiplyBmatInv {
-        DetSDW<TimeDisplaced,CheckerBoard>* parent;
-        sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+        DetSDW<TimeDisplaced,Checkerboard>* parent;
+        sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent) :
             parent(parent)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
             assert(gc == 0);
-            if (CheckerBoard) {
+            if (Checkerboard != CB_NONE) {
                 return parent->checkerboardLeftMultiplyBmatInv(mat, k2, k1);
             } else {
                 return arma::inv(parent->computeBmatSDW(k2, k1)) * mat;
@@ -332,14 +343,14 @@ protected:
     };
 
     struct sdwRightMultiplyBmatInv {
-        DetSDW<TimeDisplaced,CheckerBoard>* parent;
-        sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,CheckerBoard>* parent) :
+        DetSDW<TimeDisplaced,Checkerboard>* parent;
+        sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent) :
             parent(parent)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
             assert(gc == 0);
-            if (CheckerBoard) {
+            if (Checkerboard != CB_NONE) {
                 return parent->checkerboardRightMultiplyBmatInv(mat, k2, k1);
             } else {
                 return mat * arma::inv(parent->computeBmatSDW(k2, k1));

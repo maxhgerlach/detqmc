@@ -119,18 +119,25 @@ private:
         if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, true>* p = dynamic_cast<DetSDW<true, true>*>(replica.get())) {
+        if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, false>* p = dynamic_cast<DetSDW<true, false>*>(replica.get())) {
+        if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, true>* p = dynamic_cast<DetSDW<false, true>*>(replica.get())) {
+        if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, false>* p = dynamic_cast<DetSDW<false, false>*>(replica.get())) {
+        if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
-        } else {
+        } else
+        if (DetSDW<false, CB_ASSAAD>* p = dynamic_cast<DetSDW<false, CB_ASSAAD>*>(replica.get())) {
+            p->loadContents(SerializeContentsKey(), ar);
+        } else
+        if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
+            p->loadContents(SerializeContentsKey(), ar);
+        }
+        else {
             throw SerializationError("Tried to load contents of unsupported replica");
         }
     }
@@ -154,18 +161,25 @@ private:
         if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, true>* p = dynamic_cast<DetSDW<true, true>*>(replica.get())) {
+        if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, false>* p = dynamic_cast<DetSDW<true, false>*>(replica.get())) {
+        if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, true>* p = dynamic_cast<DetSDW<false, true>*>(replica.get())) {
+        if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, false>* p = dynamic_cast<DetSDW<false, false>*>(replica.get())) {
+        if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
-        } else {
+        } else
+        if (DetSDW<false, CB_ASSAAD>* p = dynamic_cast<DetSDW<false, CB_ASSAAD>*>(replica.get())) {
+            p->saveContents(SerializeContentsKey(), ar);
+        } else
+        if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
+            p->saveContents(SerializeContentsKey(), ar);
+        }
+        else {
             throw SerializationError("Tried to save contents of unsupported replica");
         }
     }

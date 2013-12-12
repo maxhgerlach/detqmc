@@ -46,6 +46,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "model to be simulated: hubbard or sdw")
             ("timedisplaced", po::value<bool>(&modelpar.timedisplaced)->default_value(false), "also evaluated imaginary time-displaced Green functions and related observables")
             ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
+            ("checkerboardMethod", po::value<std::string>(&modelpar.checkerboardMethod)->default_value("santos"), "method to use for the checkerboard decomposition: santos, assaad or assaad_berg")
             ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
             ("t", po::value<num>(&modelpar.t), "hopping energy")
             ("U", po::value<num>(&modelpar.U), "potential energy")

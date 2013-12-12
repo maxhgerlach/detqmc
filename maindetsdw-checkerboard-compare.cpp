@@ -83,13 +83,13 @@ int main() {
 
 				ModelParams pars_cb = setupParameters(true, m, dtau, s, bc);
 				RngWrapper rng_cb(5555);
-				typedef DetSDW<false, true> Cb;
+				typedef DetSDW<false, CB_SANTOS> Cb;
 				std::unique_ptr<DetModel> cb_model_ptr = createDetSDW(rng_cb, pars_cb);
 				std::unique_ptr<Cb> sdw_cb = std::unique_ptr<Cb>(dynamic_cast<Cb*>(cb_model_ptr.release()));
 
 				ModelParams pars_reg = setupParameters(false, m, dtau, s, bc);
 				RngWrapper rng_reg(5555);
-				typedef DetSDW<false, false> Reg;
+				typedef DetSDW<false, CB_NONE> Reg;
 				std::unique_ptr<DetModel> reg_model_ptr = createDetSDW(rng_reg, pars_reg);
 				std::unique_ptr<Reg> sdw_reg = std::unique_ptr<Reg>(dynamic_cast<Reg*>(reg_model_ptr.release()));
 
