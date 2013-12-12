@@ -198,6 +198,22 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
             VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
+
+    Band bands[2] = {XBAND, YBAND};
+    for (Band band : bands) {
+    	//debug-tests ....
+        MatCpx arand(arma::randn(N,N), arma::zeros(N,N));
+        debugSaveMatrixCpx(arand, "arand" + bandstr(band));
+        MatCpx cbL_arand = cbLMultHoppingExp(arand, band, -1);
+        debugSaveMatrixCpx(cbL_arand, "cblarand" + bandstr(band));
+        MatCpx cbR_arand = cbRMultHoppingExp(arand, band, -1);
+        debugSaveMatrixCpx(cbR_arand, "cbrarand" + bandstr(band));
+        MatCpx unity(arma::eye(N,N), arma::zeros(N,N));
+        MatCpx cbL_unity = cbLMultHoppingExp(unity, band, -1);
+        debugSaveMatrixCpx(cbL_unity, "cblunity" + bandstr(band));
+        MatCpx cbR_unity = cbRMultHoppingExp(unity, band, -1);
+        debugSaveMatrixCpx(cbR_unity, "cbrunity" + bandstr(band));
+    }
 }
 
 template<bool TD, bool CB>
@@ -587,14 +603,14 @@ void DetSDW<TD,CB>::setupPropK() {
                 k(site, neigh) -= hop;
             }
         }
-//      std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
-//      debugSaveMatrix(k, name);
+        std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
+        debugSaveMatrix(k, name);
         propK[band] = computePropagator(dtau, k);
 
         propK_half[band] = computePropagator(dtau / 2.0, k);
         propK_half_inv[band] = computePropagator(-dtau / 2.0, k);
 
-//      debugSaveMatrix(propK[band], "prop" + name);
+        debugSaveMatrix(propK[band], "prop" + name);
     }
 }
 
@@ -689,6 +705,7 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     	assert(subgroup == 0 or subgroup == 1);
     	assert(neigh == XPLUS or neigh == YPLUS);
     	arma::Row<cpx> new_row_i(N);
+    	//std::cout << "left pbc " << neighToString(neigh) << " "<< subgroup << ": ";
     	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
     		for (uint32_t i2 = 0; i2 < L; ++i2) {
     			uint32_t i;
@@ -708,9 +725,10 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_row_i     = ch * result.row(i) + sh * result.row(j);
     			result.row(j) = sh * result.row(i) + ch * result.row(j);
     			result.row(i) = new_row_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
-
+    	//std::cout << std::endl;
     };
 
     //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
@@ -718,6 +736,7 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Row<cpx> new_row_i(N);
+    	//std::cout << "left apbc-x " << neighToString(XPLUS) << " " << subgroup << ": ";
     	for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
     		for (uint32_t y = 0; y < L; ++y) {
     			uint32_t i = this->coordsToSite(x, y);
@@ -726,6 +745,7 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_row_i     = ch * result.row(i) + sh * result.row(j);
     			result.row(j) = sh * result.row(i) + ch * result.row(j);
     			result.row(i) = new_row_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
     	if ((L-1) % 2 == subgroup) {
@@ -738,8 +758,10 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
     			result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
     			result.row(ii) = new_row_i;
+    			//std::cout << ii << "-" << jj << " ";
     		}
     	}
+    	//std::cout << std::endl;
     };
 
     //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
@@ -747,6 +769,7 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsLeft_YPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Row<cpx> new_row_i(N);
+    	//std::cout << "left apbc-y " << neighToString(YPLUS) << " " << subgroup << ": ";
     	for (uint32_t y = subgroup; y < L - 1; y += 2) {		 // all but the top-row
     		for (uint32_t x = 0; x < L; ++x) {
     			uint32_t i = this->coordsToSite(x, y);
@@ -755,6 +778,7 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_row_i     = ch * result.row(i) + sh * result.row(j);
     			result.row(j) = sh * result.row(i) + ch * result.row(j);
     			result.row(i) = new_row_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
     	if ((L-1) % 2 == subgroup) {
@@ -766,9 +790,12 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
     			//change rows i and j of result, anti-periodic
     			new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
     			result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
+
     			result.row(ii) = new_row_i;
+    			//std::cout << ii << "-" << jj << " ";
     		}
     	}
+    	//std::cout << std::endl;
     };
 
     switch (bc) {
@@ -843,6 +870,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     	assert(subgroup == 0 or subgroup == 1);
     	assert(neigh == XPLUS or neigh == YPLUS);
     	arma::Col<cpx> new_col_i(N);
+    	//std::cout << "right pbc " << neighToString(neigh) << " "<< subgroup << ": ";
     	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
     		for (uint32_t i2 = 0; i2 < L; ++i2) {
     			uint32_t i;
@@ -862,9 +890,10 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_col_i     = ch * result.col(i) + sh * result.col(j);
     			result.col(j) = sh * result.col(i) + ch * result.col(j);
     			result.col(i) = new_col_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
-
+    	//std::cout << std::endl;
     };
 
     //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
@@ -872,6 +901,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsRight_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Col<cpx> new_col_i(N);
+    	//std::cout << "right apbc-x " << neighToString(XPLUS) << " " << subgroup << ": ";
     	for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most sites
     		for (uint32_t y = 0; y < L; ++y) {
     			uint32_t i = this->coordsToSite(x, y);
@@ -880,6 +910,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_col_i     = ch * result.col(i) + sh * result.col(j);
     			result.col(j) = sh * result.col(i) + ch * result.col(j);
     			result.col(i) = new_col_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
     	if ((L-1) % 2 == subgroup) {
@@ -892,8 +923,10 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_col_i      =   ch * result.col(ii) - sh * result.col(jj);
     			result.col(jj) = - sh * result.col(ii) + ch * result.col(jj);
     			result.col(ii) = new_col_i;
+    			//std::cout << ii << "-" << jj << " ";
     		}
     	}
+    	//std::cout << std::endl;
     };
 
     //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
@@ -901,6 +934,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     auto applyBondFactorsRight_YPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
     	assert(subgroup == 0 or subgroup == 1);
     	arma::Col<cpx> new_col_i(N);
+    	//std::cout << "right apbc-y " << neighToString(YPLUS) << " " << subgroup << ": ";
     	for (uint32_t y = subgroup; y < L - 1; y += 2) {		 // all but the top-row
     		for (uint32_t x = 0; x < L; ++x) {
     			uint32_t i = this->coordsToSite(x, y);
@@ -909,6 +943,7 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_col_i     = ch * result.col(i) + sh * result.col(j);
     			result.col(j) = sh * result.col(i) + ch * result.col(j);
     			result.col(i) = new_col_i;
+    			//std::cout << i << "-" << j << " ";
     		}
     	}
     	if ((L-1) % 2 == subgroup) {
@@ -921,8 +956,10 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
     			new_col_i      =   ch * result.col(ii) - sh * result.col(jj);
     			result.col(jj) = - sh * result.col(ii) + ch * result.col(jj);
     			result.col(ii) = new_col_i;
+    			//std::cout << ii << "-" << jj << " ";
     		}
     	}
+    	//std::cout << std::endl;
     };
 
     switch (bc) {
