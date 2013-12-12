@@ -249,6 +249,36 @@ protected:
     template <class Matrix>
     MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign);
 
+    //cbLMultHoppingExp and cbRMultHoppingExp need separate implementations for each CheckerboardMethod,
+    //this cannot be realized by a direct partial template specialization, but we need to have a proxy
+    //with function overloading
+    //compare first solution in winning answer at:
+    //http://stackoverflow.com/questions/1501357/template-specialization-of-particular-members
+    template <class Matrix>
+    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+    							  const Matrix& A, Band band, int sign);
+    template <class Matrix>
+    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+    							  const Matrix& A, Band band, int sign);
+
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
     MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);

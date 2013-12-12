@@ -727,175 +727,226 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) const {
     return result;
 }
 
-// with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
+
+
 template<bool TD, CheckerboardMethod CB>
-template <class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
-    MatCpx result = A;      //can't avoid this copy
-
-    //neigh == XNEIGH:
-    //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
-    //   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
-    //neigh == YNEIGH:
-    //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
-    //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
-    auto applyBondFactorsLeftPBC = [this, &result](NeighDir neigh, uint32_t subgroup, num ch, num sh) {
-    	assert(subgroup == 0 or subgroup == 1);
-    	assert(neigh == XPLUS or neigh == YPLUS);
-    	arma::Row<cpx> new_row_i(N);
-    	//std::cout << "left pbc " << neighToString(neigh) << " "<< subgroup << ": ";
-    	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-    		for (uint32_t i2 = 0; i2 < L; ++i2) {
-    			uint32_t i;
-    			switch (neigh) {
-    			case XPLUS:
-    				i = this->coordsToSite(i1, i2);
-    				break;
-    			case YPLUS:
-    				i = this->coordsToSite(i2, i1);
-    				break;
-    			default:
-    				i = 0; //should not be reached
-    				break;
-    			}
-    			uint32_t j = spaceNeigh(neigh, i);
-    			//change rows i and j of result
-    			new_row_i     = ch * result.row(i) + sh * result.row(j);
-    			result.row(j) = sh * result.row(i) + ch * result.row(j);
-    			result.row(i) = new_row_i;
-    			//std::cout << i << "-" << j << " ";
-    		}
-    	}
-    	//std::cout << std::endl;
-    };
-
-    //   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
-    //   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
-    auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
-    	assert(subgroup == 0 or subgroup == 1);
-    	arma::Row<cpx> new_row_i(N);
-    	//std::cout << "left apbc-x " << neighToString(XPLUS) << " " << subgroup << ": ";
-    	for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
-    		for (uint32_t y = 0; y < L; ++y) {
-    			uint32_t i = this->coordsToSite(x, y);
-    			uint32_t j = this->coordsToSite(x + 1, y);
-    			//change rows i and j of result, periodic
-    			new_row_i     = ch * result.row(i) + sh * result.row(j);
-    			result.row(j) = sh * result.row(i) + ch * result.row(j);
-    			result.row(i) = new_row_i;
-    			//std::cout << i << "-" << j << " ";
-    		}
-    	}
-    	if ((L-1) % 2 == subgroup) {
-    		for (uint32_t y = 0; y < L; ++y) {
-    			//boundary-crossing bond belongs to current subgroup
-    			// -> encode APBC
-    			uint32_t ii = this->coordsToSite(L-1, y);
-    			uint32_t jj = this->coordsToSite(0,   y);
-    			//change rows i and j of result, anti-periodic
-    			new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
-    			result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
-    			result.row(ii) = new_row_i;
-    			//std::cout << ii << "-" << jj << " ";
-    		}
-    	}
-    	//std::cout << std::endl;
-    };
-
-    //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
-    //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
-    auto applyBondFactorsLeft_YPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
-    	assert(subgroup == 0 or subgroup == 1);
-    	arma::Row<cpx> new_row_i(N);
-    	//std::cout << "left apbc-y " << neighToString(YPLUS) << " " << subgroup << ": ";
-    	for (uint32_t y = subgroup; y < L - 1; y += 2) {		 // all but the top-row
-    		for (uint32_t x = 0; x < L; ++x) {
-    			uint32_t i = this->coordsToSite(x, y);
-    			uint32_t j = this->coordsToSite(x, y+1);
-    			//change rows i and j of result, periodic
-    			new_row_i     = ch * result.row(i) + sh * result.row(j);
-    			result.row(j) = sh * result.row(i) + ch * result.row(j);
-    			result.row(i) = new_row_i;
-    			//std::cout << i << "-" << j << " ";
-    		}
-    	}
-    	if ((L-1) % 2 == subgroup) {
-    		//boundary-crossing bonds belongs to current subgroup
-    		// -> encode APBC
-    		for (uint32_t x = 0; x < L; ++x) {
-    			uint32_t ii = this->coordsToSite(x, L-1);
-    			uint32_t jj = this->coordsToSite(x, 0);
-    			//change rows i and j of result, anti-periodic
-    			new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
-    			result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
-
-    			result.row(ii) = new_row_i;
-    			//std::cout << ii << "-" << jj << " ";
-    		}
-    	}
-    	//std::cout << std::endl;
-    };
-
-    switch (bc) {
-    case PBC:
-    	//bond subgroup 0
-    	//  horizontal
-    	applyBondFactorsLeftPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical
-    	applyBondFactorsLeftPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
-    	//bond subgroup 1
-    	//  horizontal
-    	applyBondFactorsLeftPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical
-    	applyBondFactorsLeftPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
-    	break;
-    case APBC_X:
-    	//bond subgroup 0
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsLeft_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds
-    	applyBondFactorsLeftPBC(YPLUS,  0, coshHopVer[band], sign * sinhHopVer[band]);
-    	//bond subgroup 1
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsLeft_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds
-    	applyBondFactorsLeftPBC(YPLUS,  1, coshHopVer[band], sign * sinhHopVer[band]);
-    	break;
-    case APBC_Y:
-    	//bond subgroup 0
-    	//  horizontal bonds
-    	applyBondFactorsLeftPBC(XPLUS,  0, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds, anti-periodic
-    	applyBondFactorsLeft_YPLUS_APBC(0, coshHopVer[band], sign * sinhHopVer[band]);
-    	//bond subgroup 1
-    	// horizontal bonds
-    	applyBondFactorsLeftPBC(XPLUS,  1, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds, anti-periodic
-    	applyBondFactorsLeft_YPLUS_APBC(1, coshHopVer[band], sign * sinhHopVer[band]);
-    	break;
-    case APBC_XY:
-    	//bond subgroup 0
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsLeft_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds, anti-periodic
-    	applyBondFactorsLeft_YPLUS_APBC(0, coshHopVer[band], sign * sinhHopVer[band]);
-    	//bond subgroup 1
-    	//  horizontal bonds, anti-periodic
-    	applyBondFactorsLeft_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
-    	//  vertical bonds, anti-periodic
-    	applyBondFactorsLeft_YPLUS_APBC(1, coshHopVer[band], sign * sinhHopVer[band]);
-    	break;
-    }
-
-    return result;
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+											 const Matrix&, Band, int) {
+	throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+	return MatCpx();
 }
 
 
 
-// with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
+// with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
+// using the method described in R. R. dos Santos, Braz. J. Phys 33, 36 (2003).
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
+											 const Matrix& A, Band band, int sign) {
+	MatCpx result = A;      //can't avoid this copy
+
+	//neigh == XNEIGH:
+	//   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
+	//   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
+	//neigh == YNEIGH:
+	//   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
+	//   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
+	auto applyBondFactorsLeftPBC = [this, &result](NeighDir neigh, uint32_t subgroup, num ch, num sh) {
+		assert(subgroup == 0 or subgroup == 1);
+		assert(neigh == XPLUS or neigh == YPLUS);
+		arma::Row<cpx> new_row_i(N);
+		//std::cout << "left pbc " << neighToString(neigh) << " "<< subgroup << ": ";
+		for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+			for (uint32_t i2 = 0; i2 < L; ++i2) {
+				uint32_t i;
+				switch (neigh) {
+				case XPLUS:
+					i = this->coordsToSite(i1, i2);
+					break;
+				case YPLUS:
+					i = this->coordsToSite(i2, i1);
+					break;
+				default:
+					i = 0; //should not be reached
+					break;
+				}
+				uint32_t j = spaceNeigh(neigh, i);
+				//change rows i and j of result
+				new_row_i     = ch * result.row(i) + sh * result.row(j);
+				result.row(j) = sh * result.row(i) + ch * result.row(j);
+				result.row(i) = new_row_i;
+				//std::cout << i << "-" << j << " ";
+			}
+		}
+		//std::cout << std::endl;
+	};
+
+	//   subgroup == 0:  bonds (2*i_x, i_y)--(2*i_x + 1, i_y)
+	//   subgroup == 1:  bonds (2*i_x + 1, i_y)--(2*i_x + 2, i_y)
+	auto applyBondFactorsLeft_XPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
+		assert(subgroup == 0 or subgroup == 1);
+		arma::Row<cpx> new_row_i(N);
+		//std::cout << "left apbc-x " << neighToString(XPLUS) << " " << subgroup << ": ";
+		for (uint32_t x = subgroup; x < L - 1; x += 2) {   // all but the right-most site on the row
+			for (uint32_t y = 0; y < L; ++y) {
+				uint32_t i = this->coordsToSite(x, y);
+				uint32_t j = this->coordsToSite(x + 1, y);
+				//change rows i and j of result, periodic
+				new_row_i     = ch * result.row(i) + sh * result.row(j);
+				result.row(j) = sh * result.row(i) + ch * result.row(j);
+				result.row(i) = new_row_i;
+				//std::cout << i << "-" << j << " ";
+			}
+		}
+		if ((L-1) % 2 == subgroup) {
+			for (uint32_t y = 0; y < L; ++y) {
+				//boundary-crossing bond belongs to current subgroup
+				// -> encode APBC
+				uint32_t ii = this->coordsToSite(L-1, y);
+				uint32_t jj = this->coordsToSite(0,   y);
+				//change rows i and j of result, anti-periodic
+				new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
+				result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
+				result.row(ii) = new_row_i;
+				//std::cout << ii << "-" << jj << " ";
+			}
+		}
+		//std::cout << std::endl;
+	};
+
+	//   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
+	//   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
+	auto applyBondFactorsLeft_YPLUS_APBC = [this, &result](uint32_t subgroup, num ch, num sh) {
+		assert(subgroup == 0 or subgroup == 1);
+		arma::Row<cpx> new_row_i(N);
+		//std::cout << "left apbc-y " << neighToString(YPLUS) << " " << subgroup << ": ";
+		for (uint32_t y = subgroup; y < L - 1; y += 2) {		 // all but the top-row
+			for (uint32_t x = 0; x < L; ++x) {
+				uint32_t i = this->coordsToSite(x, y);
+				uint32_t j = this->coordsToSite(x, y+1);
+				//change rows i and j of result, periodic
+				new_row_i     = ch * result.row(i) + sh * result.row(j);
+				result.row(j) = sh * result.row(i) + ch * result.row(j);
+				result.row(i) = new_row_i;
+				//std::cout << i << "-" << j << " ";
+			}
+		}
+		if ((L-1) % 2 == subgroup) {
+			//boundary-crossing bonds belongs to current subgroup
+			// -> encode APBC
+			for (uint32_t x = 0; x < L; ++x) {
+				uint32_t ii = this->coordsToSite(x, L-1);
+				uint32_t jj = this->coordsToSite(x, 0);
+				//change rows i and j of result, anti-periodic
+				new_row_i      =   ch * result.row(ii) - sh * result.row(jj);
+				result.row(jj) = - sh * result.row(ii) + ch * result.row(jj);
+
+				result.row(ii) = new_row_i;
+				//std::cout << ii << "-" << jj << " ";
+			}
+		}
+		//std::cout << std::endl;
+	};
+
+	switch (bc) {
+	case PBC:
+		//bond subgroup 0
+		//  horizontal
+		applyBondFactorsLeftPBC(XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical
+		applyBondFactorsLeftPBC(YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+		//bond subgroup 1
+		//  horizontal
+		applyBondFactorsLeftPBC(XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical
+		applyBondFactorsLeftPBC(YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
+		break;
+	case APBC_X:
+		//bond subgroup 0
+		//  horizontal bonds, anti-periodic
+		applyBondFactorsLeft_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds
+		applyBondFactorsLeftPBC(YPLUS,  0, coshHopVer[band], sign * sinhHopVer[band]);
+		//bond subgroup 1
+		//  horizontal bonds, anti-periodic
+		applyBondFactorsLeft_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds
+		applyBondFactorsLeftPBC(YPLUS,  1, coshHopVer[band], sign * sinhHopVer[band]);
+		break;
+	case APBC_Y:
+		//bond subgroup 0
+		//  horizontal bonds
+		applyBondFactorsLeftPBC(XPLUS,  0, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds, anti-periodic
+		applyBondFactorsLeft_YPLUS_APBC(0, coshHopVer[band], sign * sinhHopVer[band]);
+		//bond subgroup 1
+		// horizontal bonds
+		applyBondFactorsLeftPBC(XPLUS,  1, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds, anti-periodic
+		applyBondFactorsLeft_YPLUS_APBC(1, coshHopVer[band], sign * sinhHopVer[band]);
+		break;
+	case APBC_XY:
+		//bond subgroup 0
+		//  horizontal bonds, anti-periodic
+		applyBondFactorsLeft_XPLUS_APBC(0, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds, anti-periodic
+		applyBondFactorsLeft_YPLUS_APBC(0, coshHopVer[band], sign * sinhHopVer[band]);
+		//bond subgroup 1
+		//  horizontal bonds, anti-periodic
+		applyBondFactorsLeft_XPLUS_APBC(1, coshHopHor[band], sign * sinhHopHor[band]);
+		//  vertical bonds, anti-periodic
+		applyBondFactorsLeft_YPLUS_APBC(1, coshHopVer[band], sign * sinhHopVer[band]);
+		break;
+	}
+
+	return result;
+}
+
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
+											 const Matrix& A, Band band, int sign) {
+	(void)band; (void)sign;
+	throw GeneralError("CB_ASSAAD not implemented so far");
+	return A;
+}
+
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+											 const Matrix& A, Band band, int sign) {
+	(void)band; (void)sign;
+	throw GeneralError("CB_ASSAAD_BERG not implemented so far");
+	return A;
+}
+
+// with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
 template<bool TD, CheckerboardMethod CB>
 template <class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
+MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign) {
+	return cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
+								  A, band, sign);
+}
+
+
+
+
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+											 const Matrix&, Band, int) {
+	throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+	return MatCpx();
+}
+
+// with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
+// using the method described in R. R. dos Santos, Braz. J. Phys 33, 36 (2003).
+template<bool TD, CheckerboardMethod CB>
+template <class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
+											 const Matrix& A, Band band, int sign) {
     MatCpx result = A;      //can't avoid this copy
 
     //neigh == XNEIGH:
@@ -1053,6 +1104,35 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
 
     return result;
 }
+
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
+											 const Matrix& A, Band band, int sign) {
+	(void)band; (void)sign;
+	throw GeneralError("CB_ASSAAD not implemented so far");
+	return A;
+}
+
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+											 const Matrix& A, Band band, int sign) {
+	(void)band; (void)sign;
+	throw GeneralError("CB_ASSAAD_BERG not implemented so far");
+	return A;
+}
+
+// with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
+template<bool TD, CheckerboardMethod CB>
+template <class Matrix> inline
+MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign) {
+	return cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
+								  A, band, sign);
+}
+
+
+
 
 
 template<bool TD, CheckerboardMethod CB> inline
