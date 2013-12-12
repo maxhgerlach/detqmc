@@ -151,7 +151,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         fermionEkinetic(0), fermionEcouple(0)//, fermionEkinetic_imag(0), fermionEcouple_imag(0)
 {
 	assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
-	assert(pars.checkerboardMethod == cbmToString(CB));
+	assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
 
     if (pars.bc == "pbc") {
         bc = PBC;
@@ -235,22 +235,22 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
             VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
-
-    Band bands[2] = {XBAND, YBAND};
-    for (Band band : bands) {
-    	//debug-tests ....
-        MatCpx arand(arma::randn(N,N), arma::zeros(N,N));
-        debugSaveMatrixCpx(arand, "arand" + bandstr(band));
-        MatCpx cbL_arand = cbLMultHoppingExp(arand, band, -1);
-        debugSaveMatrixCpx(cbL_arand, "cblarand" + bandstr(band));
-        MatCpx cbR_arand = cbRMultHoppingExp(arand, band, -1);
-        debugSaveMatrixCpx(cbR_arand, "cbrarand" + bandstr(band));
-        MatCpx unity(arma::eye(N,N), arma::zeros(N,N));
-        MatCpx cbL_unity = cbLMultHoppingExp(unity, band, -1);
-        debugSaveMatrixCpx(cbL_unity, "cblunity" + bandstr(band));
-        MatCpx cbR_unity = cbRMultHoppingExp(unity, band, -1);
-        debugSaveMatrixCpx(cbR_unity, "cbrunity" + bandstr(band));
-    }
+//
+//    Band bands[2] = {XBAND, YBAND};
+//    for (Band band : bands) {
+//    	//debug-tests ....
+//        MatCpx arand(arma::randn(N,N), arma::zeros(N,N));
+//        debugSaveMatrixCpx(arand, "arand" + bandstr(band));
+//        MatCpx cbL_arand = cbLMultHoppingExp(arand, band, -1);
+//        debugSaveMatrixCpx(cbL_arand, "cblarand" + bandstr(band));
+//        MatCpx cbR_arand = cbRMultHoppingExp(arand, band, -1);
+//        debugSaveMatrixCpx(cbR_arand, "cbrarand" + bandstr(band));
+//        MatCpx unity(arma::eye(N,N), arma::zeros(N,N));
+//        MatCpx cbL_unity = cbLMultHoppingExp(unity, band, -1);
+//        debugSaveMatrixCpx(cbL_unity, "cblunity" + bandstr(band));
+//        MatCpx cbR_unity = cbRMultHoppingExp(unity, band, -1);
+//        debugSaveMatrixCpx(cbR_unity, "cbrunity" + bandstr(band));
+//    }
 }
 
 template<bool TD, CheckerboardMethod CB>
