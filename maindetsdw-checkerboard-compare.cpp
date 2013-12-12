@@ -32,6 +32,7 @@ ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t
 	SET(model, "sdw");
 	SET(timedisplaced, false);
 	SET(checkerboard, checkerboard_);
+	SET(checkerboardMethod, "santos");
 	SET(r, 1.0);
 	SET(txhor, -1.0);
 	SET(txver, -0.5);
