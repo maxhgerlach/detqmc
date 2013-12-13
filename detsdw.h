@@ -239,8 +239,6 @@ protected:
 
     void setupRandomPhi();
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
-//  void setupPropK_direct();
-//  void setupPropK_checkerboard();
 
 
     //the following are template functions to allow applying them
@@ -283,6 +281,9 @@ protected:
     template <class Matrix>
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
     							  const Matrix& A, Band band, int sign);
+    //functions called by the above:
+    void cb_assaad_applyBondFactorsLeft(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
+    void cb_assaad_applyBondFactorsRight(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
