@@ -284,6 +284,8 @@ protected:
     //functions called by the above:
     void cb_assaad_applyBondFactorsLeft(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
     void cb_assaad_applyBondFactorsRight(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
+    void cb_santos_applyBondFactorsLeft(MatCpx& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
+    void cb_santos_applyBondFactorsRight(MatCpx& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
