@@ -31,7 +31,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 enum CheckerboardMethod {
 	CB_NONE,				//regular, dense matrix products
 	CB_SANTOS,				//checkerboard, four break-ups in e^{K_*} as described in: R. R. dos Santos, Braz. J. Phys 33, 36 (2003).
-	CB_ASSAAD,				//checkerboard, two break-ups in e^{K_*} as described in: F. F. Assaad, in Quantum Simulations Complex Many-Body Syst. From Theory to Algorithms, edited by J. Grotendorst, D. Marx, and A. Muramatsu (FZ-Jülich, Jülich, Germany, 2002).
+	CB_ASSAAD,				//checkerboard, two break-ups in e^{K_*} as described in: F. F. Assaad, in Quantum Simulations Complex Many-Body Syst. From Theory to Algorithms, edited by J. Grotendorst, D. Marx, and A. Muramatsu (FZ-Jï¿½lich, Jï¿½lich, Germany, 2002).
 	CB_ASSAAD_BERG,			//checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
 };
 std::string cbmToString(CheckerboardMethod cbm);
@@ -121,6 +121,11 @@ protected:
     checkarray<num,2> sinhHopVer;
     checkarray<num,2> coshHopHor;
     checkarray<num,2> coshHopVer;
+    // sinh|cosh(-dtau * 0.5*hop..)
+    checkarray<num,2> sinhHopHorHalf;
+    checkarray<num,2> sinhHopVerHalf;
+    checkarray<num,2> coshHopHorHalf;
+    checkarray<num,2> coshHopVerHalf;
     PeriodicSquareLatticeNearestNeighbors spaceNeigh;
     PeriodicChainNearestNeighbors<1> timeNeigh;
 

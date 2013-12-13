@@ -132,6 +132,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
+        sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
         spaceNeigh(L), timeNeigh(m),
         propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
         propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
@@ -188,6 +189,10 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         coshHopHor[band] = cosh(-dtauHere * hopHor[band]);
         sinhHopVer[band] = sinh(-dtauHere * hopVer[band]);
         coshHopVer[band] = cosh(-dtauHere * hopVer[band]);
+        sinhHopHorHalf[band] = sinh(-0.5*dtauHere * hopHor[band]);
+        coshHopHorHalf[band] = cosh(-0.5*dtauHere * hopHor[band]);
+        sinhHopVerHalf[band] = sinh(-0.5*dtauHere * hopVer[band]);
+        coshHopVerHalf[band] = cosh(-0.5*dtauHere * hopVer[band]);
     } );
 
     setupPropK();
@@ -904,22 +909,129 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 	return result;
 }
 
+// with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
+// using the method described in F. F. Assaad, in Quantum Simulations Complex Many-Body Syst. From Theory to Algorithms, edited by J. Grotendorst, D. Marx, and A. Muramatsu (FZ-Jülich, Jülich, Germany, 2002).
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
 											 const Matrix& A, Band band, int sign) {
-	(void)band; (void)sign;
-	throw GeneralError("CB_ASSAAD not implemented so far");
-	return A;
+	MatCpx result = A;      //can't avoid this copy
+
+	//subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+	//   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+	//   j = i + XPLUS
+	//   k = i + YPLUS
+	//   l = k + XPLUS
+	//subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+	//   i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+	//   j = i + XPLUS
+	//   k = i + YPLUS
+	//   l = k + XPLUS
+	auto applyBondFactorsLeft = [this, &result](uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+		assert(subgroup == 0 or subgroup == 1);
+		arma::Row<cpx> new_row_i(N);
+		arma::Row<cpx> new_row_j(N);
+		arma::Row<cpx> new_row_k(N);
+		for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+			for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+				uint32_t i = this->coordsToSite(i1, i2);
+				uint32_t j = spaceNeigh(XPLUS, i);
+				uint32_t k = spaceNeigh(YPLUS, i);
+				uint32_t l = spaceNeigh(XPLUS, k);
+				//change rows i,j,k,l of result
+				const arma::Row<cpx>& ri = result.row(i);
+				const arma::Row<cpx>& rj = result.row(j);
+				const arma::Row<cpx>& rk = result.row(k);
+				const arma::Row<cpx>& rl = result.row(l);
+				num b_sh_hor = sh_hor;
+				num b_sh_ver = sh_ver;
+				if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+					//this plaquette has horizontal boundary crossing bonds and APBC
+					b_sh_hor *= -1;
+				}
+				if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+					//this plaquette has vertical boundary crossing bonds and APBC
+					b_sh_ver *= -1;
+				}
+				new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
+				new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
+				new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
+				result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
+				result.row(i) = new_row_i;
+				result.row(j) = new_row_j;
+				result.row(k) = new_row_k;
+			}
+		}
+	};
+
+	applyBondFactorsLeft(0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+	applyBondFactorsLeft(1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+
+	return result;
 }
 
+// with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
+// using the symmetric checkerboard break up
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
 											 const Matrix& A, Band band, int sign) {
-	(void)band; (void)sign;
-	throw GeneralError("CB_ASSAAD_BERG not implemented so far");
-	return A;
+	MatCpx result = A;      //can't avoid this copy
+
+	//subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+	//   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+	//   j = i + XPLUS
+	//   k = i + YPLUS
+	//   l = k + XPLUS
+	//subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+	//   i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+	//   j = i + XPLUS
+	//   k = i + YPLUS
+	//   l = k + XPLUS
+	auto applyBondFactorsLeft = [this, &result](uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+		assert(subgroup == 0 or subgroup == 1);
+		arma::Row<cpx> new_row_i(N);
+		arma::Row<cpx> new_row_j(N);
+		arma::Row<cpx> new_row_k(N);
+		for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+			for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+				uint32_t i = this->coordsToSite(i1, i2);
+				uint32_t j = spaceNeigh(XPLUS, i);
+				uint32_t k = spaceNeigh(YPLUS, i);
+				uint32_t l = spaceNeigh(XPLUS, k);
+				//change rows i,j,k,l of result
+				const arma::Row<cpx>& ri = result.row(i);
+				const arma::Row<cpx>& rj = result.row(j);
+				const arma::Row<cpx>& rk = result.row(k);
+				const arma::Row<cpx>& rl = result.row(l);
+				num b_sh_hor = sh_hor;
+				num b_sh_ver = sh_ver;
+				if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+					//this plaquette has horizontal boundary crossing bonds and APBC
+					b_sh_hor *= -1;
+				}
+				if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+					//this plaquette has vertical boundary crossing bonds and APBC
+					b_sh_ver *= -1;
+				}
+				new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
+				new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
+				new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
+				result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
+				result.row(i) = new_row_i;
+				result.row(j) = new_row_j;
+				result.row(k) = new_row_k;
+			}
+		}
+	};
+
+	// perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
+	applyBondFactorsLeft(1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+			                coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+	applyBondFactorsLeft(0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+	applyBondFactorsLeft(1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+			                coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+	return result;
 }
 
 // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
@@ -1109,18 +1221,124 @@ template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
 											 const Matrix& A, Band band, int sign) {
-	(void)band; (void)sign;
-	throw GeneralError("CB_ASSAAD not implemented so far");
-	return A;
+    MatCpx result = A;      //can't avoid this copy
+
+    //subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+    //   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+    //   j = i + XPLUS
+    //   k = i + YPLUS
+    //   l = k + XPLUS
+    //subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+    //   i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+    //   j = i + XPLUS
+    //   k = i + YPLUS
+    //   l = k + XPLUS
+    auto applyBondFactorsRight = [this, &result](uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+    	assert(subgroup == 0 or subgroup == 1);
+    	arma::Col<cpx> new_col_i(N);
+		arma::Col<cpx> new_col_j(N);
+		arma::Col<cpx> new_col_k(N);
+		for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+			for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+				uint32_t i = this->coordsToSite(i1, i2);
+				uint32_t j = spaceNeigh(XPLUS, i);
+				uint32_t k = spaceNeigh(YPLUS, i);
+				uint32_t l = spaceNeigh(XPLUS, k);
+				//change cols i,j,k,l of result
+				const arma::Col<cpx>& ci = result.col(i);
+				const arma::Col<cpx>& cj = result.col(j);
+				const arma::Col<cpx>& ck = result.col(k);
+				const arma::Col<cpx>& cl = result.col(l);
+				num b_sh_hor = sh_hor;
+				num b_sh_ver = sh_ver;
+				if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+					//this plaquette has horizontal boundary crossing bonds and APBC
+					b_sh_hor *= -1;
+				}
+				if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+					//this plaquette has vertical boundary crossing bonds and APBC
+					b_sh_ver *= -1;
+				}
+				new_col_i     = ch_hor*ch_ver*ci + ch_ver*b_sh_hor*cj + ch_hor*b_sh_ver*ck + b_sh_hor*b_sh_ver*cl;
+				new_col_j     = ch_ver*b_sh_hor*ci + ch_hor*ch_ver*cj + b_sh_hor*b_sh_ver*ck + ch_hor*b_sh_ver*cl;
+				new_col_k     = ch_hor*b_sh_ver*ci + b_sh_hor*b_sh_ver*cj + ch_hor*ch_ver*ck + ch_ver*b_sh_hor*cl;
+				result.col(l) = b_sh_hor*b_sh_ver*ci + ch_hor*b_sh_ver*cj + ch_ver*b_sh_hor*ck + ch_hor*ch_ver*cl;
+				result.col(i) = new_col_i;
+				result.col(j) = new_col_j;
+				result.col(k) = new_col_k;
+			}
+		}
+    };
+
+    //order reversed wrt cbLMultHoppingExp
+    applyBondFactorsRight(1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    applyBondFactorsRight(0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+
+    return result;
 }
 
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
 											 const Matrix& A, Band band, int sign) {
-	(void)band; (void)sign;
-	throw GeneralError("CB_ASSAAD_BERG not implemented so far");
-	return A;
+    MatCpx result = A;      //can't avoid this copy
+
+    //subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+    //   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+    //   j = i + XPLUS
+    //   k = i + YPLUS
+    //   l = k + XPLUS
+    //subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+    //   i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+    //   j = i + XPLUS
+    //   k = i + YPLUS
+    //   l = k + XPLUS
+    auto applyBondFactorsRight = [this, &result](uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+    	assert(subgroup == 0 or subgroup == 1);
+    	arma::Col<cpx> new_col_i(N);
+		arma::Col<cpx> new_col_j(N);
+		arma::Col<cpx> new_col_k(N);
+		for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+			for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+				uint32_t i = this->coordsToSite(i1, i2);
+				uint32_t j = spaceNeigh(XPLUS, i);
+				uint32_t k = spaceNeigh(YPLUS, i);
+				uint32_t l = spaceNeigh(XPLUS, k);
+				//change cols i,j,k,l of result
+				const arma::Col<cpx>& ci = result.col(i);
+				const arma::Col<cpx>& cj = result.col(j);
+				const arma::Col<cpx>& ck = result.col(k);
+				const arma::Col<cpx>& cl = result.col(l);
+				num b_sh_hor = sh_hor;
+				num b_sh_ver = sh_ver;
+				if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+					//this plaquette has horizontal boundary crossing bonds and APBC
+					b_sh_hor *= -1;
+				}
+				if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+					//this plaquette has vertical boundary crossing bonds and APBC
+					b_sh_ver *= -1;
+				}
+				new_col_i     = ch_hor*ch_ver*ci + ch_ver*b_sh_hor*cj + ch_hor*b_sh_ver*ck + b_sh_hor*b_sh_ver*cl;
+				new_col_j     = ch_ver*b_sh_hor*ci + ch_hor*ch_ver*cj + b_sh_hor*b_sh_ver*ck + ch_hor*b_sh_ver*cl;
+				new_col_k     = ch_hor*b_sh_ver*ci + b_sh_hor*b_sh_ver*cj + ch_hor*ch_ver*ck + ch_ver*b_sh_hor*cl;
+				result.col(l) = b_sh_hor*b_sh_ver*ci + ch_hor*b_sh_ver*cj + ch_ver*b_sh_hor*ck + ch_hor*ch_ver*cl;
+				result.col(i) = new_col_i;
+				result.col(j) = new_col_j;
+				result.col(k) = new_col_k;
+			}
+		}
+    };
+
+    //order of matrix multiplications symmetric
+	//perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
+	applyBondFactorsRight(1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+			                 coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+	applyBondFactorsRight(0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+	applyBondFactorsRight(1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+			                 coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+
+	return result;
 }
 
 // with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
