@@ -54,15 +54,15 @@ ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t
 
 
 int main() {
-//	std::vector<std::string> bc_values = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
+	std::vector<std::string> bc_values = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
 //	std::vector<num> dtau_values = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 //	std::vector<num> dtau_values = {0.5, 0.4, 0.3, 0.2, 0.15, 0.1, 0.05, 0.01};
 	//std::vector<std::string> bc_values = {"apbc-x"};
 	//std::vector<std::string> bc_values = {"pbc"};
-	std::vector<std::string> bc_values = {"apbc-x", "pbc"};
+	//std::vector<std::string> bc_values = {"apbc-x", "pbc"};
 //	std::vector<num> dtau_values = {0.5, 0.4, 0.3, 0.2, 0.15};
 	std::vector<num> dtau_values = {0.1};
-	std::vector<uint32_t> s_values = {10, 1};
+	std::vector<uint32_t> s_values = {10};
 	//std::vector<uint32_t> s_values = {10};
 	num beta = 10;
 	std::vector<uint32_t> m_values;
