@@ -635,77 +635,90 @@ void DetSDW<TD,CB>::setupPropK() {
 
 
 template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) const {
-    timing.start("computeBmatSDW_direct");
-    using arma::eye; using arma::zeros; using arma::diagmat;
-    if (k2 == k1) {
-        return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
-    }
-    assert(k2 > k1);
-    assert(k2 <= m);
+MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
+	if (CB == CB_NONE) {
+		timing.start("computeBmatSDW_direct");
+		using arma::eye; using arma::zeros; using arma::diagmat;
+		if (k2 == k1) {
+			return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+		}
+		assert(k2 > k1);
+		assert(k2 <= m);
 
-    //compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-    auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
-        timing.start("singleTimesliceProp_direct");
-        MatCpx result(4*N, 4*N);
+		//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
+		auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
+			timing.start("singleTimesliceProp_direct");
+			MatCpx result(4*N, 4*N);
 
-        //submatrix view helper for a 4N*4N matrix
-        auto block = [&result, this](uint32_t row, uint32_t col) {
-            return result.submat(row * N, col * N,
-                                 (row + 1) * N - 1, (col + 1) * N - 1);
-        };
-        auto& kphi0 = phi0.col(k);
-        auto& kphi1 = phi1.col(k);
-        auto& kphi2 = phi2.col(k);
-//      debugSaveMatrix(kphi0, "kphi0");
-//      debugSaveMatrix(kphi1, "kphi1");
-//      debugSaveMatrix(kphi2, "kphi2");
-        auto& kphiCosh = phiCosh.col(k);
-        auto& kphiSinh = phiSinh.col(k);
-        //TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
-        //TODO: compare to using set_real / set_imag
-        block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
-                             zeros(N,N));
-        block(0, 1).zeros();
-        block(0, 2) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
-                             zeros(N,N));
-        block(0, 3) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-                             diagmat(+kphi1 % kphiSinh) * propKy);
-        block(1, 0).zeros();
-        block(1, 1) = block(0, 0);
-        block(1, 2) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-                             diagmat(-kphi1 % kphiSinh) * propKy);
-        block(1, 3) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
-                             zeros(N,N));
-        block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
-                             zeros(N,N));
-        block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-                             diagmat(+kphi1 % kphiSinh) * propKx);
-        block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
-                             zeros(N,N));
-        block(2, 3).zeros();
-        block(3, 0) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-                             diagmat(-kphi1 % kphiSinh) * propKx);
-        block(3, 1) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
-                             zeros(N,N));
-        block(3, 2).zeros();
-        block(3, 3) = block(2, 2);
+			//submatrix view helper for a 4N*4N matrix
+			auto block = [&result, this](uint32_t row, uint32_t col) {
+				return result.submat(row * N, col * N,
+						(row + 1) * N - 1, (col + 1) * N - 1);
+			};
+			auto& kphi0 = phi0.col(k);
+			auto& kphi1 = phi1.col(k);
+			auto& kphi2 = phi2.col(k);
+			//      debugSaveMatrix(kphi0, "kphi0");
+			//      debugSaveMatrix(kphi1, "kphi1");
+			//      debugSaveMatrix(kphi2, "kphi2");
+			auto& kphiCosh = phiCosh.col(k);
+			auto& kphiSinh = phiSinh.col(k);
+			//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
+			//TODO: compare to using set_real / set_imag
+			block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
+					zeros(N,N));
+			block(0, 1).zeros();
+			block(0, 2) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
+					zeros(N,N));
+			block(0, 3) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
+					diagmat(+kphi1 % kphiSinh) * propKy);
+			block(1, 0).zeros();
+			block(1, 1) = block(0, 0);
+			block(1, 2) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
+					diagmat(-kphi1 % kphiSinh) * propKy);
+			block(1, 3) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
+					zeros(N,N));
+			block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
+					zeros(N,N));
+			block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
+					diagmat(+kphi1 % kphiSinh) * propKx);
+			block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
+					zeros(N,N));
+			block(2, 3).zeros();
+			block(3, 0) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
+					diagmat(-kphi1 % kphiSinh) * propKx);
+			block(3, 1) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
+					zeros(N,N));
+			block(3, 2).zeros();
+			block(3, 3) = block(2, 2);
 
-//      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
-//      debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
-        timing.stop("singleTimesliceProp_direct");
-        return result;
-    };
+			//      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
+			//      debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
+			timing.stop("singleTimesliceProp_direct");
+			return result;
+		};
 
-    MatCpx result = singleTimesliceProp(k2);
+		MatCpx result = singleTimesliceProp(k2);
 
-    for (uint32_t k = k2 - 1; k > k1; --k) {
-        result *= singleTimesliceProp(k);               // equivalent to: result = result * singleTimesliceProp(k);
-    }
+		for (uint32_t k = k2 - 1; k > k1; --k) {
+			result *= singleTimesliceProp(k);               // equivalent to: result = result * singleTimesliceProp(k);
+		}
 
-    timing.stop("computeBmatSDW_direct");
+		timing.stop("computeBmatSDW_direct");
 
-    return result;
+		return result;
+	}
+	else {
+		// use the checkerboard routines to compute B by left-multiplying to unity
+		using arma::eye; using arma::zeros;
+		if (k2 == k1) {
+			return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+		}
+		assert(k2 > k1);
+		assert(k2 <= m);
+		MatCpx unity(eye(4*N, 4*N), zeros(4*N, 4*N));
+		return checkerboardLeftMultiplyBmat(unity, k2, k1);
+	}
 }
 
 
