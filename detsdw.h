@@ -303,6 +303,13 @@ protected:
 
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;          //compute B-matrix using dense matrix products
 
+    //Perform the correction of the Green's function to ensure an effectively symmetric Trotter decomposition.
+    //This should be done before measuerements.
+    void shiftGreenSymmetric();
+    //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
+    //on the CheckerboardMethod
+    template<class RightMultiply, class LeftMultiply> void shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
+
     virtual void updateInSlice(uint32_t timeslice);
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);

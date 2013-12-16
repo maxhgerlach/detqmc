@@ -318,33 +318,6 @@ void DetSDW<TD,CB>::measure() {
     normPhi = arma::norm(meanPhi, 2);
 
 
-    //TODO: Extract into a separate method.  Use checkerboard decomposition if appropriate.
-//    //experimental:  Shift green function
-//
-//    //submatrix view helper for a 4N*4N matrix
-//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-//    for (uint32_t l = 1; l <= m; ++l) {
-//        MatCpx tempG(4*N, 4*N);
-//        const MatCpx& oldG = g.slice(l);
-//        //multiply e^(dtau/2 K) from the right
-//        for (uint32_t row = 0; row < 4; ++row) {
-//            block(tempG, 0, row) = block(oldG, 0, row) * propKx_half_inv;
-//            block(tempG, 1, row) = block(oldG, 1, row) * propKx_half_inv;
-//            block(tempG, 2, row) = block(oldG, 2, row) * propKy_half_inv;
-//            block(tempG, 3, row) = block(oldG, 3, row) * propKy_half_inv;
-//        }
-//        //multiply e^(-dtau/2 K) from the left
-//        MatCpx& newG = g.slice(l);
-//        for (uint32_t col = 0; col < 4; ++col) {
-//            block(newG, col, 0) = propKx_half * block(tempG, col, 0);
-//            block(newG, col, 1) = propKx_half * block(tempG, col, 1);
-//            block(newG, col, 2) = propKy_half * block(tempG, col, 2);
-//            block(newG, col, 3) = propKy_half * block(tempG, col, 3);
-//        }
-//    }
-//#undef block
-
-
     //fermion occupation number -- real space
     //probably not very interesting data
     occX.zeros(N);
@@ -1948,33 +1921,133 @@ void DetSDW<TD,CB>::thermalizationOver() {
 
 
 
-template <bool TD, CheckerboardMethod CB>
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimple() {
     sweepSimple_skeleton(sdwComputeBmat(this));
     ++performedSweeps;
 }
 
-template <bool TD, CheckerboardMethod CB>
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimpleThermalization() {
     sweepSimpleThermalization_skeleton(sdwComputeBmat(this));
     ++performedSweeps;
 }
 
-template <bool TD, CheckerboardMethod CB>
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweep() {
     sweep_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
     ++performedSweeps;
 }
 
-template <bool TD, CheckerboardMethod CB>
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
     ++performedSweeps;
 }
 
-template <bool TD, CheckerboardMethod CB>
+template<bool TD, CheckerboardMethod CB>
 CubeCpx DetSDW<TD,CB>::get_green() {
 	return g;
+}
+
+
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::shiftGreenSymmetric() {
+	if (CB == CB_NONE) {
+		//non-checkerboard
+		shiftGreenSymmetric_impl(
+			//rightMultiply
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = input * propK_half_inv[band];
+			},
+			//leftMultiply
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = propK_half[band] * input;
+			}
+		);
+	}
+	else if (CB == CB_SANTOS) {
+		shiftGreenSymmetric_impl(
+			//rightMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+			// to the right of input and stores the result in output
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = input;			//copy
+				cb_santos_applyBondFactorsRight(output, YPLUS, 1, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				cb_santos_applyBondFactorsRight(output, XPLUS, 1, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+				cb_santos_applyBondFactorsRight(output, YPLUS, 0, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				cb_santos_applyBondFactorsRight(output, XPLUS, 0, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+			},
+			//leftMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
+			// to the left of input and stores the result in output
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = input;			//copy
+				cb_santos_applyBondFactorsLeft(output, XPLUS, 0, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+				cb_santos_applyBondFactorsLeft(output, YPLUS, 0, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+				cb_santos_applyBondFactorsLeft(output, XPLUS, 1, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+				cb_santos_applyBondFactorsLeft(output, YPLUS, 1, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+			}
+		);
+	}
+	else if (CB == CB_ASSAAD or CB == CB_ASSAAD_BERG) {
+		shiftGreenSymmetric_impl(
+			//rightMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+			// to the right of input and stores the result in output
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = input;      //copy
+				cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+														   coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+														   coshHopVerHalf[band], +sinhHopVerHalf[band]);
+			},
+			//leftMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
+			// to the left of input and stores the result in output
+			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+				output = input;      //copy
+				cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+											 	 	 	  coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+											   	   	   	  coshHopVerHalf[band], +sinhHopVerHalf[band]);
+			}
+		);
+	}
+}
+
+template<bool TD, CheckerboardMethod CB>
+template<class RightMultiply, class LeftMultiply>
+void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+    //submatrix view helper for a 4N*4N matrix
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+    for (uint32_t l = 1; l <= m; ++l) {
+        MatCpx tempG(4*N, 4*N);
+        const MatCpx& oldG = g.slice(l);
+        //multiply e^(dtau/2 K) from the right
+        for (uint32_t row = 0; row < 4; ++row) {
+        	//block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
+        	rightMultiply(block(tempG, row, 0), block(oldG, row, 0), XBAND);
+        	rightMultiply(block(tempG, row, 1), block(oldG, row, 1), XBAND);
+        	rightMultiply(block(tempG, row, 2), block(oldG, row, 2), YBAND);
+        	rightMultiply(block(tempG, row, 3), block(oldG, row, 3), YBAND);
+        }
+        //multiply e^(-dtau/2 K) from the left
+        MatCpx& newG = g.slice(l);
+        for (uint32_t col = 0; col < 4; ++col) {
+        	//block(newG, 0, col) = propKx_half * block(tempG, 0, col);
+        	leftMultiply(block(newG, 0, col), block(tempG, 0, col), XBAND);
+        	leftMultiply(block(newG, 1, col), block(tempG, 1, col), XBAND);
+        	leftMultiply(block(newG, 2, col), block(tempG, 2, col), YBAND);
+        	leftMultiply(block(newG, 3, col), block(tempG, 3, col), YBAND);
+        }
+    }
+#undef block
 }
