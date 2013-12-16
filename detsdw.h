@@ -56,7 +56,11 @@ public:
     virtual void sweepSimple();
     virtual void sweepSimpleThermalization();
 
-    //return a copy of all the Green's function matrices
+    //Perform the correction of the Green's function to ensure an effectively symmetric Trotter decomposition.
+    //This should be done before measuerements.
+    virtual void shiftGreenSymmetric();
+
+    //return a copy of all the Green's function matrices,
     virtual CubeCpx get_green();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
@@ -282,10 +286,14 @@ protected:
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
     							  const Matrix& A, Band band, int sign);
     //functions called by the above:
-    void cb_assaad_applyBondFactorsLeft(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
-    void cb_assaad_applyBondFactorsRight(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
-    void cb_santos_applyBondFactorsLeft(MatCpx& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
-    void cb_santos_applyBondFactorsRight(MatCpx& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
+    template<class Matrix>
+    void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
+    template<class Matrix>
+    void cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
+    template<class Matrix>
+    void cb_santos_applyBondFactorsLeft(Matrix& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
+    template<class Matrix>
+    void cb_santos_applyBondFactorsRight(Matrix& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result
@@ -303,12 +311,15 @@ protected:
 
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1) const;          //compute B-matrix using dense matrix products
 
-    //Perform the correction of the Green's function to ensure an effectively symmetric Trotter decomposition.
-    //This should be done before measuerements.
-    void shiftGreenSymmetric();
+
     //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
     //on the CheckerboardMethod
     template<class RightMultiply, class LeftMultiply> void shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
+    //these template functions implement those functors, they need to be template to work with armadillo submatrices
+//    /*template<class Matrix>*/ struct shiftGreenSymmetric_impl_r_cb_none;
+//    /*template<class Matrix>*/ struct shiftGreenSymmetric_impl_l_cb_none;
+
+
 
     virtual void updateInSlice(uint32_t timeslice);
     //this one does some adjusting of the box size from which new fields are chosen:

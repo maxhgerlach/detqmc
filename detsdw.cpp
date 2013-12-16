@@ -311,6 +311,9 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::measure() {
     timing.start("sdw-measure");
+
+    shiftGreenSymmetric();
+
     Phi meanPhi;
     meanPhi[0] = averageWholeSystem(phi0, 0.0);
     meanPhi[1] = averageWholeSystem(phi1, 0.0);
@@ -723,8 +726,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 //neigh == YNEIGH:
 //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
 //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
-template<bool TD, CheckerboardMethod CB> inline
-void DetSDW<TD,CB>::cb_santos_applyBondFactorsLeft(MatCpx& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix>
+void DetSDW<TD,CB>::cb_santos_applyBondFactorsLeft(Matrix& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
 	assert(subgroup == 0 or subgroup == 1);
 	assert(neigh == XPLUS or neigh == YPLUS);
 	arma::Row<cpx> new_row_i(N);
@@ -793,8 +797,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 //   j = i + XPLUS
 //   k = i + YPLUS
 //   l = k + XPLUS
-template<bool TD, CheckerboardMethod CB> inline
-void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix>
+void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
 	assert(subgroup == 0 or subgroup == 1);
 	arma::Row<cpx> new_row_i(N);
 	arma::Row<cpx> new_row_j(N);
@@ -888,8 +893,9 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 //neigh == YNEIGH:
 //   subgroup == 0:  bonds (i_x, 2*i_y)--(i_x, 2*i_y + 1)
 //   subgroup == 1:  bonds (i_x, 2*i_y + 1)--(i_x, 2*i_y + 2)
-template<bool TD, CheckerboardMethod CB> inline
-void DetSDW<TD,CB>::cb_santos_applyBondFactorsRight(MatCpx& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix>
+void DetSDW<TD,CB>::cb_santos_applyBondFactorsRight(Matrix& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
 	assert(subgroup == 0 or subgroup == 1);
 	assert(neigh == XPLUS or neigh == YPLUS);
 	arma::Col<cpx> new_col_i(N);
@@ -959,8 +965,9 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 //   j = i + XPLUS
 //   k = i + YPLUS
 //   l = k + XPLUS
-template<bool TD, CheckerboardMethod CB> inline
-void DetSDW<TD,CB>::cb_assaad_applyBondFactorsRight(MatCpx& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+template<bool TD, CheckerboardMethod CB>
+template<class Matrix>
+void DetSDW<TD,CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
 	assert(subgroup == 0 or subgroup == 1);
 	arma::Col<cpx> new_col_i(N);
 	arma::Col<cpx> new_col_j(N);
@@ -1953,76 +1960,107 @@ CubeCpx DetSDW<TD,CB>::get_green() {
 }
 
 
-
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::shiftGreenSymmetric() {
+	typedef arma::subview<cpx> SubMatCpx;			//don't do references or const-references of this type
 	if (CB == CB_NONE) {
 		//non-checkerboard
 		shiftGreenSymmetric_impl(
 			//rightMultiply
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input * propK_half_inv[band];
 			},
 			//leftMultiply
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = propK_half[band] * input;
 			}
 		);
 	}
+	// unclear to me: why do I need to explicitly qualify 'this->' in the lambdas?
 	else if (CB == CB_SANTOS) {
 		shiftGreenSymmetric_impl(
 			//rightMultiply
 			// output and input are NxN blocks of a complex matrix
 			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
 			// to the right of input and stores the result in output
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input;			//copy
-				cb_santos_applyBondFactorsRight(output, YPLUS, 1, coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				cb_santos_applyBondFactorsRight(output, XPLUS, 1, coshHopHorHalf[band], +sinhHopHorHalf[band]);
-				cb_santos_applyBondFactorsRight(output, YPLUS, 0, coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				cb_santos_applyBondFactorsRight(output, XPLUS, 0, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+				this->cb_santos_applyBondFactorsRight(output, YPLUS, 1, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_santos_applyBondFactorsRight(output, XPLUS, 1, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+				this->cb_santos_applyBondFactorsRight(output, YPLUS, 0, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_santos_applyBondFactorsRight(output, XPLUS, 0, coshHopHorHalf[band], +sinhHopHorHalf[band]);
 			},
 			//leftMultiply
 			// output and input are NxN blocks of a complex matrix
 			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
 			// to the left of input and stores the result in output
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input;			//copy
-				cb_santos_applyBondFactorsLeft(output, XPLUS, 0, coshHopHorHalf[band], -sinhHopHorHalf[band]);
-				cb_santos_applyBondFactorsLeft(output, YPLUS, 0, coshHopVerHalf[band], -sinhHopVerHalf[band]);
-				cb_santos_applyBondFactorsLeft(output, XPLUS, 1, coshHopHorHalf[band], -sinhHopHorHalf[band]);
-				cb_santos_applyBondFactorsLeft(output, YPLUS, 1, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+				this->cb_santos_applyBondFactorsLeft(output, XPLUS, 0, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+				this->cb_santos_applyBondFactorsLeft(output, YPLUS, 0, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+				this->cb_santos_applyBondFactorsLeft(output, XPLUS, 1, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+				this->cb_santos_applyBondFactorsLeft(output, YPLUS, 1, coshHopVerHalf[band], -sinhHopVerHalf[band]);
 			}
 		);
 	}
-	else if (CB == CB_ASSAAD or CB == CB_ASSAAD_BERG) {
+	else if (CB == CB_ASSAAD) {
 		shiftGreenSymmetric_impl(
 			//rightMultiply
 			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
 			// to the right of input and stores the result in output
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input;      //copy
-				cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
-														   coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-														   coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+																 coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+														   	   	 coshHopVerHalf[band], +sinhHopVerHalf[band]);
 			},
 			//leftMultiply
 			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
+			// this effectively multiplies e^{- dtau K^band_b / 2} e^{- dtau K^band_a / 2} * [Input]
 			// to the left of input and stores the result in output
-			[this](MatCpx& output, const MatCpx& input, Band band) -> void {
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input;      //copy
-				cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-											 	 	 	  coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
-											   	   	   	  coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
+											 	 	 	  	  	coshHopVerHalf[band], -sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
+																coshHopVerHalf[band], -sinhHopVerHalf[band]);
+			}
+		);
+	}
+	else if (CB == CB_ASSAAD_BERG) {
+		shiftGreenSymmetric_impl(
+			//rightMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+			// to the right of input and stores the result in output
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+				output = input;      //copy
+				this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+																 coshHopVerHalf[band], +sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+														   	   	 coshHopVerHalf[band], +sinhHopVerHalf[band]);
+			},
+			//leftMultiply
+			// output and input are NxN blocks of a complex matrix
+			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2} * [Input]
+			// to the left of input and stores the result in output
+			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+				output = input;      //copy
+				this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
+											 	 	 	  	  	coshHopVerHalf[band], -sinhHopVerHalf[band]);
+				this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
+																coshHopVerHalf[band], -sinhHopVerHalf[band]);
 			}
 		);
 	}
 }
 
+//RightMultiply and LeftMultiply should be functors for complex matrix subviews
+//they take (output, input, [BAND]).  Armadillo submatrix views apparently do not have
+//any const correctness, and passing them by reference makes no sense (they are rich
+//references in a sense)
 template<bool TD, CheckerboardMethod CB>
 template<class RightMultiply, class LeftMultiply>
 void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
