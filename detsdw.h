@@ -249,12 +249,17 @@ protected:
     //to submatrices as well
     //"cb" = "checkerboard"
     //Reminder: These do not include chemical potential
+    //if invertedCbOrder = false: use the following checkerbaord decomposition:
+    //    e^{+-K} = e^{+-K_b} e^{+-K_a}
+    //if invertedCbOrder = true: use the following checkerbaord decomposition:
+    //    e^{+-K} = e^{+-K_a} e^{+-K_b}
+    //for the symmetric checkerboard break-up (CB_ASSAAD_BERG) this is ignored
     // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to E^(sign * dtau * K_band) * A
     template <class Matrix>
-    MatCpx cbLMultHoppingExp(const Matrix& A, Band band, int sign);
+    MatCpx cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
     template <class Matrix>
-    MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign);
+    MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
 
     //cbLMultHoppingExp and cbRMultHoppingExp need separate implementations for each CheckerboardMethod,
     //this cannot be realized by a direct partial template specialization, but we need to have a proxy
@@ -263,28 +268,28 @@ protected:
     //http://stackoverflow.com/questions/1501357/template-specialization-of-particular-members
     template <class Matrix>
     MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-    							  const Matrix& A, Band band, int sign);
+    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     //functions called by the above:
     template<class Matrix>
     void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
