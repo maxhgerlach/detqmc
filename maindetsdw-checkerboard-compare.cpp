@@ -21,7 +21,7 @@
 
 
 
-ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t s_, std::string bc_) {
+ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t s_, std::string bc_, uint32_t L_) {
 	ModelParams params;
 
 #define SET(par, val) { \
@@ -39,7 +39,7 @@ ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t
 	SET(tyhor, 0.5);
 	SET(tyver, 1.0);
 	SET(mu, 0.5);
-	SET(L, 4);
+	SET(L, L_);
 	SET(d, 2);
 	SET(m, m_);
 	SET(dtau, dtau_);
@@ -54,7 +54,7 @@ ModelParams setupParameters(bool checkerboard_, uint32_t m_, num dtau_, uint32_t
 
 
 int main() {
-	std::vector<std::string> bc_values = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
+	//std::vector<std::string> bc_values = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
 //	std::vector<num> dtau_values = {0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5};
 	std::vector<num> dtau_values = {0.5, 0.4, 0.3, 0.2, 0.15, 0.1, 0.05, 0.01};
 	//std::vector<std::string> bc_values = {"apbc-x"};
@@ -62,6 +62,7 @@ int main() {
 	//std::vector<std::string> bc_values = {"apbc-x", "pbc"};
 //	std::vector<num> dtau_values = {0.5, 0.4, 0.3, 0.2, 0.15};
 	//std::vector<num> dtau_values = {0.1};
+	std::vector<std::string> bc_values = {"pbc", "apbc-xy"};
 	std::vector<uint32_t> s_values = {10, 1};
 	std::vector<uint32_t> L_values = {4, 6, 8, 10};
 	num beta = 10;
@@ -72,7 +73,7 @@ int main() {
 	}
 
 	std::cout << "CheckerboardMethdod: "
-			<< setupParameters(true, 10, 0.1, 1, "pbc").checkerboardMethod
+			<< setupParameters(true, 10, 0.1, 1, "pbc", 4).checkerboardMethod
 			<< "\n"
 			<< std::endl;
 	for (auto L : L_values) {
@@ -88,13 +89,13 @@ int main() {
 						// create one instance with checkerboard decomposition and one without
 						// same parameters and same rng seed
 
-						ModelParams pars_cb = setupParameters(true, m, dtau, s, bc);
+						ModelParams pars_cb = setupParameters(true, m, dtau, s, bc, L);
 						RngWrapper rng_cb(5555);
 						typedef DetSDW<false, CB_ASSAAD_BERG> Cb;
 						std::unique_ptr<DetModel> cb_model_ptr = createDetSDW(rng_cb, pars_cb);
 						std::unique_ptr<Cb> sdw_cb = std::unique_ptr<Cb>(dynamic_cast<Cb*>(cb_model_ptr.release()));
 
-						ModelParams pars_reg = setupParameters(false, m, dtau, s, bc);
+						ModelParams pars_reg = setupParameters(false, m, dtau, s, bc, L);
 						RngWrapper rng_reg(5555);
 						typedef DetSDW<false, CB_NONE> Reg;
 						std::unique_ptr<DetModel> reg_model_ptr = createDetSDW(rng_reg, pars_reg);
