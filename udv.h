@@ -59,7 +59,7 @@ UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
     arma::qr(result.U, result.V, mat);
     timing.stop("qr");
     //normalize rows of V to obtain scales in d:
-    result.d = arma::Col<Val>(mat.n_rows);
+    result.d.set_size(mat.n_rows);
     for (uint32_t rown = 0; rown < mat.n_rows; ++rown) {
         const Val norm = arma::norm(result.V.row(rown), 2);
         result.d[rown] = norm;
