@@ -320,6 +320,16 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
 {
+	//init Green's functions with zeros
+	for(uint32_t gc = 0; gc < GC; ++gc) {
+            green[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+            if (TimeDisplaced) {
+                greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+                greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+            }
+	}
+
+
 //  // Default functors for multiplication with B-matrices
 //  for_each_gc( [this](uint32_t gc) {
 //      leftMultiplyBmat[gc] = [this, gc](const MatV A, uint32_t k2, uint32_t k1) -> MatV {

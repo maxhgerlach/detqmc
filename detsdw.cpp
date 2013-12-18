@@ -166,11 +166,6 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         // "safe default"
         bc = PBC;
     }
-    g = CubeCpx(4*N,4*N, m+1);
-    if (pars.timedisplaced) {
-        gFwd = CubeCpx(4*N,4*N, m+1);
-        gBwd = CubeCpx(4*N,4*N, m+1);
-    }
     setupRandomPhi();
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
