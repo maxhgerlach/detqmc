@@ -18,6 +18,10 @@
 #include "timing.h"
 #include "checkarray.h"
 
+#if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
+#include "dumapp.h"
+#endif
+
 //initial values for field components chosen from this range:
 const num PhiLow = -1;
 const num PhiHigh = 1;
@@ -322,7 +326,7 @@ void DetSDW<TD,CB>::measure() {
     occY.zeros(N);
 //    occXimag.zeros(N);
 //    occYimag.zeros(N);
-#pragma omp parallel for
+//#pragma omp parallel for
     for (uint32_t l = 1; l <= m; ++l) {
         for (uint32_t i = 0; i < N; ++i) {
             occX[i] += std::real(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
@@ -1088,7 +1092,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
-    #pragma omp parallel for
+//    #pragma omp parallel for
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
@@ -1157,7 +1161,7 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
-    #pragma omp parallel for
+//    #pragma omp parallel for
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(dtau*V) matrix
@@ -1230,7 +1234,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
-    #pragma omp parallel for
+//    #pragma omp parallel for
     for (uint32_t row = 0; row < 4; ++row) {
             using arma::diagmat;
             //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
@@ -1297,7 +1301,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 
     MatCpx result(4*N, 4*N);
 
-    #pragma omp parallel for
+//    #pragma omp parallel for
     for (uint32_t row = 0; row < 4; ++row) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(+dtau*V) matrix
@@ -1429,7 +1433,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
         //site, site+N, site+2N, site+3N
         //Compute the values of these rows [O(N)]:
         checkarray<VecCpx, 4> rows;
-#pragma omp parallel for
+//#pragma omp parallel for
         for (uint32_t r = 0; r < 4; ++r) {
         	//TODO: Here are some unnecessary operations: deltanonzero contains many repeated
         	//elements, and even some zeros
@@ -1577,7 +1581,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
             // [O(N^2)]
             MatCpx gTimesInvRows(4*N, 4*N);
             const auto& G = g.slice(timeslice);
-#pragma omp parallel for
+//#pragma omp parallel for
             for (uint32_t col = 0; col < 4*N; ++col) {
                 for (uint32_t row = 0; row < 4*N; ++row) {
                     gTimesInvRows(row, col) = G(row, site) * rows[0][col]

@@ -19,6 +19,11 @@ extern "C" {
 #include <cstdlib>
 #include "tools.h"
 
+#if defined (MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
+#include "dumapp.h"
+#endif
+
+
 std::string RngWrapper::getName() const {
     return "DSFMT " + numToString(DSFMT_MEXP);
 }
