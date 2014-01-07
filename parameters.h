@@ -32,7 +32,7 @@ struct ModelParams {
     std::string model;
     bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
-    std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" [or "assaad_berg"]
+    std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
     num t;      //Hubbard
     num U;      //Hubbard
     num r;      //SDW
