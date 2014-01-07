@@ -240,21 +240,6 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 //
-//    Band bands[2] = {XBAND, YBAND};
-//    for (Band band : bands) {
-//    	//debug-tests ....
-//        MatCpx arand(arma::randn(N,N), arma::zeros(N,N));
-//        debugSaveMatrixCpx(arand, "arand" + bandstr(band));
-//        MatCpx cbL_arand = cbLMultHoppingExp(arand, band, -1);
-//        debugSaveMatrixCpx(cbL_arand, "cblarand" + bandstr(band));
-//        MatCpx cbR_arand = cbRMultHoppingExp(arand, band, -1);
-//        debugSaveMatrixCpx(cbR_arand, "cbrarand" + bandstr(band));
-//        MatCpx unity(arma::eye(N,N), arma::zeros(N,N));
-//        MatCpx cbL_unity = cbLMultHoppingExp(unity, band, -1);
-//        debugSaveMatrixCpx(cbL_unity, "cblunity" + bandstr(band));
-//        MatCpx cbR_unity = cbRMultHoppingExp(unity, band, -1);
-//        debugSaveMatrixCpx(cbR_unity, "cbrunity" + bandstr(band));
-//    }
 }
 
 template<bool TD, CheckerboardMethod CB>
@@ -621,14 +606,10 @@ void DetSDW<TD,CB>::setupPropK() {
                 k(site, neigh) -= hop;
             }
         }
-        std::string name = std::string("k") + (band == XBAND ? "x" : band == YBAND ? "y" : "error");
-        debugSaveMatrix(k, name);
         propK[band] = computePropagator(dtau, k);
 
         propK_half[band] = computePropagator(dtau / 2.0, k);
         propK_half_inv[band] = computePropagator(-dtau / 2.0, k);
-
-        debugSaveMatrix(propK[band], "prop" + name);
     }
 }
 
@@ -1974,11 +1955,6 @@ void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
     ++performedSweeps;
-}
-
-template<bool TD, CheckerboardMethod CB>
-CubeCpx DetSDW<TD,CB>::get_green() {
-	return g;
 }
 
 

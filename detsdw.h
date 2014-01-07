@@ -59,9 +59,6 @@ public:
     //Perform the correction of the Green's function to ensure an effectively symmetric Trotter decomposition.
     //This should be done before measuerements.
     virtual void shiftGreenSymmetric();
-
-    //return a copy of all the Green's function matrices,
-    virtual CubeCpx get_green();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
