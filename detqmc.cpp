@@ -297,10 +297,10 @@ void DetQMC::run() {
             }
             break;  //case
 
-        case M:
-        	++swCounter;
-        	bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
-
+        case M: {
+            ++swCounter;
+            bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
+            
             switch(greenUpdateType) {
             case GreenUpdateTypeSimple:
                 replica->sweepSimple(takeMeasurementNow);
@@ -331,11 +331,12 @@ void DetQMC::run() {
                 finishedStage();
             }
             break;  //case
+        }
 
         case F:
             break;  //case
 
-        }
+        }  //switch
     }
 }
 
