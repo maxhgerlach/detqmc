@@ -2353,3 +2353,16 @@ void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMu
 	}
 #undef block
 }
+
+
+
+//explicit template instantiations:
+template class DetSDW<true,CB_NONE>;
+template class DetSDW<false,CB_NONE>;
+template class DetSDW<true,CB_SANTOS>;
+template class DetSDW<false,CB_SANTOS>;
+template class DetSDW<true,CB_ASSAAD>;
+template class DetSDW<false,CB_ASSAAD>;
+template class DetSDW<true,CB_ASSAAD_BERG>;
+template class DetSDW<false,CB_ASSAAD_BERG>;
+
