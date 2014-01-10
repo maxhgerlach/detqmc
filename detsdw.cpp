@@ -201,6 +201,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     using std::cref;
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
+    		ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
             ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
             ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
             ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
