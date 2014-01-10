@@ -56,7 +56,7 @@ public:
 
     //Perform the correction of the Green's function for the current timeslice to ensure an
     //effectively symmetric Trotter decomposition.
-    //This should be done before measuerements.
+    //This should be done before measurements.
     virtual void shiftGreenSymmetric();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
