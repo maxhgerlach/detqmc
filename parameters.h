@@ -74,7 +74,7 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & timedisplaced & checkerboard
+        ar & model & timedisplaced & checkerboard & checkerboardMethod
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
