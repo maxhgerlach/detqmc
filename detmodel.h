@@ -461,7 +461,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
         Callable_GC_k2_k1 computeBmat) {
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
-            green[gc].slice(timeslice) =
+            green[gc] =
                     arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
                                                   computeBmat(gc, m, timeslice));
         });
@@ -655,7 +655,7 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 {
     timing.start("wrapDownGreen");
 
-    green[gc] = leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc].slice(k), k, k-1),
+    green[gc] = leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc], k, k-1),
     								k, k-1);
     if (TimeDisplaced) {
 //        greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv(gc, greenFwd[gc].slice(k), k, k-1);
@@ -903,7 +903,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
     //we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
     //The latter is given in storage slice n from the last sweep.
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunctionUdV(gc, m, eye_UdV, UdVStorage[gc][n]);
+        updateGreenFunctionUdV(gc, eye_UdV, UdVStorage[gc][n]);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
         UdVStorage[gc][n] = eye_UdV;
@@ -938,6 +938,10 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceDownGreen(rightMultiplyBmat, l, gc);
         }
+    }
+
+    if (takeMeasurements) {
+        finishMeasurement();
     }
 }
 
