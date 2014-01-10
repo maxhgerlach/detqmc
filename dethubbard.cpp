@@ -90,18 +90,19 @@ DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
         proptmat(N,N),
         auxfield(N, m+1),                //m+1 columns of N rows
         gUp(green[GreenCompSpinUp]), gDn(green[GreenCompSpinDown]),
-        gFwdUp(greenFwd[GreenCompSpinUp]), gFwdDn(greenFwd[GreenCompSpinDown]),
-        gBwdUp(greenBwd[GreenCompSpinUp]), gBwdDn(greenBwd[GreenCompSpinDown]),
+        // gFwdUp(greenFwd[GreenCompSpinUp]), gFwdDn(greenFwd[GreenCompSpinDown]),
+        // gBwdUp(greenBwd[GreenCompSpinUp]), gBwdDn(greenBwd[GreenCompSpinDown]),
         UdVStorageUp(UdVStorage[GreenCompSpinUp]), UdVStorageDn(UdVStorage[GreenCompSpinDown]),
+        sum_GiiUp(), sum_GiiDn(), sum_GneighUp(), sum_GneighDn(), sum_GiiUpDn(),
         occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
         occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m)
 {
-    gUp = CubeNum(N,N,m+1);
-    gDn = CubeNum(N,N,m+1);
-    gFwdUp = CubeNum(N,N,m+1);
-    gFwdDn = CubeNum(N,N,m+1);
-    gBwdUp = CubeNum(N,N,m+1);
-    gBwdDn = CubeNum(N,N,m+1);
+    gUp = MatNum(N,N);
+    gDn = MatNum(N,N);
+    // gFwdUp = MatNum(N,N,m+1);
+    // gFwdDn = MatNum(N,N,m+1);
+    // gBwdUp = MatNum(N,N,m+1);
+    // gBwdDn = MatNum(N,N,m+1);
 
     setupRandomAuxfield();
     if (CB) {
@@ -129,16 +130,16 @@ DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
     obsVector += VectorObservable(cref(zcorr), N, "spinzCorrelationFunction", "zcorr");
 
     if (timedisplaced) {
-        obsScalar += ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
-        if (d == 2) {
-            for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-                gf_dt[timeslice - 1] = dtau * timeslice;
-            }
-            gf_dt.reshape(gf_dt.n_elem, 1);     //column vector
-            gf.zeros(gf_dt.n_elem);
+        // obsScalar += ScalarObservable(cref(suscq0), "susceptibilityQ0", "chi_q0");
+        // if (d == 2) {
+        //     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+        //         gf_dt[timeslice - 1] = dtau * timeslice;
+        //     }
+        //     gf_dt.reshape(gf_dt.n_elem, 1);     //column vector
+        //     gf.zeros(gf_dt.n_elem);
 
-            obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
-        }
+        //     obsKeyValue += KeyValueObservable(cref(gf), gf_dt, "dt", "greenFourier", "gf");
+        // }
     }
 }
 
@@ -522,129 +523,254 @@ uint32_t DetHubbard<TD,CB>::getSystemN() const {
 //}
 
 template <bool TD, bool CB>
-void DetHubbard<TD,CB>::measure() {
-    //used to measure occupation:
-    num sum_GiiUp = 0;
-    num sum_GiiDn = 0;
-    //used to measure kinetic energy:
-    num sum_GneighUp = 0;
-    num sum_GneighDn = 0;
-//  //used to measure double occupancy / potential energy:
-    num sum_GiiUpDn = 0;
-    //FORMULA-TEST -- made no difference
-//  num sum_doubleoccupancy = 0;
-    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-        for (uint32_t site = 0; site < N; ++site) {
-            //use diagonal elements of Green functions:
-            sum_GiiUp += gUp(site, site, timeslice);
-            sum_GiiDn += gDn(site, site, timeslice);
-            sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
-            //use nearest neighbor elements of Green functions:
-//          for (uint32_t neighIndex = 0; neighIndex < z; ++neighIndex) {
-            for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(site); ++p) {
-                uint32_t neigh = *p;
-                sum_GneighUp += gUp(site, neigh, timeslice);
-                sum_GneighDn += gDn(site, neigh, timeslice);
-            }
-            //FORMULA-TEST -- made no difference
-//          sum_doubleoccupancy += (1 - gUp(site,site, timeslice))
-//                               * (1 - gDn(site,site, timeslice));
-        }
+void DetHubbard<TD,CB>::initMeasurements() {
+	//set observables zero
+	occUp = 0;
+	occDn = 0;
+	occTotal = 0;
+	localMoment = 0;
+	ePotential = 0;
+	eKinetic = 0;
+	eTotal = 0;
+	zcorr.zeros();
+
+	//set observable helpers zero
+    sum_GiiUp = 0;
+    sum_GiiDn = 0;
+    sum_GneighUp = 0;
+    sum_GneighDn = 0;
+    sum_GiiUpDn = 0;
+}
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::measure(uint32_t timeslice) {
+    (void)timeslice;
+    
+	for (uint32_t site = 0; site < N; ++site) {
+		//use diagonal elements of Green functions:
+		sum_GiiUp += gUp(site, site);
+		sum_GiiDn += gDn(site, site);
+		sum_GiiUpDn += gUp(site, site) * gDn(site, site);
+		//use nearest neighbor elements of Green functions:
+		for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(site); ++p) {
+			uint32_t neigh = *p;
+			sum_GneighUp += gUp(site, neigh);
+			sum_GneighDn += gDn(site, neigh);
+		}
+	}
+
+	//vector observable zcorr
+	num gUp_00 = gUp(0,0);
+	num gDn_00 = gDn(0,0);
+	zcorr[0] += -2.0 * gUp_00 * gDn_00 + gUp_00 + gDn_00;
+	for (uint32_t siteJ = 1; siteJ < N; ++siteJ) {
+		num gUp_0j = gUp(0,siteJ);
+		num gDn_0j = gDn(0,siteJ);
+		num gUp_jj = gUp(siteJ,siteJ);
+		num gDn_jj = gDn(siteJ,siteJ);
+		using std::pow;
+		zcorr[siteJ] += gUp_00 * gUp_jj - gUp_00 * gDn_jj + gDn_00 * gDn_jj - gDn_00 * gUp_jj
+				      - pow(gUp_0j, 2) - pow(gDn_0j, 2);
+	}
+
+	//susceptibility -- for revival at some later point in time
+	if (timedisplaced) {
+//		uint32_t mm = m;        // I don't understand why m can't be captured for the lambda without this line
+//		auto sumTrace = [this, mm](const CubeNum& green) -> num {
+//			num sum = 0;
+//			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
+//				sum += arma::trace(green.slice(timeslice));
+//			}
+//			return sum;
+//		};
+//		num sumTrGreenUp = sumTrace(gUp);
+//		num sumTrGreenDn = sumTrace(gDn);
+//		auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) -> num {
+//			num sum = 0;
+//			for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
+//				sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
+//			}
+//			return sum;
+//		};
+//		num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
+//		num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
+//		num trGreenUp_0 = arma::trace(gUp.slice(m));            //g(beta) = g(0)
+//		num trGreenDn_0 = arma::trace(gDn.slice(m));
+//		suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
+//				- (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
+//		);
+	}
+
+	//for revival at some later point
+    if (timedisplaced and d == 2) {
+//        //compute the Fourier transform of the imaginary time-displaced forward Green function for
+//        //k = (pi/3, 2*pi/3) at some preset values of tau
+//        const num kx = M_PI / 3.0;
+//        const num ky = 2.0 * M_PI / 3.0;
+//        for (uint32_t timeslice = 1; timeslice < m; ++timeslice) {
+////          std::complex<num> sum(0,0);
+//            num sum = 0.0;
+//            for (uint32_t siteI = 0; siteI < N; ++siteI) {
+//                const num yI = siteI / L;
+//                const num xI = siteI % L;
+//                for (uint32_t siteJ = 0; siteJ < N; ++siteJ) {
+//                    const num yJ = siteJ / L;
+//                    const num xJ = siteJ % L;
+////                  const std::complex<num> expFactor =
+////                          std::exp(std::complex<num>(0, kx * (xJ - xI) + ky * (yJ - yI)));
+//                    const num cosFactor = std::cos(kx * (xJ - xI) + ky * (yJ - yI));
+//
+////                  sum += expFactor * gFwdUp(siteI, siteJ, timeslice);
+////                  sum += expFactor * gFwdDn(siteI, siteJ, timeslice);
+//                    sum += cosFactor * gFwdUp(siteI, siteJ, timeslice);
+//                    sum += cosFactor * gFwdDn(siteI, siteJ, timeslice);
+//                }
+//            }
+//            sum /= num(N);
+//            gf[timeslice - 1] = sum;
+//        }
     }
+}
+
+template <bool TD, bool CB>
+void DetHubbard<TD,CB>::finishMeasurements() {
     occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
     occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
     occTotal = occUp + occDn;
-
-    //FORMULA-TEST -- made no difference
-//  std::cout << (1.0 / (N*m)) * sum_doubleoccupancy;
     occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
-//  std::cout << " vs. " << occDouble << std::endl;
-
     localMoment = occTotal - 2*occDouble;
-
-//  ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
-//  ePotential = U * ( 0.25 + (1.0 / (N*m)) * (sum_GiiUpDn - 0.5 * (sum_GiiUp + sum_GiiDn)) );
     ePotential = U * occDouble;
-
-    //Note: chemical potential term included in kinetic energy:
     eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) - mu * occTotal;
     eTotal = eKinetic + ePotential;
 
-    //susceptibility
-    if (timedisplaced) {
-        uint32_t mm = m;        // I don't understand why m can't be captured for the lambda without this line
-        auto sumTrace = [this, mm](const CubeNum& green) -> num {
-            num sum = 0;
-            for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
-                sum += arma::trace(green.slice(timeslice));
-            }
-            return sum;
-        };
-        num sumTrGreenUp = sumTrace(gUp);
-        num sumTrGreenDn = sumTrace(gDn);
-        auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) -> num {
-            num sum = 0;
-            for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
-                sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
-            }
-            return sum;
-        };
-        num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
-        num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
-        num trGreenUp_0 = arma::trace(gUp.slice(m));            //g(beta) = g(0)
-        num trGreenDn_0 = arma::trace(gDn.slice(m));
-        suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
-                - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
-        );
-    }
-
-    // vector observables
-    zcorr.zeros();
-    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-        num gUp_00 = gUp(0,0, timeslice);
-        num gDn_00 = gDn(0,0, timeslice);
-        zcorr[0] += -2.0 * gUp_00 * gDn_00 + gUp_00 + gDn_00;
-        for (uint32_t siteJ = 1; siteJ < N; ++siteJ) {
-            num gUp_0j = gUp(0,siteJ,     timeslice);
-            num gDn_0j = gDn(0,siteJ,     timeslice);
-            num gUp_jj = gUp(siteJ,siteJ, timeslice);
-            num gDn_jj = gDn(siteJ,siteJ, timeslice);
-            using std::pow;
-            zcorr[siteJ] += gUp_00 * gUp_jj - gUp_00 * gDn_jj + gDn_00 * gDn_jj - gDn_00 * gUp_jj
-                    - pow(gUp_0j, 2) - pow(gDn_0j, 2);
-        }
-    }
     zcorr /= num(m);
-
-    if (timedisplaced and d == 2) {
-        //compute the Fourier transform of the imaginary time-displaced forward Green function for
-        //k = (pi/3, 2*pi/3) at some preset values of tau
-        const num kx = M_PI / 3.0;
-        const num ky = 2.0 * M_PI / 3.0;
-        for (uint32_t timeslice = 1; timeslice < m; ++timeslice) {
-//          std::complex<num> sum(0,0);
-            num sum = 0.0;
-            for (uint32_t siteI = 0; siteI < N; ++siteI) {
-                const num yI = siteI / L;
-                const num xI = siteI % L;
-                for (uint32_t siteJ = 0; siteJ < N; ++siteJ) {
-                    const num yJ = siteJ / L;
-                    const num xJ = siteJ % L;
-//                  const std::complex<num> expFactor =
-//                          std::exp(std::complex<num>(0, kx * (xJ - xI) + ky * (yJ - yI)));
-                    const num cosFactor = std::cos(kx * (xJ - xI) + ky * (yJ - yI));
-
-//                  sum += expFactor * gFwdUp(siteI, siteJ, timeslice);
-//                  sum += expFactor * gFwdDn(siteI, siteJ, timeslice);
-                    sum += cosFactor * gFwdUp(siteI, siteJ, timeslice);
-                    sum += cosFactor * gFwdDn(siteI, siteJ, timeslice);
-                }
-            }
-            sum /= num(N);
-            gf[timeslice - 1] = sum;
-        }
-    }
 }
+
+
+//template <bool TD, bool CB>
+//void DetHubbard<TD,CB>::measure() {
+//    //used to measure occupation:
+//    num sum_GiiUp = 0;
+//    num sum_GiiDn = 0;
+//    //used to measure kinetic energy:
+//    num sum_GneighUp = 0;
+//    num sum_GneighDn = 0;
+////  //used to measure double occupancy / potential energy:
+//    num sum_GiiUpDn = 0;
+//    //FORMULA-TEST -- made no difference
+////  num sum_doubleoccupancy = 0;
+//    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+//        for (uint32_t site = 0; site < N; ++site) {
+//            //use diagonal elements of Green functions:
+//            sum_GiiUp += gUp(site, site, timeslice);
+//            sum_GiiDn += gDn(site, site, timeslice);
+//            sum_GiiUpDn += gUp(site, site, timeslice) * gDn(site, site, timeslice);
+//            //use nearest neighbor elements of Green functions:
+////          for (uint32_t neighIndex = 0; neighIndex < z; ++neighIndex) {
+//            for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(site); ++p) {
+//                uint32_t neigh = *p;
+//                sum_GneighUp += gUp(site, neigh, timeslice);
+//                sum_GneighDn += gDn(site, neigh, timeslice);
+//            }
+//            //FORMULA-TEST -- made no difference
+////          sum_doubleoccupancy += (1 - gUp(site,site, timeslice))
+////                               * (1 - gDn(site,site, timeslice));
+//        }
+//    }
+//    occUp = 1.0 - (1.0 / (N*m)) * sum_GiiUp;
+//    occDn = 1.0 - (1.0 / (N*m)) * sum_GiiDn;
+//    occTotal = occUp + occDn;
+//
+//    //FORMULA-TEST -- made no difference
+////  std::cout << (1.0 / (N*m)) * sum_doubleoccupancy;
+//    occDouble = 1.0 + (1.0 / (N*m)) * (sum_GiiUpDn - sum_GiiUp - sum_GiiDn);
+////  std::cout << " vs. " << occDouble << std::endl;
+//
+//    localMoment = occTotal - 2*occDouble;
+//
+////  ePotential = (U / (N*m)) * (sum_GiiUpDn + 0.5 * sum_GiiUp + 0.5 * sum_GiiDn);
+////  ePotential = U * ( 0.25 + (1.0 / (N*m)) * (sum_GiiUpDn - 0.5 * (sum_GiiUp + sum_GiiDn)) );
+//    ePotential = U * occDouble;
+//
+//    //Note: chemical potential term included in kinetic energy:
+//    eKinetic   = (t / (N*m)) * (sum_GneighUp + sum_GneighDn) - mu * occTotal;
+//    eTotal = eKinetic + ePotential;
+//
+//    //susceptibility
+//    if (timedisplaced) {
+//        uint32_t mm = m;        // I don't understand why m can't be captured for the lambda without this line
+//        auto sumTrace = [this, mm](const CubeNum& green) -> num {
+//            num sum = 0;
+//            for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
+//                sum += arma::trace(green.slice(timeslice));
+//            }
+//            return sum;
+//        };
+//        num sumTrGreenUp = sumTrace(gUp);
+//        num sumTrGreenDn = sumTrace(gDn);
+//        auto sumProdTrace = [this, mm](const CubeNum& green1, const CubeNum& green2) -> num {
+//            num sum = 0;
+//            for (uint32_t timeslice = 1; timeslice <= mm; ++timeslice) {
+//                sum += arma::trace(green1.slice(timeslice) * green2.slice(timeslice));
+//            }
+//            return sum;
+//        };
+//        num sumTrGreenDisplacedUp = sumProdTrace(gBwdUp, gFwdUp);
+//        num sumTrGreenDisplacedDn = sumProdTrace(gBwdDn, gFwdDn);
+//        num trGreenUp_0 = arma::trace(gUp.slice(m));            //g(beta) = g(0)
+//        num trGreenDn_0 = arma::trace(gDn.slice(m));
+//        suscq0 = (1.0 / num(N)) * dtau * ( (trGreenUp_0 - trGreenDn_0) * (sumTrGreenUp - sumTrGreenDn)
+//                - (sumTrGreenDisplacedUp + sumTrGreenDisplacedDn)
+//        );
+//    }
+//
+//    // vector observables
+//    zcorr.zeros();
+//    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+//        num gUp_00 = gUp(0,0, timeslice);
+//        num gDn_00 = gDn(0,0, timeslice);
+//        zcorr[0] += -2.0 * gUp_00 * gDn_00 + gUp_00 + gDn_00;
+//        for (uint32_t siteJ = 1; siteJ < N; ++siteJ) {
+//            num gUp_0j = gUp(0,siteJ,     timeslice);
+//            num gDn_0j = gDn(0,siteJ,     timeslice);
+//            num gUp_jj = gUp(siteJ,siteJ, timeslice);
+//            num gDn_jj = gDn(siteJ,siteJ, timeslice);
+//            using std::pow;
+//            zcorr[siteJ] += gUp_00 * gUp_jj - gUp_00 * gDn_jj + gDn_00 * gDn_jj - gDn_00 * gUp_jj
+//                    - pow(gUp_0j, 2) - pow(gDn_0j, 2);
+//        }
+//    }
+//    zcorr /= num(m);
+//
+//    if (timedisplaced and d == 2) {
+//        //compute the Fourier transform of the imaginary time-displaced forward Green function for
+//        //k = (pi/3, 2*pi/3) at some preset values of tau
+//        const num kx = M_PI / 3.0;
+//        const num ky = 2.0 * M_PI / 3.0;
+//        for (uint32_t timeslice = 1; timeslice < m; ++timeslice) {
+////          std::complex<num> sum(0,0);
+//            num sum = 0.0;
+//            for (uint32_t siteI = 0; siteI < N; ++siteI) {
+//                const num yI = siteI / L;
+//                const num xI = siteI % L;
+//                for (uint32_t siteJ = 0; siteJ < N; ++siteJ) {
+//                    const num yJ = siteJ / L;
+//                    const num xJ = siteJ % L;
+////                  const std::complex<num> expFactor =
+////                          std::exp(std::complex<num>(0, kx * (xJ - xI) + ky * (yJ - yI)));
+//                    const num cosFactor = std::cos(kx * (xJ - xI) + ky * (yJ - yI));
+//
+////                  sum += expFactor * gFwdUp(siteI, siteJ, timeslice);
+////                  sum += expFactor * gFwdDn(siteI, siteJ, timeslice);
+//                    sum += cosFactor * gFwdUp(siteI, siteJ, timeslice);
+//                    sum += cosFactor * gFwdDn(siteI, siteJ, timeslice);
+//                }
+//            }
+//            sum /= num(N);
+//            gf[timeslice - 1] = sum;
+//        }
+//    }
+//}
 
 
 template <bool TD, bool CB>
@@ -812,8 +938,8 @@ inline num DetHubbard<TD,CB>::weightRatioSingleFlip(uint32_t site, uint32_t time
     num expUp   = exp(-2.0 * alpha * num(auxfield(site, timeslice)));
     num expDown = exp( 2.0 * alpha * num(auxfield(site, timeslice)));
 
-    num ratioUp   = 1.0 + (expUp   - 1.0) * (1.0 - gUp(site,site, timeslice));
-    num ratioDown = 1.0 + (expDown - 1.0) * (1.0 - gDn(site,site, timeslice));
+    num ratioUp   = 1.0 + (expUp   - 1.0) * (1.0 - gUp(site,site));
+    num ratioDown = 1.0 + (expDown - 1.0) * (1.0 - gDn(site,site));
 
 //  std::cout << ratioUp << " " << ratioDown << std::endl;
 
@@ -842,13 +968,17 @@ inline void DetHubbard<TD,CB>::updateGreenFunctionWithFlip(uint32_t site, uint32
     };
 
     using std::exp;
-    update(gUp.slice(timeslice), exp(-2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
-    update(gDn.slice(timeslice), exp(+2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
+    update(gUp, exp(-2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
+    update(gDn, exp(+2.0 * alpha * num(auxfield(site, timeslice))) - 1.0);
 }
 
 template <bool TD, bool CB>
-void DetHubbard<TD,CB>::sweepSimple() {
-    sweepSimple_skeleton(hubbardComputeBmat(this));
+void DetHubbard<TD,CB>::sweepSimple(bool takeMeasurements) {
+    sweepSimple_skeleton(takeMeasurements,
+ 						 hubbardComputeBmat(this),
+						 [this]() {this->initMeasurements();},
+						 [this](uint32_t timeslice) {this->measure(timeslice);},
+						 [this]() {this->finishMeasurements();});
 }
 
 template <bool TD, bool CB>
@@ -857,9 +987,13 @@ void DetHubbard<TD,CB>::sweepSimpleThermalization() {
 }
 
 template <bool TD, bool CB>
-void DetHubbard<TD,CB>::sweep() {
-    sweep_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
-                   hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
+void DetHubbard<TD,CB>::sweep(bool takeMeasurements) {
+    sweep_skeleton(takeMeasurements,
+    			   hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
+                   hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this),
+                   [this]() {this->initMeasurements();},
+                   [this](uint32_t timeslice) {this->measure(timeslice);},
+                   [this]() {this->finishMeasurements();});
 }
 
 template <bool TD, bool CB>
