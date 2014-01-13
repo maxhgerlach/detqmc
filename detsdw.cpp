@@ -296,7 +296,7 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::measure() {
     timing.start("sdw-measure");
 
-    shiftGreenSymmetric();
+//    shiftGreenSymmetric();
 
     Phi meanPhi;
     meanPhi[0] = averageWholeSystem(phi0, 0.0);
