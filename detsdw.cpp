@@ -146,7 +146,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         phiDelta(InitialPhiDelta),
         targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
         performedSweeps(0),
-        normPhi(), meanPhi(), normMeanPhi(), sdwSusc(),
+        normPhi(0), meanPhi(), normMeanPhi(0), sdwSusc(0),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
         occ(), occX(occ[XBAND]), occY(occ[YBAND]),
