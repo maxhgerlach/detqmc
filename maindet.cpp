@@ -164,6 +164,11 @@ int main(int argc, char **argv) {
     bool resumeSimulation;
     std::tie(runSimulation, resumeSimulation, parmodel, parmc) = configureSimulation(argc, argv);
 
+    if (parmodel.timedisplaced) {
+    	std::cerr << "timedisplaced routines not implemented currently \n";
+    	return 1;
+    }
+
     timing.start("total");
     if (runSimulation) {
         if (not resumeSimulation) {

@@ -57,18 +57,17 @@ public:
     //simulated model
     virtual MetadataMap prepareModelMetadataMap() const = 0;
 
-    //perform measurements of all observables
-    virtual void measure() = 0;
-
     //get values of observables normalized by system size, the structures returned
     //contain references to the current values measured by DetHubbard.
+    //These values are valid after a sweep, in which measurements where taken
     virtual std::vector<ScalarObservable> getScalarObservables() = 0;
     virtual std::vector<VectorObservable> getVectorObservables() = 0;
     virtual std::vector<KeyValueObservable> getKeyValueObservables() = 0;
 
     //perform a sweep updating the auxiliary field with costly re-computations
     //of Green functions from scratch
-    virtual void sweepSimple() = 0;
+    //if takeMeasurements==true: perform measurements of all observables
+    virtual void sweepSimple(bool takeMeasurements) = 0;
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters
     virtual void sweepSimpleThermalization() = 0;
@@ -77,7 +76,8 @@ public:
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
     //Will give equal-time and time-displaced Green functions.
-    virtual void sweep() = 0;
+    //if takeMeasurements==true: perform measurements of all observables
+    virtual void sweep(bool takeMeasurements) = 0;
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters
     virtual void sweepThermalization() = 0;
@@ -128,31 +128,49 @@ public:
 
     //perform a sweep updating the auxiliary field with costly re-computations
     //of Green functions from scratch
+    //
+    //  if takeMeasurements == true : perform observable measurements
+    //
     //  Callable_GC_k2_k1: take arguments green component, timeslices k2 > k1,
     //  and give the corresponding B-matrix
-    template<class Callable_GC_k2_k1>
-    void sweepSimple_skeleton(Callable_GC_k2_k1 computeBmat);
+    //  Callable_init: no arguments, init observable measurements for this sweep
+    //  Callable_measure_k: argument timeselice k = 1,...,m, take measurement data for timeslice k
+    //  Callable_finish: no arguments, finalize observable measurements for this sweep
+    template<class Callable_GC_k2_k1, class Callable_init,
+             class Callable_measure_k, class Callable_finish>
+    void sweepSimple_skeleton(bool takeMeasurements,
+    		                  Callable_GC_k2_k1 computeBmat, Callable_init initMeasurement,
+    		                  Callable_measure_k measure, Callable_finish finishMeasurement);
     //the same to be called during thermalization, may do the same or iteratively
-    //adjust parameters
+    //adjust parameters, but does not take any measurements ever
     template<class Callable_GC_k2_k1>
     void sweepSimpleThermalization_skeleton(Callable_GC_k2_k1 computeBmat);
 
+
     //perform a sweep as suggested in the text by Assaad with stable computation
     //of Green functions, alternate between sweeping up and down in imaginary time.
-    //Will give equal-time and time-displaced Green functions.
+    //  /* at some point Will give equal-time and time-displaced Green functions if TimeDisplace == ture */.
+    //if takeMeasurements == true : perform observable measurements
     //
     //*_Callable_GC_mat_k2_k1: take arguments green-component, some matrix,
     //                         time slices k2 > k1
     //      -> return left/right product of matrix with Bmat or Bmat-inverse
     //      useful if a checkerboard-breakup is performed
+    //Callable_init: no arguments, init observable measurements for this sweep
+    //Callable_measure_k: argument timeselice k, take measurement data for timeslice k
+    //Callable_finish: no arguments, finalize observable measurements for this sweep
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-             class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1>
-    void sweep_skeleton(a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
+             class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
+             class Callable_init, class Callable_measure_k, class Callable_finish>
+    void sweep_skeleton(bool takeMeasurements,
+    					a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-                        d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv);
+                        d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
+                        Callable_init initMeasurement, Callable_measure_k measure,
+                        Callable_finish finishMeasurement);
     //the same to be called during thermalization, may do the same or iteratively
-    //adjust parameters
+    //adjust parameters, but does not take any measurements ever
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
              class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1>
     void sweepThermalization_skeleton(
@@ -187,11 +205,10 @@ protected:
     //Green functions
     MatV greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const;
 
-    //compute Green functions from UdV-decomposed matrices L/R
+    //compute Green function from UdV-decomposed matrices L/R
     //for a single timeslice and update the member variables green --
     //and if desired -- greenFwd and greenBwd
-    void updateGreenFunctionUdV(uint32_t gc, uint32_t targetSlice,
-                                const UdVV& UdV_L, const UdVV& UdV_R);
+    void updateGreenFunctionUdV(uint32_t gc, const UdVV& UdV_L, const UdVV& UdV_R);
 
     //for each greenComponent call a function with the greenComponent as a parameter
     template<typename Callable>
@@ -237,14 +254,24 @@ protected:
 
     //these receive as a template parameter the function to call for updates in a slice,
     //as well as B-Mat multiplicators like above
-    template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1, class CallableUpdateInSlice>
-    void sweepUp(a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
+    template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
+    		  class CallableUpdateInSlice,
+    		  class Callable_init, class Callable_measure_k, class Callable_finish>
+    void sweepUp(bool takeMeasurements,
+    			 a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                  b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
-                 CallableUpdateInSlice funcUpdateInSlice);
-    template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1, class CallableUpdateInSlice>
-    void sweepDown(a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+                 CallableUpdateInSlice funcUpdateInSlice,
+                 Callable_init initMeasurement, Callable_measure_k measure,
+                 Callable_finish finishMeasurement);
+    template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
+    		  class CallableUpdateInSlice,
+    		  class Callable_init, class Callable_measure_k, class Callable_finish>
+    void sweepDown(bool takeMeasurements,
+    			   a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                    b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-                   CallableUpdateInSlice funcUpdateInSlice);
+                   CallableUpdateInSlice funcUpdateInSlice,
+                   Callable_init initMeasurement, Callable_measure_k measure,
+                   Callable_finish finishMeasurement);
 
     //Green component size, e.g. sz == N for the Hubbard model
     const uint32_t sz;
@@ -259,15 +286,19 @@ protected:
     const num dtau;     // beta / m
 
 
-    //equal-imaginary-time and time-displaced Green's functions
-    //slices indexed k=0..m correspond to time slices at dtau*k,
-    //which are then indexed by sites in row and column.
-    //Most code, however, only uses timeslices k >= 1 ! Don't rely on g*.slice(0)
-    //being valid.
-    //The Green functions for k=0 are conceptually equal to those for k=m.
-    checkarray<CubeV, GreenComponents> green;
-    checkarray<CubeV, GreenComponents> greenFwd;
-    checkarray<CubeV, GreenComponents> greenBwd;
+//    //equal-imaginary-time and time-displaced Green's functions
+//    //slices indexed k=0..m correspond to time slices at dtau*k,
+//    //which are then indexed by sites in row and column.
+//    //Most code, however, only uses timeslices k >= 1 ! Don't rely on g*.slice(0)
+//    //being valid.
+//    //The Green functions for k=0 are conceptually equal to those for k=m.
+//    checkarray<CubeV, GreenComponents> green;
+//    checkarray<CubeV, GreenComponents> greenFwd;
+//    checkarray<CubeV, GreenComponents> greenBwd;
+
+    // During the sweep: hold the matrix elements of the equal-time Green's function for the
+    // current timeslice
+    checkarray<MatV, GreenComponents> green;
 
     //The UdV-instances in UdVStorage will not move around much after setup, so storing
     //the (rather big) objects in the vector is fine
@@ -316,19 +347,19 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     beta(pars.beta), m(pars.m), s(pars.s),
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
-    green(), greenFwd(), greenBwd(), eye_UdV(sz), UdVStorage(),
+    green(), //greenFwd(), greenBwd(),
+    eye_UdV(sz), UdVStorage(),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
 {
 	//init Green's functions with zeros
 	for(uint32_t gc = 0; gc < GC; ++gc) {
-            green[gc].zeros(greenComponentSize, greenComponentSize, m+1);
-            if (TimeDisplaced) {
-                greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
-                greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
-            }
+            green[gc].zeros(greenComponentSize, greenComponentSize);
+//            if (TimeDisplaced) {
+//                greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+//                greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+//            }
 	}
-
 
 //  // Default functors for multiplication with B-matrices
 //  for_each_gc( [this](uint32_t gc) {
@@ -397,18 +428,29 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
 }
 
 
-//warning: the thermalization version below is almost a copy of this
+//warning: the thermalization version below is almost a copy of this -- without measurements
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class Callable_GC_k2_k1>
+template<class Callable_GC_k2_k1, class Callable_init,
+		 class Callable_measure_k, class Callable_finish>
 void DetModelGC<GC,V,TimeDisplaced>::sweepSimple_skeleton(
-        Callable_GC_k2_k1 computeBmat) {
+		bool takeMeasurements,
+		Callable_GC_k2_k1 computeBmat, Callable_init initMeasurement,
+		Callable_measure_k measure, Callable_finish finishMeasurement) {
+	if (takeMeasurements) {
+		initMeasurement();
+	}
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
-            green[gc].slice(timeslice) =
-                    arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
-                                                  computeBmat(gc, m, timeslice));
+            green[gc] = arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
+            					  computeBmat(gc, m, timeslice));
         });
         updateInSlice(timeslice);
+        if (takeMeasurements) {
+        	measure(timeslice);
+        }
+    }
+    if (takeMeasurements) {
+    	finishMeasurement();
     }
 }
 
@@ -419,7 +461,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
         Callable_GC_k2_k1 computeBmat) {
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
-            green[gc].slice(timeslice) =
+            green[gc] =
                     arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
                                                   computeBmat(gc, m, timeslice));
         });
@@ -512,14 +554,14 @@ typename DetModelGC<GC,V,TimeDisplaced>::MatV4 DetModelGC<GC,V,TimeDisplaced>::g
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunctionUdV(
-        uint32_t gc, uint32_t targetSlice, const UdVV& UdV_L, const UdVV& UdV_R)
+        uint32_t gc, const UdVV& UdV_L, const UdVV& UdV_R)
 {
     if (TimeDisplaced) {
-        std::tie(std::ignore, greenBwd[gc].slice(targetSlice),
-                greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice))
-            = greenFromUdV_timedisplaced(UdV_L, UdV_R);
+//        std::tie(std::ignore, greenBwd[gc].slice(targetSlice),
+//                greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice))
+//            = greenFromUdV_timedisplaced(UdV_L, UdV_R);
     } else {
-        green[gc].slice(targetSlice) = greenFromUdV(UdV_L, UdV_R);
+        green[gc] = greenFromUdV(UdV_L, UdV_R);
     }
 }
 
@@ -553,7 +595,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 
     //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
     const UdVV& UdV_R = storage[l - 1];
-    updateGreenFunctionUdV(gc, k_lm1, UdV_L, UdV_R);
+    updateGreenFunctionUdV(gc, UdV_L, UdV_R);
     storage[l - 1] = UdV_L;
 
     timing.stop("advanceDownGreen");
@@ -602,7 +644,8 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 //}
 
 // compute the green function at k-1 by wrapping the one at k (accumulates rounding errors),
-// if required also compute time-displaced green functions
+// store the result in green.
+// [if required also compute time-displaced green functions]
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
@@ -612,12 +655,11 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 {
     timing.start("wrapDownGreen");
 
-    green[gc].slice(k - 1) =
-            leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc].slice(k), k, k-1),
-                                k, k-1);
+    green[gc] = leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc], k, k-1),
+    								k, k-1);
     if (TimeDisplaced) {
-        greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv(gc, greenFwd[gc].slice(k), k, k-1);
-        greenBwd[gc].slice(k - 1) = rightMultiplyBmat(gc, greenBwd[gc].slice(k), k, k-1);
+//        greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv(gc, greenFwd[gc].slice(k), k, k-1);
+//        greenBwd[gc].slice(k - 1) = rightMultiplyBmat(gc, greenBwd[gc].slice(k), k, k-1);
     }
 
     timing.stop("wrapDownGreen");
@@ -653,7 +695,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 
     UdV_temp.V *= V_l;
 
-    updateGreenFunctionUdV(gc, k_lp1, UdV_lp1, UdV_temp);
+    updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
 
     //storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
 
@@ -727,6 +769,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
 //}
 
 //compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
+//store the result in green.
 //if necessary, also handle the time-displaced Green functions
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1>
@@ -739,43 +782,60 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
 //  MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //  green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
 
-    green[gc].slice(k + 1) =
-            leftMultiplyBmat(gc,
-                    rightMultiplyBmatInv(gc, green[gc].slice(k), k+1, k), k+1, k);
+    green[gc] = leftMultiplyBmat(gc, rightMultiplyBmatInv(gc, green[gc], k+1, k), k+1, k);
 
     if (TimeDisplaced) {
-        //  greenFwd[greenComponent].slice(k + 1) = B_kp1 * greenFwd[greenComponent].slice(k);
-        greenFwd[gc].slice(k + 1) = leftMultiplyBmat(gc, greenFwd[gc].slice(k), k+1, k);
-        //  greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
-        greenBwd[gc].slice(k + 1) = rightMultiplyBmatInv(gc, greenBwd[gc].slice(k), k+1, k);
+//        //  greenFwd[greenComponent].slice(k + 1) = B_kp1 * greenFwd[greenComponent].slice(k);
+//        greenFwd[gc].slice(k + 1) = leftMultiplyBmat(gc, greenFwd[gc].slice(k), k+1, k);
+//        //  greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
+//        greenBwd[gc].slice(k + 1) = rightMultiplyBmatInv(gc, greenBwd[gc].slice(k), k+1, k);
     }
     timing.stop("wrapUpGreen");
 }
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1, class CallableUpdateInSlice>
-void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
-        a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
-        b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
-        CallableUpdateInSlice funcUpdateInSlice)
+template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
+		  class CallableUpdateInSlice,
+		  class Callable_init, class Callable_measure_k, class Callable_finish>
+void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
+			 a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
+			 b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
+			 CallableUpdateInSlice funcUpdateInSlice,
+			 Callable_init initMeasurement, Callable_measure_k measure,
+			 Callable_finish finishMeasurement)
 {
+	if (takeMeasurements) {
+		initMeasurement();
+	}
+
+	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+		funcUpdateInSlice(timeslice);
+		if (takeMeasurements) {
+			measure(timeslice);
+		}
+	};
+
+	//Precondition for the following:
     //We need to have computed the Green function for time slice k=0 so that the first
     //wrap-up step is correct.
+
+	//First wrap-up step:
     for (uint32_t k = 1; k <= s-1; ++k) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
             wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
         }
-        funcUpdateInSlice(k);
+        updateInSliceAndMaybeMeasure(k);
     }
     //set storage at k=0 to unity for the up-coming sweep:
     for (uint32_t gc = 0; gc < GC; ++gc) {
         UdVStorage[gc][0] = eye_UdV;
     }
+    //sweep up:
     for (uint32_t l = 1; l < n - 1; ++l) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceUpGreen(leftMultiplyBmat, l-1, gc);
         }
-        funcUpdateInSlice(l*s);
+        updateInSliceAndMaybeMeasure(l*s);
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceUpUpdateStorage(leftMultiplyBmat, l-1, gc);
         }
@@ -783,13 +843,14 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
             for (uint32_t gc = 0; gc < GC; ++gc) {
                 wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
             }
-            funcUpdateInSlice(k);
+            updateInSliceAndMaybeMeasure(k);
         }
     }
+    //special handling for the highest time-slices
     for (uint32_t gc = 0; gc < GC; ++gc) {
     	advanceUpGreen(leftMultiplyBmat, n - 2, gc);
     }
-    funcUpdateInSlice(s*(n-1));
+    updateInSliceAndMaybeMeasure(s*(n-1));
     for (uint32_t gc = 0; gc < GC; ++gc) {
         advanceUpUpdateStorage(leftMultiplyBmat, n - 2, gc);
     }
@@ -799,54 +860,77 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
     	for (uint32_t gc = 0; gc < GC; ++gc) {
     		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
     	}
-    	funcUpdateInSlice(k);
+    	updateInSliceAndMaybeMeasure(k);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
     	advanceUpGreen(leftMultiplyBmat, n - 1, gc);
     }
-    funcUpdateInSlice(m);
+    updateInSliceAndMaybeMeasure(m);
     for (uint32_t gc = 0; gc < GC; ++gc) {
         advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
     }
+
+    if (takeMeasurements) {
+    	finishMeasurement();
+    }
 }
 
+
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1, class CallableUpdateInSlice>
+template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
+		  class CallableUpdateInSlice,
+		  class Callable_init, class Callable_measure_k, class Callable_finish>
 void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
-        a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-        b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-        CallableUpdateInSlice funcUpdateInSlice)
+		bool takeMeasurements,
+		a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+		b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
+		CallableUpdateInSlice funcUpdateInSlice,
+		Callable_init initMeasurement, Callable_measure_k measure,
+		Callable_finish finishMeasurement)
 {
+	if (takeMeasurements) {
+		initMeasurement();
+	}
+
+	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+		funcUpdateInSlice(timeslice);
+		if (takeMeasurements) {
+			measure(timeslice);
+		}
+	};
+
     //to compute green function for timeslice tau=beta:
     //we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
     //The latter is given in storage slice n from the last sweep.
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunctionUdV(gc, m, eye_UdV, UdVStorage[gc][n]);
+        updateGreenFunctionUdV(gc, eye_UdV, UdVStorage[gc][n]);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
         UdVStorage[gc][n] = eye_UdV;
     }
     // Handle timeslices between l=n (-> k=m) and l=n-1 (-> k=s*(n-1)).
     // in contrast to the lower values of l, this may be less than s
-    funcUpdateInSlice(m);
+    updateInSliceAndMaybeMeasure(m);
     for (uint32_t k = m - 1; k >= (n-1)*s + 1; --k) {
     	for (uint32_t gc = 0; gc < GC; ++gc) {
     		wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
     	}
-    	funcUpdateInSlice(k);
+    	updateInSliceAndMaybeMeasure(k);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
     	advanceDownGreen(rightMultiplyBmat, n, gc);
     }
     // Handle the remaining timeslices.
     for (uint32_t l = n - 1; l >= 1; --l) {
-        funcUpdateInSlice(l*s);
+        updateInSliceAndMaybeMeasure(l*s);
         for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
             for (uint32_t gc = 0; gc < GC; ++gc) {
                 wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
             }
-            funcUpdateInSlice(k);
+            updateInSliceAndMaybeMeasure(k);
         }
+        //TODO: the following comment is no longer valid
+
         //this will also compute the Green function at k==0, which is used
         //for the following sweep up; storing it instead at k==m -- which would for sure
         //improve consistency -- would mainly save some memory, but the processing would
@@ -855,26 +939,38 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
             advanceDownGreen(rightMultiplyBmat, l, gc);
         }
     }
+
+    if (takeMeasurements) {
+        finishMeasurement();
+    }
 }
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-         class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1>
+         class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
+         class Callable_init, class Callable_measure_k, class Callable_finish>
 void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
+		bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-        d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv)
+        d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
+        Callable_init initMeasurement, Callable_measure_k measure,
+        Callable_finish finishMeasurement)
 {
     timing.start("sweep");
 
     if (lastSweepDir == SweepDirection::Up) {
-        sweepDown(leftMultiplyBmatInv, rightMultiplyBmat,
-                  [this](uint32_t k){ this->updateInSlice(k); });
+        sweepDown(takeMeasurements,
+        		  leftMultiplyBmatInv, rightMultiplyBmat,
+                  [this](uint32_t k){ this->updateInSlice(k); },
+                  initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
-        sweepUp(leftMultiplyBmat, rightMultiplyBmatInv,
-                [this](uint32_t k){ this->updateInSlice(k); });
+        sweepUp(takeMeasurements,
+        		leftMultiplyBmat, rightMultiplyBmatInv,
+                [this](uint32_t k){ this->updateInSlice(k); },
+                initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Up;
     }
 
@@ -892,13 +988,22 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 {
     timing.start("sweep");
 
+    auto doNothing = []() { };
+    auto doNothingTimeslice = [](uint32_t) { };
+
     if (lastSweepDir == SweepDirection::Up) {
-        sweepDown(leftMultiplyBmatInv, rightMultiplyBmat,
-                  [this](uint32_t k){ this->updateInSliceThermalization(k); });
+        sweepDown(false,									//no measurements
+        		  leftMultiplyBmatInv, rightMultiplyBmat,
+                  [this](uint32_t k){ this->updateInSliceThermalization(k); },
+                  doNothing, doNothingTimeslice, doNothing	//no measurements
+                  );
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
-        sweepUp(leftMultiplyBmat, rightMultiplyBmatInv,
-                [this](uint32_t k){ this->updateInSliceThermalization(k); });
+        sweepUp(false,
+        		leftMultiplyBmat, rightMultiplyBmatInv,		//no measurements
+                [this](uint32_t k){ this->updateInSliceThermalization(k); },
+                doNothing, doNothingTimeslice, doNothing	//no measurements
+                );
         lastSweepDir = SweepDirection::Up;
     }
 

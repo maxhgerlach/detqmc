@@ -64,12 +64,12 @@ public:
     //simulated model
     virtual MetadataMap prepareModelMetadataMap() const;
 
-    //perform measurements of all observables
-    virtual void measure();
+    //    //perform measurements of all observables
+    //    virtual void measure();
 
-    virtual void sweep();
+    virtual void sweep(bool takeMeasurements);
     virtual void sweepThermalization();
-    virtual void sweepSimple();
+    virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 protected:
     typedef DetModelGC<2, num, TimeDisplaced> Base;
@@ -79,8 +79,8 @@ protected:
     using Base::dtau;
     using Base::m;
     using Base::green;
-    using Base::greenFwd;
-    using Base::greenBwd;
+    // using Base::greenFwd;
+    // using Base::greenBwd;
     using Base::UdVStorage;
     using Base::lastSweepDir;
     using Base::obsScalar;
@@ -132,21 +132,31 @@ protected:
 
     //Equal imaginary time Green function
     //One cube for each value of spinz.
-    CubeNum& gUp;
-    CubeNum& gDn;
+    MatNum& gUp;
+    MatNum& gDn;
     
     //Imaginary time displaced Green function
     // "forward" corresponds to G(tau, 0)
     // "backward" corresponds to G(0, tau)
     //the indexing works the same way as for the equal time case
-    CubeNum& gFwdUp;
-    CubeNum& gFwdDn;
-    CubeNum& gBwdUp;
-    CubeNum& gBwdDn;
+    // MatNum& gFwdUp;
+    // MatNum& gFwdDn;
+    // MatNum& gBwdUp;
+    // MatNum& gBwdDn;
 
 //  UdVnum eye_UdV; // U = d = V = 1
     std::vector<UdVnum>& UdVStorageUp;
     std::vector<UdVnum>& UdVStorageDn;
+
+    //helper variables to compute observables
+    //used to measure occupation:
+    num sum_GiiUp;
+    num sum_GiiDn;
+    //used to measure kinetic energy:
+    num sum_GneighUp;
+    num sum_GneighDn;
+    //used to measure double occupancy / potential energy:
+    num sum_GiiUpDn;
 
     //observables, values for the current auxiliary field; averaged over aux. field
     num occUp;          //occupation spin up
@@ -214,6 +224,11 @@ protected:
 
     //update the HS auxiliary field and the green function in the single timeslice
     void updateInSlice(uint32_t timeslice);
+
+    //measuring observables
+    void initMeasurements();				//reset stored observable values (beginning of a sweep)
+    void measure(uint32_t timeslice);		//measure observables for one timeslice
+    void finishMeasurements();				//finalize stored observable values (end of a sweep)
 
     //Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
     //calculate a tuple of four NxN matrices (a,b,c,d) with

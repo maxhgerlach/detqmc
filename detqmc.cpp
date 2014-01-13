@@ -297,18 +297,20 @@ void DetQMC::run() {
             }
             break;  //case
 
-        case M:
+        case M: {
+            ++swCounter;
+            bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
+            
             switch(greenUpdateType) {
             case GreenUpdateTypeSimple:
-                replica->sweepSimple();
+                replica->sweepSimple(takeMeasurementNow);
                 break;
             case GreenUpdateTypeStabilized:
-                replica->sweep();
+                replica->sweep(takeMeasurementNow);
                 break;
             }
-            ++swCounter;
-            if (swCounter % parsmc.measureInterval == 0) {
-                replica->measure();
+
+            if (takeMeasurementNow) {
                 for (auto ph = obsHandlers.begin(); ph != obsHandlers.end(); ++ph) {
                     (*ph)->insertValue(sweepsDone);
                 }
@@ -329,11 +331,12 @@ void DetQMC::run() {
                 finishedStage();
             }
             break;  //case
+        }
 
         case F:
             break;  //case
 
-        }
+        }  //switch
     }
 }
 

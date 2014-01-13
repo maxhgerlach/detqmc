@@ -46,18 +46,18 @@ public:
     virtual ~DetSDW();
     virtual uint32_t getSystemN() const;
     virtual MetadataMap prepareModelMetadataMap() const;
-    virtual void measure();
 
     virtual void thermalizationOver();
 
-    virtual void sweep();
+    virtual void sweep(bool takeMeasurements);
     virtual void sweepThermalization();
-    virtual void sweepSimple();
+    virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 
-    //Perform the correction of the Green's function to ensure an effectively symmetric Trotter decomposition.
-    //This should be done before measuerements.
-    virtual void shiftGreenSymmetric();
+	//Perform the correction of the Green's function to ensure an
+	//effectively symmetric Trotter decomposition.  This returns the shifted matrix for the current timeslice.
+	//This should be done before measurements.
+    virtual MatCpx shiftGreenSymmetric();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
@@ -66,8 +66,8 @@ protected:
     using Base::dtau;
     using Base::m;
     using Base::green;
-    using Base::greenFwd;
-    using Base::greenBwd;
+    // using Base::greenFwd;
+    // using Base::greenBwd;
     using Base::UdVStorage;
     using Base::lastSweepDir;
     using Base::obsScalar;
@@ -76,6 +76,8 @@ protected:
     using Base::beta;
     using Base::s;
 
+    typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
+    
     RngWrapper& rng;
 
     static const uint32_t d = 2;
@@ -142,9 +144,9 @@ protected:
     MatNum& propKx_half_inv;
     MatNum& propKy_half_inv;
 
-    CubeCpx& g;
-    CubeCpx& gFwd;
-    CubeCpx& gBwd;
+    MatCpx& g;
+    // MatCpx& gFwd;
+    // MatCpx& gBwd;
 
     //three component sdw-order parameter,
     //column indexes timeslice, row indexes site
@@ -165,7 +167,9 @@ protected:
     uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
 
     //Observables:
-    num normPhi;        //magnitude of averaged field
+    num normPhi;        //averaged norm of field
+    Phi meanPhi;		//averaged field
+    num normMeanPhi;	//norm of averaged field
     num sdwSusc;        //spin-density-wave susceptibility
 
     checkarray<VecNum, 2> kOcc;     //Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
@@ -314,10 +318,8 @@ protected:
 
     //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
     //on the CheckerboardMethod
-    template<class RightMultiply, class LeftMultiply> void shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
-    //these template functions implement those functors, they need to be template to work with armadillo submatrices
-//    /*template<class Matrix>*/ struct shiftGreenSymmetric_impl_r_cb_none;
-//    /*template<class Matrix>*/ struct shiftGreenSymmetric_impl_l_cb_none;
+    template<class RightMultiply, class LeftMultiply>
+    MatCpx shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
 
 
 
@@ -326,7 +328,6 @@ protected:
     virtual void updateInSliceThermalization(uint32_t timeslice);
 
     //functions used by updateInSlice:
-    typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     Phi proposeNewField(uint32_t site, uint32_t timeslice);
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     //Try a global move, where all the phi-fields of a timeslice are multiplied
@@ -336,6 +337,13 @@ protected:
 
     //compute the total value of the action associated with the field phi
     num phiAction();
+
+
+    //measuring observables
+    void initMeasurements();				//reset stored observable values (beginning of a sweep)
+    void measure(uint32_t timeslice);		//measure observables for one timeslice
+    void finishMeasurements();				//finalize stored observable values (end of a sweep)
+
 
     //wrappers to use to instantiate template functions of the base class
     struct sdwComputeBmat {
