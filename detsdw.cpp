@@ -328,6 +328,8 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 	timing.start("sdw-measure");
 
+	MatCpx gshifted = shiftGreenSymmetric();
+
 	//normphi, meanPhi, sdw-susceptibility
 	for (uint32_t site = 0; site < N; ++site) {
 		Phi phi_site;
@@ -343,8 +345,8 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 
 	//fermion occupation number -- real space
 	for (uint32_t i = 0; i < N; ++i) {
-		occX[i] += std::real(g(i, i) + g(i+N, i+N));
-		occY[i] += std::real(g(i+2*N, i+2*N) + g(i+3*N, i+3*N));
+		occX[i] += std::real(gshifted(i, i) + gshifted(i+N, i+N));
+		occY[i] += std::real(gshifted(i+2*N, i+2*N) + gshifted(i+3*N, i+3*N));
 	}
 
 	//fermion occupation number -- k-space
@@ -374,10 +376,10 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
                 num argument = kx * (ix - jx) + ky * (iy - jy);
                 cpx phase = std::exp(cpx(0, argument));
 
-                cpx green_x_up   = g(i, j);
-                cpx green_x_down = g(i + N, j + N);
-                cpx green_y_up   = g(i + 2*N, j + 2*N);
-                cpx green_y_down = g(i + 3*N, j + 3*N);
+                cpx green_x_up   = gshifted(i, j);
+                cpx green_x_down = gshifted(i + N, j + N);
+                cpx green_y_up   = gshifted(i + 2*N, j + 2*N);
+                cpx green_y_down = gshifted(i + 3*N, j + 3*N);
 
                 cpx x_cpx = phase * (green_x_up + green_x_down);
                 cpx y_cpx = phase * (green_y_up + green_y_down);
@@ -395,10 +397,10 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     //(which used to be "l")
     // *1 is for the row index,
     // *2 is for the column index
-    auto gl = [this](uint32_t site1, Band band1, Spin spin1,
-    		 		 uint32_t site2, Band band2, Spin spin2) -> cpx {
-    	return g(site1 + 2*N*band1 + N*spin1,
-    			 site2 + 2*N*band2 + N*spin2);
+    auto gl = [this, &gshifted](uint32_t site1, Band band1, Spin spin1,
+    							uint32_t site2, Band band2, Spin spin2) -> cpx {
+    	return gshifted(site1 + 2*N*band1 + N*spin1,
+    			 	 	site2 + 2*N*band2 + N*spin2);
     };
 
     for (uint32_t i = 0; i < N; ++i) {
@@ -451,9 +453,9 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 
     // Fermionic energy contribution
     // -----------------------------
-    auto glij = [this](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
-    	return g(site1 + 2*N*band + N*spin,
-    			 site2 + 2*N*band + N*spin);
+    auto glij = [this, &gshifted](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
+    	return gshifted(site1 + 2*N*band + N*spin,
+    			 	 	site2 + 2*N*band + N*spin);
     };
     for (uint32_t i = 0; i < N; ++i) {
     	//TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
@@ -472,10 +474,10 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     	}
     }
     for (uint32_t i = 0; i < N; ++i) {
-    	auto glbs = [this, i](Band band1, Spin spin1,
-    							Band band2, Spin spin2) -> cpx {
-    		return g(i + 2*N*band1 + N*spin1,
-    				 i + 2*N*band2 + N*spin2);
+    	auto glbs = [this, i, gshifted](Band band1, Spin spin1,
+    									Band band2, Spin spin2) -> cpx {
+    		return gshifted(i + 2*N*band1 + N*spin1,
+    						i + 2*N*band2 + N*spin2);
     	};
 
     	//factors for different combinations of spins
@@ -522,8 +524,6 @@ void DetSDW<TD,CB>::finishMeasurements() {
 		}
 	}
 	sdwSusc *= dtau;
-	//in the following meanPhi is only the sum over all phi_i(tau), averaging happens next
-
 
 
 	//fermion occupation number -- real space
@@ -2240,11 +2240,11 @@ void DetSDW<TD,CB>::sweepThermalization() {
 
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::shiftGreenSymmetric() {
+MatCpx DetSDW<TD,CB>::shiftGreenSymmetric() {
 	typedef arma::subview<cpx> SubMatCpx;			//don't do references or const-references of this type
 	if (CB == CB_NONE) {
 		//non-checkerboard
-		shiftGreenSymmetric_impl(
+		return shiftGreenSymmetric_impl(
 						//rightMultiply
 			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
 				output = input * propK_half_inv[band];
@@ -2257,7 +2257,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric() {
 	}
 	// unclear to me: why do I need to explicitly qualify 'this->' in the lambdas?
 	else if (CB == CB_SANTOS) {
-		shiftGreenSymmetric_impl(
+		return shiftGreenSymmetric_impl(
 						//rightMultiply
 			// output and input are NxN blocks of a complex matrix
 			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
@@ -2283,7 +2283,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric() {
 		);
 	}
 	else if (CB == CB_ASSAAD) {
-		shiftGreenSymmetric_impl(
+		return shiftGreenSymmetric_impl(
 						//rightMultiply
 			// output and input are NxN blocks of a complex matrix
 			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
@@ -2309,7 +2309,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric() {
 		);
 	}
 	else if (CB == CB_ASSAAD_BERG) {
-		shiftGreenSymmetric_impl(
+		return shiftGreenSymmetric_impl(
 			//rightMultiply
 			// output and input are NxN blocks of a complex matrix
 			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
@@ -2342,7 +2342,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric() {
 //references in a sense)
 template<bool TD, CheckerboardMethod CB>
 template<class RightMultiply, class LeftMultiply>
-void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     //submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 	MatCpx tempG(4*N, 4*N);
@@ -2356,7 +2356,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMu
 		rightMultiply(block(tempG, row, 3), block(oldG, row, 3), YBAND);
 	}
 	//multiply e^(-dtau/2 K) from the left
-	MatCpx& newG = g;
+	MatCpx newG(4*N, 4*N);
 	for (uint32_t col = 0; col < 4; ++col) {
 		//block(newG, 0, col) = propKx_half * block(tempG, 0, col);
 		leftMultiply(block(newG, 0, col), block(tempG, 0, col), XBAND);
@@ -2365,6 +2365,7 @@ void DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMu
 		leftMultiply(block(newG, 3, col), block(tempG, 3, col), YBAND);
 	}
 #undef block
+	return newG;
 }
 
 

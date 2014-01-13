@@ -54,10 +54,10 @@ public:
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 
-    //Perform the correction of the Green's function for the current timeslice to ensure an
-    //effectively symmetric Trotter decomposition.
-    //This should be done before measurements.
-    virtual void shiftGreenSymmetric();
+	//Perform the correction of the Green's function to ensure an
+	//effectively symmetric Trotter decomposition.  This returns the shifted matrix for the current timeslice.
+	//This should be done before measurements.
+    virtual MatCpx shiftGreenSymmetric();
 protected:
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
@@ -319,7 +319,7 @@ protected:
     //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
     //on the CheckerboardMethod
     template<class RightMultiply, class LeftMultiply>
-    void shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
+    MatCpx shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
 
 
 
