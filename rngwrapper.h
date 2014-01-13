@@ -77,6 +77,9 @@ private:
         std::string stateString;
         ar >> stateString;
         stringToState(stateString);
+
+        std::cout << "Deserialized RNG wrapper from saved state -- original seed was: " << seed
+        		  << ", processIndex: " << processIndex << std::endl;
     }
 
     BOOST_SERIALIZATION_SPLIT_MEMBER()
