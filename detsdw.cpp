@@ -338,7 +338,7 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 		meanPhi += phi_site;
 		normPhi += arma::norm(phi_site, 2);
 
-		//sdw-susceptibility will be calculated in finishMeasurements() using meanPhi
+		//sdw-susceptibility will be calculated in finishMeasurements()
 	}
 
 	//fermion occupation number -- real space
@@ -504,15 +504,27 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::finishMeasurements() {
 	//normphi, meanPhi, sdw-susceptibility
-	Phi phi_0;
-	phi_0[0] = phi0[0, m];
-	phi_0[1] = phi1[0, m];
-	phi_0[2] = phi2[0, m];
-	//in the following meanPhi is only the sum over all phi_i(tau), averaging happens next
-	sdwSusc = dtau * ( phi_0[0] * meanPhi[0] + phi_0[1] * meanPhi[1] + phi_0[2] * meanPhi[2] );
 	normPhi /= num(N * m);
 	meanPhi /= num(N * m);
 	normMeanPhi = arma::norm(meanPhi, 2);
+
+	Phi phi_0;
+	phi_0[0] = phi0(0, m);
+	phi_0[1] = phi1(0, m);
+	phi_0[2] = phi2(0, m);
+	sdwSusc = 0;
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for (uint32_t site = 0; site < N; ++site) {
+			sdwSusc += ( phi_0[0] * phi0(site,timeslice)
+					   + phi_0[1] * phi1(site,timeslice)
+					   + phi_0[2] * phi2(site,timeslice)
+					   );
+		}
+	}
+	sdwSusc *= dtau;
+	//in the following meanPhi is only the sum over all phi_i(tau), averaging happens next
+
+
 
 	//fermion occupation number -- real space
     occX /= num(m * N);
