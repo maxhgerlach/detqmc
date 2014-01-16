@@ -106,6 +106,8 @@ protected:
     }
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
+    enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
+    UpdateMethod_Type updateMethod;
 
     const bool rescale;
     const uint32_t rescaleInterval;
@@ -324,6 +326,9 @@ protected:
 
 
     virtual void updateInSlice(uint32_t timeslice);
+    //specific implementations of updateInSlice:
+    void updateInSlice_iterative(uint32_t timeslice);
+
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);
 

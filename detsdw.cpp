@@ -48,12 +48,13 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver", "rescale";
+    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver", "rescale", "updateMethod";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
         }
     }
+
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
     for (const std::string& bc : possibleBC) {
@@ -61,6 +62,14 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     }
     if (not bc_is_one_of_the_possible) {
         throw ParameterWrong("bc", pars.bc);
+    }
+    std::string possibleUpdateMethods[] = {"iterative", "woodbury", "delayed"};
+    bool updateMethod_is_one_of_the_possible = false;
+    for (const std::string& updateMethod : possibleUpdateMethods) {
+        if (pars.updateMethod == updateMethod) updateMethod_is_one_of_the_possible = true;
+    }
+    if (not updateMethod_is_one_of_the_possible) {
+        throw ParameterWrong("updateMethod", pars.updateMethod);
     }
 
     if (pars.checkerboard and pars.L % 2 != 0) {
@@ -131,7 +140,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
-        bc(PBC),
+        bc(PBC), updateMethod(ITERATIVE),
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
@@ -141,7 +150,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
         propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
         propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
-    g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
+        g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
         phiDelta(InitialPhiDelta),
         targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
@@ -169,6 +178,16 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     } else {
         // "safe default"
         bc = PBC;
+    }
+    if (pars.updateMethod == "iterative") {
+    	updateMethod = ITERATIVE;
+    } else if (pars.updateMethod == "woodbury") {
+    	updateMethod = WOODBURY;
+    } else if (pars.updateMethod == "delayed") {
+    	updateMethod = DELAYED;
+    } else {
+        // "safe default"
+    	updateMethod = ITERATIVE;
     }
     setupRandomPhi();
 
@@ -1613,6 +1632,20 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
+    switch(updateMethod) {
+    case ITERATIVE:
+    	updateInSlice_iterative(timeslice);
+    	break;
+    case WOODBURY:
+    case DELAYED:
+    	throw GeneralError("So far only the iterative update is implemented");
+    }
+
+    timing.stop("sdw-updateInSlice");
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi = proposeNewField(site, timeslice);
@@ -1867,8 +1900,6 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     		}
     	}
     }
-
-    timing.stop("sdw-updateInSlice");
 }
 
 template<bool TD, CheckerboardMethod CB>

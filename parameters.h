@@ -33,6 +33,7 @@ struct ModelParams {
     bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
     std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
+    std::string updateMethod;	//SDW: "iterative", "woodbury", or "delayed"
     num t;      //Hubbard
     num U;      //Hubbard
     num r;      //SDW
@@ -60,7 +61,8 @@ struct ModelParams {
     std::set<std::string> specified;
 
     ModelParams() :
-            model(), timedisplaced(), checkerboard(), checkerboardMethod(), t(), U(), r(),
+            model(), timedisplaced(), checkerboard(), checkerboardMethod(), updateMethod(),
+            t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
@@ -74,7 +76,7 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & timedisplaced & checkerboard & checkerboardMethod
+        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
