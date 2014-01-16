@@ -1641,6 +1641,17 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     	throw GeneralError("So far only the iterative update is implemented");
     }
 
+    if (rescale) {
+    	if (performedSweeps % rescaleInterval == 0) {
+    		num rnd = rng.rand01();
+    		if (rnd <= 0.5) {
+    			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    		} else {
+    			attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    		}
+    	}
+    }
+
     timing.stop("sdw-updateInSlice");
 }
 
@@ -1889,18 +1900,105 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
         }
     }
     lastAccRatioLocal /= num(N);
-
-    if (rescale) {
-    	if (performedSweeps % rescaleInterval == 0) {
-    		num rnd = rng.rand01();
-    		if (rnd <= 0.5) {
-    			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
-    		} else {
-    			attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
-    		}
-    	}
-    }
 }
+
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
+	static MatCpx::fixed<4,4> eye4cpx(arma::eye(4,4), arma::zeros(4,4));
+
+    lastAccRatioLocal = 0;
+    for (uint32_t site = 0; site < N; ++site) {
+        Phi newphi = proposeNewField(site, timeslice);
+        num dsphi = deltaSPhi(site, timeslice, newphi);
+        num probSPhi = std::exp(-dsphi);
+        //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
+
+        //TODO: put calculation of deltanonzero into separate function
+
+        //compute non-zero elements of delta
+        // deltanonzero is \Delta^i from the notes
+        //
+        //evMatrix(): yield a 4x4 matrix containing the entries for the
+        //current lattice site and time slice of e^(sign*dtau*V) with
+        //given values of the field phi at that space-time location [and of
+        //cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
+        auto evMatrix = [](int sign, num kphi0, num kphi1,
+                           num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
+            MatNum::fixed<4,4> ev_real;
+            ev_real.diag().fill(kphiCosh);
+            ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
+            ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
+            ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
+            ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
+            ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
+
+            MatCpx::fixed<4,4> ev;
+            ev.set_real(ev_real);
+            ev(0,3).imag(-sign * kphi1 * kphiSinh);
+            ev(1,2).imag( sign * kphi1 * kphiSinh);
+            ev(2,1).imag(-sign * kphi1 * kphiSinh);
+            ev(3,0).imag( sign * kphi1 * kphiSinh);
+
+            return ev;
+        };
+        MatCpx::fixed<4,4> evOld = evMatrix(
+                +1,
+                phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
+                phiCosh(site, timeslice), phiSinh(site, timeslice)
+                );
+        num normnewphi = arma::norm(newphi,2);
+        num coshnewphi = std::cosh(dtau * normnewphi);
+        num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+        MatCpx::fixed<4,4> emvNew = evMatrix(
+                -1,
+                newphi[0], newphi[1], newphi[2],
+                coshnewphi, sinhnewphi
+                );
+        MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
+        deltanonzero.diag() -= cpx(1.0, 0);
+
+        //Compute the 4x4 submatrix of G that corresponds to the site i
+        //g_sub = g[i::N, i::N]
+        MatCpx::fixed<4,4> g_sub;
+        for (uint32_t a = 0; a < 4; ++a) {
+        	for (uint32_t b = 0; b < 4; ++b) {
+        		g_sub(a,b) = g(site + a*N, site + b*N);
+        	}
+        }
+
+        //the determinant ratio for the spin update is given by the determinant
+        //of the following matrix M
+        MatCpx::fixed<4,4> M = eye4cpx + deltanonzero * (eye4cpx - g_sub);
+
+        num probSFermion = arma::det(M).real();
+
+        num prob = probSPhi * probSFermion;
+
+        if (prob > 1.0 or rng.rand01() < prob) {
+            //count accepted update
+            lastAccRatioLocal += 1.0;
+
+            phi0(site, timeslice) = newphi[0];
+            phi1(site, timeslice) = newphi[1];
+            phi2(site, timeslice) = newphi[2];
+            phiCosh(site, timeslice) = coshnewphi;
+            phiSinh(site, timeslice) = sinhnewphi;
+
+            //update g
+            MatCpx mat_V(4, 4*N);
+            for (uint32_t r = 0; r < 4; ++r) {
+            	mat_V.row(r) = g.row(site + r*N);
+            	mat_V(r, site + r*N) -= 1.0
+            }
+            MatCpx g_times_mat_U(4*N, 4) = ; //TODO
+            g += (g_times_mat_U) * (arma::inv(M) * mat_V);
+        }
+    }
+    lastAccRatioLocal /= num(N);
+}
+
+
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {

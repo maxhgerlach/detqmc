@@ -328,6 +328,7 @@ protected:
     virtual void updateInSlice(uint32_t timeslice);
     //specific implementations of updateInSlice:
     void updateInSlice_iterative(uint32_t timeslice);
+    void updateInSlice_woodbury(uint32_t timeslice);
 
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);
