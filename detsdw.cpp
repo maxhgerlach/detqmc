@@ -1655,8 +1655,11 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     	updateInSlice_iterative(timeslice);
     	break;
     case WOODBURY:
+    	updateInSlice_woodbury(timeslice);
+    	break;
     case DELAYED:
-    	throw GeneralError("So far only the iterative update is implemented");
+    	updateInSlice_delayed(timeslice);
+    	break;
     }
 
     if (rescale) {
@@ -2160,6 +2163,120 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
         }
     }
     lastAccRatioLocal /= num(N);
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
+	lastAccRatioLocal = 0;
+
+	//TODO: might be better to have these as class member variables
+	MatCpx X(4*N, 4*delaySteps);
+	auto getX = [this, &X](uint32_t step) {
+		return X.cols(4*step, 4*step + 3);
+	};
+	MatCpx Y(4*N, 4*delaySteps);
+	auto getY = [this, &Y](uint32_t step) {
+		return Y.rows(4*step, 4*step + 3);
+	};
+	MatCpx Rj(4, 4*N);
+	MatCpx::fixed<4,4> Sj;
+	MatCpx Cj(4*N, 4);
+	MatCpx::fixed<4,4> tempBlock;
+
+	auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+		for (uint32_t r = 0; r < 4; ++r) {
+			target.row(r) = source.row(for_site + r*N);
+		}
+	};
+	auto take4cols = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+		for (uint32_t c = 0; c < 4; ++c) {
+			target.col(c) = source.col(for_site + c*N);
+		}
+	};
+
+	uint32_t site = 0;
+	while (site < N) {
+		uint32_t delayStepsNow = std::min(delaySteps, N - site + 1);
+		X.set_size(4*N, 4*delayStepsNow);
+		Y.set_size(4*delayStepsNow, 4*N);
+		for (uint32_t j = 0; j < delayStepsNow; ++j) {
+			Phi newphi = proposeNewField(site, timeslice);
+			num dsphi = deltaSPhi(site, timeslice, newphi);
+			num probSPhi = std::exp(-dsphi);
+
+			MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
+
+			take4rows(Rj, g, site);
+			for (uint32_t l = 0; l < j; ++l) {
+				take4rows(tempBlock, getX(l), site);
+				Rj += tempBlock * getY(l);
+			}
+
+			take4cols(Sj, Rj, site);
+
+			take4cols(Cj, g, site);
+			for (uint32_t l = 0; l < j; ++l) {
+				take4cols(tempBlock, getY(l), site);
+				Cj += getX(l) * tempBlock;
+			}
+
+			//
+
+			getX(j) = arma::inv(eye4cpx - tempBlock * deltanonzero + deltanonzero) *
+
+			++site;
+		}
+	}
+
+	lastAccRatioLocal /= num(N);
+}
+
+template<bool TD, CheckerboardMethod CB>
+MatCpx::fixed<4,4> DetSDW<TD,CB>::get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site) {
+	//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
+
+	//compute non-zero elements of delta
+	// deltanonzero is \Delta^i from the notes
+	//
+	//evMatrix(): yield a 4x4 matrix containing the entries for the
+	//current lattice site and time slice of e^(sign*dtau*V) with
+	//given values of the field phi at that space-time location [and of
+	//cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
+	auto evMatrix = [](int sign, num kphi0, num kphi1,
+			num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
+		MatNum::fixed<4,4> ev_real;
+		ev_real.diag().fill(kphiCosh);
+		ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
+		ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
+		ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
+		ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
+		ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
+
+		MatCpx::fixed<4,4> ev;
+		ev.set_real(ev_real);
+		ev(0,3).imag(-sign * kphi1 * kphiSinh);
+		ev(1,2).imag( sign * kphi1 * kphiSinh);
+		ev(2,1).imag(-sign * kphi1 * kphiSinh);
+		ev(3,0).imag( sign * kphi1 * kphiSinh);
+
+		return ev;
+	};
+	MatCpx::fixed<4,4> evOld = evMatrix(
+			+1,
+			phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
+			phiCosh(site, timeslice), phiSinh(site, timeslice)
+	);
+	num normnewphi = arma::norm(newphi,2);
+	num coshnewphi = std::cosh(dtau * normnewphi);
+	num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+	MatCpx::fixed<4,4> emvNew = evMatrix(
+			-1,
+			newphi[0], newphi[1], newphi[2],
+			coshnewphi, sinhnewphi
+	);
+	MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
+	deltanonzero.diag() -= cpx(1.0, 0);
+	return deltanonzero;
 }
 
 

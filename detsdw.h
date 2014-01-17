@@ -345,6 +345,7 @@ protected:
     //specific implementations of updateInSlice:
     void updateInSlice_iterative(uint32_t timeslice);
     void updateInSlice_woodbury(uint32_t timeslice);
+    void updateInSlice_delayed(uint32_t timeslice);
 
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);
@@ -352,6 +353,8 @@ protected:
     //functions used by updateInSlice:
     Phi proposeNewField(uint32_t site, uint32_t timeslice);
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
+    MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
+
     //Try a global move, where all the phi-fields of a timeslice are multiplied
     //by a common factor.
     void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
