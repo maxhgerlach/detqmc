@@ -282,9 +282,16 @@ uint32_t DetSDW<TD,CB>::getSystemN() const {
 template<bool TD, CheckerboardMethod CB>
 MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     MetadataMap meta;
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     meta["model"] = "sdw";
     meta["checkerboard"] = (CB ? "true" : "false");
-    meta["checkerboardMethod"] = checkerboardMethod;
+    if (CB) {
+    	meta["checkerboardMethod"] = checkerboardMethod;
+    }
+    meta["updateMethod"] = updateMethodstr(updateMethod);
+    if (updateMethod == DELAYED) {
+    	META_INSERT(delaySteps);
+    }
     meta["timedisplaced"] = (TD ? "true" : "false");
     if (bc == PBC) {
           meta["bc"] = "pbc";
@@ -295,7 +302,6 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     } else if (bc == APBC_XY) {
           meta["bc"] = "apbc-xy";
     }
-#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     META_INSERT(targetAccRatioLocal);
     META_INSERT(r);
     META_INSERT(txhor);

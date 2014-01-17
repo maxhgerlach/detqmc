@@ -110,6 +110,18 @@ protected:
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
     enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
+    static inline std::string updateMethodstr(UpdateMethod_Type um) {
+    	switch (um) {
+    	case ITERATIVE:
+    		return "iterative";
+    	case WOODBURY:
+    		return "woodbury";
+    	case DELAYED:
+    		return "delayed";
+    	default:
+    		return "invalid";
+    	}
+    }
     UpdateMethod_Type updateMethod;
     uint32_t delaySteps;					//for delayed updates
 
