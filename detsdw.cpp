@@ -55,6 +55,12 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         }
     }
 
+    if (pars.specified.count("updateMethod")) {
+    	if (not pars.specified.count("delaySteps")) {
+    		throw ParameterMissing("delaySteps");
+    	}
+    }
+
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
     for (const std::string& bc : possibleBC) {
@@ -82,6 +88,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
                                 }                                       \
                             }
     CHECK_POSITIVE(L);
+    CHECK_POSITIVE(delaySteps);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
@@ -141,7 +148,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
-        bc(PBC), updateMethod(ITERATIVE),
+        bc(PBC), updateMethod(ITERATIVE), delaySteps(0),
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),

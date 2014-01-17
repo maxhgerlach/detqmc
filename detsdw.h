@@ -111,6 +111,7 @@ protected:
     BC_Type bc;
     enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
     UpdateMethod_Type updateMethod;
+    uint32_t delaySteps;					//for delayed updates
 
     const bool rescale;
     const uint32_t rescaleInterval;

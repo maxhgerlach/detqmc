@@ -34,6 +34,7 @@ struct ModelParams {
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
     std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
     std::string updateMethod;	//SDW: "iterative", "woodbury", or "delayed"
+    uint32_t delaySteps;		//SDW: parameter in case updateMethod is "delayed"
     num t;      //Hubbard
     num U;      //Hubbard
     num r;      //SDW
@@ -62,6 +63,7 @@ struct ModelParams {
 
     ModelParams() :
             model(), timedisplaced(), checkerboard(), checkerboardMethod(), updateMethod(),
+            delaySteps(),
             t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
             mu(), L(), d(),
@@ -76,7 +78,7 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
+        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
