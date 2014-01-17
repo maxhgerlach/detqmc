@@ -2170,7 +2170,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 	lastAccRatioLocal = 0;
 
 	//TODO: might be better to have these as class member variables
-	MatCpx X(4*N, 4*delaySteps);
+	MatCpx X(4*delaySteps, 4*N);
 	auto getX = [this, &X](uint32_t step) {
 		return X.cols(4*step, 4*step + 3);
 	};
@@ -2182,6 +2182,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 	MatCpx::fixed<4,4> Sj;
 	MatCpx Cj(4*N, 4);
 	MatCpx::fixed<4,4> tempBlock;
+	MatCpx::fixed<4,4> Mj;
 
 	auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
 		for (uint32_t r = 0; r < 4; ++r) {
@@ -2199,7 +2200,9 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 		uint32_t delayStepsNow = std::min(delaySteps, N - site + 1);
 		X.set_size(4*N, 4*delayStepsNow);
 		Y.set_size(4*delayStepsNow, 4*N);
-		for (uint32_t j = 0; j < delayStepsNow; ++j) {
+		uint32_t j = 0;
+		while (j < delayStepsNow and site < N) {
+		//for (uint32_t j = 0; j < delayStepsNow; ++j) {
 			Phi newphi = proposeNewField(site, timeslice);
 			num dsphi = deltaSPhi(site, timeslice, newphi);
 			num probSPhi = std::exp(-dsphi);
@@ -2214,17 +2217,41 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 
 			take4cols(Sj, Rj, site);
 
-			take4cols(Cj, g, site);
-			for (uint32_t l = 0; l < j; ++l) {
-				take4cols(tempBlock, getY(l), site);
-				Cj += getX(l) * tempBlock;
+			Mj = eye4cpx - Sj * deltanonzero + deltanonzero;
+			num probSFermion = arma::det(Mj).real();
+
+			num prob = probSPhi * probSFermion;
+			if (prob > 1.0 or rng.rand01() < prob) {
+				//count accepted update
+				lastAccRatioLocal += 1.0;
+
+				//we need Cj only to update X
+				take4cols(Cj, g, site);
+				for (uint32_t l = 0; l < j; ++l) {
+					take4cols(tempBlock, getY(l), site);
+					Cj += getX(l) * tempBlock;
+				}
+				//Rj is now Rj - \Id_j, for updating Y
+				for (uint32_t rc = 0; rc < 4; ++rc) {
+					uint32_t entry = site + rc * N;
+					Rj(entry, entry) -= cpx(1.0, 0.0);
+				}
+
+				//update X and Y
+				getX(j) = Cj * deltanonzero;
+				getY(j) = arma::inv(Mj) * Rj;
+				//count successful delayed update
+				j += 1;
 			}
-
-			//
-
-			getX(j) = arma::inv(eye4cpx - tempBlock * deltanonzero + deltanonzero) *
-
 			++site;
+		}
+		if (j > 0) {
+			if (j < delayStepsNow) {
+				X.resize(4*N, 4*j);
+				Y.resize(4*j, 4*N);
+			}
+			//carry out the delayed updates of the Green's function
+			g += X*Y;
 		}
 	}
 
