@@ -1844,6 +1844,18 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
 
         num probSFermion = det.real();
 
+        //DEBUG: determinant computation from new routine updateInSlice_woodbury:
+//        MatCpx::fixed<4,4> g_sub;
+//        for (uint32_t a = 0; a < 4; ++a) {
+//        	for (uint32_t b = 0; b < 4; ++b) {
+//        		g_sub(a,b) = g(site + a*N, site + b*N);
+//        	}
+//        }
+//        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;						//!
+//        std::cout << "det: " << (probSFermion - arma::det(M).real()) / probSFermion << "\n";
+        //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
+
+
         num prob = probSPhi * probSFermion;
 
         if (prob > 1.0 or rng.rand01() < prob) {
@@ -1872,6 +1884,106 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
             //END DEBUG
             //****
 
+
+            //DEBUG
+            //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
+//            MatCpx delta(4*N, 4*N);
+//            delta.fill(cpx(0,0));
+//            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+//            uint32_t i = 0;
+//            for (auto col: idx) {
+//            	uint32_t j = 0;
+//            	for (auto row: idx) {
+//            		delta(row, col) = deltanonzero(j, i);
+//            		++j;
+//            	}
+//            	++i;
+//            }
+//            MatCpx g_new_ref = g * arma::inv(
+//            		arma::eye(4*N,4*N) + delta*(arma::eye(4*N,4*N) - g));
+            //END DEBUG
+
+
+            //DEBUG
+            //Compare green's function updated with the method of updateInSlice_woodbury
+            //with this one:
+//            MatCpx g_woodbury = g;		//copy
+//            MatCpx::fixed<4,4> g_woodbury_sub;
+//            for (uint32_t a = 0; a < 4; ++a) {
+//            	for (uint32_t b = 0; b < 4; ++b) {
+//            		g_woodbury_sub(a,b) = g_woodbury(site + a*N, site + b*N);
+//            	}
+//            }
+//            MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_woodbury_sub) * deltanonzero;	//!!
+//            MatCpx mat_V(4, 4*N);
+//            for (uint32_t r = 0; r < 4; ++r) {
+//            	mat_V.row(r) = g_woodbury.row(site + r*N);
+//            	mat_V(r, site + r*N) -= 1.0;
+//            }
+//            MatCpx g_woodbury_times_mat_U(4*N, 4);
+//            for (uint32_t c = 0; c < 4; ++c) {
+//            	g_woodbury_times_mat_U.col(c) = g_woodbury.col(site + c*N); //!!
+//            }
+//            g_woodbury_times_mat_U = g_woodbury_times_mat_U * deltanonzero;
+//            g_woodbury += (g_woodbury_times_mat_U) * (arma::inv(M) * mat_V);
+            //END DEBUG
+
+            //DEBUG
+            //Compare green's function updated with a large matrix woodbury formula
+            //with this one:
+//            MatCpx delta(4*N, 4*N);
+//            delta.fill(cpx(0,0));
+//            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
+//            uint32_t i = 0;
+//            for (auto col: idx) {
+//            	uint32_t j = 0;
+//            	for (auto row: idx) {
+//            		delta(row, col) = deltanonzero(j, i);
+//            		++j;
+//            	}
+//            	++i;
+//            }
+//            MatCpx mat_U_large = -delta;
+//            MatCpx mat_V_large = arma::eye(4*N,4*N) - g;
+//            MatCpx g_woodbury_large = g * (arma::eye(4*N,4*N) +
+//            		mat_U_large *
+//            		arma::inv(arma::eye(4*N,4*N) - mat_V_large * mat_U_large) *
+//            		mat_V_large);
+            //END DEBUG
+
+
+            //DEBUG
+            //Compare green's function updated with a reasonably sized matrix woodbury formula
+            //with this one:
+//            MatCpx mat_U_reas(4*N,4);
+//            mat_U_reas.fill(cpx(0,0));
+//            for (uint32_t k = 0; k < 4; ++k) {
+//            	for (uint32_t l = 0; l < 4; ++l) {
+//            		mat_U_reas(site + k*N, l) = -deltanonzero(k, l);
+//            	}
+//            }
+//            MatCpx mat_V_reas(4,4*N);
+//            for (uint32_t l = 0; l < 4; ++l) {
+//            	mat_V_reas.row(l) = arma::conv_to<MatCpx>::from((arma::eye(4*N,4*N) - g)).row(site + l*N);
+//            }
+//            MatCpx::fixed<4,4> g_woodbury_reas_sub;
+//            for (uint32_t a = 0; a < 4; ++a) {
+//            	for (uint32_t b = 0; b < 4; ++b) {
+//            		g_woodbury_reas_sub(a,b) = g(site + a*N, site + b*N);
+//            	}
+//            }
+//            MatCpx::fixed<4,4> M_rev = eye4cpx + (eye4cpx - g_woodbury_reas_sub) * deltanonzero;
+//            //MatCpx g_woodbury_reas = g * (arma::eye(4*N,4*N) +
+//            //		mat_U_reas *
+//            //		arma::inv(eye4cpx - mat_V_reas * mat_U_reas) *
+//            //		mat_V_reas);
+//            MatCpx g_woodbury_reas = g * (arma::eye(4*N,4*N) +
+//            		mat_U_reas *
+//            		arma::inv(M_rev) *
+//            		mat_V_reas);
+            //END DEBUG
+
+
             //compensate for already included diagonal entries of I in invRows
             rows[0][site] -= 1;
             rows[1][site + N] -= 1;
@@ -1891,6 +2003,33 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
                 }
             }
             g += gTimesInvRows;
+
+            //DEBUG
+//            std::cout << "ref g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_new_ref) / g)))) << "\n";
+//            std::cout << "ref g_max: " << arma::max(arma::max(arma::abs(((g - g_new_ref) / g)))) << "\n";
+            //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
+
+            //DEBUG
+            //Compare green's function updated with an large woodbury formula
+            //with this one:
+//            std::cout << "woodbury large g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury_large) / g)))) << "\n";
+//            std::cout << "woodbury large g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury_large) / g)))) << "\n";
+            //END DEBUG
+
+            //DEBUG
+            //Compare green's function updated with a reasonably sized matrix woodbury formula
+            //with this one:
+//            std::cout << "woodbury reas g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury_reas) / g)))) << "\n";
+//            std::cout << "woodbury reas g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury_reas) / g)))) << "\n";
+            //END DEBUG
+
+
+            //DEBUG
+            //Compare green's function updated with the method of updateInSlice_woodbury
+            //with this one:
+//            std::cout << "woodbury g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury) / g)))) << "\n";
+//            std::cout << "woodbury g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury) / g)))) << "\n";
+            //END DEBUG
 
             //****
             //DEBUG
