@@ -55,12 +55,6 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         }
     }
 
-    if (pars.specified.count("updateMethod")) {
-    	if (not pars.specified.count("delaySteps")) {
-    		throw ParameterMissing("delaySteps");
-    	}
-    }
-
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
     for (const std::string& bc : possibleBC) {
@@ -77,6 +71,17 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     if (not updateMethod_is_one_of_the_possible) {
         throw ParameterWrong("updateMethod", pars.updateMethod);
     }
+    if (pars.specified.count("updateMethod")) {
+    	if (not pars.specified.count("delaySteps")) {
+    		throw ParameterMissing("delaySteps");
+    	}
+    	uint32_t N = std::pow(pars.L, pars.d);
+    	if (pars.delaySteps <= 0 or pars.delaySteps >= N) {
+    		throw ParameterWrong("delaySteps", pars.delaySteps);
+    	}
+    }
+
+
 
     if (pars.checkerboard and pars.L % 2 != 0) {
         throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
@@ -88,7 +93,6 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
                                 }                                       \
                             }
     CHECK_POSITIVE(L);
-    CHECK_POSITIVE(delaySteps);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
