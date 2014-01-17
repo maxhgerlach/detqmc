@@ -1986,12 +1986,21 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
             phiSinh(site, timeslice) = sinhnewphi;
 
             //update g
+
             MatCpx mat_V(4, 4*N);
             for (uint32_t r = 0; r < 4; ++r) {
             	mat_V.row(r) = g.row(site + r*N);
-            	mat_V(r, site + r*N) -= 1.0
+            	mat_V(r, site + r*N) -= 1.0;
             }
-            MatCpx g_times_mat_U(4*N, 4) = ; //TODO
+
+            //TODO: is it a good idea to do this copy? or would it be better to
+            //compute the product directly with a non-contiguous subview?
+            MatCpx g_times_mat_U(4*N, 4);
+            for (uint32_t c = 0; c < 4; ++c) {
+            	g_times_mat_U.col(c) = g.col(c);
+            }
+            g_times_mat_U = g_times_mat_U * deltanonzero;
+
             g += (g_times_mat_U) * (arma::inv(M) * mat_V);
         }
     }
