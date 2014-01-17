@@ -133,6 +133,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
 template<bool TD, CheckerboardMethod CB>
 DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
+        eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
         rng(rng_),
         checkerboard(pars.checkerboard),
         checkerboardMethod(pars.checkerboardMethod),

@@ -78,6 +78,9 @@ protected:
 
     typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     
+    //complex 4x4 identity matrix
+    const MatCpx::fixed<4,4> eye4cpx;
+
     RngWrapper& rng;
 
     static const uint32_t d = 2;
