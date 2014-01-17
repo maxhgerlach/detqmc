@@ -1906,8 +1906,6 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
-	static MatCpx::fixed<4,4> eye4cpx(arma::eye(4,4), arma::zeros(4,4));
-
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi = proposeNewField(site, timeslice);
@@ -1970,7 +1968,7 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
 
         //the determinant ratio for the spin update is given by the determinant
         //of the following matrix M
-        MatCpx::fixed<4,4> M = eye4cpx + deltanonzero * (eye4cpx - g_sub);
+        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;
 
         num probSFermion = arma::det(M).real();
 
@@ -1998,7 +1996,7 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
             //compute the product directly with a non-contiguous subview?
             MatCpx g_times_mat_U(4*N, 4);
             for (uint32_t c = 0; c < 4; ++c) {
-            	g_times_mat_U.col(c) = g.col(c);
+            	g_times_mat_U.col(c) = g.col(site + c*N);
             }
             g_times_mat_U = g_times_mat_U * deltanonzero;
 
