@@ -71,11 +71,11 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     if (not updateMethod_is_one_of_the_possible) {
         throw ParameterWrong("updateMethod", pars.updateMethod);
     }
-    if (pars.specified.count("updateMethod")) {
+    if (pars.specified.count("updateMethod") and pars.updateMethod == "delayed") {
     	if (not pars.specified.count("delaySteps")) {
     		throw ParameterMissing("delaySteps");
     	}
-    	uint32_t N = std::pow(pars.L, pars.d);
+    	uint32_t N = std::pow(pars.L, 2);
     	if (pars.delaySteps <= 0 or pars.delaySteps >= N) {
     		throw ParameterWrong("delaySteps", pars.delaySteps);
     	}
@@ -152,7 +152,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
-        bc(PBC), updateMethod(ITERATIVE), delaySteps(0),
+        bc(PBC), updateMethod(ITERATIVE), delaySteps(pars.delaySteps),
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
@@ -2197,7 +2197,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 
 	uint32_t site = 0;
 	while (site < N) {
-		uint32_t delayStepsNow = std::min(delaySteps, N - site + 1);
+		uint32_t delayStepsNow = std::min(delaySteps, N - site);
 		X.set_size(4*N, 4*delayStepsNow);
 		Y.set_size(4*delayStepsNow, 4*N);
 		uint32_t j = 0;
@@ -2234,7 +2234,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 				//Rj is now Rj - \Id_j, for updating Y
 				for (uint32_t rc = 0; rc < 4; ++rc) {
 					uint32_t entry = site + rc * N;
-					Rj(entry, entry) -= cpx(1.0, 0.0);
+					Rj(rc, entry) -= cpx(1.0, 0.0);
 				}
 
 				//update X and Y
