@@ -2202,12 +2202,16 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 		Y.set_size(4*delayStepsNow, 4*N);
 		uint32_t j = 0;
 		while (j < delayStepsNow and site < N) {
-		//for (uint32_t j = 0; j < delayStepsNow; ++j) {
 			Phi newphi = proposeNewField(site, timeslice);
 			num dsphi = deltaSPhi(site, timeslice, newphi);
 			num probSPhi = std::exp(-dsphi);
 
 			MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
+			//TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
+			//durchgefuehrt...
+			num normnewphi = arma::norm(newphi,2);
+			num coshnewphi = std::cosh(dtau * normnewphi);
+			num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
 
 			take4rows(Rj, g, site);
 			for (uint32_t l = 0; l < j; ++l) {
@@ -2224,6 +2228,12 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 			if (prob > 1.0 or rng.rand01() < prob) {
 				//count accepted update
 				lastAccRatioLocal += 1.0;
+
+				phi0(site, timeslice) = newphi[0];
+				phi1(site, timeslice) = newphi[1];
+				phi2(site, timeslice) = newphi[2];
+				phiCosh(site, timeslice) = coshnewphi;
+				phiSinh(site, timeslice) = sinhnewphi;
 
 				//we need Cj only to update X
 				take4cols(Cj, g, site);
