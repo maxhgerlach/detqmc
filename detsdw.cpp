@@ -76,7 +76,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     		throw ParameterMissing("delaySteps");
     	}
     	uint32_t N = std::pow(pars.L, 2);
-    	if (pars.delaySteps <= 0 or pars.delaySteps >= N) {
+    	if (pars.delaySteps <= 0 or pars.delaySteps > N) {
     		throw ParameterWrong("delaySteps", pars.delaySteps);
     	}
     }
