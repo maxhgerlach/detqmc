@@ -42,7 +42,9 @@
  *
  *
  *
- * 20121214 -- move to smart pointers (shared_ptr) to improve resource managment
+ * 20121214 -- move to smart pointers (shared_ptr) to improve resource management
+ *
+ * 20140123 -- added IO error handling
  *
  */
 template <typename Key, typename Value>
@@ -112,18 +114,23 @@ void DataMapWriter<Key,Value>::addHeaderText(const std::string& headerText) {
 template <typename Key, typename Value>
 void DataMapWriter<Key,Value>::writeToFile(const std::string& filename) {
     std::ofstream output(filename.c_str());
-    output << header;
-    output.precision(15);
-    output.setf(std::ios::scientific, std::ios::floatfield);
-    if (not errors) {
-        for (auto iter = data->cbegin(); iter != data->cend(); ++iter) {
-            output << iter->first << '\t' << iter->second << '\n';
-        }
+    if (output) {
+    	output << header;
+    	output.precision(15);
+    	output.setf(std::ios::scientific, std::ios::floatfield);
+    	if (not errors) {
+    		for (auto iter = data->cbegin(); iter != data->cend(); ++iter) {
+    			output << iter->first << '\t' << iter->second << '\n';
+    		}
+    	} else {
+    		for (auto iter = data->cbegin(); iter != data->cend(); ++iter) {
+    			Key key = iter->first;
+    			output << key << '\t' << iter->second << '\t' << errors->at(key) << '\n';
+    		}
+    	}
     } else {
-        for (auto iter = data->cbegin(); iter != data->cend(); ++iter) {
-            Key key = iter->first;
-            output << key << '\t' << iter->second << '\t' << errors->at(key) << '\n';
-        }
+    	std::cerr << "Could not open file " << filename << " for writing.\n";
+    	std::cerr << "Error code: " << strerror(errno) << "\n";
     }
 }
 

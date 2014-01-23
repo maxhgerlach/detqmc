@@ -46,16 +46,21 @@ MetadataMap readOnlyMetadata(const std::string & filename) {
     std::string collectedLines;
     std::string line;
     bool done = false;
-    do {
-        std::getline(inFile, line);
-        boost::algorithm::trim_left(line);
-        if (line[0] == '#') {
-            line[0] = ' ';
-            collectedLines += line + '\n';
-        } else {
-            done = true;
-        }
-    } while (inFile and not done);
+    if (inFile) {
+    	do {
+    		std::getline(inFile, line);
+    		boost::algorithm::trim_left(line);
+    		if (line[0] == '#') {
+    			line[0] = ' ';
+    			collectedLines += line + '\n';
+    		} else {
+    			done = true;
+    		}
+    	} while (inFile and not done);
+    } else {
+    	std::cerr << "Could not open file " << filename << " for reading.\n";
+    	std::cerr << "Error code: " << strerror(errno) << "\n";
+    }
     return parseMetadataBlock(collectedLines);
 }
 
@@ -88,9 +93,14 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
     } else {
         outFile.open(filename.c_str(), std::ios::out);
     }
-    outFile << comments;
-    outFile << metadataToString(meta, "# ");
-    outFile.flush();
+    if (outFile) {
+    	outFile << comments;
+    	outFile << metadataToString(meta, "# ");
+    	outFile.flush();
+    } else {
+    	std::cerr << "Could not open file " << filename << " for writing.\n";
+    	std::cerr << "Error code: " << strerror(errno) << "\n";
+    }
 }
 
 
