@@ -51,7 +51,8 @@ public:
 
     // update results stored on disk
     void saveResults();
-    // dump simulation parameters and the current state to a Boost::S11n archive
+    // dump simulation parameters and the current state to a Boost::S11n archive,
+    // also write out information about the current simulation state to info.dat
     void saveState();
 
     virtual ~DetQMC();

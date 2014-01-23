@@ -211,13 +211,42 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
 
 void DetQMC::saveState() {
     timing.start("saveState");
+
+    //serialize state to file
     std::ofstream ofs;
     ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
     ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_oarchive oa(ofs);
     oa << parsmodel << parsmc;
     saveContents(oa);
+
+    //write out info about state of simulation to "info.dat"
+    std::string commonInfoFilename = "info.dat";
+    writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
+            "Collected information about this determinantal quantum Monte Carlo simulation",
+            false);
+    writeOnlyMetaData(commonInfoFilename, modelMeta,
+            "Model parameters:",
+            true);
+    writeOnlyMetaData(commonInfoFilename, mcMeta,
+            "Monte Carlo parameters:",
+            true);
+
+    MetadataMap currentState;
+    currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
+    currentState["sweepsDone"] = numToString(sweepsDone);
+
+    uint32_t cwts = curWalltimeSecs();
+    totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
+    walltimeSecsLastSaveResults = cwts;
+
+    currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
+    writeOnlyMetaData(commonInfoFilename, currentState,
+            "Current state of simulation:",
+            true);
+
     std::cout << "State has been saved." << std::endl;
+
     timing.stop("saveState");
 }
 
@@ -365,29 +394,6 @@ void DetQMC::saveResults() {
         (*p)->outputTimeseries();
     }
     outputResults(vecObsHandlers);
-    std::string commonInfoFilename = "info.dat";
-    writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
-            "Collected innformation about this determinantal quantum Monte Carlo simulation",
-            false);
-    writeOnlyMetaData(commonInfoFilename, modelMeta,
-            "Model parameters:",
-            true);
-    writeOnlyMetaData(commonInfoFilename, mcMeta,
-            "Monte Carlo parameters:",
-            true);
-
-    MetadataMap currentState;
-    currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
-    currentState["sweepsDone"] = numToString(sweepsDone);
-
-    uint32_t cwts = curWalltimeSecs();
-    totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
-    walltimeSecsLastSaveResults = cwts;
-
-    currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
-    writeOnlyMetaData(commonInfoFilename, currentState,
-            "Current state of simulation:",
-            true);
 
     timing.stop("saveResults");
 }
