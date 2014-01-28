@@ -15,6 +15,7 @@
 #include "boost/algorithm/string.hpp"   //trimming
 #include <sstream>
 #include <fstream>
+#include <iostream>
 #include <vector>
 
 //parse metadata from a configfile-like section of lines of the form
