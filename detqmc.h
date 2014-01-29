@@ -92,6 +92,7 @@ protected:
                                                     //accumulated over all runs, updated on call of saveResults()
     uint32_t walltimeSecsLastSaveResults;       //timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
     uint32_t grantedWalltimeSecs;               //walltime the simulation is allowed to run
+    std::string jobid;							//id string from the job scheduling system, or "nojobid"
 
 
     MetadataMap prepareMCMetadataMap() const;

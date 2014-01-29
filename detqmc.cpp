@@ -13,6 +13,7 @@
 #include <fstream>
 #include <armadillo>
 #include "boost/assign/std/vector.hpp"
+#include "boost/filesystem.hpp"
 
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
@@ -135,6 +136,15 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
     }
     cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
 
+    //query SLURM Jobid
+    const char* jobid_env = std::getenv("SLURM_JOBID");
+    if (jobid_env) {
+    	jobid = jobid_env;
+    } else {
+    	jobid = "nojobid";
+    }
+    cout << "Job ID: " << jobid << "\n";
+
     cout << "\nSimulation initialized, parameters: " << endl;
     cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
@@ -164,7 +174,7 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
         swCounter(0),
         elapsedTimer(),     // start timing
         totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
-        grantedWalltimeSecs(0)
+        grantedWalltimeSecs(0), jobid("")
 {
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -282,21 +292,33 @@ void DetQMC::run() {
 
     const uint32_t SavetyMinutes = 35;
 
+    const std::string abortFilename1 = "ABORT." + jobid;
+    const std::string abortFilename2 = "../" + abortFilename1;
+
     while (stage != F) {                //big loop
-        if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
-            //close to exceeded walltime, but only save state and exit if we have done an even
-            //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
-            if (swCounter % 2 == 0) {
-                cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n"
-                        << "Save state / results and exit gracefully."
-                        << endl;
+    	if (swCounter % 2 == 0) {
+    		bool stop_now = false;
+    		if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
+    			cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
+    			stop_now = true;
+    		} else if (boost::filesystem::exists(abortFilename1) or
+    				   boost::filesystem::exists(abortFilename2)) {
+    			cout << "Found file " << abortFilename1 << ".\n";
+    			stop_now = true;
+    		}
+    		if (stop_now) {
+    			//close to exceeded walltime or we find that a file has been placed,
+    			//which signals us to abort this run for some other reason.
+    			//but only save state and exit if we have done an even
+    			//number of sweeps for ("economic") serialization guarantee [else do one sweep more]
+    			cout << "Save state / results and exit gracefully." << endl;
                 if (stage == Stage::M) {
                     saveResults();
                 }
                 saveState();
                 break;  //while
-            }
-        }
+    		}
+    	}
 
         //thermalization & measurement stages
         switch (stage) {
