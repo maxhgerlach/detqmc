@@ -132,6 +132,8 @@ protected:
     uint32_t acceptedRescales;
     uint32_t attemptedRescales;
 
+    uint32_t repeatUpdateInSlice;
+
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
     checkarray<num,2> hopHor;

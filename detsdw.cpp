@@ -48,7 +48,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor", "tyver", "rescale", "updateMethod";
+    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
+    		"tyver", "rescale", "updateMethod", "repeatUpdateInSlice";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -156,6 +157,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
+        repeatUpdateInSlice(pars.repeatUpdateInSlice),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
         spaceNeigh(L), timeNeigh(m),
@@ -1651,28 +1653,30 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
-    switch(updateMethod) {
-    case ITERATIVE:
-    	updateInSlice_iterative(timeslice);
-    	break;
-    case WOODBURY:
-    	updateInSlice_woodbury(timeslice);
-    	break;
-    case DELAYED:
-    	updateInSlice_delayed(timeslice);
-    	break;
-    }
+    for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
+    	switch(updateMethod) {
+    	case ITERATIVE:
+    		updateInSlice_iterative(timeslice);
+    		break;
+    	case WOODBURY:
+    		updateInSlice_woodbury(timeslice);
+    		break;
+    	case DELAYED:
+    		updateInSlice_delayed(timeslice);
+    		break;
+    	}
 
-    if (rescale) {
-    	if (performedSweeps % rescaleInterval == 0) {
-    		num rnd = rng.rand01();
-    		if (rnd <= 0.5) {
-    			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
-    		} else {
-    			attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    	if (rescale) {
+    		if (performedSweeps % rescaleInterval == 0) {
+    			num rnd = rng.rand01();
+    			if (rnd <= 0.5) {
+    				attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    			} else {
+    				attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    			}
     		}
     	}
-    }
+	}
 
     timing.stop("sdw-updateInSlice");
 }

@@ -70,6 +70,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("rescaleInterval", po::value<uint32_t>(&modelpar.rescaleInterval)->default_value(100), "attempt global rescale move every # sweeps")
             ("rescaleGrowthFactor", po::value<num>(&modelpar.rescaleGrowthFactor)->default_value(1.05), "factor by which to attempt to grow the fields")
             ("rescaleShrinkFactor", po::value<num>(&modelpar.rescaleShrinkFactor)->default_value(0.95), "factor by which to attempt to shrink the fields")
+            ("repeatUpdateInSlice", po::value<uint32_t>(&modelpar.repeatUpdateInSlice)->default_value(1), "SDW: how often to repeat updateInSlice for eacht timeslice per sweep, default: 1")
             ;
 
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
