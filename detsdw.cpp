@@ -174,7 +174,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 //        occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
         pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
-        fermionEkinetic(0), fermionEcouple(0)//, fermionEkinetic_imag(0), fermionEcouple_imag(0)
+        fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
+        dud(N, delaySteps)
 {
 	assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
 	assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
@@ -2169,20 +2170,12 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 	lastAccRatioLocal = 0;
 
-	//TODO: might be better to have these as class member variables
-	MatCpx X(4*delaySteps, 4*N);
-	auto getX = [this, &X](uint32_t step) {
-		return X.cols(4*step, 4*step + 3);
+	auto getX = [this, &dud](uint32_t step) {
+		return dud.X.cols(4*step, 4*step + 3);
 	};
-	MatCpx Y(4*N, 4*delaySteps);
-	auto getY = [this, &Y](uint32_t step) {
-		return Y.rows(4*step, 4*step + 3);
+	auto getY = [this, &dud](uint32_t step) {
+		return dud.Y.rows(4*step, 4*step + 3);
 	};
-	MatCpx Rj(4, 4*N);
-	MatCpx::fixed<4,4> Sj;
-	MatCpx Cj(4*N, 4);
-	MatCpx::fixed<4,4> tempBlock;
-	MatCpx::fixed<4,4> Mj;
 
 	auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
 		for (uint32_t r = 0; r < 4; ++r) {
@@ -2198,8 +2191,8 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 	uint32_t site = 0;
 	while (site < N) {
 		uint32_t delayStepsNow = std::min(delaySteps, N - site);
-		X.set_size(4*N, 4*delayStepsNow);
-		Y.set_size(4*delayStepsNow, 4*N);
+		dud.X.set_size(4*N, 4*delayStepsNow);
+		dud.Y.set_size(4*delayStepsNow, 4*N);
 		uint32_t j = 0;
 		while (j < delayStepsNow and site < N) {
 			Phi newphi = proposeNewField(site, timeslice);
@@ -2213,16 +2206,16 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 			num coshnewphi = std::cosh(dtau * normnewphi);
 			num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
 
-			take4rows(Rj, g, site);
+			take4rows(dud.Rj, g, site);
 			for (uint32_t l = 0; l < j; ++l) {
-				take4rows(tempBlock, getX(l), site);
-				Rj += tempBlock * getY(l);
+				take4rows(dud.tempBlock, getX(l), site);
+				dud.Rj += dud.tempBlock * getY(l);
 			}
 
-			take4cols(Sj, Rj, site);
+			take4cols(dud.Sj, dud.Rj, site);
 
-			Mj = eye4cpx - Sj * deltanonzero + deltanonzero;
-			num probSFermion = arma::det(Mj).real();
+			dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
+			num probSFermion = arma::det(dud.Mj).real();
 
 			num prob = probSPhi * probSFermion;
 			if (prob > 1.0 or rng.rand01() < prob) {
@@ -2236,20 +2229,20 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 				phiSinh(site, timeslice) = sinhnewphi;
 
 				//we need Cj only to update X
-				take4cols(Cj, g, site);
+				take4cols(dud.Cj, g, site);
 				for (uint32_t l = 0; l < j; ++l) {
-					take4cols(tempBlock, getY(l), site);
-					Cj += getX(l) * tempBlock;
+					take4cols(dud.tempBlock, getY(l), site);
+					dud.Cj += getX(l) * dud.tempBlock;
 				}
 				//Rj is now Rj - \Id_j, for updating Y
 				for (uint32_t rc = 0; rc < 4; ++rc) {
 					uint32_t entry = site + rc * N;
-					Rj(rc, entry) -= cpx(1.0, 0.0);
+					dud.Rj(rc, entry) -= cpx(1.0, 0.0);
 				}
 
 				//update X and Y
-				getX(j) = Cj * deltanonzero;
-				getY(j) = arma::inv(Mj) * Rj;
+				getX(j) = dud.Cj * deltanonzero;
+				getY(j) = arma::inv(dud.Mj) * dud.Rj;
 				//count successful delayed update
 				j += 1;
 			}
@@ -2257,11 +2250,11 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 		}
 		if (j > 0) {
 			if (j < delayStepsNow) {
-				X.resize(4*N, 4*j);
-				Y.resize(4*j, 4*N);
+				dud.X.resize(4*N, 4*j);
+				dud.Y.resize(4*j, 4*N);
 			}
 			//carry out the delayed updates of the Green's function
-			g += X*Y;
+			g += dud.X*dud.Y;
 		}
 	}
 

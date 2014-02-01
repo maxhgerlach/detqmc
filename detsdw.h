@@ -345,7 +345,20 @@ protected:
     //specific implementations of updateInSlice:
     void updateInSlice_iterative(uint32_t timeslice);
     void updateInSlice_woodbury(uint32_t timeslice);
+   	//this one is a nested struct because it has some status
     void updateInSlice_delayed(uint32_t timeslice);
+    struct DelayedUpdatesData {		//some helper data for updatesInSlice_delayed that should not be realloced all the time
+    	MatCpx X;
+    	MatCpx Y;
+    	MatCpx Rj;
+    	MatCpx::fixed<4,4> Sj;
+    	MatCpx Cj;
+    	MatCpx::fixed<4,4> tempBlock;
+    	MatCpx::fixed<4,4> Mj;
+    	DelayedUpdatesData(uint32_t N, uint32_t delaySteps)
+    		: X(4*delaySteps, 4*N), Y(4*N, 4*delaySteps), Rj(4, 4*N), Cj(4*N, 4) {
+    	}
+    } dud;
 
     //this one does some adjusting of the box size from which new fields are chosen:
     virtual void updateInSliceThermalization(uint32_t timeslice);
