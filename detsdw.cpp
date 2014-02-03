@@ -329,6 +329,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     	META_INSERT(rescaleGrowthFactor);
     	META_INSERT(rescaleShrinkFactor);
     }
+    META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
     return meta;
 }
@@ -2174,10 +2175,10 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 	lastAccRatioLocal = 0;
 
-	auto getX = [this, &dud](uint32_t step) {
+	auto getX = [this](uint32_t step) {
 		return dud.X.cols(4*step, 4*step + 3);
 	};
-	auto getY = [this, &dud](uint32_t step) {
+	auto getY = [this](uint32_t step) {
 		return dud.Y.rows(4*step, 4*step + 3);
 	};
 
