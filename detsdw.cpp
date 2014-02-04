@@ -2512,11 +2512,22 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		using arma::trans; using arma::solve;
 
 		g = trans(solve(trans(M), trans(g)));
+
+		//DEBUG
+		std::cout << MatNum(arma::abs(g - g_new)).max() << std::endl;
+		//END DEBUG
+
 		//TODO: the three transpositions here bug me
 	} else {
 		//DEBUG info
 		std::cout << "Rejected!" << std::endl;
 	}
+
+	//DEBUG
+	if (rng.rand01() < 0.05) {
+		exit(1);
+	}
+	//END DEBUG
 
 	++attemptedRescales;
 
