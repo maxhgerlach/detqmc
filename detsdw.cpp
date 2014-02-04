@@ -2521,10 +2521,27 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	} else {
 		//DEBUG info
 		std::cout << "Rejected!" << std::endl;
+
+		//DEBUG check probBoson
+                phi0.col(timeslice) = rphi0;
+		phi1.col(timeslice) = rphi1;
+		phi2.col(timeslice) = rphi2;
+
+		//DEBUG check probBoson                
+		num sphi_new = phiAction();
+		num delta_sphi = sphi_new - sphi_old;
+		num probCheck = std::exp(-delta_sphi);
+
+                phi0.col(timeslice) = oldphi0;
+		phi1.col(timeslice) = oldphi1;
+		phi2.col(timeslice) = oldphi2;
+                
+		std::cout << "Check probBoson = " << probCheck << std::endl;
+                
 	}
 
 	//DEBUG
-	if (rng.rand01() < 0.05) {
+	if (rng.rand01() < 0.15) {
 		exit(1);
 	}
 	//END DEBUG
