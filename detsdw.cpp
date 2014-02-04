@@ -2413,16 +2413,6 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 			case 2: skip_i = 3; break;
 			case 3: skip_i = 2; break;
 			}
-//			uint32_t start_i;
-//			if (0 != skip_i) {
-//				block(M,row,col) = arma::diagmat(*(delta_r[row][0])) *
-//						block(oneMinusG, 0, col);
-//				start_i = 1;
-//			} else {
-//				block(M,row,col) = arma::diagmat(*(delta_r[row][1])) *
-//						block(oneMinusG, 1, col);
-//				start_i = 2;
-//			}
 			uint32_t start_i = 0;
 			for (uint32_t i = start_i; i < 4; ++i) {
 				if (i == skip_i) continue;
