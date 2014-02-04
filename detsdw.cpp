@@ -2346,6 +2346,14 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum x  {phiSinh.col(timeslice)};
 	const VecNum c  {phiCosh.col(timeslice)};
 
+	//DEBUG
+	VecNum oldphi0 = phi0.col(timeslice);
+	VecNum oldphi1 = phi1.col(timeslice);
+	VecNum oldphi2 = phi2.col(timeslice);
+	debugSaveMatrix(oldphi0, "old_phi0");
+	debugSaveMatrix(oldphi1, "old_phi1");
+	debugSaveMatrix(oldphi2, "old_phi2");
+
 	//rescaled fields
 	const VecNum rphi0 {factor * phi0.col(timeslice)};
 	const VecNum rphi1 {factor * phi1.col(timeslice)};
@@ -2357,6 +2365,11 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
 	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
 	const VecNum rc    { cosh(dtau * rnorm) };
+
+	//DEBUG
+	debugSaveMatrix(rphi0, "new_phi0");
+	debugSaveMatrix(rphi1, "new_phi1");
+	debugSaveMatrix(rphi2, "new_phi2");
 
 	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
 	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
@@ -2370,6 +2383,15 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	const VecNum delta_b_i  { rc % arma::imag(b) % x - arma::imag(rb) % rx % c };
 	const VecNum delta_bc_r { delta_b_r };
 	const VecNum delta_bc_i { -delta_b_i };
+
+	//DEBUG
+//	debugSaveMatrix(delta_a, "delta_a");
+//	debugSaveMatrix(delta_ma, "delta_ma");
+//	debugSaveMatrix(delta_c, "delta_c");
+//	debugSaveMatrix(delta_b_r , "delta_b_r");
+//	debugSaveMatrix(delta_b_i , "delta_b_i");
+//	debugSaveMatrix(delta_bc_r, "delta_bc_r");
+//	debugSaveMatrix(delta_bc_i, "delta_bc_i");
 
 	// real part of matrix represented by 4x4 array of pointers to our vectors
 	using std::array; using std::cref;
@@ -2400,6 +2422,25 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 
 	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
 	MatCpx oneMinusG { arma::eye(4*N,4*N) - g };
+	//DEBUG
+	for (uint32_t r = 0; r < 4; ++r) {
+		for (uint32_t c = 0; c < 4; ++c) {
+			const VecNum* ptr = delta_r[r][c];
+			std::string basename = "delta_r"+numToString(r)+"_c"+numToString(c);
+			if (ptr) {
+				debugSaveMatrix(*ptr, basename);
+			} else {
+				debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename);
+			}
+			const VecNum* ptr2 = delta_i[r][c];
+			std::string basename2 = "delta_i"+numToString(r)+"_c"+numToString(c);
+			if (ptr2) {
+				debugSaveMatrix(*ptr2, basename2);
+			} else {
+				debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename2);
+			}
+		}
+	}
 	MatCpx M { arma::eye(4*N,4*N), arma::zeros(4*N,4*N) };
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 	//real parts
@@ -2428,14 +2469,33 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 			block(M,row,i) += arma::diagmat(temp) * block(oneMinusG, 3 - row, i);
 		}
 	}
-#undef Mblock
+#undef block
+
+	//DEBUG
+	debugSaveMatrix(MatNum(arma::real(g)), "gslice_old_real");
+	debugSaveMatrix(MatNum(arma::imag(g)), "gslice_old_imag");
+	debugSaveMatrixCpx(M, "M");
+	MatCpx g_new = trans(solve(trans(M), trans(g)));
+	debugSaveMatrix(MatNum(arma::real(g_new)), "gslice_new_real");
+	debugSaveMatrix(MatNum(arma::imag(g_new)), "gslice_new_imag");
+	//END_DEBUG
 
 	// 3) Compute probability of accepting the global rescale move
 	num probFermion = arma::det(M).real();
 	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
 	num prob = probFermion * probBoson;
 
+	//DEBUG check probBoson
+	num sphi_old = phiAction();
+
+	//DEBUG info
+	std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
+			  << " \tprobBoson = " << probBoson << '\n';
+
 	if (prob > 1.0 or rng.rand01() < prob) {
+		//DEBUG info
+		std::cout << "Accepted!" << std::endl;
+
 		//count accepted update
 		++acceptedRescales;
 
@@ -2443,9 +2503,19 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		phi1.col(timeslice) = rphi1;
 		phi2.col(timeslice) = rphi2;
 
+		//DEBUG check probBoson
+		num sphi_new = phiAction();
+		num delta_sphi = sphi_new - sphi_old;
+		num probCheck = std::exp(-delta_sphi);
+		std::cout << "Check probBoson = " << probCheck << std::endl;
+
 		using arma::trans; using arma::solve;
+
 		g = trans(solve(trans(M), trans(g)));
 		//TODO: the three transpositions here bug me
+	} else {
+		//DEBUG info
+		std::cout << "Rejected!" << std::endl;
 	}
 
 	++attemptedRescales;
