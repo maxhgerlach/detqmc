@@ -2499,9 +2499,12 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		//count accepted update
 		++acceptedRescales;
 
+		//update phi-fields and dependent quantities
 		phi0.col(timeslice) = rphi0;
 		phi1.col(timeslice) = rphi1;
 		phi2.col(timeslice) = rphi2;
+		phiCosh.col(timeslice) = rc;
+		phiSinh.col(timeslice) = rx;
 
 		// //DEBUG check probBoson
 		// num sphi_new = phiAction();
@@ -2511,6 +2514,7 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 
 		using arma::trans; using arma::solve;
 
+		//update Green function
 		g = trans(solve(trans(M), trans(g)));
 		//TODO: the three transpositions here bug me
                 
