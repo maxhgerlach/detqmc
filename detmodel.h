@@ -273,6 +273,15 @@ protected:
                    Callable_init initMeasurement, Callable_measure_k measure,
                    Callable_finish finishMeasurement);
 
+    // This method is called after each sweep.
+    // A derived class, which implements the model, may overload it to check
+    // its internal state for consistency.  An exception should be thrown if
+    // it fails.
+    virtual void consistencyCheck() {
+    	// default: do nothing
+    }
+
+
     //Green component size, e.g. sz == N for the Hubbard model
     const uint32_t sz;
 
@@ -452,6 +461,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimple_skeleton(
     if (takeMeasurements) {
     	finishMeasurement();
     }
+    consistencyCheck();
 }
 
 //warning: this is almost a copy of sweepSimple() defined above
@@ -873,6 +883,8 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
     if (takeMeasurements) {
     	finishMeasurement();
     }
+
+    consistencyCheck();
 }
 
 
@@ -943,6 +955,8 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
     if (takeMeasurements) {
         finishMeasurement();
     }
+
+    consistencyCheck();
 }
 
 template<uint32_t GC, typename V, bool TimeDisplaced>

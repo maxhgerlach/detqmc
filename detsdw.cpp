@@ -2906,6 +2906,28 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
 
 
 
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::consistencyCheck() {
+	for (uint32_t k = 1; k <= m; ++k) {
+		for (uint32_t site = 0; site < N; ++site) {
+			num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
+									+ std::pow(phi1(site, k), 2)
+									+ std::pow(phi2(site, k), 2));
+			num relDiffCosh = std::abs((phiCosh(site, k) - std::cosh(dtau * phiNorm)) / phiCosh(site, k));
+			if (relDiffCosh > 1E-10) {
+				throw GeneralError("phiCosh is inconsistent");
+			}
+			num relDiffSinh = std::abs((phiSinh(site, k) - (std::sinh(dtau * phiNorm) / phiNorm)) / phiSinh(site, k));
+			if (relDiffSinh > 1E-10) {
+				throw GeneralError("phiSinh is inconsistent");
+			}
+		}
+	}
+}
+
+
+
+
 //explicit template instantiations:
 template class DetSDW<true,CB_NONE>;
 template class DetSDW<false,CB_NONE>;

@@ -385,6 +385,9 @@ protected:
     void finishMeasurements();				//finalize stored observable values (end of a sweep)
 
 
+    // for now: check that phiCosh and phiSinh are set correctly
+    virtual void consistencyCheck();
+
     //wrappers to use to instantiate template functions of the base class
     struct sdwComputeBmat {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
@@ -495,5 +498,7 @@ public:
         ar & performedSweeps;
     }
 };
+
+
 
 #endif /* DETSDW_H_ */
