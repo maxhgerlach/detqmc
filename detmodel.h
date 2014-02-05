@@ -941,12 +941,6 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
             }
             updateInSliceAndMaybeMeasure(k);
         }
-        //TODO: the following comment is no longer valid
-
-        //this will also compute the Green function at k==0, which is used
-        //for the following sweep up; storing it instead at k==m -- which would for sure
-        //improve consistency -- would mainly save some memory, but the processing would
-        //have to be done in any case
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceDownGreen(rightMultiplyBmat, l, gc);
         }
