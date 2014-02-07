@@ -1021,6 +1021,36 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 	}
 }
 
+template<bool TD, CheckerboardMethod CB> inline
+MatCpx DetSDW<TD,CB>::computePotentialExponential(
+		int sign, VecNum phi0, VecNum phi1, VecNum phi2) {
+	const VecCpx a (phi2, arma::zeros<VecNum>(N));
+	const VecCpx b (phi0, -phi1);
+	const VecCpx bc(phi0, +phi1);
+
+#define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+	MatCpx V(4*N, 4*N);
+	V.zeros(4*N, 4*N);
+	block(V,0,2).diag() = a;
+	block(V,0,3).diag() = b;
+	block(V,1,2).diag() = bc;
+	block(V,1,3).diag() = -a;
+	block(V,2,0).diag() = a;
+	block(V,2,1).diag() = b;
+	block(V,3,0).diag() = bc;
+	block(V,3,1).diag() = -a;
+#undef block
+
+    VecNum eigval;
+    MatCpx eigvec;
+    arma::eig_sym(eigval, eigvec, V);
+
+	MatCpx result(4*N, 4*N);
+	result = eigvec * arma::diagmat(arma::exp(sign * dtau * eigval)) * arma::trans(eigvec);
+
+	return result;
+}
+
 
 
 template<bool TD, CheckerboardMethod CB>

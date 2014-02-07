@@ -335,6 +335,10 @@ protected:
 
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
 
+    // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
+    // for one timeslice. This may be useful for checks.
+    MatCpx computePotentialExponential(int sign, VecNum phi0, VecNum phi1, VecNum phi2);
+
 
     //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
     //on the CheckerboardMethod
