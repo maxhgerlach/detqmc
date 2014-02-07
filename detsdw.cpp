@@ -1704,7 +1704,8 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     		if (rnd <= 0.5) {
     			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
     		} else {
-    			attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    			//attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+    			attemptGlobalRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
     		}
     	}
     }
