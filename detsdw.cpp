@@ -2523,7 +2523,48 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	// std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
 	// 		  << " \tprobBoson = " << probBoson << '\n';
 
+//	// DEBUG-CHECK
+//	VecNum debug_phi0_before = phi0.col(timeslice);
+//	VecNum debug_phi1_before = phi1.col(timeslice);
+//	VecNum debug_phi2_before = phi2.col(timeslice);
+//	num sphi_old = phiAction();
+//	phi0.col(timeslice) = rphi0;
+//	phi1.col(timeslice) = rphi1;
+//	phi2.col(timeslice) = rphi2;
+//	num sphi_new = phiAction();
+//	phi0.col(timeslice) = debug_phi0_before;
+//	phi1.col(timeslice) = debug_phi1_before;
+//	phi2.col(timeslice) = debug_phi2_before;
+//	num prob_check = std::exp(-(sphi_new - sphi_old));
+//	assert((prob_check - probBoson) / probBoson < 1E-10);
+//
+//	MatCpx debug_Delta(4*N,4*N);
+//	debug_Delta = computePotentialExponential(-1, rphi0, rphi1, rphi2)
+//			* computePotentialExponential(+1, debug_phi0_before, debug_phi1_before, debug_phi2_before)
+//			- arma::eye<MatCpx>(4*N, 4*N);
+//	MatCpx debug_M(4*N,4*N);
+//	debug_M = arma::eye<MatCpx>(4*N, 4*N) + debug_Delta *
+//			(arma::eye<MatCpx>(4*N, 4*N) - g);
+//	num debug_det = arma::det(debug_M).real();
+//	assert(debug_det > 0);
+//	assert(probFermion > 0);
+//	assert((debug_det - probFermion) / probFermion < 1E-10);
+//	// END-DEBUG-CHECK
+
+//	// DEBUG - count shrink/Grow
+//	static int countShrink = 0;
+//	static int countGrow = 0;
+//	// ENd-DEBUG - count shrink/Grow
+
 	if (prob > 1.0 or rng.rand01() < prob) {
+//		// DEBUG - count shrink/Grow
+//		if (factor < 1.0) {
+//			++countShrink;
+//		} else if (factor > 1.0) {
+//			++countGrow;
+//		}
+//		// END-DEBUG - count shrink/Grow
+
 		// //DEBUG info
 		// std::cout << "Accepted!" << std::endl;
 
@@ -2557,7 +2598,7 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		// std::cout << "Rejected!" << std::endl;
 
 		// //DEBUG check probBoson
-                // phi0.col(timeslice) = rphi0;
+        // phi0.col(timeslice) = rphi0;
 		// phi1.col(timeslice) = rphi1;
 		// phi2.col(timeslice) = rphi2;
 
@@ -2566,12 +2607,11 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 		// num delta_sphi = sphi_new - sphi_old;
 		// num probCheck = std::exp(-delta_sphi);
 
-                // phi0.col(timeslice) = oldphi0;
+        // phi0.col(timeslice) = oldphi0;
 		// phi1.col(timeslice) = oldphi1;
 		// phi2.col(timeslice) = oldphi2;
-                
+
 		// std::cout << "Check probBoson = " << probCheck << std::endl;
-                
 	}
 
 	// //DEBUG
@@ -2581,6 +2621,10 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 	// //END DEBUG
 
 	++attemptedRescales;
+
+//	// DEBUG - count shrink/Grow
+//	std::cout << "Shrink: " << countShrink << " Grow: " << countGrow << "\n";
+//	// END-DEBUG - count shrink/Grow
 
 	timing.stop("sdw-attemptGlobalRescaleMove");
 }
