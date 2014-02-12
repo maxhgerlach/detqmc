@@ -36,13 +36,13 @@ public:
 
     std::string getName() const;
 
-    //return a floating point random number from (0, 1)
+    //return a floating point random number from (0, 1), uniformly distributed
     double rand01() {
         //dSFTM
         return dsfmt_genrand_open_open(&dsfmt);
     }
 
-    //return a floating point random number from (low, high)
+    //return a floating point random number from (low, high), uniformly distributed
     double randRange(double low, double high) {
         return low + (high - low) * rand01();
     }
