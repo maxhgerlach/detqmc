@@ -33,7 +33,8 @@ struct ModelParams {
     bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
     std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
-    std::string updateMethod;	//SDW: "iterative", "woodbury", or "delayed"
+    std::string updateMethod;			//SDW: "iterative", "woodbury", or "delayed"
+    std::string spinProposalMethod;		//SDW: "box", "rotate_then_scale", or "rotate_and_scale"
     uint32_t delaySteps;		//SDW: parameter in case updateMethod is "delayed"
     num t;      //Hubbard
     num U;      //Hubbard
@@ -64,7 +65,8 @@ struct ModelParams {
     std::set<std::string> specified;
 
     ModelParams() :
-            model(), timedisplaced(), checkerboard(), checkerboardMethod(), updateMethod(),
+            model(), timedisplaced(), checkerboard(),
+            checkerboardMethod(), updateMethod(), spinProposalMethod(),
             delaySteps(),
             t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
@@ -81,7 +83,8 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod & delaySteps
+        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
+           & spinProposalMethod & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor

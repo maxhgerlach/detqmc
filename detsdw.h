@@ -125,6 +125,20 @@ protected:
     	}
     }
     UpdateMethod_Type updateMethod;
+    enum SpinProposalMethod_Type { BOX, ROTATE_THEN_SCALE, ROTATE_AND_SCALE };
+    static inline std::string spinPropobaslMethodstr(SpinProposalMethod_Type sp) {
+    	switch (sp) {
+    	case BOX:
+    		return "box";
+    	case ROTATE_THEN_SCALE:
+    		return "rotate_then_scale";
+    	case ROTATE_AND_SCALE:
+    		return "rotate_and_scale";
+    	default:
+    		return "invalid";
+    	}
+    }
+    SpinProposalMethod_Type spinProposalMethod;
     uint32_t delaySteps;					//for delayed updates
 
     const bool rescale;
@@ -180,7 +194,9 @@ protected:
     MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
 
 
-    num phiDelta;       //MC step size for field components
+    num phiDelta;       //MC step size for field components (box update)
+    num angleDelta;		//  for rotation update (this is the minimal cos\theta)
+    num scaleDelta;		//  for scaling update (the standard deviation of the gaussian radius update)
     //used to adjust phiDelta; acceptance ratios for local field updates
     num targetAccRatioLocal;
     num lastAccRatioLocal;
@@ -350,11 +366,30 @@ protected:
 
 
     virtual void updateInSlice(uint32_t timeslice);
-    //specific implementations of updateInSlice:
-    void updateInSlice_iterative(uint32_t timeslice);
-    void updateInSlice_woodbury(uint32_t timeslice);
-   	//this one is a nested struct because it has some status
-    void updateInSlice_delayed(uint32_t timeslice);
+    //this template member function calls the right one of those below
+    template<class CallableProposeSpin>
+    void callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
+    	switch(updateMethod) {
+    	case ITERATIVE:
+    		updateInSlice_iterative(timeslice, proposeSpin);
+    		break;
+    	case WOODBURY:
+    		updateInSlice_woodbury(timeslice, proposeSpin);
+    		break;
+    	case DELAYED:
+    		updateInSlice_delayed(timeslice, proposeSpin);
+    		break;
+    	}
+    };
+    //specific implementations of updateInSlice, the callable parameter is for one of the field proposal routines below
+    //CallableProposeSpin should have the signature Phi(uint32_t site, uint32_t timeslice)
+    template<class CallableProposeSpin>
+    void updateInSlice_iterative(uint32_t timeslice, CallableProposeSpin proposeSpin);
+    template<class CallableProposeSpin>
+    void updateInSlice_woodbury(uint32_t timeslice, CallableProposeSpin proposeSpin);
+   	//this one uses a nested struct because for some status
+    template<class CallableProposeSpin>
+    void updateInSlice_delayed(uint32_t timeslice, CallableProposeSpin proposeSpin);
     struct DelayedUpdatesData {		//some helper data for updatesInSlice_delayed that should not be realloced all the time
     	MatCpx X;
     	MatCpx Y;
@@ -373,9 +408,9 @@ protected:
 
     //functions used by updateInSlice:
     Phi proposeNewField(uint32_t site, uint32_t timeslice);				//from a box
-    Phi proposeRotatedField(uint32_t site, uint32_t timeslice, num angleDelta);		//same length, new angles
-    Phi proposeScaledField(uint32_t site, uint32_t timeslice, num scaleDelta);		//new length, same angles
-    Phi proposeRotatedScaledField(uint32_t site, uint32_t timeslice, num scaleDelta, angleDelta);	//new length, new angles
+    Phi proposeRotatedField(uint32_t site, uint32_t timeslice);			//same length, new angles
+    Phi proposeScaledField(uint32_t site, uint32_t timeslice);			//new length, same angles
+    Phi proposeRotatedScaledField(uint32_t site, uint32_t timeslice);	//new length, new angles
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
 

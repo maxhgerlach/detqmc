@@ -25,8 +25,14 @@
 //initial values for field components chosen from this range:
 const num PhiLow = -1;
 const num PhiHigh = 1;
-//adjustment of phiDelta:
+//adjustment of phiDelta, angleDelta, scaleDelta:
 const num InitialPhiDelta = 0.5;
+const num InitialAngleDelta = 0.0;
+const num InitialScaleDelta = 0.1;
+const num MinScaleDelta = 0.0;
+const num MaxScaleDelta = 1.0;
+const num MinAngleDelta = -1.0;
+const num MaxAngleDelta = 1.0;
 const uint32_t AccRatioAdjustmentSamples = 100;
 const num phiDeltaGrowFactor = 1.01;
 const num phiDeltaShrinkFactor = 0.99;
@@ -49,7 +55,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
     neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
-    		"tyver", "rescale", "updateMethod", "repeatUpdateInSlice";
+    		"tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -81,7 +87,14 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     		throw ParameterWrong("delaySteps", pars.delaySteps);
     	}
     }
-
+    std::string possibleSpinProposalMethods[] = {"box", "rotate_then_scale", "rotate_and_scale"};
+    bool spinProposalMethod_is_one_of_the_possible = false;
+    for (const std::string& spinProposalMethod: possibleSpinProposalMethods) {
+        if (pars.spinProposalMethod == spinProposalMethod) spinProposalMethod_is_one_of_the_possible = true;
+    }
+    if (not spinProposalMethod_is_one_of_the_possible) {
+        throw ParameterWrong("spinProposalMethod", pars.spinProposalMethod);
+    }
 
 
     if (pars.checkerboard and pars.L % 2 != 0) {
@@ -153,7 +166,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
-        bc(PBC), updateMethod(ITERATIVE), delaySteps(pars.delaySteps),
+        bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
@@ -166,7 +179,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
         g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
-        phiDelta(InitialPhiDelta),
+        phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
         targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
         performedSweeps(0),
         normPhi(0), meanPhi(), normMeanPhi(0), sdwSusc(0),
@@ -203,6 +216,16 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     } else {
         // "safe default"
     	updateMethod = ITERATIVE;
+    }
+    if (pars.spinProposalMethod == "box") {
+    	spinProposalMethod = BOX;
+    } else if (pars.spinProposalMethod == "rotate_then_scale") {
+    	spinProposalMethod = ROTATE_THEN_SCALE;
+    } else if (pars.spinProposalMethod == "rotate_and_scale") {
+    	spinProposalMethod = ROTATE_AND_SCALE;
+    } else {
+        // "safe default"
+    	spinProposalMethod = BOX;
     }
     setupRandomPhi();
 
@@ -1689,15 +1712,36 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     normal_distribution.reset();
 
     for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
-    	switch(updateMethod) {
-    	case ITERATIVE:
-    		updateInSlice_iterative(timeslice);
+    	switch (spinProposalMethod) {
+    	case BOX:
+    		callUpdateInSlice_for_updateMethod(timeslice,
+    			[this](uint32_t site, uint32_t timeslice) -> Phi {
+    				return this->proposeNewField(site, timeslice);
+    			}
+    		);
     		break;
-    	case WOODBURY:
-    		updateInSlice_woodbury(timeslice);
+    	case ROTATE_THEN_SCALE:
+    		//each sweep, alternate between rotating and scaling
+    		if (performedSweeps % 2 == 0) {
+    			callUpdateInSlice_for_updateMethod(timeslice,
+    				[this](uint32_t site, uint32_t timeslice) -> Phi {
+    					return this->proposeRotatedField(site, timeslice);
+    				}
+    			);
+    		} else {
+    			callUpdateInSlice_for_updateMethod(timeslice,
+    				[this](uint32_t site, uint32_t timeslice) -> Phi {
+    					return this->proposeScaledField(site, timeslice);
+    				}
+    			);
+    		}
     		break;
-    	case DELAYED:
-    		updateInSlice_delayed(timeslice);
+    	case ROTATE_AND_SCALE:
+    		callUpdateInSlice_for_updateMethod(timeslice,
+    			[this](uint32_t site, uint32_t timeslice) -> Phi {
+    				return this->proposeRotatedScaledField(site, timeslice);
+    			}
+    		);
     		break;
     	}
 	}
@@ -1718,10 +1762,11 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
 }
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
+template<class Callable>
+void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeSpin) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
-        Phi newphi = proposeNewField(site, timeslice);
+        Phi newphi = proposeSpin(site, timeslice);
 
 //      VecNum oldphi0 = phi0.col(timeslice);
 //      VecNum oldphi1 = phi1.col(timeslice);
@@ -2105,10 +2150,11 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice) {
 
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
+template<class Callable>
+void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeSpin) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
-        Phi newphi = proposeNewField(site, timeslice);
+        Phi newphi = proposeSpin(site, timeslice);
         num dsphi = deltaSPhi(site, timeslice, newphi);
         num probSPhi = std::exp(-dsphi);
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
@@ -2207,7 +2253,8 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice) {
 }
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
+template<class Callable>
+void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSpin) {
 	lastAccRatioLocal = 0;
 
 	auto getX = [this](uint32_t step) {
@@ -2235,7 +2282,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice) {
 		dud.Y.set_size(4*delayStepsNow, 4*N);
 		uint32_t j = 0;
 		while (j < delayStepsNow and site < N) {
-			Phi newphi = proposeNewField(site, timeslice);
+			Phi newphi = proposeSpin(site, timeslice);
 			num dsphi = deltaSPhi(site, timeslice, newphi);
 			num probSPhi = std::exp(-dsphi);
 
@@ -2709,7 +2756,7 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice, num angleDelta) {
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice) {
 	//old orientation
 	num x = phi0(site, timeslice);
 	num y = phi1(site, timeslice);
@@ -2738,7 +2785,7 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, ui
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice, num scaleDelta) {
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice) {
 	using std::pow; using std::abs;
 	//old orientation
 	num x = phi0(site, timeslice);
@@ -2776,7 +2823,7 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uin
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice, num scaleDelta, num angleDelta) {
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice) {
 	//old orientation
 	num x = phi0(site, timeslice);
 	num y = phi1(site, timeslice);
