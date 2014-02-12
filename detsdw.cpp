@@ -2775,6 +2775,56 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uin
 	return new_phi;
 }
 
+template<bool TD, CheckerboardMethod CB>
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice, num scaleDelta, num angleDelta) {
+	//old orientation
+	num x = phi0(site, timeslice);
+	num y = phi1(site, timeslice);
+	num z = phi2(site, timeslice);
+	//squares:
+	num x2 = pow(x, 2);
+	num y2 = pow(y, 2);
+	num z2 = pow(z, 2);
+
+	//new angular coordinates:
+	num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+	num phi = rng.rand01() * 2.0 * M_PI;
+	num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+	num cosPhi = cos(phi);
+	num sinPhi = sin(phi);
+
+	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
+	num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
+	num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
+	num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
+
+	//cubed length
+	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
+
+	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
+	//We use scaleDelta as the standard deviation of that distribution.
+	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
+	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+	//want to bias against long lengths
+	num new_r3 = normal_distribution.get(scaleDelta, r3);
+	// The gaussian-distributed new r^3 might be negative, in that case the new scale should
+	// include a negative sign (corresponding to a flip of the field)
+	num scale = pow(abs(new_r3 / r3), 1.0 / 3.0);
+	if (new_r3 < 0) {
+		scale = -scale;
+	}
+
+	newx *= scale;
+	newy *= scale;
+	newz *= scale;
+
+	Phi newphi;
+	newphi[0] = newx;
+	newphi[1] = newy;
+	newphi[2] = newz;
+	return newphi;
+}
+
 
 template<bool TD, CheckerboardMethod CB>
 num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
