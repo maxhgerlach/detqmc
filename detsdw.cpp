@@ -146,7 +146,7 @@ template<bool TD, CheckerboardMethod CB>
 DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
         eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
-        rng(rng_),
+        rng(rng_), normal_distribution(rng),
         checkerboard(pars.checkerboard),
         checkerboardMethod(pars.checkerboardMethod),
         L(pars.L), N(L*L), r(pars.r),
@@ -1684,6 +1684,10 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
+    //reset normal_distribution -- this way we do not need to worry about its internal
+    //state during serialization
+    normal_distribution.reset();
+
     for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
     	switch(updateMethod) {
     	case ITERATIVE:
@@ -2685,9 +2689,6 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 
 template<bool TD, CheckerboardMethod CB>
 typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32_t timeslice) {
-    (void) site; (void) timeslice;
-    //TODO: make this smarter!
-
     Phi phi;
     phi[0] = phi0(site, timeslice);
     phi[1] = phi1(site, timeslice);
@@ -2706,6 +2707,74 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32
 
     return phi;
 }
+
+template<bool TD, CheckerboardMethod CB>
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice, num angleDelta) {
+	//old orientation
+	num x = phi0(site, timeslice);
+	num y = phi1(site, timeslice);
+	num z = phi2(site, timeslice);
+	//squares:
+	num x2 = pow(x, 2.0);
+	num y2 = pow(y, 2.0);
+
+	//new angular coordinates:
+	num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+	num phi = rng.rand01() * 2.0 * M_PI;
+	num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+	num cosPhi = cos(phi);
+	num sinPhi = sin(phi);
+
+	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
+	num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
+	num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
+	num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
+
+	Phi newphi;
+	newphi[0] = newx;
+	newphi[1] = newy;
+	newphi[2] = newz;
+	return newphi;
+}
+
+template<bool TD, CheckerboardMethod CB>
+typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice, num scaleDelta) {
+	using std::pow; using std::abs;
+	//old orientation
+	num x = phi0(site, timeslice);
+	num y = phi1(site, timeslice);
+	num z = phi2(site, timeslice);
+	//squares
+	num x2 = pow(x, 2);
+	num y2 = pow(y, 2);
+	num z2 = pow(z, 2);
+	//cubed length
+	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
+
+	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
+	//We use scaleDelta as the standard deviation of that distribution.
+	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
+	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+	//want to bias against long lengths
+	num new_r3 = normal_distribution.get(scaleDelta, r3);
+	// The gaussian-distributed new r^3 might be negative, in that case the new scale should
+	// include a negative sign (corresponding to a flip of the field)
+	num scale = pow(abs(new_r3 / r3), 1.0 / 3.0);
+	if (new_r3 < 0) {
+		scale = -scale;
+	}
+
+	num new_x = x * scale;
+	num new_y = y * scale;
+	num new_z = z * scale;
+
+	Phi new_phi;
+	new_phi[0] = new_x;
+	new_phi[1] = new_y;
+	new_phi[2] = new_z;
+	return new_phi;
+}
+
 
 template<bool TD, CheckerboardMethod CB>
 num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {

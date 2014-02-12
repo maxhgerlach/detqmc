@@ -16,6 +16,7 @@
 #include "neighbortable.h"
 #include "RunningAverage.h"
 #include "checkarray.h"
+#include "normaldistribution.h"
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
@@ -82,6 +83,7 @@ protected:
     const MatCpx::fixed<4,4> eye4cpx;
 
     RngWrapper& rng;
+    NormalDistribution normal_distribution;
 
     static const uint32_t d = 2;
     static const uint32_t z = 2*d;
@@ -370,7 +372,9 @@ protected:
     virtual void updateInSliceThermalization(uint32_t timeslice);
 
     //functions used by updateInSlice:
-    Phi proposeNewField(uint32_t site, uint32_t timeslice);
+    Phi proposeNewField(uint32_t site, uint32_t timeslice);				//from a box
+    Phi proposeRotatedField(uint32_t site, uint32_t timeslice, num angleDelta);		//same length, new angles
+    Phi proposeScaledField(uint32_t site, uint32_t timeslice, num scaleDelta);		//new length, same angles
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
 
