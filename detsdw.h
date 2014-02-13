@@ -126,7 +126,7 @@ protected:
     }
     UpdateMethod_Type updateMethod;
     enum SpinProposalMethod_Type { BOX, ROTATE_THEN_SCALE, ROTATE_AND_SCALE };
-    static inline std::string spinPropobaslMethodstr(SpinProposalMethod_Type sp) {
+    static inline std::string spinProposalMethodstr(SpinProposalMethod_Type sp) {
     	switch (sp) {
     	case BOX:
     		return "box";
@@ -197,10 +197,27 @@ protected:
     num phiDelta;       //MC step size for field components (box update)
     num angleDelta;		//  for rotation update (this is the minimal cos\theta)
     num scaleDelta;		//  for scaling update (the standard deviation of the gaussian radius update)
-    //used to adjust phiDelta; acceptance ratios for local field updates
+    //used to adjust phiDelta/angleDelta/scaleDelta; acceptance ratios for local field updates
     num targetAccRatioLocal;
     num lastAccRatioLocal;
-    RunningAverage accRatioLocalRA;
+    RunningAverage accRatioLocal_box_RA, accRatioLocal_rotate_RA, accRatioLocal_scale_RA;
+
+    //adjustment of phiDelta, angleDelta, scaleDelta:
+    static constexpr num InitialPhiDelta = 0.5;
+    static constexpr num InitialAngleDelta = 0.0;
+    static constexpr num InitialScaleDelta = 0.1;
+    static constexpr num MinScaleDelta = 0.0;
+    static constexpr num MaxScaleDelta = 1.0;
+    static constexpr num MinAngleDelta = -1.0;
+    static constexpr num MaxAngleDelta = 1.0;
+    static constexpr uint32_t AccRatioAdjustmentSamples = 100;
+    static constexpr num phiDeltaGrowFactor = 1.05;
+    static constexpr num phiDeltaShrinkFactor = 0.95;
+    //initialized to the respective constants above in the constructor
+    num curminAngleDelta;
+    num curmaxAngleDelta;
+    num curminScaleDelta;
+    num curmaxScaleDelta;
 
     uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
 
@@ -537,8 +554,11 @@ public:
     	ar & acceptedRescales & attemptedRescales;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
-        ar & phiDelta & targetAccRatioLocal & lastAccRatioLocal;
-        ar & accRatioLocalRA;
+        ar & phiDelta & angleDelta & scaleDelta;
+        ar & targetAccRatioLocal & lastAccRatioLocal;
+        ar & accRatioLocal_box_RA & accRatioLocal_rotate_RA & accRatioLocal_scale_RA;
+        ar & curminAngleDelta & curmaxAngleDelta;
+        ar & curminScaleDelta & curmaxScaleDelta;
         ar & performedSweeps;
     }
 };

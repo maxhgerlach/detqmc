@@ -25,17 +25,6 @@
 //initial values for field components chosen from this range:
 const num PhiLow = -1;
 const num PhiHigh = 1;
-//adjustment of phiDelta, angleDelta, scaleDelta:
-const num InitialPhiDelta = 0.5;
-const num InitialAngleDelta = 0.0;
-const num InitialScaleDelta = 0.1;
-const num MinScaleDelta = 0.0;
-const num MaxScaleDelta = 1.0;
-const num MinAngleDelta = -1.0;
-const num MaxAngleDelta = 1.0;
-const uint32_t AccRatioAdjustmentSamples = 100;
-const num phiDeltaGrowFactor = 1.01;
-const num phiDeltaShrinkFactor = 0.99;
 
 std::string cbmToString(CheckerboardMethod cbm) {
 	switch (cbm) {
@@ -180,7 +169,12 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
         phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
         phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
-        targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0), accRatioLocalRA(AccRatioAdjustmentSamples),
+        targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0),
+        accRatioLocal_box_RA(AccRatioAdjustmentSamples),
+        accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
+        accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
+        curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
+        curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
         performedSweeps(0),
         normPhi(0), meanPhi(), normMeanPhi(0), sdwSusc(0),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
@@ -2402,14 +2396,76 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
-    accRatioLocalRA.addValue(lastAccRatioLocal);
-    if (accRatioLocalRA.getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
-        num avgAccRatio = accRatioLocalRA.get();
-        if (avgAccRatio < targetAccRatioLocal) {
-            phiDelta *= phiDeltaShrinkFactor;
-        } else if (avgAccRatio > targetAccRatioLocal) {
-            phiDelta *= phiDeltaGrowFactor;
-        }
+    enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
+    if (spinProposalMethod == BOX) {
+    	adapting_what = ADAPT_BOX;
+    } else if (spinProposalMethod == ROTATE_THEN_SCALE) {
+    	// the following needs to match the order of moves as
+    	// used in updateInSlice()
+    	if (performedSweeps % 2 == 0) {
+    		// we did rotate moves last
+    		adapting_what = ADAPT_ROTATE;
+    	} else {
+    		// we did scale moves last
+    		adapting_what = ADAPT_SCALE;
+    	}
+    } else if (spinProposalMethod == ROTATE_AND_SCALE) {
+    	// after every interval of AccRatioAdjustmentSamples we alternate between
+    	// adjusting the parameter for the rotate and scale moves
+    	if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
+    		adapting_what = ADAPT_ROTATE;
+    	} else {
+    		adapting_what = ADAPT_SCALE;
+    	}
+    }
+    //Hold a reference to the accRatioLocal_*_RA we currently need
+    std::reference_wrapper<RunningAverage> ra(accRatioLocal_box_RA);
+    switch (adapting_what) {
+    case ADAPT_BOX: ra = accRatioLocal_box_RA; break;
+    case ADAPT_ROTATE: ra = accRatioLocal_rotate_RA; break;
+    case ADAPT_SCALE: ra = accRatioLocal_scale_RA; break;
+    }
+
+    ra.get().addValue(lastAccRatioLocal);
+    using std::cout;
+    if (ra.get().getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
+    	num avgAccRatio = ra.get().get();
+    	switch (adapting_what) {
+    	case ADAPT_BOX:
+			if (avgAccRatio < targetAccRatioLocal) {
+				phiDelta *= phiDeltaShrinkFactor;
+			} else if (avgAccRatio > targetAccRatioLocal) {
+				phiDelta *= phiDeltaGrowFactor;
+			}
+			cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
+    		break;
+    	case ADAPT_ROTATE:
+    		// angleDelta <=> cosine of spherical angle theta
+    		// reducing angleDelta <=> opening up the angle <=> reducing acceptance ratio
+            if (avgAccRatio < targetAccRatioLocal and angleDelta < MaxAngleDelta) {
+                curminAngleDelta = angleDelta;
+                angleDelta += (curmaxAngleDelta - angleDelta) / 2;
+            }
+            else if (avgAccRatio > targetAccRatioLocal and angleDelta > MinAngleDelta) {
+                curmaxAngleDelta = angleDelta;
+                angleDelta -= (angleDelta - curminAngleDelta) / 2;
+            }
+            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
+    		break;
+    	case ADAPT_SCALE:
+    		// scaleDelta <=> width of gaussian distribution to select new radius
+    		// reducing scaleDelta <=> increasing acceptance ratio
+            if (avgAccRatio > targetAccRatioLocal and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
+                curminScaleDelta = scaleDelta;
+                scaleDelta += (curmaxScaleDelta - scaleDelta) / 2;
+            }
+            else if (avgAccRatio > targetAccRatioLocal and scaleDelta > MinScaleDelta) {
+                curmaxScaleDelta = scaleDelta;
+                scaleDelta -= (scaleDelta - curminScaleDelta) / 2;
+            }
+            cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << scaleDelta << '\n';
+    		break;
+    	}
     }
 }
 
@@ -2970,7 +3026,7 @@ num DetSDW<TD,CB>::phiAction() {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
-              << "recent local accRatio = " << accRatioLocalRA.get()
+              << "recent local accRatio = " << accRatioLocal_box_RA.get()
               << std::endl;
     if (rescale) {
     	num ratio = num(acceptedRescales) / num(attemptedRescales);
