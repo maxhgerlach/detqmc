@@ -218,6 +218,7 @@ protected:
     num curmaxAngleDelta;
     num curminScaleDelta;
     num curmaxScaleDelta;
+    bool adaptScaleDelta;
 
     uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
 

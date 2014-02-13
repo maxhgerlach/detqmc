@@ -48,6 +48,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
             ("checkerboardMethod", po::value<std::string>(&modelpar.checkerboardMethod)->default_value("assaad_berg"), "method to use for the checkerboard decomposition: santos, assaad or assaad_berg")
             ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
+            ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "SDW model: valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
             ("updateMethod", po::value<std::string>(&modelpar.updateMethod)->default_value("iterative"), "SDW model: How to do the local updates: iterative, woodbury or delayed")
             ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "SDW model: parameter to use with delayedUpdates")
             ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")

@@ -175,6 +175,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
         curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
         curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
+        adaptScaleDelta(pars.adaptScaleVariance),
         performedSweeps(0),
         normPhi(0), meanPhi(), normMeanPhi(0), sdwSusc(0),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
@@ -314,6 +315,9 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     }
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
+    if (spinProposalMethod != BOX) {
+    	META_INSERT(adaptScaleDelta);
+    }
     if (updateMethod == DELAYED) {
     	META_INSERT(delaySteps);
     }
@@ -2471,6 +2475,10 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
             cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
     		break;
     	case ADAPT_SCALE:
+    		if (not adaptScaleDelta) {
+    			//do not change scaleDelta at all
+    			break;
+    		}
     		// scaleDelta <=> width of gaussian distribution to select new radius
     		// reducing scaleDelta <=> increasing acceptance ratio
             if (avgAccRatio > targetAccRatioLocal and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian

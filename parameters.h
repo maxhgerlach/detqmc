@@ -35,6 +35,7 @@ struct ModelParams {
     std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
     std::string updateMethod;			//SDW: "iterative", "woodbury", or "delayed"
     std::string spinProposalMethod;		//SDW: "box", "rotate_then_scale", or "rotate_and_scale"
+    bool adaptScaleVariance;			//SDW: valid unless spinProposalMethod=="box" -- this controls if the variance of the spin updates should be adapted during thermalization
     uint32_t delaySteps;		//SDW: parameter in case updateMethod is "delayed"
     num t;      //Hubbard
     num U;      //Hubbard
@@ -66,7 +67,7 @@ struct ModelParams {
 
     ModelParams() :
             model(), timedisplaced(), checkerboard(),
-            checkerboardMethod(), updateMethod(), spinProposalMethod(),
+            checkerboardMethod(), updateMethod(), spinProposalMethod(), adaptScaleVariance(),
             delaySteps(),
             t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
@@ -84,7 +85,7 @@ private:
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
         ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
-           & spinProposalMethod & delaySteps
+           & spinProposalMethod & adaptScaleVariance & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
