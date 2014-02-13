@@ -1710,7 +1710,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     	switch (spinProposalMethod) {
     	case BOX:
     		callUpdateInSlice_for_updateMethod(timeslice,
-    			[this](uint32_t site, uint32_t timeslice) -> Phi {
+    			[this](uint32_t site, uint32_t timeslice) -> boolPhi {
     				return this->proposeNewField(site, timeslice);
     			}
     		);
@@ -1719,13 +1719,13 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     		//each sweep, alternate between rotating and scaling
     		if (performedSweeps % 2 == 0) {
     			callUpdateInSlice_for_updateMethod(timeslice,
-    				[this](uint32_t site, uint32_t timeslice) -> Phi {
+    				[this](uint32_t site, uint32_t timeslice) -> boolPhi {
     					return this->proposeRotatedField(site, timeslice);
     				}
     			);
     		} else {
     			callUpdateInSlice_for_updateMethod(timeslice,
-    				[this](uint32_t site, uint32_t timeslice) -> Phi {
+    				[this](uint32_t site, uint32_t timeslice) -> boolPhi {
     					return this->proposeScaledField(site, timeslice);
     				}
     			);
@@ -1733,7 +1733,7 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     		break;
     	case ROTATE_AND_SCALE:
     		callUpdateInSlice_for_updateMethod(timeslice,
-    			[this](uint32_t site, uint32_t timeslice) -> Phi {
+    			[this](uint32_t site, uint32_t timeslice) -> boolPhi {
     				return this->proposeRotatedScaledField(site, timeslice);
     			}
     		);
@@ -1761,7 +1761,13 @@ template<class Callable>
 void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeSpin) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
-        Phi newphi = proposeSpin(site, timeslice);
+        Phi newphi;
+        bool newphi_valid;
+        std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
+        if (not newphi_valid) {
+        	//reject this change
+        	continue;
+        }
 
 //      VecNum oldphi0 = phi0.col(timeslice);
 //      VecNum oldphi1 = phi1.col(timeslice);
@@ -2149,7 +2155,13 @@ template<class Callable>
 void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeSpin) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
-        Phi newphi = proposeSpin(site, timeslice);
+    	Phi newphi;
+        bool newphi_valid;
+        std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
+        if (not newphi_valid) {
+        	//reject this change
+        	continue;
+        }
         num dsphi = deltaSPhi(site, timeslice, newphi);
         num probSPhi = std::exp(-dsphi);
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
@@ -2277,56 +2289,61 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSp
 		dud.Y.set_size(4*delayStepsNow, 4*N);
 		uint32_t j = 0;
 		while (j < delayStepsNow and site < N) {
-			Phi newphi = proposeSpin(site, timeslice);
-			num dsphi = deltaSPhi(site, timeslice, newphi);
-			num probSPhi = std::exp(-dsphi);
+			Phi newphi;
+			bool newphi_valid;
+			std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
+			if (newphi_valid) {
+				//new phi is not rejected immeadiately, figure out if we should accept the update
+				num dsphi = deltaSPhi(site, timeslice, newphi);
+				num probSPhi = std::exp(-dsphi);
 
-			MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
-			//TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
-			//durchgefuehrt...
-			num normnewphi = arma::norm(newphi,2);
-			num coshnewphi = std::cosh(dtau * normnewphi);
-			num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+				MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
+				//TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
+				//durchgefuehrt...
+				num normnewphi = arma::norm(newphi,2);
+				num coshnewphi = std::cosh(dtau * normnewphi);
+				num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
 
-			take4rows(dud.Rj, g, site);
-			for (uint32_t l = 0; l < j; ++l) {
-				take4rows(dud.tempBlock, getX(l), site);
-				dud.Rj += dud.tempBlock * getY(l);
-			}
-
-			take4cols(dud.Sj, dud.Rj, site);
-
-			dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
-			num probSFermion = arma::det(dud.Mj).real();
-
-			num prob = probSPhi * probSFermion;
-			if (prob > 1.0 or rng.rand01() < prob) {
-				//count accepted update
-				lastAccRatioLocal += 1.0;
-
-				phi0(site, timeslice) = newphi[0];
-				phi1(site, timeslice) = newphi[1];
-				phi2(site, timeslice) = newphi[2];
-				phiCosh(site, timeslice) = coshnewphi;
-				phiSinh(site, timeslice) = sinhnewphi;
-
-				//we need Cj only to update X
-				take4cols(dud.Cj, g, site);
+				take4rows(dud.Rj, g, site);
 				for (uint32_t l = 0; l < j; ++l) {
-					take4cols(dud.tempBlock, getY(l), site);
-					dud.Cj += getX(l) * dud.tempBlock;
-				}
-				//Rj is now Rj - \Id_j, for updating Y
-				for (uint32_t rc = 0; rc < 4; ++rc) {
-					uint32_t entry = site + rc * N;
-					dud.Rj(rc, entry) -= cpx(1.0, 0.0);
+					take4rows(dud.tempBlock, getX(l), site);
+					dud.Rj += dud.tempBlock * getY(l);
 				}
 
-				//update X and Y
-				getX(j) = dud.Cj * deltanonzero;
-				getY(j) = arma::inv(dud.Mj) * dud.Rj;
-				//count successful delayed update
-				j += 1;
+				take4cols(dud.Sj, dud.Rj, site);
+
+				dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
+				num probSFermion = arma::det(dud.Mj).real();
+
+				num prob = probSPhi * probSFermion;
+				if (prob > 1.0 or rng.rand01() < prob) {
+					//count accepted update
+					lastAccRatioLocal += 1.0;
+
+					phi0(site, timeslice) = newphi[0];
+					phi1(site, timeslice) = newphi[1];
+					phi2(site, timeslice) = newphi[2];
+					phiCosh(site, timeslice) = coshnewphi;
+					phiSinh(site, timeslice) = sinhnewphi;
+
+					//we need Cj only to update X
+					take4cols(dud.Cj, g, site);
+					for (uint32_t l = 0; l < j; ++l) {
+						take4cols(dud.tempBlock, getY(l), site);
+						dud.Cj += getX(l) * dud.tempBlock;
+					}
+					//Rj is now Rj - \Id_j, for updating Y
+					for (uint32_t rc = 0; rc < 4; ++rc) {
+						uint32_t entry = site + rc * N;
+						dud.Rj(rc, entry) -= cpx(1.0, 0.0);
+					}
+
+					//update X and Y
+					getX(j) = dud.Cj * deltanonzero;
+					getY(j) = arma::inv(dud.Mj) * dud.Rj;
+					//count successful delayed update
+					j += 1;
+				}
 			}
 			++site;
 		}
@@ -2792,7 +2809,7 @@ num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
 
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32_t timeslice) {
     Phi phi;
     phi[0] = phi0(site, timeslice);
     phi[1] = phi1(site, timeslice);
@@ -2809,11 +2826,11 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeNewField(uint32_t site, uint32
         phi_comp += r;
     }
 
-    return phi;
+    return std::make_tuple(true, phi);
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice) {
 	//old orientation
 	num x = phi0(site, timeslice);
 	num y = phi1(site, timeslice);
@@ -2838,11 +2855,11 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, ui
 	newphi[0] = newx;
 	newphi[1] = newy;
 	newphi[2] = newz;
-	return newphi;
+	return std::make_tuple(true, newphi);
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice) {
 	using std::pow; using std::abs;
 	//old orientation
 	num x = phi0(site, timeslice);
@@ -2861,11 +2878,18 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uin
 	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
 	//want to bias against long lengths
 	num new_r3 = normal_distribution.get(scaleDelta, r3);
-	// The gaussian-distributed new r^3 might be negative, in that case the new scale should
-	// include a negative sign (corresponding to a flip of the field)
-	num scale = pow(abs(new_r3 / r3), 1.0 / 3.0);
-	if (new_r3 < 0) {
-		scale = -scale;
+	num scale = 1.0;
+	bool valid = true;
+	// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+	// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+	// and declare the update as to be rejected.
+	// Otherwise re scale the original spin appropriately.
+	if (new_r3 <= 0) {
+		scale = 1.0;
+		valid = false;
+	} else {
+		scale = pow((new_r3 / r3), (1.0 / 3.0));
+		valid = true;
 	}
 
 	num new_x = x * scale;
@@ -2876,11 +2900,11 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uin
 	new_phi[0] = new_x;
 	new_phi[1] = new_y;
 	new_phi[2] = new_z;
-	return new_phi;
+	return std::make_tuple(valid, new_phi);
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice) {
 	//old orientation
 	num x = phi0(site, timeslice);
 	num y = phi1(site, timeslice);
@@ -2889,18 +2913,6 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t si
 	num x2 = pow(x, 2);
 	num y2 = pow(y, 2);
 	num z2 = pow(z, 2);
-
-	//new angular coordinates:
-	num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
-	num phi = rng.rand01() * 2.0 * M_PI;
-	num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
-	num cosPhi = cos(phi);
-	num sinPhi = sin(phi);
-
-	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
-	num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
-	num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
-	num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
 
 	//cubed length
 	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
@@ -2911,22 +2923,41 @@ typename DetSDW<TD,CB>::Phi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t si
 	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
 	//want to bias against long lengths
 	num new_r3 = normal_distribution.get(scaleDelta, r3);
-	// The gaussian-distributed new r^3 might be negative, in that case the new scale should
-	// include a negative sign (corresponding to a flip of the field)
-	num scale = pow(abs(new_r3 / r3), 1.0 / 3.0);
-	if (new_r3 < 0) {
-		scale = -scale;
+	if (new_r3 <= 0) {
+		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+		// and declare it as to be rejected.
+		Phi newphi;
+		newphi[0] = x;
+		newphi[1] = y;
+		newphi[2] = z;
+		return std::make_tuple(false, newphi);
+	} else {
+		// otherwise we scale the spin appropriately and also change its orientation
+		num scale = pow((new_r3 / r3), (1.0 / 3.0));
+
+		//new angular coordinates:
+		num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+		num phi = rng.rand01() * 2.0 * M_PI;
+		num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+		num cosPhi = cos(phi);
+		num sinPhi = sin(phi);
+
+		//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
+		num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
+		num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
+		num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
+
+		newx *= scale;
+		newy *= scale;
+		newz *= scale;
+
+		Phi newphi;
+		newphi[0] = newx;
+		newphi[1] = newy;
+		newphi[2] = newz;
+		return std::make_tuple(true, newphi);
 	}
-
-	newx *= scale;
-	newy *= scale;
-	newz *= scale;
-
-	Phi newphi;
-	newphi[0] = newx;
-	newphi[1] = newy;
-	newphi[2] = newz;
-	return newphi;
 }
 
 

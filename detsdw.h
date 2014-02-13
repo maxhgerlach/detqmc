@@ -399,7 +399,8 @@ protected:
     	}
     };
     //specific implementations of updateInSlice, the callable parameter is for one of the field proposal routines below
-    //CallableProposeSpin should have the signature Phi(uint32_t site, uint32_t timeslice)
+    //CallableProposeSpin should have the signature tuple<bool,Phi>(uint32_t site, uint32_t timeslice)
+    //the returned bool is false if the returned field needs to be rejected (e.g. negative magnitude)
     template<class CallableProposeSpin>
     void updateInSlice_iterative(uint32_t timeslice, CallableProposeSpin proposeSpin);
     template<class CallableProposeSpin>
@@ -424,10 +425,11 @@ protected:
     virtual void updateInSliceThermalization(uint32_t timeslice);
 
     //functions used by updateInSlice:
-    Phi proposeNewField(uint32_t site, uint32_t timeslice);				//from a box
-    Phi proposeRotatedField(uint32_t site, uint32_t timeslice);			//same length, new angles
-    Phi proposeScaledField(uint32_t site, uint32_t timeslice);			//new length, same angles
-    Phi proposeRotatedScaledField(uint32_t site, uint32_t timeslice);	//new length, new angles
+    typedef std::tuple<bool,Phi> boolPhi;
+    boolPhi proposeNewField(uint32_t site, uint32_t timeslice);				//from a box
+    boolPhi proposeRotatedField(uint32_t site, uint32_t timeslice);			//same length, new angles
+    boolPhi proposeScaledField(uint32_t site, uint32_t timeslice);			//new length, same angles
+    boolPhi proposeRotatedScaledField(uint32_t site, uint32_t timeslice);	//new length, new angles
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
 
