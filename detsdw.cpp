@@ -313,6 +313,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     	meta["checkerboardMethod"] = checkerboardMethod;
     }
     meta["updateMethod"] = updateMethodstr(updateMethod);
+    meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (updateMethod == DELAYED) {
     	META_INSERT(delaySteps);
     }
