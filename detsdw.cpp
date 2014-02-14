@@ -2925,16 +2925,25 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
 	//cubed length
 	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
 
-	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
-	//We use scaleDelta as the standard deviation of that distribution.
-	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
-	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-	//want to bias against long lengths
-	num new_r3 = normal_distribution.get(scaleDelta, r3);
+//	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
+//	//We use scaleDelta as the standard deviation of that distribution.
+//	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
+//	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+//	//want to bias against long lengths
+//	num new_r3 = normal_distribution.get(scaleDelta, r3);
+//	if (new_r3 <= 0) {
+//		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+//		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+//		// and declare it as to be rejected.
+//		Phi newphi;
+//		newphi[0] = x;
+//		newphi[1] = y;
+//		newphi[2] = z;
+//		return std::make_tuple(false, newphi);
+
+	// TEST: choose uniformly distributed r3 instead
+	num new_r3 = rng.randRange(r3 - scaleDelta, r3 + scaleDelta);
 	if (new_r3 <= 0) {
-		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-		// and declare it as to be rejected.
 		Phi newphi;
 		newphi[0] = x;
 		newphi[1] = y;
