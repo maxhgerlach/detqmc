@@ -12,6 +12,8 @@
 #include <cmath>
 #include "rngwrapper.h"
 
+typedef double num;
+
 class NormalDistribution {
 	RngWrapper& rng;
 	std::stack<num> standard_normal_random_variables;			//stack is really overkill, but won't matter for now
