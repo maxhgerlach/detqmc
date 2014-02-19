@@ -2846,6 +2846,11 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedField(uint32_t site
 	//squares:
 	num x2 = pow(x, 2.0);
 	num y2 = pow(y, 2.0);
+	num z2 = pow(z, 2);
+	//squared length
+	num r2 = x2 + y2 + z2;
+	//length
+	num r = sqrt(r2);
 
 	//new angular coordinates:
 	num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
@@ -2854,10 +2859,23 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedField(uint32_t site
 	num cosPhi = cos(phi);
 	num sinPhi = sin(phi);
 
-	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
-	num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
-	num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
-	num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
+	// To find the new orientation, we first consider the normalized old spin
+	num x2n = x2 / r2;
+	num y2n = y2 / r2;
+	num xn = x / r;
+	num yn = y / r;
+	num zn = z / r;
+
+	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+	// this gives a normalized vector
+	num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
+	num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
+	num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
+
+	// Then we set the length of the new spin appropriately
+	newx *= r;
+	newy *= r;
+	newz *= r;
 
 	Phi newphi;
 	newphi[0] = newx;
@@ -2921,29 +2939,24 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
 	num x2 = pow(x, 2);
 	num y2 = pow(y, 2);
 	num z2 = pow(z, 2);
+	//squared length
+	num r2 = x2 + y2 + z2;
+	//length
+	num r = sqrt(r2);
 
 	//cubed length
-	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
+	num r3 = pow(r, 3);
 
-//	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
-//	//We use scaleDelta as the standard deviation of that distribution.
-//	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
-//	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-//	//want to bias against long lengths
-//	num new_r3 = normal_distribution.get(scaleDelta, r3);
-//	if (new_r3 <= 0) {
-//		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-//		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-//		// and declare it as to be rejected.
-//		Phi newphi;
-//		newphi[0] = x;
-//		newphi[1] = y;
-//		newphi[2] = z;
-//		return std::make_tuple(false, newphi);
-
-	// TEST: choose uniformly distributed r3 instead
-	num new_r3 = rng.randRange(r3 - scaleDelta, r3 + scaleDelta);
+	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
+	//We use scaleDelta as the standard deviation of that distribution.
+	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
+	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+	//want to bias against long lengths
+	num new_r3 = normal_distribution.get(scaleDelta, r3);
 	if (new_r3 <= 0) {
+		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+		// and declare it as to be rejected.
 		Phi newphi;
 		newphi[0] = x;
 		newphi[1] = y;
@@ -2951,7 +2964,6 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
 		return std::make_tuple(false, newphi);
 	} else {
 		// otherwise we scale the spin appropriately and also change its orientation
-		num scale = pow((new_r3 / r3), (1.0 / 3.0));
 
 		//new angular coordinates:
 		num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
@@ -2960,14 +2972,23 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
 		num cosPhi = cos(phi);
 		num sinPhi = sin(phi);
 
-		//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin)
-		num newx = (sinTheta / (x2+y2)) * ((x2*z + y2)*cosPhi + (z-1)*x*y*sinPhi) + x*cosTheta;
-		num newy = (sinTheta / (x2+y2)) * ((z-1)*x*y*cosPhi + (x2 + y2*z)*sinPhi) + y*cosTheta;
-		num newz = -sinTheta * (x*cosPhi + y*sinPhi) + z*cosTheta;
+		// To find the new orientation, we first consider the normalized old spin
+		num x2n = x2 / r2;
+		num y2n = y2 / r2;
+		num xn = x / r;
+		num yn = y / r;
+		num zn = z / r;
+		// new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+		// this gives a normalized vector
+		num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
+		num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
+		num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
 
-		newx *= scale;
-		newy *= scale;
-		newz *= scale;
+		// Then we set the length of the new spin appropriately
+		num new_r = pow(new_r3, (1.0 / 3.0));
+		newx *= new_r;
+		newy *= new_r;
+		newz *= new_r;
 
 		Phi newphi;
 		newphi[0] = newx;
