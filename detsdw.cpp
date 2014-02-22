@@ -1749,10 +1749,10 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     	if (performedSweeps % rescaleInterval == 0) {
     		num rnd = rng.rand01();
     		if (rnd <= 0.5) {
-    			attemptGlobalRescaleMove(timeslice, rescaleGrowthFactor);
+    			attemptTimesliceRescaleMove(timeslice, rescaleGrowthFactor);
     		} else {
     			//attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
-    			attemptGlobalRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
+    			attemptTimesliceRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
     		}
     	}
     }
@@ -2497,8 +2497,8 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
 
 
 template<bool TD, CheckerboardMethod CB>
-inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num factor) {
-	timing.start("sdw-attemptGlobalRescaleMove");
+inline void DetSDW<TD,CB>::attemptTimesliceRescaleMove(uint32_t timeslice, num factor) {
+	timing.start("sdw-attemptTimesliceRescaleMove");
 
 	//see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
 
@@ -2646,7 +2646,7 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 
 	// 3) Compute probability of accepting the global rescale move
 	num probFermion = arma::det(M).real();
-	num probBoson = std::exp(-deltaSPhiGlobalRescale(timeslice, factor));
+	num probBoson = std::exp(-deltaSPhiTimesliceRescale(timeslice, factor));
 	num prob = probFermion * probBoson;
 
 	// //DEBUG check probBoson
@@ -2759,12 +2759,12 @@ inline void DetSDW<TD,CB>::attemptGlobalRescaleMove(uint32_t timeslice, num fact
 //	std::cout << "Shrink: " << countShrink << " Grow: " << countGrow << "\n";
 //	// END-DEBUG - count shrink/Grow
 
-	timing.stop("sdw-attemptGlobalRescaleMove");
+	timing.stop("sdw-attemptTimesliceRescaleMove");
 }
 
 
 template<bool TD, CheckerboardMethod CB>
-num DetSDW<TD,CB>::deltaSPhiGlobalRescale(uint32_t timeslice, num factor) {
+num DetSDW<TD,CB>::deltaSPhiTimesliceRescale(uint32_t timeslice, num factor) {
 	using std::pow;
 	num delta1 = 0;
 	for (uint32_t site_i = 0; site_i < N; ++site_i) {
@@ -3100,7 +3100,7 @@ void DetSDW<TD,CB>::thermalizationOver() {
               << std::endl;
     if (rescale) {
     	num ratio = num(acceptedRescales) / num(attemptedRescales);
-    	std::cout << "Global rescale move acceptance ratio = " << ratio
+    	std::cout << "Timeslice rescale move acceptance ratio = " << ratio
     			  << std::endl;
     }
 }

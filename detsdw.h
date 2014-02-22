@@ -435,10 +435,10 @@ protected:
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
 
-    //Try a global move, where all the phi-fields of a timeslice are multiplied
+    //Try a timeslice-global move, where all the phi-fields of a timeslice are multiplied
     //by a common factor.
-    void attemptGlobalRescaleMove(uint32_t timeslice, num factor);
-    num deltaSPhiGlobalRescale(uint32_t timeslice, num factor);
+    void attemptTimesliceRescaleMove(uint32_t timeslice, num factor);
+    num deltaSPhiTimesliceRescale(uint32_t timeslice, num factor);
 
     //compute the total value of the action associated with the field phi
     num phiAction();
