@@ -383,7 +383,8 @@ protected:
 
 
 
-    virtual void updateInSlice(uint32_t timeslice);
+    //update the auxiliary field and the green function in the single timeslice
+    void updateInSlice(uint32_t timeslice);
     //this template member function calls the right one of those below
     template<class CallableProposeSpin>
     void callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
@@ -423,7 +424,7 @@ protected:
     } dud;
 
     //this one does some adjusting of the box size from which new fields are chosen:
-    virtual void updateInSliceThermalization(uint32_t timeslice);
+    void updateInSliceThermalization(uint32_t timeslice);
 
     //functions used by updateInSlice:
     typedef std::tuple<bool,Phi> boolPhi;

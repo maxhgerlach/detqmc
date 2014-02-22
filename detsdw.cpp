@@ -3111,6 +3111,7 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimple(bool takeMeasurements) {
     sweepSimple_skeleton(takeMeasurements,
     					 sdwComputeBmat(this),
+    					 [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
     					 [this]() {this->initMeasurements();},
     					 [this](uint32_t timeslice) {this->measure(timeslice);},
     					 [this]() {this->finishMeasurements();});
@@ -3119,7 +3120,11 @@ void DetSDW<TD,CB>::sweepSimple(bool takeMeasurements) {
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimpleThermalization() {
-    sweepSimpleThermalization_skeleton(sdwComputeBmat(this));
+    sweepSimpleThermalization_skeleton(
+    		sdwComputeBmat(this),
+    		[this](uint32_t timeslice) {
+    			this->updateInSliceThermalization(timeslice);
+    		});
     ++performedSweeps;
 }
 
@@ -3128,6 +3133,7 @@ void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
     sweep_skeleton(takeMeasurements,
     			   sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
+                   [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
                    [this]() {this->initMeasurements();},
                    [this](uint32_t timeslice) {this->measure(timeslice);},
                    [this]() {this->finishMeasurements();});
@@ -3137,7 +3143,10 @@ void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
-                                 sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this));
+                                 sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
+                                 [this](uint32_t timeslice) {
+    								this->updateInSliceThermalization(timeslice);
+    							 });
     ++performedSweeps;
 }
 

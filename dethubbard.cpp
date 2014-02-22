@@ -976,6 +976,7 @@ template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepSimple(bool takeMeasurements) {
     sweepSimple_skeleton(takeMeasurements,
  						 hubbardComputeBmat(this),
+ 						 [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
 						 [this]() {this->initMeasurements();},
 						 [this](uint32_t timeslice) {this->measure(timeslice);},
 						 [this]() {this->finishMeasurements();});
@@ -983,7 +984,8 @@ void DetHubbard<TD,CB>::sweepSimple(bool takeMeasurements) {
 
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepSimpleThermalization() {
-    sweepSimpleThermalization_skeleton(hubbardComputeBmat(this));
+    sweepSimpleThermalization_skeleton(hubbardComputeBmat(this),
+    		[this](uint32_t timeslice) {this->updateInSlice(timeslice);});
 }
 
 template <bool TD, bool CB>
@@ -991,6 +993,7 @@ void DetHubbard<TD,CB>::sweep(bool takeMeasurements) {
     sweep_skeleton(takeMeasurements,
     			   hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
                    hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this),
+                   [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
                    [this]() {this->initMeasurements();},
                    [this](uint32_t timeslice) {this->measure(timeslice);},
                    [this]() {this->finishMeasurements();});
@@ -999,6 +1002,7 @@ void DetHubbard<TD,CB>::sweep(bool takeMeasurements) {
 template <bool TD, bool CB>
 void DetHubbard<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(hubbardLeftMultiplyBmat(this), hubbardRightMultiplyBmat(this),
-                                 hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this));
+                                 hubbardLeftMultiplyBmatInv(this), hubbardRightMultiplyBmatInv(this),
+                                 [this](uint32_t timeslice) {this->updateInSlice(timeslice);});
 }
 
