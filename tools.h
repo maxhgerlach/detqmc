@@ -124,5 +124,11 @@ inline void copyFileBackUp(const std::string& filename) {
 std::vector<std::string> glob(const std::string& path);
 
 
+// pass this as a default do-nothing function parameter in cases
+// where no return value is expected
+struct VoidNoOp {
+	void operator()(...) const { };
+};
+
 
 #endif /* TOOLS_H_ */
