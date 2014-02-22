@@ -1029,21 +1029,18 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 {
     timing.start("sweep");
 
-    auto doNothing = []() { };
-    auto doNothingTimeslice = [](uint32_t) { };
-
     if (lastSweepDir == SweepDirection::Up) {
         sweepDown(false,									//no measurements
         		  leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSliceThermalization,
-                  doNothing, doNothingTimeslice, doNothing	//no measurements
+                  VoidNoOp(), VoidNoOp(), VoidNoOp()		//no measurements
                   );
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
         sweepUp(false,
         		leftMultiplyBmat, rightMultiplyBmatInv,		//no measurements
                 updateInSliceThermalization,
-                doNothing, doNothingTimeslice, doNothing	//no measurements
+                VoidNoOp(), VoidNoOp(), VoidNoOp()		//no measurements
                 );
         lastSweepDir = SweepDirection::Up;
         globalUpdate();
