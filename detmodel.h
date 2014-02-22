@@ -16,6 +16,7 @@
 #include <tuple>
 #include <armadillo>
 
+#include "tools.h"
 #include "checkarray.h"
 #include "parameters.h"
 #include "observable.h"
@@ -165,10 +166,17 @@ public:
     //Callable_init: no arguments, init observable measurements for this sweep
     //Callable_measure_k: argument timeselice k, take measurement data for timeslice k
     //Callable_finish: no arguments, finalize observable measurements for this sweep
+    //
+    //optional:
+    //  Callable_GlobalUpdate: no arguments, this is called after each sweep-up
+    //          and may be used to provide a global update encompassing all
+    //          imaginary time slices
+    //          By default: do nothing
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
              class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
              class Callable_UpdateInSlice_k,
-             class Callable_init, class Callable_measure_k, class Callable_finish>
+             class Callable_init, class Callable_measure_k, class Callable_finish,
+             class Callable_GlobalUpdate = VoidNoOp>
     void sweep_skeleton(bool takeMeasurements,
     					a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
@@ -176,18 +184,21 @@ public:
                         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
                         Callable_UpdateInSlice_k updateInSlice,
                         Callable_init initMeasurement, Callable_measure_k measure,
-                        Callable_finish finishMeasurement);
+                        Callable_finish finishMeasurement,
+                        Callable_GlobalUpdate globalUpdate = VoidNoOp());
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters, but does not take any measurements ever
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
              class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
-             class Callable_UpdateInSlice_k>
+             class Callable_UpdateInSlice_k,
+             class Callable_GlobalUpdate = VoidNoOp>
     void sweepThermalization_skeleton(
                         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
-                        Callable_UpdateInSlice_k updateInSlice);
+                        Callable_UpdateInSlice_k updateInSlice,
+                        Callable_GlobalUpdate globalUpdate = VoidNoOp());
 protected:
     typedef ValueType V;
     typedef arma::Mat<ValueType> MatV;
@@ -971,7 +982,8 @@ template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
          class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
          class Callable_UpdateInSlice_k,
-         class Callable_init, class Callable_measure_k, class Callable_finish>
+         class Callable_init, class Callable_measure_k, class Callable_finish,
+         class Callable_GlobalUpdate>
 void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
 		bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
@@ -980,7 +992,8 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
         Callable_UpdateInSlice_k updateInSlice,
         Callable_init initMeasurement, Callable_measure_k measure,
-        Callable_finish finishMeasurement)
+        Callable_finish finishMeasurement,
+        Callable_GlobalUpdate globalUpdate)
 {
     timing.start("sweep");
 
@@ -996,6 +1009,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
                 updateInSlice,
                 initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Up;
+        globalUpdate();
     }
 
     timing.stop("sweep");
@@ -1004,13 +1018,14 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
          class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
-         class Callable_UpdateInSlice_k>
+         class Callable_UpdateInSlice_k, class Callable_GlobalUpdate>
 void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
-        Callable_UpdateInSlice_k updateInSliceThermalization)
+        Callable_UpdateInSlice_k updateInSliceThermalization,
+        Callable_GlobalUpdate globalUpdate)
 {
     timing.start("sweep");
 
@@ -1031,6 +1046,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
                 doNothing, doNothingTimeslice, doNothing	//no measurements
                 );
         lastSweepDir = SweepDirection::Up;
+        globalUpdate();
     }
 
     timing.stop("sweep");
