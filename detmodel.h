@@ -309,17 +309,20 @@ protected:
     // current timeslice
     checkarray<MatV, GreenComponents> green;
 
-    //The UdV-instances in UdVStorage will not move around much after setup, so storing
-    //the (rather big) objects in the vector is fine
+    //The UdV-instances in UdVStorage will not move around after setup, so storing
+    //the (rather big) objects in the vector is fine.
+    //However, for instance for deciding on doing a global update we need the possibility
+    //to swap the whole vector of UdV's. For this reason: handlethe whole container over
+    //a unique_ptr.
     const UdVV eye_UdV;
-    checkarray<std::vector<UdVV>, GreenComponents> UdVStorage;
+    std::unique_ptr<checkarray<std::vector<UdVV>, GreenComponents>> UdVStorage;
 
     enum class SweepDirection: int {Up = 1, Down = -1};
     SweepDirection lastSweepDir;
 
     //observable handling -- these contain information about observables (such as their names)
     //as well as reference to their current value, which will be shared with simulation management
-    //in a different class. The values reference there are to be updated here in the replica class.
+    //in a different class. The values referenced there are to be updated here in the replica class.
     std::vector<ScalarObservable> obsScalar;
     std::vector<VectorObservable> obsVector;
     std::vector<KeyValueObservable> obsKeyValue;
@@ -357,7 +360,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
     green(), //greenFwd(), greenBwd(),
-    eye_UdV(sz), UdVStorage(),
+    eye_UdV(sz), UdVStorage(new checkarray<std::vector<UdVV>, GC>),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
 {
@@ -412,7 +415,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
         Callable_GC_k2_k1 computeBmat) {
     timing.start("setupUdVStorage");
     auto setup = [this, &computeBmat](uint32_t gc) {
-        std::vector<UdVV>& storage = UdVStorage[gc];
+        std::vector<UdVV>& storage = (*UdVStorage)[gc];
         storage = std::vector<UdVV>(n + 1);
 
         storage[0] = eye_UdV;
@@ -587,7 +590,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 {
     timing.start("advanceDownGreen");
 
-    std::vector<UdVV>& storage = UdVStorage[gc];
+    std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
     const uint32_t k_l = ((l < n) ? (s*l) : (m));
     const uint32_t k_lm1 = s*(l-1);
@@ -686,7 +689,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 {
     timing.start("advanceUpGreen");
 
-    std::vector<UdVV>& storage = UdVStorage[gc];
+    std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
     const uint32_t k_l = s*l;
     const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
@@ -722,7 +725,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
 {
     timing.start("advanceUpUpdateStorage");
 
-    std::vector<UdVV>& storage = UdVStorage[gc];
+    std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
     const uint32_t k_l = s*l;
     const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
@@ -838,7 +841,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
     }
     //set storage at k=0 to unity for the up-coming sweep:
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        UdVStorage[gc][0] = eye_UdV;
+        (*UdVStorage)[gc][0] = eye_UdV;
     }
     //sweep up:
     for (uint32_t l = 1; l < n - 1; ++l) {
@@ -915,10 +918,10 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
     //we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
     //The latter is given in storage slice n from the last sweep.
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunctionUdV(gc, eye_UdV, UdVStorage[gc][n]);
+        updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
     }
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        UdVStorage[gc][n] = eye_UdV;
+        (*UdVStorage)[gc][n] = eye_UdV;
     }
     // Handle timeslices between l=n (-> k=m) and l=n-1 (-> k=s*(n-1)).
     // in contrast to the lower values of l, this may be less than s

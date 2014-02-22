@@ -92,7 +92,7 @@ DetHubbard<TD,CB>::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
         gUp(green[GreenCompSpinUp]), gDn(green[GreenCompSpinDown]),
         // gFwdUp(greenFwd[GreenCompSpinUp]), gFwdDn(greenFwd[GreenCompSpinDown]),
         // gBwdUp(greenBwd[GreenCompSpinUp]), gBwdDn(greenBwd[GreenCompSpinDown]),
-        UdVStorageUp(UdVStorage[GreenCompSpinUp]), UdVStorageDn(UdVStorage[GreenCompSpinDown]),
+        UdVStorageUp((*UdVStorage)[GreenCompSpinUp]), UdVStorageDn((*UdVStorage)[GreenCompSpinDown]),
         sum_GiiUp(), sum_GiiDn(), sum_GneighUp(), sum_GneighDn(), sum_GiiUpDn(),
         occUp(), occDn(), occTotal(), eKinetic(), ePotential(), eTotal(),
         occDouble(), localMoment(), suscq0(), zcorr(), gf(m), gf_dt(m)
