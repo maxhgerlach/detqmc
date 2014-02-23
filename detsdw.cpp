@@ -248,7 +248,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
     setupPropK();
 
-    setupUdVStorage_skeleton(sdwComputeBmat(this));
+    setupUdVStorage();
 
     using std::cref;
     using namespace boost::assign;
@@ -293,6 +293,11 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 //
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::setupUdVStorage() {
+	setupUdVStorage_skeleton(sdwComputeBmat(this));
 }
 
 template<bool TD, CheckerboardMethod CB>

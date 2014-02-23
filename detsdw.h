@@ -299,7 +299,7 @@ protected:
     void setupRandomPhi();
     void updatePhiCoshSinh();	//compute new entries of phiCosh and phiSinh from current phi0, phi1, phi2
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
-
+    void setupUdVStorage();
 
     //the following are template functions to allow applying them
     //to submatrices as well
