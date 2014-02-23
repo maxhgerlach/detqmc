@@ -225,6 +225,8 @@ protected:
     //use a faster method that does not yield information about the time-displaced
     //Green functions
     MatV greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const;
+    //The following is useful to compute G(\beta) = [1 + B(\beta, 0)]^{-1}
+    MatV greenFromEye_and_UdV(const UdVV& UdV_r) const;
 
     //compute Green function from UdV-decomposed matrices L/R
     //for a single timeslice and update the member variables green --
@@ -527,6 +529,30 @@ typename DetModelGC<GC,V,TimeDisplaced>::MatV DetModelGC<GC,V,TimeDisplaced>::gr
 
     return green;
 }
+
+
+
+template<uint32_t GC, typename V, bool TimeDisplaced>
+typename DetModelGC<GC,V,TimeDisplaced>::MatV DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(const UdVV& UdV_r) const {
+	timing.start("greenFromUdV");
+	//variable names changed according to labeling in notes
+	//
+	//Here we consider the special case V_l*d_l*U_l = 1
+    const MatV& U_r = UdV_r.U;
+    const VecV& d_r = UdV_r.d;
+    const MatV& V_r = UdV_r.V;
+
+    using arma::inv; using arma::diagmat; using arma::eye;
+
+    UdVV UdV_temp = udvDecompose<V>( inv(V_r * U_r) + diagmat(d_r) );
+
+    MatV green = inv(UdV_temp.V * V_r) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+
+    timing.stop("greenFromUdV");
+
+    return green;
+}
+
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
