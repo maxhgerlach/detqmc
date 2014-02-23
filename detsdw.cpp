@@ -914,6 +914,19 @@ void DetSDW<TD,CB>::setupRandomPhi() {
 }
 
 template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updatePhiCoshSinh() {
+    for (uint32_t k = 1; k <= m; ++k) {
+        for (uint32_t site = 0; site < N; ++site) {
+            num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
+                                    + std::pow(phi1(site, k), 2)
+                                    + std::pow(phi2(site, k), 2));
+            phiCosh(site, k) = std::cosh(dtau * phiNorm);
+            phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
+        }
+    }
+}
+
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::setupPropK() {
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
