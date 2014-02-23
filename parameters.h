@@ -56,10 +56,13 @@ struct ModelParams {
 
     std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
-    bool rescale;	//perform global rescale move?
-    uint32_t rescaleInterval;		//attempt global rescale move every # sweeps
+    bool rescale;	//perform timeslice rescale move?
+    uint32_t rescaleInterval;		// attempt global rescale move every # sweeps
     num rescaleGrowthFactor;		// factor by which to size up the fields
     num rescaleShrinkFactor;		// factor by which to size down the fields
+
+    bool globalShift;				//perform global constant shift move?
+    uint32_t globalShiftInterval;	//attempt the global shift move every # sweeps
 
     uint32_t repeatUpdateInSlice;	//how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
@@ -74,6 +77,7 @@ struct ModelParams {
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
             rescale(), rescaleInterval(), rescaleGrowthFactor(), rescaleShrinkFactor(),
+            globalShift(), globalShiftInterval(),
             repeatUpdateInSlice(),
             specified() {
     }
@@ -89,6 +93,7 @@ private:
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
+           & globalShift & globalShiftInterval
            & repeatUpdateInSlice
            & specified;
     }

@@ -66,6 +66,7 @@ protected:
     // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
     using Base::dtau;
     using Base::m;
+    using Base::n;
     using Base::green;
     // using Base::greenFwd;
     // using Base::greenBwd;
@@ -76,6 +77,8 @@ protected:
     using Base::obsKeyValue;
     using Base::beta;
     using Base::s;
+
+    typedef typename Base::UdVV UdVV;
 
     typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     
@@ -148,7 +151,12 @@ protected:
     uint32_t acceptedRescales;
     uint32_t attemptedRescales;
 
-    uint32_t repeatUpdateInSlice;
+    const bool globalShift;
+    const uint32_t globalShiftInterval;
+    uint32_t acceptedGlobalShifts;
+    uint32_t attemptedGlobalShifts;
+
+    const uint32_t repeatUpdateInSlice;
 
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
@@ -440,6 +448,28 @@ protected:
     //by a common factor.
     void attemptTimesliceRescaleMove(uint32_t timeslice, num factor);
     num deltaSPhiTimesliceRescale(uint32_t timeslice, num factor);
+
+    void globalMove();
+    //Try a global move, where the fields on all sites and timeslices are shifted
+    //by the same constant amount.  Only do this after a certain number of sweeps.
+    void attemptGlobalShiftMove();
+    struct GlobalShiftData {		//some helper data for attemptGlobalShiftMove() that should not be realloced all the time
+    	MatNum phi0;
+    	MatNum phi1;
+    	MatNum phi2;
+    	MatNum phiCosh;         // cosh(dtau * |phi|)
+    	MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
+
+    	MatCpx g;
+
+    	std::unique_ptr<checkarray<std::vector<UdVV>, 1>> UdVStorage;
+
+    	GlobalShiftData(uint32_t N, uint32_t m) :
+    			phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
+    			phiCosh(N, m+1), phiSinh(N, m+1), g(4*N, 4*N),
+    			UdVStorage(new checkarray<std::vector<UdVV>, 1>)
+    	{ }
+    } gsd;
 
     //compute the total value of the action associated with the field phi
     num phiAction();

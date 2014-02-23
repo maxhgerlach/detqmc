@@ -44,7 +44,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
     neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
-    		"tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice";
+    		"tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
+    		"globalShift";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -83,6 +84,10 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     }
     if (not spinProposalMethod_is_one_of_the_possible) {
         throw ParameterWrong("spinProposalMethod", pars.spinProposalMethod);
+    }
+
+    if (pars.globalShift and pars.globalShiftInterval == 0) {
+    	throw ParameterWrong("globalShiftInterval", pars.globalShiftInterval);
     }
 
 
@@ -159,6 +164,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
+        globalShift(pars.globalShift), globalShiftInterval(pars.globalShiftInterval),
+        acceptedGlobalShifts(0), attemptedGlobalShifts(0),
         repeatUpdateInSlice(pars.repeatUpdateInSlice),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
@@ -185,7 +192,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
         fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
-        dud(N, delaySteps)
+        dud(N, delaySteps), gsd(N, m)
 {
 	assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
 	assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
@@ -355,6 +362,10 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     	META_INSERT(rescaleInterval);
     	META_INSERT(rescaleGrowthFactor);
     	META_INSERT(rescaleShrinkFactor);
+    }
+    META_INSERT(globalShift);
+    if (globalShift) {
+    	META_INSERT(globalShiftInterval);
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
@@ -2782,6 +2793,80 @@ inline void DetSDW<TD,CB>::attemptTimesliceRescaleMove(uint32_t timeslice, num f
 
 
 template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::globalMove() {
+	if (globalShift) {
+		if ((performedSweeps + 1) % globalShiftInterval == 0) {
+			//the current sweep count is a multiple of globalShiftInterval
+			attemptGlobalShiftMove();
+		}
+	}
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::attemptGlobalShiftMove() {
+	timing.start("sdw-attemptGlobalShiftMove");
+
+	// compute current weight
+	num old_scalar_action = phiAction();
+	num old_green_det = arma::det(g).real();
+
+	// Backup phi*, Green's function and UdV-storage.
+	// We copy phi{0,1,2} because we add to these in the next step.
+	// Since the rest is recomputed entirely, we just swap the contents.
+	gsd.phi0 = phi0;
+	gsd.phi1 = phi1;
+	gsd.phi2 = phi2;
+	gsd.phiCosh.swap(phiCosh);
+	gsd.phiSinh.swap(phiSinh);
+	gsd.g.swap(g);
+	gsd.UdVStorage.swap(UdVStorage);
+
+	// shift fields by a random, constant displacement
+	num r0 = rng.randRange(-phiDelta, +phiDelta);
+	phi0 += r0;
+	num r1 = rng.randRange(-phiDelta, +phiDelta);
+	phi1 += r1;
+	num r2 = rng.randRange(-phiDelta, +phiDelta);
+	phi2 += r2;
+	updatePhiCoshSinh();
+
+	//recompute Green's function
+	setupUdVStorage();
+	g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+	//compute new weight
+	num new_scalar_action = phiAction();
+	num new_green_det = arma::det(g).real();
+
+	//compute transition probability
+	num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
+	num prob_fermion = old_green_det / new_green_det;
+	num prob = prob_scalar * prob_fermion;
+
+	std::cout << prob_scalar << "  " << prob_fermion << "\n";
+
+	attemptedGlobalShifts += 1;
+	if (prob >= 1. or rng.rand01() < prob) {
+		//update accepted
+		acceptedGlobalShifts += 1;
+		std::cout << "accept globalShift\n";
+	} else {
+		//update rejected, restore previous state
+		phi0.swap(gsd.phi0);
+		phi1.swap(gsd.phi1);
+		phi2.swap(gsd.phi2);
+		phiCosh.swap(gsd.phiCosh);
+		phiSinh.swap(gsd.phiSinh);
+		g.swap(gsd.g);
+		UdVStorage.swap(gsd.UdVStorage);
+		std::cout << "reject globalShift\n";
+	}
+
+	timing.stop("sdw-attemptGlobalShiftMove");
+}
+
+
+template<bool TD, CheckerboardMethod CB>
 num DetSDW<TD,CB>::deltaSPhiTimesliceRescale(uint32_t timeslice, num factor) {
 	using std::pow;
 	num delta1 = 0;
@@ -3121,6 +3206,12 @@ void DetSDW<TD,CB>::thermalizationOver() {
     	std::cout << "Timeslice rescale move acceptance ratio = " << ratio
     			  << std::endl;
     }
+    if (globalShift) {
+    	num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
+    	std::cout << "globalShiftMove acceptance ratio = " << ratio
+    			  << std::endl;
+    }
+
 }
 
 
@@ -3154,7 +3245,8 @@ void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
                    [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
                    [this]() {this->initMeasurements();},
                    [this](uint32_t timeslice) {this->measure(timeslice);},
-                   [this]() {this->finishMeasurements();});
+                   [this]() {this->finishMeasurements();},
+                   [this]() {this->globalMove();});
     ++performedSweeps;
 }
 
@@ -3164,7 +3256,8 @@ void DetSDW<TD,CB>::sweepThermalization() {
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
                                  [this](uint32_t timeslice) {
     								this->updateInSliceThermalization(timeslice);
-    							 });
+    							 },
+    							 [this]() {this->globalMove();});
     ++performedSweeps;
 }
 
