@@ -61,8 +61,9 @@ struct ModelParams {
     num rescaleGrowthFactor;		// factor by which to size up the fields
     num rescaleShrinkFactor;		// factor by which to size down the fields
 
-    bool globalShift;				//perform global constant shift move?
-    uint32_t globalShiftInterval;	//attempt the global shift move every # sweeps
+    uint32_t globalUpdateInterval;	//attempt global move every # sweeps
+    bool globalShift;				//perform a global constant shift move?
+    bool wolffClusterUpdate;		//perform a Wolff single cluster update?
 
     uint32_t repeatUpdateInSlice;	//how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
@@ -77,7 +78,7 @@ struct ModelParams {
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
             rescale(), rescaleInterval(), rescaleGrowthFactor(), rescaleShrinkFactor(),
-            globalShift(), globalShiftInterval(),
+            globalUpdateInterval(), globalShift(), wolffClusterUpdate(),
             repeatUpdateInSlice(),
             specified() {
     }
@@ -93,7 +94,7 @@ private:
            & t & U & r & txhor & txver & tyhor & tyver
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
-           & globalShift & globalShiftInterval
+           & globalUpdateInterval & globalShift & wolffClusterUpdate
            & repeatUpdateInSlice
            & specified;
     }

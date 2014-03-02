@@ -72,8 +72,9 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
             ("rescaleInterval", po::value<uint32_t>(&modelpar.rescaleInterval)->default_value(100), "attempt timeslice rescale move every # sweeps")
             ("rescaleGrowthFactor", po::value<num>(&modelpar.rescaleGrowthFactor)->default_value(1.05), "factor by which to attempt to grow the fields")
             ("rescaleShrinkFactor", po::value<num>(&modelpar.rescaleShrinkFactor)->default_value(0.95), "factor by which to attempt to shrink the fields")
+            ("globalUpdateInterval", po::value<uint32_t>(&modelpar.globalUpdateInterval)->default_value(100), "SDW: perform global update move every # sweeps [must be even]")
             ("globalShift", po::value<bool>(&modelpar.globalShift)->default_value(false), "SDW: perform global constant shift move")
-            ("globalShiftInterval", po::value<uint32_t>(&modelpar.globalShiftInterval)->default_value(100), "SDW: perform global shift move every # sweeps [must be even]")
+            ("wolffClusterUpdate", po::value<bool>(&modelpar.wolffClusterUpdate)->default_value(false), "SDW: perform global Wolff-like single cluster update")
             ("repeatUpdateInSlice", po::value<uint32_t>(&modelpar.repeatUpdateInSlice)->default_value(1), "SDW: how often to repeat updateInSlice for eacht timeslice per sweep, default: 1")
             ;
 

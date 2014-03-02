@@ -152,9 +152,13 @@ protected:
     uint32_t attemptedRescales;
 
     const bool globalShift;
-    const uint32_t globalShiftInterval;
+    const bool wolffClusterUpdate;
+    const uint32_t globalMoveInterval;
     uint32_t acceptedGlobalShifts;
     uint32_t attemptedGlobalShifts;
+    uint32_t acceptedWolffClusterUpdates;
+    uint32_t attemptedWolffClusterUpdates;
+    num addedWolffClusterSize;
 
     const uint32_t repeatUpdateInSlice;
 
@@ -306,6 +310,7 @@ protected:
 
     void setupRandomPhi();
     void updatePhiCoshSinh();	//compute new entries of phiCosh and phiSinh from current phi0, phi1, phi2
+    void updatePhiCoshSinh(uint32_t site, uint32_t timeslice);	//the same, for a single spin
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
     void setupUdVStorage();
 
@@ -453,7 +458,12 @@ protected:
     //Try a global move, where the fields on all sites and timeslices are shifted
     //by the same constant amount.  Only do this after a certain number of sweeps.
     void attemptGlobalShiftMove();
-    struct GlobalShiftData {		//some helper data for attemptGlobalShiftMove() that should not be realloced all the time
+    //Try a Wolff single-cluster update. The cluster is constructed using
+    //probabilities determined from the scalar action [proposal probability].
+    //Then it is accepted by a Metropolis rule according to the fermion
+    //determinants.
+    void attemptWolffClusterUpdate();
+    struct GlobalMoveData {		//some helper data that should not be reallocated all the time
     	MatNum phi0;
     	MatNum phi1;
     	MatNum phi2;
@@ -464,12 +474,18 @@ protected:
 
     	std::unique_ptr<checkarray<std::vector<UdVV>, 1>> UdVStorage;
 
-    	GlobalShiftData(uint32_t N, uint32_t m) :
+    	//for the cluster update: mark visited sites by 1, else 0
+    	MatUint visited;		//as usual: row is spatial index, col is time index
+    	typedef std::tuple<uint32_t, uint32_t> SpaceTimeIndex;
+    	//for the cluster update: keep book about which sites to try to add next
+    	std::stack<SpaceTimeIndex> next_sites;
+    	GlobalMoveData(uint32_t N, uint32_t m) :
     			phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
     			phiCosh(N, m+1), phiSinh(N, m+1), g(4*N, 4*N),
-    			UdVStorage(new checkarray<std::vector<UdVV>, 1>)
+    			UdVStorage(new checkarray<std::vector<UdVV>, 1>),
+    			visited(N, m+1), next_sites()
     	{ }
-    } gsd;
+    } gmd;
 
     //compute the total value of the action associated with the field phi
     num phiAction();

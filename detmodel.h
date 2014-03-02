@@ -34,6 +34,7 @@ typedef arma::Col<num> VecNum;
 typedef arma::Mat<num> MatNum;
 typedef arma::Cube<num> CubeNum;
 typedef arma::Mat<int> MatInt;
+typedef arma::Mat<uint32_t> MatUint;
 typedef arma::Mat<cpx> MatCpx;
 typedef arma::SpMat<num> SpMatNum;
 typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;

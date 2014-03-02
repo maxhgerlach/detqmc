@@ -27,13 +27,13 @@ const num PhiLow = -1;
 const num PhiHigh = 1;
 
 std::string cbmToString(CheckerboardMethod cbm) {
-	switch (cbm) {
-	case CB_NONE: return "NONE";
-	case CB_SANTOS: return "santos";
-	case CB_ASSAAD: return "assaad";
-	case CB_ASSAAD_BERG: return "assaad_berg";
-	default: return "INVALID_CHECKERBOARD_METHOD";
-	}
+    switch (cbm) {
+    case CB_NONE: return "NONE";
+    case CB_SANTOS: return "santos";
+    case CB_ASSAAD: return "assaad";
+    case CB_ASSAAD_BERG: return "assaad_berg";
+    default: return "INVALID_CHECKERBOARD_METHOD";
+    }
 }
 
 std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
@@ -44,8 +44,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
     neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
-    		"tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
-    		"globalShift";
+            "tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
+            "globalShift";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -69,13 +69,13 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         throw ParameterWrong("updateMethod", pars.updateMethod);
     }
     if (pars.specified.count("updateMethod") and pars.updateMethod == "delayed") {
-    	if (not pars.specified.count("delaySteps")) {
-    		throw ParameterMissing("delaySteps");
-    	}
-    	uint32_t N = std::pow(pars.L, 2);
-    	if (pars.delaySteps <= 0 or pars.delaySteps > N) {
-    		throw ParameterWrong("delaySteps", pars.delaySteps);
-    	}
+        if (not pars.specified.count("delaySteps")) {
+            throw ParameterMissing("delaySteps");
+        }
+        uint32_t N = std::pow(pars.L, 2);
+        if (pars.delaySteps <= 0 or pars.delaySteps > N) {
+            throw ParameterWrong("delaySteps", pars.delaySteps);
+        }
     }
     std::string possibleSpinProposalMethods[] = {"box", "rotate_then_scale", "rotate_and_scale"};
     bool spinProposalMethod_is_one_of_the_possible = false;
@@ -86,8 +86,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         throw ParameterWrong("spinProposalMethod", pars.spinProposalMethod);
     }
 
-    if (pars.globalShift and pars.globalShiftInterval == 0) {
-    	throw ParameterWrong("globalShiftInterval", pars.globalShiftInterval);
+    if ((pars.globalShift or pars.wolffClusterUpdate) and pars.globalUpdateInterval == 0) {
+        throw ParameterWrong("globalUpdateInterval", pars.globalUpdateInterval);
     }
 
 
@@ -106,15 +106,15 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
 
     CheckerboardMethod cbm = CB_NONE;
     if (pars.checkerboard) {
-    	if (pars.checkerboardMethod == "santos") {
-    		cbm = CB_SANTOS;
-    	} else if (pars.checkerboardMethod == "assaad") {
-    		cbm = CB_ASSAAD;
-    	} else if (pars.checkerboardMethod == "assaad_berg") {
-    		cbm = CB_ASSAAD_BERG;
-    	} else {
-    		throw ParameterWrong("checkerboardMethod", pars.checkerboardMethod);
-    	}
+        if (pars.checkerboardMethod == "santos") {
+            cbm = CB_SANTOS;
+        } else if (pars.checkerboardMethod == "assaad") {
+            cbm = CB_ASSAAD;
+        } else if (pars.checkerboardMethod == "assaad_berg") {
+            cbm = CB_ASSAAD_BERG;
+        } else {
+            throw ParameterWrong("checkerboardMethod", pars.checkerboardMethod);
+        }
     }
 
     //since pars is not a constant expression, we need this stupid if:
@@ -125,10 +125,10 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         return std::unique_ptr<DetModel>(new DetSDW<true,CB_SANTOS>(rng, pars));
     } else
     if (pars.timedisplaced == true and cbm == CB_ASSAAD) {
-    	return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD>(rng, pars));
+        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD>(rng, pars));
     } else
     if (pars.timedisplaced == true and cbm == CB_ASSAAD_BERG) {
-    	return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD_BERG>(rng, pars));
+        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD_BERG>(rng, pars));
     } else
     if (pars.timedisplaced == false and cbm == CB_NONE) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_NONE>(rng, pars));
@@ -137,10 +137,10 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_SANTOS>(rng, pars));
     } else
     if (pars.timedisplaced == false and cbm == CB_ASSAAD) {
-    	return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD>(rng, pars));
+        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD>(rng, pars));
     } else
     if (pars.timedisplaced == false and cbm == CB_ASSAAD_BERG) {
-    	return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
+        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
     }
     else {
         //this can't be reached
@@ -164,8 +164,11 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         rescale(pars.rescale), rescaleInterval(pars.rescaleInterval),
         rescaleGrowthFactor(pars.rescaleGrowthFactor), rescaleShrinkFactor(pars.rescaleShrinkFactor),
         acceptedRescales(0), attemptedRescales(0),
-        globalShift(pars.globalShift), globalShiftInterval(pars.globalShiftInterval),
+        globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
+        globalMoveInterval(pars.globalUpdateInterval),
         acceptedGlobalShifts(0), attemptedGlobalShifts(0),
+        acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
+        addedWolffClusterSize(0.),
         repeatUpdateInSlice(pars.repeatUpdateInSlice),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
@@ -192,10 +195,10 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
         fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
-        dud(N, delaySteps), gsd(N, m)
+        dud(N, delaySteps), gmd(N, m)
 {
-	assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
-	assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
+    assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
+    assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
 
     if (pars.bc == "pbc") {
         bc = PBC;
@@ -210,24 +213,24 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         bc = PBC;
     }
     if (pars.updateMethod == "iterative") {
-    	updateMethod = ITERATIVE;
+        updateMethod = ITERATIVE;
     } else if (pars.updateMethod == "woodbury") {
-    	updateMethod = WOODBURY;
+        updateMethod = WOODBURY;
     } else if (pars.updateMethod == "delayed") {
-    	updateMethod = DELAYED;
+        updateMethod = DELAYED;
     } else {
         // "safe default"
-    	updateMethod = ITERATIVE;
+        updateMethod = ITERATIVE;
     }
     if (pars.spinProposalMethod == "box") {
-    	spinProposalMethod = BOX;
+        spinProposalMethod = BOX;
     } else if (pars.spinProposalMethod == "rotate_then_scale") {
-    	spinProposalMethod = ROTATE_THEN_SCALE;
+        spinProposalMethod = ROTATE_THEN_SCALE;
     } else if (pars.spinProposalMethod == "rotate_and_scale") {
-    	spinProposalMethod = ROTATE_AND_SCALE;
+        spinProposalMethod = ROTATE_AND_SCALE;
     } else {
         // "safe default"
-    	spinProposalMethod = BOX;
+        spinProposalMethod = BOX;
     }
     setupRandomPhi();
 
@@ -260,7 +263,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     using std::cref;
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
-    		ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
+            ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
             ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
             ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
             ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
@@ -304,7 +307,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::setupUdVStorage() {
-	setupUdVStorage_skeleton(sdwComputeBmat(this));
+    setupUdVStorage_skeleton(sdwComputeBmat(this));
 }
 
 template<bool TD, CheckerboardMethod CB>
@@ -323,15 +326,15 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     meta["model"] = "sdw";
     meta["checkerboard"] = (CB ? "true" : "false");
     if (CB) {
-    	meta["checkerboardMethod"] = checkerboardMethod;
+        meta["checkerboardMethod"] = checkerboardMethod;
     }
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (spinProposalMethod != BOX) {
-    	META_INSERT(adaptScaleDelta);
+        META_INSERT(adaptScaleDelta);
     }
     if (updateMethod == DELAYED) {
-    	META_INSERT(delaySteps);
+        META_INSERT(delaySteps);
     }
     meta["timedisplaced"] = (TD ? "true" : "false");
     if (bc == PBC) {
@@ -359,13 +362,14 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(s);
     META_INSERT(rescale);
     if (rescale) {
-    	META_INSERT(rescaleInterval);
-    	META_INSERT(rescaleGrowthFactor);
-    	META_INSERT(rescaleShrinkFactor);
+        META_INSERT(rescaleInterval);
+        META_INSERT(rescaleGrowthFactor);
+        META_INSERT(rescaleShrinkFactor);
     }
     META_INSERT(globalShift);
-    if (globalShift) {
-    	META_INSERT(globalShiftInterval);
+    META_INSERT(wolffClusterUpdate);
+    if (globalShift or wolffClusterUpdate) {
+        META_INSERT(globalMoveInterval);
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
@@ -405,30 +409,30 @@ void DetSDW<TD,CB>::initMeasurements() {
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::measure(uint32_t timeslice) {
-	timing.start("sdw-measure");
+    timing.start("sdw-measure");
 
-	MatCpx gshifted = shiftGreenSymmetric();
+    MatCpx gshifted = shiftGreenSymmetric();
 
-	//normphi, meanPhi, sdw-susceptibility
-	for (uint32_t site = 0; site < N; ++site) {
-		Phi phi_site;
-		phi_site[0] = phi0(site, timeslice);
-		phi_site[1] = phi1(site, timeslice);
-		phi_site[2] = phi2(site, timeslice);
+    //normphi, meanPhi, sdw-susceptibility
+    for (uint32_t site = 0; site < N; ++site) {
+        Phi phi_site;
+        phi_site[0] = phi0(site, timeslice);
+        phi_site[1] = phi1(site, timeslice);
+        phi_site[2] = phi2(site, timeslice);
 
-		meanPhi += phi_site;
-		normPhi += arma::norm(phi_site, 2);
+        meanPhi += phi_site;
+        normPhi += arma::norm(phi_site, 2);
 
-		//sdw-susceptibility will be calculated in finishMeasurements()
-	}
+        //sdw-susceptibility will be calculated in finishMeasurements()
+    }
 
-	//fermion occupation number -- real space
-	for (uint32_t i = 0; i < N; ++i) {
-		occX[i] += std::real(gshifted(i, i) + gshifted(i+N, i+N));
-		occY[i] += std::real(gshifted(i+2*N, i+2*N) + gshifted(i+3*N, i+3*N));
-	}
+    //fermion occupation number -- real space
+    for (uint32_t i = 0; i < N; ++i) {
+        occX[i] += std::real(gshifted(i, i) + gshifted(i+N, i+N));
+        occY[i] += std::real(gshifted(i+2*N, i+2*N) + gshifted(i+3*N, i+3*N));
+    }
 
-	//fermion occupation number -- k-space
+    //fermion occupation number -- k-space
     static const num pi = M_PI;
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
@@ -477,139 +481,139 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     // *1 is for the row index,
     // *2 is for the column index
     auto gl = [this, &gshifted](uint32_t site1, Band band1, Spin spin1,
-    							uint32_t site2, Band band2, Spin spin2) -> cpx {
-    	return gshifted(site1 + 2*N*band1 + N*spin1,
-    			 	 	site2 + 2*N*band2 + N*spin2);
+                                uint32_t site2, Band band2, Spin spin2) -> cpx {
+        return gshifted(site1 + 2*N*band1 + N*spin1,
+                          site2 + 2*N*band2 + N*spin2);
     };
 
     for (uint32_t i = 0; i < N; ++i) {
-    	//            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
-    	//                    std::make_tuple(i, 0), std::make_tuple(0, i)
-    	//            };
-    	//compiler-compatibilty fix
-    	std::tuple<uint32_t,uint32_t> sitePairs[2] = {
-    		std::tuple<uint32_t,uint32_t>(i, 0),
-    		std::tuple<uint32_t,uint32_t>(0, i)
-    	};
+        //            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
+        //                    std::make_tuple(i, 0), std::make_tuple(0, i)
+        //            };
+        //compiler-compatibilty fix
+        std::tuple<uint32_t,uint32_t> sitePairs[2] = {
+            std::tuple<uint32_t,uint32_t>(i, 0),
+            std::tuple<uint32_t,uint32_t>(0, i)
+        };
 
-    	cpx pairPlusCpx(0, 0);
-    	cpx pairMinusCpx(0, 0);
+        cpx pairPlusCpx(0, 0);
+        cpx pairMinusCpx(0, 0);
 
-    	for (auto sites : sitePairs) {
-    		uint32_t siteA = std::get<0>(sites);
-    		uint32_t siteB = std::get<1>(sites);
+        for (auto sites : sitePairs) {
+            uint32_t siteA = std::get<0>(sites);
+            uint32_t siteB = std::get<1>(sites);
 
-    		// the following two unwieldy sums have been evaluated with the Mathematica
-    		// notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
-    		pairPlusCpx += cpx(-4.0, 0) * (
-    				gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-    				gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
-    				gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-    				gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
-    				gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-    				gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-    				gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-    				gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-    		);
+            // the following two unwieldy sums have been evaluated with the Mathematica
+            // notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
+            pairPlusCpx += cpx(-4.0, 0) * (
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+            );
 
-    		pairMinusCpx += cpx(-4.0, 0) * (
-    				gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-    				gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
-    				gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
-    				gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
-    				gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
-    				gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-    				gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-    				gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-    		);
-    	}
+            pairMinusCpx += cpx(-4.0, 0) * (
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+            );
+        }
 
-    	pairPlus[i] += std::real(pairPlusCpx);
-    	//pairPlusimag[i] += std::imag(pairPlusCpx);
-    	pairMinus[i] += std::real(pairMinusCpx);
-    	//pairMinusimag[i] += std::imag(pairMinusCpx);
+        pairPlus[i] += std::real(pairPlusCpx);
+        //pairPlusimag[i] += std::imag(pairPlusCpx);
+        pairMinus[i] += std::real(pairMinusCpx);
+        //pairMinusimag[i] += std::imag(pairMinusCpx);
     }
 
     // Fermionic energy contribution
     // -----------------------------
     auto glij = [this, &gshifted](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
-    	return gshifted(site1 + 2*N*band + N*spin,
-    			 	 	site2 + 2*N*band + N*spin);
+        return gshifted(site1 + 2*N*band + N*spin,
+                          site2 + 2*N*band + N*spin);
     };
     for (uint32_t i = 0; i < N; ++i) {
-    	//TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
-    	Spin spins[] = {SPINUP, SPINDOWN};
-    	for (auto spin: spins) {
-    		cpx e = cpx(txhor,0) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
-          		  + cpx(txhor,0) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
-          		  + cpx(txver,0) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
-          		  + cpx(txver,0) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
-          		  + cpx(tyhor,0) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
-          		  + cpx(tyhor,0) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
-          		  + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
-          		  + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
-    		fermionEkinetic += std::real(e);
-    		//fermionEkinetic_imag += std::imag(e);
-    	}
+        //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
+        Spin spins[] = {SPINUP, SPINDOWN};
+        for (auto spin: spins) {
+            cpx e = cpx(txhor,0) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
+                    + cpx(txhor,0) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
+                    + cpx(txver,0) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
+                    + cpx(txver,0) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
+                    + cpx(tyhor,0) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
+                    + cpx(tyhor,0) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
+                    + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
+                    + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
+            fermionEkinetic += std::real(e);
+            //fermionEkinetic_imag += std::imag(e);
+        }
     }
     for (uint32_t i = 0; i < N; ++i) {
-    	auto glbs = [this, i, gshifted](Band band1, Spin spin1,
-    									Band band2, Spin spin2) -> cpx {
-    		return gshifted(i + 2*N*band1 + N*spin1,
-    						i + 2*N*band2 + N*spin2);
-    	};
+        auto glbs = [this, i, gshifted](Band band1, Spin spin1,
+                                        Band band2, Spin spin2) -> cpx {
+            return gshifted(i + 2*N*band1 + N*spin1,
+                            i + 2*N*band2 + N*spin2);
+        };
 
-    	//factors for different combinations of spins
-    	//overall factor of -1 included
-    	cpx up_up(-phi2(i,timeslice), 0);
-    	cpx up_dn(-phi0(i,timeslice), +phi1(i,timeslice));
-    	cpx dn_up(-phi0(i,timeslice), -phi1(i,timeslice));
-    	cpx dn_dn(+phi2(i,timeslice), 0);
+        //factors for different combinations of spins
+        //overall factor of -1 included
+        cpx up_up(-phi2(i,timeslice), 0);
+        cpx up_dn(-phi0(i,timeslice), +phi1(i,timeslice));
+        cpx dn_up(-phi0(i,timeslice), -phi1(i,timeslice));
+        cpx dn_dn(+phi2(i,timeslice), 0);
 
-		cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
-						 glbs(YBAND, SPINUP, XBAND, SPINUP))
-			  + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
-						 glbs(YBAND, SPINUP, XBAND, SPINDOWN))
-			  + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
-						 glbs(YBAND, SPINDOWN, XBAND, SPINUP))
-			  + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
-						 glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
+        cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
+                         glbs(YBAND, SPINUP, XBAND, SPINUP))
+              + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
+                         glbs(YBAND, SPINUP, XBAND, SPINDOWN))
+              + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
+                         glbs(YBAND, SPINDOWN, XBAND, SPINUP))
+              + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
+                         glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
 
-    	fermionEcouple += std::real(e);
-    	//fermionEcouple_imag += std::imag(e);
+        fermionEcouple += std::real(e);
+        //fermionEcouple_imag += std::imag(e);
     }
 
-	timing.stop("sdw-measure");
+    timing.stop("sdw-measure");
 }
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::finishMeasurements() {
-	//normphi, meanPhi, sdw-susceptibility
-	normPhi /= num(N * m);
-	meanPhi /= num(N * m);
-	normMeanPhi = arma::norm(meanPhi, 2);
+    //normphi, meanPhi, sdw-susceptibility
+    normPhi /= num(N * m);
+    meanPhi /= num(N * m);
+    normMeanPhi = arma::norm(meanPhi, 2);
 
-	Phi phi_0;
-	phi_0[0] = phi0(0, m);
-	phi_0[1] = phi1(0, m);
-	phi_0[2] = phi2(0, m);
-	sdwSusc = 0;
-	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-		for (uint32_t site = 0; site < N; ++site) {
-			sdwSusc += ( phi_0[0] * phi0(site,timeslice)
-					   + phi_0[1] * phi1(site,timeslice)
-					   + phi_0[2] * phi2(site,timeslice)
-					   );
-		}
-	}
-	sdwSusc *= dtau;
+    Phi phi_0;
+    phi_0[0] = phi0(0, m);
+    phi_0[1] = phi1(0, m);
+    phi_0[2] = phi2(0, m);
+    sdwSusc = 0;
+    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+        for (uint32_t site = 0; site < N; ++site) {
+            sdwSusc += ( phi_0[0] * phi0(site,timeslice)
+                       + phi_0[1] * phi1(site,timeslice)
+                       + phi_0[2] * phi2(site,timeslice)
+                       );
+        }
+    }
+    sdwSusc *= dtau;
 
 
-	//fermion occupation number -- real space
+    //fermion occupation number -- real space
     occX /= num(m * N);
     occY /= num(m * N);
 
-	//fermion occupation number -- k-space
+    //fermion occupation number -- k-space
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
         // add 2.0 and not 1.0 because spin is included
         kOccX[ksite] = 2.0 - kOccX[ksite] / num(m * N);
@@ -625,19 +629,19 @@ void DetSDW<TD,CB>::finishMeasurements() {
     // sites around the maximum range L/2, L/2
     static const uint32_t numSitesFar = 9;
     uint32_t sitesfar[numSitesFar] = {
-    		coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
-    		coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
-    		coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
+            coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
+            coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
+            coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
     };
     pairPlusMax = 0;
     //pairPlusMaximag = 0;
     pairMinusMax = 0;
     //pairMinusMaximag = 0;
     for (uint32_t i : sitesfar) {
-    	pairPlusMax += pairPlus[i];
-    	//pairPlusMaximag += pairPlusimag[i];
-    	pairMinusMax += pairMinus[i];
-    	//pairMinusMaximag += pairMinusimag[i];
+        pairPlusMax += pairPlus[i];
+        //pairPlusMaximag += pairPlusimag[i];
+        pairMinusMax += pairMinus[i];
+        //pairMinusMaximag += pairMinusimag[i];
     }
     pairPlusMax /= numSitesFar;
     //pairPlusMaximag /= numSitesFar;
@@ -776,11 +780,11 @@ void DetSDW<TD,CB>::finishMeasurements() {
 ////            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
 ////                    std::make_tuple(i, 0), std::make_tuple(0, i)
 ////            };
-//        	//compiler-compatibilty fix
-//        	std::tuple<uint32_t,uint32_t> sitePairs[2] = {
-//        			std::tuple<uint32_t,uint32_t>(i, 0),
-//        			std::tuple<uint32_t,uint32_t>(0, i)
-//        	};
+//            //compiler-compatibilty fix
+//            std::tuple<uint32_t,uint32_t> sitePairs[2] = {
+//                    std::tuple<uint32_t,uint32_t>(i, 0),
+//                    std::tuple<uint32_t,uint32_t>(0, i)
+//            };
 //
 //            cpx pairPlusCpx(0, 0);
 //            cpx pairMinusCpx(0, 0);
@@ -930,6 +934,15 @@ void DetSDW<TD,CB>::setupRandomPhi() {
 }
 
 template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updatePhiCoshSinh(uint32_t site, uint32_t k) {
+    num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
+                          + std::pow(phi1(site, k), 2)
+                          + std::pow(phi2(site, k), 2));
+    phiCosh(site, k) = std::cosh(dtau * phiNorm);
+    phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
+}
+
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updatePhiCoshSinh() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
@@ -987,119 +1000,119 @@ void DetSDW<TD,CB>::setupPropK() {
 
 template<bool TD, CheckerboardMethod CB>
 MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
-	if (CB == CB_NONE) {
-		timing.start("computeBmatSDW_direct");
-		using arma::eye; using arma::zeros; using arma::diagmat;
-		if (k2 == k1) {
-			return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
-		}
-		assert(k2 > k1);
-		assert(k2 <= m);
+    if (CB == CB_NONE) {
+        timing.start("computeBmatSDW_direct");
+        using arma::eye; using arma::zeros; using arma::diagmat;
+        if (k2 == k1) {
+            return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+        }
+        assert(k2 > k1);
+        assert(k2 <= m);
 
-		//compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-		auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
-			timing.start("singleTimesliceProp_direct");
-			MatCpx result(4*N, 4*N);
+        //compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
+        auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
+            timing.start("singleTimesliceProp_direct");
+            MatCpx result(4*N, 4*N);
 
-			//submatrix view helper for a 4N*4N matrix
-			auto block = [&result, this](uint32_t row, uint32_t col) {
-				return result.submat(row * N, col * N,
-						(row + 1) * N - 1, (col + 1) * N - 1);
-			};
-			const auto& kphi0 = phi0.col(k);
-			const auto& kphi1 = phi1.col(k);
-			const auto& kphi2 = phi2.col(k);
-			//      debugSaveMatrix(kphi0, "kphi0");
-			//      debugSaveMatrix(kphi1, "kphi1");
-			//      debugSaveMatrix(kphi2, "kphi2");
-			const auto& kphiCosh = phiCosh.col(k);
-			const auto& kphiSinh = phiSinh.col(k);
-			//TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
-			//TODO: compare to using set_real / set_imag
-			block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
-					zeros(N,N));
-			block(0, 1).zeros();
-			block(0, 2) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
-					zeros(N,N));
-			block(0, 3) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-					diagmat(+kphi1 % kphiSinh) * propKy);
-			block(1, 0).zeros();
-			block(1, 1) = block(0, 0);
-			block(1, 2) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-					diagmat(-kphi1 % kphiSinh) * propKy);
-			block(1, 3) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
-					zeros(N,N));
-			block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
-					zeros(N,N));
-			block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-					diagmat(+kphi1 % kphiSinh) * propKx);
-			block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
-					zeros(N,N));
-			block(2, 3).zeros();
-			block(3, 0) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-					diagmat(-kphi1 % kphiSinh) * propKx);
-			block(3, 1) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
-					zeros(N,N));
-			block(3, 2).zeros();
-			block(3, 3) = block(2, 2);
+            //submatrix view helper for a 4N*4N matrix
+            auto block = [&result, this](uint32_t row, uint32_t col) {
+                return result.submat(row * N, col * N,
+                        (row + 1) * N - 1, (col + 1) * N - 1);
+            };
+            const auto& kphi0 = phi0.col(k);
+            const auto& kphi1 = phi1.col(k);
+            const auto& kphi2 = phi2.col(k);
+            //      debugSaveMatrix(kphi0, "kphi0");
+            //      debugSaveMatrix(kphi1, "kphi1");
+            //      debugSaveMatrix(kphi2, "kphi2");
+            const auto& kphiCosh = phiCosh.col(k);
+            const auto& kphiSinh = phiSinh.col(k);
+            //TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
+            //TODO: compare to using set_real / set_imag
+            block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
+                    zeros(N,N));
+            block(0, 1).zeros();
+            block(0, 2) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
+                    zeros(N,N));
+            block(0, 3) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
+                    diagmat(+kphi1 % kphiSinh) * propKy);
+            block(1, 0).zeros();
+            block(1, 1) = block(0, 0);
+            block(1, 2) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
+                    diagmat(-kphi1 % kphiSinh) * propKy);
+            block(1, 3) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
+                    zeros(N,N));
+            block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
+                    zeros(N,N));
+            block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
+                    diagmat(+kphi1 % kphiSinh) * propKx);
+            block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
+                    zeros(N,N));
+            block(2, 3).zeros();
+            block(3, 0) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
+                    diagmat(-kphi1 % kphiSinh) * propKx);
+            block(3, 1) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
+                    zeros(N,N));
+            block(3, 2).zeros();
+            block(3, 3) = block(2, 2);
 
-			//      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
-			//      debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
-			timing.stop("singleTimesliceProp_direct");
-			return result;
-		};
+            //      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
+            //      debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
+            timing.stop("singleTimesliceProp_direct");
+            return result;
+        };
 
-		MatCpx result = singleTimesliceProp(k2);
+        MatCpx result = singleTimesliceProp(k2);
 
-		for (uint32_t k = k2 - 1; k > k1; --k) {
-			result *= singleTimesliceProp(k);               // equivalent to: result = result * singleTimesliceProp(k);
-		}
+        for (uint32_t k = k2 - 1; k > k1; --k) {
+            result *= singleTimesliceProp(k);               // equivalent to: result = result * singleTimesliceProp(k);
+        }
 
-		timing.stop("computeBmatSDW_direct");
+        timing.stop("computeBmatSDW_direct");
 
-		return result;
-	}
-	else {
-		// use the checkerboard routines to compute B by left-multiplying to unity
-		using arma::eye; using arma::zeros;
-		if (k2 == k1) {
-			return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
-		}
-		assert(k2 > k1);
-		assert(k2 <= m);
-		MatCpx unity(eye(4*N, 4*N), zeros(4*N, 4*N));
-		return checkerboardLeftMultiplyBmat(unity, k2, k1);
-	}
+        return result;
+    }
+    else {
+        // use the checkerboard routines to compute B by left-multiplying to unity
+        using arma::eye; using arma::zeros;
+        if (k2 == k1) {
+            return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+        }
+        assert(k2 > k1);
+        assert(k2 <= m);
+        MatCpx unity(eye(4*N, 4*N), zeros(4*N, 4*N));
+        return checkerboardLeftMultiplyBmat(unity, k2, k1);
+    }
 }
 
 template<bool TD, CheckerboardMethod CB> inline
 MatCpx DetSDW<TD,CB>::computePotentialExponential(
-		int sign, VecNum phi0, VecNum phi1, VecNum phi2) {
-	const VecCpx a (phi2, arma::zeros<VecNum>(N));
-	const VecCpx b (phi0, -phi1);
-	const VecCpx bc(phi0, +phi1);
+        int sign, VecNum phi0, VecNum phi1, VecNum phi2) {
+    const VecCpx a (phi2, arma::zeros<VecNum>(N));
+    const VecCpx b (phi0, -phi1);
+    const VecCpx bc(phi0, +phi1);
 
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-	MatCpx V(4*N, 4*N);
-	V.zeros(4*N, 4*N);
-	block(V,0,2).diag() = a;
-	block(V,0,3).diag() = b;
-	block(V,1,2).diag() = bc;
-	block(V,1,3).diag() = -a;
-	block(V,2,0).diag() = a;
-	block(V,2,1).diag() = b;
-	block(V,3,0).diag() = bc;
-	block(V,3,1).diag() = -a;
+    MatCpx V(4*N, 4*N);
+    V.zeros(4*N, 4*N);
+    block(V,0,2).diag() = a;
+    block(V,0,3).diag() = b;
+    block(V,1,2).diag() = bc;
+    block(V,1,3).diag() = -a;
+    block(V,2,0).diag() = a;
+    block(V,2,1).diag() = b;
+    block(V,3,0).diag() = bc;
+    block(V,3,1).diag() = -a;
 #undef block
 
     VecNum eigval;
     MatCpx eigvec;
     arma::eig_sym(eigval, eigvec, V);
 
-	MatCpx result(4*N, 4*N);
-	result = eigvec * arma::diagmat(arma::exp(sign * dtau * eigval)) * arma::trans(eigvec);
+    MatCpx result(4*N, 4*N);
+    result = eigvec * arma::diagmat(arma::exp(sign * dtau * eigval)) * arma::trans(eigvec);
 
-	return result;
+    return result;
 }
 
 
@@ -1107,10 +1120,10 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-											 const Matrix&, Band, int, bool) {
-	throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
-	//TODO change things so this codepath is not needed
-	return MatCpx();
+                                             const Matrix&, Band, int, bool) {
+    throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+    //TODO change things so this codepath is not needed
+    return MatCpx();
 }
 
 
@@ -1123,38 +1136,38 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<TD,CB>::cb_santos_applyBondFactorsLeft(Matrix& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
-	assert(subgroup == 0 or subgroup == 1);
-	assert(neigh == XPLUS or neigh == YPLUS);
-	arma::Row<cpx> new_row_i(N);
-	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-		for (uint32_t i2 = 0; i2 < L; ++i2) {
-			uint32_t i;
-			switch (neigh) {
-			case XPLUS:
-				i = this->coordsToSite(i1, i2);
-				break;
-			case YPLUS:
-				i = this->coordsToSite(i2, i1);
-				break;
-			default: //should not be reached
-				break;
-			}
-			uint32_t j = spaceNeigh(neigh, i);
-			//change rows i and j of result
-			num b_sh = sh;
-			if ((bc == APBC_X or bc == APBC_XY) and neigh == XPLUS and i1 == L-1) {
-				//crossed antiperiodic boundary
-				b_sh *= -1;
-			}
-			else if ((bc == APBC_Y or bc == APBC_XY) and neigh == YPLUS and i1 == L-1) {
-				//crossed antiperiodic boundary
-				b_sh *= -1;
-			}
-			new_row_i     = ch * result.row(i) + b_sh * result.row(j);
-			result.row(j) = b_sh * result.row(i) + ch * result.row(j);
-			result.row(i) = new_row_i;
-		}
-	}
+    assert(subgroup == 0 or subgroup == 1);
+    assert(neigh == XPLUS or neigh == YPLUS);
+    arma::Row<cpx> new_row_i(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = 0; i2 < L; ++i2) {
+            uint32_t i;
+            switch (neigh) {
+            case XPLUS:
+                i = this->coordsToSite(i1, i2);
+                break;
+            case YPLUS:
+                i = this->coordsToSite(i2, i1);
+                break;
+            default: //should not be reached
+                break;
+            }
+            uint32_t j = spaceNeigh(neigh, i);
+            //change rows i and j of result
+            num b_sh = sh;
+            if ((bc == APBC_X or bc == APBC_XY) and neigh == XPLUS and i1 == L-1) {
+                //crossed antiperiodic boundary
+                b_sh *= -1;
+            }
+            else if ((bc == APBC_Y or bc == APBC_XY) and neigh == YPLUS and i1 == L-1) {
+                //crossed antiperiodic boundary
+                b_sh *= -1;
+            }
+            new_row_i     = ch * result.row(i) + b_sh * result.row(j);
+            result.row(j) = b_sh * result.row(i) + ch * result.row(j);
+            result.row(i) = new_row_i;
+        }
+    }
 }
 
 
@@ -1164,21 +1177,21 @@ void DetSDW<TD,CB>::cb_santos_applyBondFactorsLeft(Matrix& result, const NeighDi
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-											 const Matrix& A, Band band, int sign, bool invertedCbOrder) {
-	MatCpx result = A;      //can't avoid this copy
+                                             const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+    MatCpx result = A;      //can't avoid this copy
 
-	if (not invertedCbOrder) {
-		cb_santos_applyBondFactorsLeft(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
-		cb_santos_applyBondFactorsLeft(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
-		cb_santos_applyBondFactorsLeft(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
-		cb_santos_applyBondFactorsLeft(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
-	} else {
-		cb_santos_applyBondFactorsLeft(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
-		cb_santos_applyBondFactorsLeft(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
-		cb_santos_applyBondFactorsLeft(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
-		cb_santos_applyBondFactorsLeft(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
-	}
-	return result;
+    if (not invertedCbOrder) {
+        cb_santos_applyBondFactorsLeft(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsLeft(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsLeft(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsLeft(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
+    } else {
+        cb_santos_applyBondFactorsLeft(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsLeft(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsLeft(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsLeft(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+    }
+    return result;
 }
 
 //subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
@@ -1194,40 +1207,40 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
-	assert(subgroup == 0 or subgroup == 1);
-	arma::Row<cpx> new_row_i(N);
-	arma::Row<cpx> new_row_j(N);
-	arma::Row<cpx> new_row_k(N);
-	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-		for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
-			uint32_t i = this->coordsToSite(i1, i2);
-			uint32_t j = spaceNeigh(XPLUS, i);
-			uint32_t k = spaceNeigh(YPLUS, i);
-			uint32_t l = spaceNeigh(XPLUS, k);
-			//change rows i,j,k,l of result
-			const arma::Row<cpx>& ri = result.row(i);
-			const arma::Row<cpx>& rj = result.row(j);
-			const arma::Row<cpx>& rk = result.row(k);
-			const arma::Row<cpx>& rl = result.row(l);
-			num b_sh_hor = sh_hor;
-			num b_sh_ver = sh_ver;
-			if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
-				//this plaquette has horizontal boundary crossing bonds and APBC
-				b_sh_hor *= -1;
-			}
-			if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
-				//this plaquette has vertical boundary crossing bonds and APBC
-				b_sh_ver *= -1;
-			}
-			new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
-			new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
-			new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
-			result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
-			result.row(i) = new_row_i;
-			result.row(j) = new_row_j;
-			result.row(k) = new_row_k;
-		}
-	}
+    assert(subgroup == 0 or subgroup == 1);
+    arma::Row<cpx> new_row_i(N);
+    arma::Row<cpx> new_row_j(N);
+    arma::Row<cpx> new_row_k(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+            uint32_t i = this->coordsToSite(i1, i2);
+            uint32_t j = spaceNeigh(XPLUS, i);
+            uint32_t k = spaceNeigh(YPLUS, i);
+            uint32_t l = spaceNeigh(XPLUS, k);
+            //change rows i,j,k,l of result
+            const arma::Row<cpx>& ri = result.row(i);
+            const arma::Row<cpx>& rj = result.row(j);
+            const arma::Row<cpx>& rk = result.row(k);
+            const arma::Row<cpx>& rl = result.row(l);
+            num b_sh_hor = sh_hor;
+            num b_sh_ver = sh_ver;
+            if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+                //this plaquette has horizontal boundary crossing bonds and APBC
+                b_sh_hor *= -1;
+            }
+            if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+                //this plaquette has vertical boundary crossing bonds and APBC
+                b_sh_ver *= -1;
+            }
+            new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
+            new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
+            new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
+            result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
+            result.row(i) = new_row_i;
+            result.row(j) = new_row_j;
+            result.row(k) = new_row_k;
+        }
+    }
 }
 
 // with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
@@ -1235,17 +1248,17 @@ void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subg
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-											 const Matrix& A, Band band, int sign, bool invertedCbOrder) {
-	MatCpx result = A;      //can't avoid this copy
+                                             const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+    MatCpx result = A;      //can't avoid this copy
 
-	if (not invertedCbOrder) {
-		cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-		cb_assaad_applyBondFactorsLeft(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-	} else {
-		cb_assaad_applyBondFactorsLeft(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-		cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-	}
-	return result;
+    if (not invertedCbOrder) {
+        cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsLeft(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    } else {
+        cb_assaad_applyBondFactorsLeft(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    }
+    return result;
 }
 
 // with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
@@ -1253,24 +1266,24 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-											 const Matrix& A, Band band, int sign, bool) {
-	MatCpx result = A;      //can't avoid this copy
+                                             const Matrix& A, Band band, int sign, bool) {
+    MatCpx result = A;      //can't avoid this copy
 
-	// perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
-	cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-			                       coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-	cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-	cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-								   coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-	return result;
+    // perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
+    cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                   coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                   coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    return result;
 }
 
 // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
 template<bool TD, CheckerboardMethod CB>
 template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
-	return cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
-								  A, band, sign, invertedCbOrder);
+    return cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
+                                  A, band, sign, invertedCbOrder);
 }
 
 
@@ -1279,9 +1292,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bo
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-											 const Matrix&, Band, int, bool) {
-	throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
-	return MatCpx();
+                                             const Matrix&, Band, int, bool) {
+    throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+    return MatCpx();
 }
 
 
@@ -1294,38 +1307,38 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<TD,CB>::cb_santos_applyBondFactorsRight(Matrix& result, const NeighDir neigh, const uint32_t subgroup, const num ch, const num sh) {
-	assert(subgroup == 0 or subgroup == 1);
-	assert(neigh == XPLUS or neigh == YPLUS);
-	arma::Col<cpx> new_col_i(N);
-	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-		for (uint32_t i2 = 0; i2 < L; ++i2) {
-			uint32_t i;
-			switch (neigh) {
-			case XPLUS:
-				i = this->coordsToSite(i1, i2);
-				break;
-			case YPLUS:
-				i = this->coordsToSite(i2, i1);
-				break;
-			default: //should not be reached
-				break;
-			}
-			uint32_t j = spaceNeigh(neigh, i);
-			//change columns i and j of result
-			num b_sh = sh;
-			if ((bc == APBC_X or bc == APBC_XY) and neigh == XPLUS and i1 == L-1) {
-				//crossed antiperiodic boundary
-				b_sh *= -1;
-			}
-			else if ((bc == APBC_Y or bc == APBC_XY) and neigh == YPLUS and i1 == L-1) {
-				//crossed antiperiodic boundary
-				b_sh *= -1;
-			}
-			new_col_i     = ch * result.col(i) + b_sh * result.col(j);
-			result.col(j) = b_sh * result.col(i) + ch * result.col(j);
-			result.col(i) = new_col_i;
-		}
-	}
+    assert(subgroup == 0 or subgroup == 1);
+    assert(neigh == XPLUS or neigh == YPLUS);
+    arma::Col<cpx> new_col_i(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = 0; i2 < L; ++i2) {
+            uint32_t i;
+            switch (neigh) {
+            case XPLUS:
+                i = this->coordsToSite(i1, i2);
+                break;
+            case YPLUS:
+                i = this->coordsToSite(i2, i1);
+                break;
+            default: //should not be reached
+                break;
+            }
+            uint32_t j = spaceNeigh(neigh, i);
+            //change columns i and j of result
+            num b_sh = sh;
+            if ((bc == APBC_X or bc == APBC_XY) and neigh == XPLUS and i1 == L-1) {
+                //crossed antiperiodic boundary
+                b_sh *= -1;
+            }
+            else if ((bc == APBC_Y or bc == APBC_XY) and neigh == YPLUS and i1 == L-1) {
+                //crossed antiperiodic boundary
+                b_sh *= -1;
+            }
+            new_col_i     = ch * result.col(i) + b_sh * result.col(j);
+            result.col(j) = b_sh * result.col(i) + ch * result.col(j);
+            result.col(i) = new_col_i;
+        }
+    }
 }
 
 
@@ -1335,20 +1348,20 @@ void DetSDW<TD,CB>::cb_santos_applyBondFactorsRight(Matrix& result, const NeighD
 template<bool TD, CheckerboardMethod CB>
 template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-											 const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+                                             const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     MatCpx result = A;      //can't avoid this copy
 
     //order reversed wrt cbLMultHoppingExp
     if (not invertedCbOrder) {
-    	cb_santos_applyBondFactorsRight(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
-    	cb_santos_applyBondFactorsRight(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
-    	cb_santos_applyBondFactorsRight(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
-    	cb_santos_applyBondFactorsRight(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsRight(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsRight(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsRight(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsRight(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
     } else {
-    	cb_santos_applyBondFactorsRight(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
-    	cb_santos_applyBondFactorsRight(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
-    	cb_santos_applyBondFactorsRight(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
-    	cb_santos_applyBondFactorsRight(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsRight(result, XPLUS, 0, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsRight(result, YPLUS, 0, coshHopVer[band], sign * sinhHopVer[band]);
+        cb_santos_applyBondFactorsRight(result, XPLUS, 1, coshHopHor[band], sign * sinhHopHor[band]);
+        cb_santos_applyBondFactorsRight(result, YPLUS, 1, coshHopVer[band], sign * sinhHopVer[band]);
     }
 
     return result;
@@ -1367,55 +1380,55 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<TD,CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
-	assert(subgroup == 0 or subgroup == 1);
-	arma::Col<cpx> new_col_i(N);
-	arma::Col<cpx> new_col_j(N);
-	arma::Col<cpx> new_col_k(N);
-	for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-		for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
-			uint32_t i = this->coordsToSite(i1, i2);
-			uint32_t j = spaceNeigh(XPLUS, i);
-			uint32_t k = spaceNeigh(YPLUS, i);
-			uint32_t l = spaceNeigh(XPLUS, k);
-			//change cols i,j,k,l of result
-			const arma::Col<cpx>& ci = result.col(i);
-			const arma::Col<cpx>& cj = result.col(j);
-			const arma::Col<cpx>& ck = result.col(k);
-			const arma::Col<cpx>& cl = result.col(l);
-			num b_sh_hor = sh_hor;
-			num b_sh_ver = sh_ver;
-			if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
-				//this plaquette has horizontal boundary crossing bonds and APBC
-				b_sh_hor *= -1;
-			}
-			if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
-				//this plaquette has vertical boundary crossing bonds and APBC
-				b_sh_ver *= -1;
-			}
-			new_col_i     = ch_hor*ch_ver*ci + ch_ver*b_sh_hor*cj + ch_hor*b_sh_ver*ck + b_sh_hor*b_sh_ver*cl;
-			new_col_j     = ch_ver*b_sh_hor*ci + ch_hor*ch_ver*cj + b_sh_hor*b_sh_ver*ck + ch_hor*b_sh_ver*cl;
-			new_col_k     = ch_hor*b_sh_ver*ci + b_sh_hor*b_sh_ver*cj + ch_hor*ch_ver*ck + ch_ver*b_sh_hor*cl;
-			result.col(l) = b_sh_hor*b_sh_ver*ci + ch_hor*b_sh_ver*cj + ch_ver*b_sh_hor*ck + ch_hor*ch_ver*cl;
-			result.col(i) = new_col_i;
-			result.col(j) = new_col_j;
-			result.col(k) = new_col_k;
-		}
-	}
+    assert(subgroup == 0 or subgroup == 1);
+    arma::Col<cpx> new_col_i(N);
+    arma::Col<cpx> new_col_j(N);
+    arma::Col<cpx> new_col_k(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+            uint32_t i = this->coordsToSite(i1, i2);
+            uint32_t j = spaceNeigh(XPLUS, i);
+            uint32_t k = spaceNeigh(YPLUS, i);
+            uint32_t l = spaceNeigh(XPLUS, k);
+            //change cols i,j,k,l of result
+            const arma::Col<cpx>& ci = result.col(i);
+            const arma::Col<cpx>& cj = result.col(j);
+            const arma::Col<cpx>& ck = result.col(k);
+            const arma::Col<cpx>& cl = result.col(l);
+            num b_sh_hor = sh_hor;
+            num b_sh_ver = sh_ver;
+            if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+                //this plaquette has horizontal boundary crossing bonds and APBC
+                b_sh_hor *= -1;
+            }
+            if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+                //this plaquette has vertical boundary crossing bonds and APBC
+                b_sh_ver *= -1;
+            }
+            new_col_i     = ch_hor*ch_ver*ci + ch_ver*b_sh_hor*cj + ch_hor*b_sh_ver*ck + b_sh_hor*b_sh_ver*cl;
+            new_col_j     = ch_ver*b_sh_hor*ci + ch_hor*ch_ver*cj + b_sh_hor*b_sh_ver*ck + ch_hor*b_sh_ver*cl;
+            new_col_k     = ch_hor*b_sh_ver*ci + b_sh_hor*b_sh_ver*cj + ch_hor*ch_ver*ck + ch_ver*b_sh_hor*cl;
+            result.col(l) = b_sh_hor*b_sh_ver*ci + ch_hor*b_sh_ver*cj + ch_ver*b_sh_hor*ck + ch_hor*ch_ver*cl;
+            result.col(i) = new_col_i;
+            result.col(j) = new_col_j;
+            result.col(k) = new_col_k;
+        }
+    }
 }
 
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-											 const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+                                             const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     MatCpx result = A;      //can't avoid this copy
 
     //order reversed wrt cbLMultHoppingExp
     if (not invertedCbOrder) {
-    	cb_assaad_applyBondFactorsRight(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-    	cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsRight(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
     } else {
-    	cb_assaad_applyBondFactorsRight(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-    	cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsRight(result, 1, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
     }
     return result;
 }
@@ -1423,26 +1436,26 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 template<bool TD, CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-											 const Matrix& A, Band band, int sign, bool) {
+                                             const Matrix& A, Band band, int sign, bool) {
     MatCpx result = A;      //can't avoid this copy
 
     //order of matrix multiplications symmetric
-	//perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
-	cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-			                 	 	coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-	cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
-	cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-									coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    //perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
+    cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                      coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
 
-	return result;
+    return result;
 }
 
 // with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
 template<bool TD, CheckerboardMethod CB>
 template <class Matrix> inline
 MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
-	return cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
-								  A, band, sign, invertedCbOrder);
+    return cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
+                                  A, band, sign, invertedCbOrder);
 }
 
 
@@ -1458,13 +1471,13 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    num muTerm = std::exp(dtau*mu);			// include chemical potential here
+    num muTerm = std::exp(dtau*mu);            // include chemical potential here
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
     const VecNum c = muTerm * phiCosh.col(k);   // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  	// sinh(dtau * |phi|) / |phi|
+    const auto& kphiSinh = phiSinh.col(k);      // sinh(dtau * |phi|) / |phi|
     VecNum ax  =  muTerm * kphi2 % kphiSinh;
     VecNum max = -muTerm * kphi2 % kphiSinh;
     VecCpx b  {kphi0, -kphi1};
@@ -1526,13 +1539,13 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
+    num muTerm = std::exp(-dtau*mu);            // include chemical potential here
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
     const VecNum c = muTerm * phiCosh.col(k);     // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  	  // sinh(dtau * |phi|) / |phi|
+    const auto& kphiSinh = phiSinh.col(k);        // sinh(dtau * |phi|) / |phi|
     VecNum ax  =  muTerm * kphi2 % kphiSinh;
     VecNum max = -muTerm * kphi2 % kphiSinh;
     VecCpx b  {kphi0, -kphi1};
@@ -1580,7 +1593,7 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
     MatCpx result = leftMultiplyBkInv(A, k2);
 
     for (uint32_t k = k2 - 1; k >= k1 + 1; --k) {
-    	result = leftMultiplyBkInv(result, k);
+        result = leftMultiplyBkInv(result, k);
     }
 
     //chemical potential terms already included
@@ -1598,7 +1611,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	num muTerm = std::exp(dtau*mu);			// include chemical potential here
+    num muTerm = std::exp(dtau*mu);            // include chemical potential here
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1664,13 +1677,13 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	num muTerm = std::exp(-dtau*mu);			// include chemical potential here
+    num muTerm = std::exp(-dtau*mu);            // include chemical potential here
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
     const VecNum c = muTerm * phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);  		  // sinh(dtau * |phi|) / |phi|
+    const auto& kphiSinh = phiSinh.col(k);            // sinh(dtau * |phi|) / |phi|
     VecNum ax  =  muTerm * kphi2 % kphiSinh;
     VecNum max = -muTerm * kphi2 % kphiSinh;
     VecCpx b  {kphi0, -kphi1};
@@ -1717,7 +1730,7 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t
     MatCpx result = rightMultiplyBkInv(A, k1 + 1);
 
     for (uint32_t k = k1 + 2; k <= k2; ++k) {
-    	result = rightMultiplyBkInv(result, k);
+        result = rightMultiplyBkInv(result, k);
     }
 
     //chemical potential terms included above
@@ -1740,50 +1753,50 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     normal_distribution.reset();
 
     for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
-    	switch (spinProposalMethod) {
-    	case BOX:
-    		callUpdateInSlice_for_updateMethod(timeslice,
-    			[this](uint32_t site, uint32_t timeslice) -> boolPhi {
-    				return this->proposeNewField(site, timeslice);
-    			}
-    		);
-    		break;
-    	case ROTATE_THEN_SCALE:
-    		//each sweep, alternate between rotating and scaling
-    		if (performedSweeps % 2 == 0) {
-    			callUpdateInSlice_for_updateMethod(timeslice,
-    				[this](uint32_t site, uint32_t timeslice) -> boolPhi {
-    					return this->proposeRotatedField(site, timeslice);
-    				}
-    			);
-    		} else {
-    			callUpdateInSlice_for_updateMethod(timeslice,
-    				[this](uint32_t site, uint32_t timeslice) -> boolPhi {
-    					return this->proposeScaledField(site, timeslice);
-    				}
-    			);
-    		}
-    		break;
-    	case ROTATE_AND_SCALE:
-    		callUpdateInSlice_for_updateMethod(timeslice,
-    			[this](uint32_t site, uint32_t timeslice) -> boolPhi {
-    				return this->proposeRotatedScaledField(site, timeslice);
-    			}
-    		);
-    		break;
-    	}
-	}
+        switch (spinProposalMethod) {
+        case BOX:
+            callUpdateInSlice_for_updateMethod(timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> boolPhi {
+                    return this->proposeNewField(site, timeslice);
+                }
+            );
+            break;
+        case ROTATE_THEN_SCALE:
+            //each sweep, alternate between rotating and scaling
+            if (performedSweeps % 2 == 0) {
+                callUpdateInSlice_for_updateMethod(timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> boolPhi {
+                        return this->proposeRotatedField(site, timeslice);
+                    }
+                );
+            } else {
+                callUpdateInSlice_for_updateMethod(timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> boolPhi {
+                        return this->proposeScaledField(site, timeslice);
+                    }
+                );
+            }
+            break;
+        case ROTATE_AND_SCALE:
+            callUpdateInSlice_for_updateMethod(timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> boolPhi {
+                    return this->proposeRotatedScaledField(site, timeslice);
+                }
+            );
+            break;
+        }
+    }
 
     if (rescale) {
-    	if (performedSweeps % rescaleInterval == 0) {
-    		num rnd = rng.rand01();
-    		if (rnd <= 0.5) {
-    			attemptTimesliceRescaleMove(timeslice, rescaleGrowthFactor);
-    		} else {
-    			//attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
-    			attemptTimesliceRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
-    		}
-    	}
+        if (performedSweeps % rescaleInterval == 0) {
+            num rnd = rng.rand01();
+            if (rnd <= 0.5) {
+                attemptTimesliceRescaleMove(timeslice, rescaleGrowthFactor);
+            } else {
+                //attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
+                attemptTimesliceRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
+            }
+        }
     }
 
     timing.stop("sdw-updateInSlice");
@@ -1798,8 +1811,8 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
         bool newphi_valid;
         std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
         if (not newphi_valid) {
-        	//reject this change
-        	continue;
+            //reject this change
+            continue;
         }
 
 //      VecNum oldphi0 = phi0.col(timeslice);
@@ -1875,8 +1888,8 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
         //Compute the values of these rows [O(N)]:
         checkarray<VecCpx, 4> rows;
         for (uint32_t r = 0; r < 4; ++r) {
-        	//TODO: Here are some unnecessary operations: deltanonzero contains many repeated
-        	//elements, and even some zeros
+            //TODO: Here are some unnecessary operations: deltanonzero contains many repeated
+            //elements, and even some zeros
             rows[r] = VecCpx(4*N);
             for (uint32_t col = 0; col < 4*N; ++col) {
                 rows[r][col] = -deltanonzero(r,0) * g.col(col)[site];
@@ -1987,11 +2000,11 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
         //DEBUG: determinant computation from new routine updateInSlice_woodbury:
 //        MatCpx::fixed<4,4> g_sub;
 //        for (uint32_t a = 0; a < 4; ++a) {
-//        	for (uint32_t b = 0; b < 4; ++b) {
-//        		g_sub(a,b) = g(site + a*N, site + b*N);
-//        	}
+//            for (uint32_t b = 0; b < 4; ++b) {
+//                g_sub(a,b) = g(site + a*N, site + b*N);
+//            }
 //        }
-//        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;						//!
+//        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;                        //!
 //        std::cout << "det: " << (probSFermion - arma::det(M).real()) / probSFermion << "\n";
         //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
 
@@ -2032,37 +2045,37 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 //            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
 //            uint32_t i = 0;
 //            for (auto col: idx) {
-//            	uint32_t j = 0;
-//            	for (auto row: idx) {
-//            		delta(row, col) = deltanonzero(j, i);
-//            		++j;
-//            	}
-//            	++i;
+//                uint32_t j = 0;
+//                for (auto row: idx) {
+//                    delta(row, col) = deltanonzero(j, i);
+//                    ++j;
+//                }
+//                ++i;
 //            }
 //            MatCpx g_new_ref = g * arma::inv(
-//            		arma::eye(4*N,4*N) + delta*(arma::eye(4*N,4*N) - g));
+//                    arma::eye(4*N,4*N) + delta*(arma::eye(4*N,4*N) - g));
             //END DEBUG
 
 
             //DEBUG
             //Compare green's function updated with the method of updateInSlice_woodbury
             //with this one:
-//            MatCpx g_woodbury = g;		//copy
+//            MatCpx g_woodbury = g;        //copy
 //            MatCpx::fixed<4,4> g_woodbury_sub;
 //            for (uint32_t a = 0; a < 4; ++a) {
-//            	for (uint32_t b = 0; b < 4; ++b) {
-//            		g_woodbury_sub(a,b) = g_woodbury(site + a*N, site + b*N);
-//            	}
+//                for (uint32_t b = 0; b < 4; ++b) {
+//                    g_woodbury_sub(a,b) = g_woodbury(site + a*N, site + b*N);
+//                }
 //            }
-//            MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_woodbury_sub) * deltanonzero;	//!!
+//            MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_woodbury_sub) * deltanonzero;    //!!
 //            MatCpx mat_V(4, 4*N);
 //            for (uint32_t r = 0; r < 4; ++r) {
-//            	mat_V.row(r) = g_woodbury.row(site + r*N);
-//            	mat_V(r, site + r*N) -= 1.0;
+//                mat_V.row(r) = g_woodbury.row(site + r*N);
+//                mat_V(r, site + r*N) -= 1.0;
 //            }
 //            MatCpx g_woodbury_times_mat_U(4*N, 4);
 //            for (uint32_t c = 0; c < 4; ++c) {
-//            	g_woodbury_times_mat_U.col(c) = g_woodbury.col(site + c*N); //!!
+//                g_woodbury_times_mat_U.col(c) = g_woodbury.col(site + c*N); //!!
 //            }
 //            g_woodbury_times_mat_U = g_woodbury_times_mat_U * deltanonzero;
 //            g_woodbury += (g_woodbury_times_mat_U) * (arma::inv(M) * mat_V);
@@ -2076,19 +2089,19 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 //            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
 //            uint32_t i = 0;
 //            for (auto col: idx) {
-//            	uint32_t j = 0;
-//            	for (auto row: idx) {
-//            		delta(row, col) = deltanonzero(j, i);
-//            		++j;
-//            	}
-//            	++i;
+//                uint32_t j = 0;
+//                for (auto row: idx) {
+//                    delta(row, col) = deltanonzero(j, i);
+//                    ++j;
+//                }
+//                ++i;
 //            }
 //            MatCpx mat_U_large = -delta;
 //            MatCpx mat_V_large = arma::eye(4*N,4*N) - g;
 //            MatCpx g_woodbury_large = g * (arma::eye(4*N,4*N) +
-//            		mat_U_large *
-//            		arma::inv(arma::eye(4*N,4*N) - mat_V_large * mat_U_large) *
-//            		mat_V_large);
+//                    mat_U_large *
+//                    arma::inv(arma::eye(4*N,4*N) - mat_V_large * mat_U_large) *
+//                    mat_V_large);
             //END DEBUG
 
 
@@ -2098,29 +2111,29 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 //            MatCpx mat_U_reas(4*N,4);
 //            mat_U_reas.fill(cpx(0,0));
 //            for (uint32_t k = 0; k < 4; ++k) {
-//            	for (uint32_t l = 0; l < 4; ++l) {
-//            		mat_U_reas(site + k*N, l) = -deltanonzero(k, l);
-//            	}
+//                for (uint32_t l = 0; l < 4; ++l) {
+//                    mat_U_reas(site + k*N, l) = -deltanonzero(k, l);
+//                }
 //            }
 //            MatCpx mat_V_reas(4,4*N);
 //            for (uint32_t l = 0; l < 4; ++l) {
-//            	mat_V_reas.row(l) = arma::conv_to<MatCpx>::from((arma::eye(4*N,4*N) - g)).row(site + l*N);
+//                mat_V_reas.row(l) = arma::conv_to<MatCpx>::from((arma::eye(4*N,4*N) - g)).row(site + l*N);
 //            }
 //            MatCpx::fixed<4,4> g_woodbury_reas_sub;
 //            for (uint32_t a = 0; a < 4; ++a) {
-//            	for (uint32_t b = 0; b < 4; ++b) {
-//            		g_woodbury_reas_sub(a,b) = g(site + a*N, site + b*N);
-//            	}
+//                for (uint32_t b = 0; b < 4; ++b) {
+//                    g_woodbury_reas_sub(a,b) = g(site + a*N, site + b*N);
+//                }
 //            }
 //            MatCpx::fixed<4,4> M_rev = eye4cpx + (eye4cpx - g_woodbury_reas_sub) * deltanonzero;
 //            //MatCpx g_woodbury_reas = g * (arma::eye(4*N,4*N) +
-//            //		mat_U_reas *
-//            //		arma::inv(eye4cpx - mat_V_reas * mat_U_reas) *
-//            //		mat_V_reas);
+//            //        mat_U_reas *
+//            //        arma::inv(eye4cpx - mat_V_reas * mat_U_reas) *
+//            //        mat_V_reas);
 //            MatCpx g_woodbury_reas = g * (arma::eye(4*N,4*N) +
-//            		mat_U_reas *
-//            		arma::inv(M_rev) *
-//            		mat_V_reas);
+//                    mat_U_reas *
+//                    arma::inv(M_rev) *
+//                    mat_V_reas);
             //END DEBUG
 
 
@@ -2188,12 +2201,12 @@ template<class Callable>
 void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeSpin) {
     lastAccRatioLocal = 0;
     for (uint32_t site = 0; site < N; ++site) {
-    	Phi newphi;
+        Phi newphi;
         bool newphi_valid;
         std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
         if (not newphi_valid) {
-        	//reject this change
-        	continue;
+            //reject this change
+            continue;
         }
         num dsphi = deltaSPhi(site, timeslice, newphi);
         num probSPhi = std::exp(-dsphi);
@@ -2247,9 +2260,9 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
         //g_sub = g[i::N, i::N]
         MatCpx::fixed<4,4> g_sub;
         for (uint32_t a = 0; a < 4; ++a) {
-        	for (uint32_t b = 0; b < 4; ++b) {
-        		g_sub(a,b) = g(site + a*N, site + b*N);
-        	}
+            for (uint32_t b = 0; b < 4; ++b) {
+                g_sub(a,b) = g(site + a*N, site + b*N);
+            }
         }
 
         //the determinant ratio for the spin update is given by the determinant
@@ -2274,15 +2287,15 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
 
             MatCpx mat_V(4, 4*N);
             for (uint32_t r = 0; r < 4; ++r) {
-            	mat_V.row(r) = g.row(site + r*N);
-            	mat_V(r, site + r*N) -= 1.0;
+                mat_V.row(r) = g.row(site + r*N);
+                mat_V(r, site + r*N) -= 1.0;
             }
 
             //TODO: is it a good idea to do this copy? or would it be better to
             //compute the product directly with a non-contiguous subview?
             MatCpx g_times_mat_U(4*N, 4);
             for (uint32_t c = 0; c < 4; ++c) {
-            	g_times_mat_U.col(c) = g.col(site + c*N);
+                g_times_mat_U.col(c) = g.col(site + c*N);
             }
             g_times_mat_U = g_times_mat_U * deltanonzero;
 
@@ -2295,150 +2308,150 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
 template<bool TD, CheckerboardMethod CB>
 template<class Callable>
 void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSpin) {
-	lastAccRatioLocal = 0;
+    lastAccRatioLocal = 0;
 
-	auto getX = [this](uint32_t step) {
-		return dud.X.cols(4*step, 4*step + 3);
-	};
-	auto getY = [this](uint32_t step) {
-		return dud.Y.rows(4*step, 4*step + 3);
-	};
+    auto getX = [this](uint32_t step) {
+        return dud.X.cols(4*step, 4*step + 3);
+    };
+    auto getY = [this](uint32_t step) {
+        return dud.Y.rows(4*step, 4*step + 3);
+    };
 
-	auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
-		for (uint32_t r = 0; r < 4; ++r) {
-			target.row(r) = source.row(for_site + r*N);
-		}
-	};
-	auto take4cols = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
-		for (uint32_t c = 0; c < 4; ++c) {
-			target.col(c) = source.col(for_site + c*N);
-		}
-	};
+    auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+        for (uint32_t r = 0; r < 4; ++r) {
+            target.row(r) = source.row(for_site + r*N);
+        }
+    };
+    auto take4cols = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+        for (uint32_t c = 0; c < 4; ++c) {
+            target.col(c) = source.col(for_site + c*N);
+        }
+    };
 
-	uint32_t site = 0;
-	while (site < N) {
-		uint32_t delayStepsNow = std::min(delaySteps, N - site);
-		dud.X.set_size(4*N, 4*delayStepsNow);
-		dud.Y.set_size(4*delayStepsNow, 4*N);
-		uint32_t j = 0;
-		while (j < delayStepsNow and site < N) {
-			Phi newphi;
-			bool newphi_valid;
-			std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
-			if (newphi_valid) {
-				//new phi is not rejected immeadiately, figure out if we should accept the update
-				num dsphi = deltaSPhi(site, timeslice, newphi);
-				num probSPhi = std::exp(-dsphi);
+    uint32_t site = 0;
+    while (site < N) {
+        uint32_t delayStepsNow = std::min(delaySteps, N - site);
+        dud.X.set_size(4*N, 4*delayStepsNow);
+        dud.Y.set_size(4*delayStepsNow, 4*N);
+        uint32_t j = 0;
+        while (j < delayStepsNow and site < N) {
+            Phi newphi;
+            bool newphi_valid;
+            std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
+            if (newphi_valid) {
+                //new phi is not rejected immeadiately, figure out if we should accept the update
+                num dsphi = deltaSPhi(site, timeslice, newphi);
+                num probSPhi = std::exp(-dsphi);
 
-				MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
-				//TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
-				//durchgefuehrt...
-				num normnewphi = arma::norm(newphi,2);
-				num coshnewphi = std::cosh(dtau * normnewphi);
-				num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+                MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
+                //TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
+                //durchgefuehrt...
+                num normnewphi = arma::norm(newphi,2);
+                num coshnewphi = std::cosh(dtau * normnewphi);
+                num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
 
-				take4rows(dud.Rj, g, site);
-				for (uint32_t l = 0; l < j; ++l) {
-					take4rows(dud.tempBlock, getX(l), site);
-					dud.Rj += dud.tempBlock * getY(l);
-				}
+                take4rows(dud.Rj, g, site);
+                for (uint32_t l = 0; l < j; ++l) {
+                    take4rows(dud.tempBlock, getX(l), site);
+                    dud.Rj += dud.tempBlock * getY(l);
+                }
 
-				take4cols(dud.Sj, dud.Rj, site);
+                take4cols(dud.Sj, dud.Rj, site);
 
-				dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
-				num probSFermion = arma::det(dud.Mj).real();
+                dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
+                num probSFermion = arma::det(dud.Mj).real();
 
-				num prob = probSPhi * probSFermion;
-				if (prob > 1.0 or rng.rand01() < prob) {
-					//count accepted update
-					lastAccRatioLocal += 1.0;
+                num prob = probSPhi * probSFermion;
+                if (prob > 1.0 or rng.rand01() < prob) {
+                    //count accepted update
+                    lastAccRatioLocal += 1.0;
 
-					phi0(site, timeslice) = newphi[0];
-					phi1(site, timeslice) = newphi[1];
-					phi2(site, timeslice) = newphi[2];
-					phiCosh(site, timeslice) = coshnewphi;
-					phiSinh(site, timeslice) = sinhnewphi;
+                    phi0(site, timeslice) = newphi[0];
+                    phi1(site, timeslice) = newphi[1];
+                    phi2(site, timeslice) = newphi[2];
+                    phiCosh(site, timeslice) = coshnewphi;
+                    phiSinh(site, timeslice) = sinhnewphi;
 
-					//we need Cj only to update X
-					take4cols(dud.Cj, g, site);
-					for (uint32_t l = 0; l < j; ++l) {
-						take4cols(dud.tempBlock, getY(l), site);
-						dud.Cj += getX(l) * dud.tempBlock;
-					}
-					//Rj is now Rj - \Id_j, for updating Y
-					for (uint32_t rc = 0; rc < 4; ++rc) {
-						uint32_t entry = site + rc * N;
-						dud.Rj(rc, entry) -= cpx(1.0, 0.0);
-					}
+                    //we need Cj only to update X
+                    take4cols(dud.Cj, g, site);
+                    for (uint32_t l = 0; l < j; ++l) {
+                        take4cols(dud.tempBlock, getY(l), site);
+                        dud.Cj += getX(l) * dud.tempBlock;
+                    }
+                    //Rj is now Rj - \Id_j, for updating Y
+                    for (uint32_t rc = 0; rc < 4; ++rc) {
+                        uint32_t entry = site + rc * N;
+                        dud.Rj(rc, entry) -= cpx(1.0, 0.0);
+                    }
 
-					//update X and Y
-					getX(j) = dud.Cj * deltanonzero;
-					getY(j) = arma::inv(dud.Mj) * dud.Rj;
-					//count successful delayed update
-					j += 1;
-				}
-			}
-			++site;
-		}
-		if (j > 0) {
-			if (j < delayStepsNow) {
-				dud.X.resize(4*N, 4*j);
-				dud.Y.resize(4*j, 4*N);
-			}
-			//carry out the delayed updates of the Green's function
-			g += dud.X*dud.Y;
-		}
-	}
+                    //update X and Y
+                    getX(j) = dud.Cj * deltanonzero;
+                    getY(j) = arma::inv(dud.Mj) * dud.Rj;
+                    //count successful delayed update
+                    j += 1;
+                }
+            }
+            ++site;
+        }
+        if (j > 0) {
+            if (j < delayStepsNow) {
+                dud.X.resize(4*N, 4*j);
+                dud.Y.resize(4*j, 4*N);
+            }
+            //carry out the delayed updates of the Green's function
+            g += dud.X*dud.Y;
+        }
+    }
 
-	lastAccRatioLocal /= num(N);
+    lastAccRatioLocal /= num(N);
 }
 
 template<bool TD, CheckerboardMethod CB>
 MatCpx::fixed<4,4> DetSDW<TD,CB>::get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site) {
-	//delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
+    //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-	//compute non-zero elements of delta
-	// deltanonzero is \Delta^i from the notes
-	//
-	//evMatrix(): yield a 4x4 matrix containing the entries for the
-	//current lattice site and time slice of e^(sign*dtau*V) with
-	//given values of the field phi at that space-time location [and of
-	//cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
-	auto evMatrix = [](int sign, num kphi0, num kphi1,
-			num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
-		MatNum::fixed<4,4> ev_real;
-		ev_real.diag().fill(kphiCosh);
-		ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-		ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
-		ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
-		ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
-		ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
+    //compute non-zero elements of delta
+    // deltanonzero is \Delta^i from the notes
+    //
+    //evMatrix(): yield a 4x4 matrix containing the entries for the
+    //current lattice site and time slice of e^(sign*dtau*V) with
+    //given values of the field phi at that space-time location [and of
+    //cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
+    auto evMatrix = [](int sign, num kphi0, num kphi1,
+            num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
+        MatNum::fixed<4,4> ev_real;
+        ev_real.diag().fill(kphiCosh);
+        ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
+        ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
+        ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
+        ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
+        ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
 
-		MatCpx::fixed<4,4> ev;
-		ev.set_real(ev_real);
-		ev(0,3).imag(-sign * kphi1 * kphiSinh);
-		ev(1,2).imag( sign * kphi1 * kphiSinh);
-		ev(2,1).imag(-sign * kphi1 * kphiSinh);
-		ev(3,0).imag( sign * kphi1 * kphiSinh);
+        MatCpx::fixed<4,4> ev;
+        ev.set_real(ev_real);
+        ev(0,3).imag(-sign * kphi1 * kphiSinh);
+        ev(1,2).imag( sign * kphi1 * kphiSinh);
+        ev(2,1).imag(-sign * kphi1 * kphiSinh);
+        ev(3,0).imag( sign * kphi1 * kphiSinh);
 
-		return ev;
-	};
-	MatCpx::fixed<4,4> evOld = evMatrix(
-			+1,
-			phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
-			phiCosh(site, timeslice), phiSinh(site, timeslice)
-	);
-	num normnewphi = arma::norm(newphi,2);
-	num coshnewphi = std::cosh(dtau * normnewphi);
-	num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
-	MatCpx::fixed<4,4> emvNew = evMatrix(
-			-1,
-			newphi[0], newphi[1], newphi[2],
-			coshnewphi, sinhnewphi
-	);
-	MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
-	deltanonzero.diag() -= cpx(1.0, 0);
-	return deltanonzero;
+        return ev;
+    };
+    MatCpx::fixed<4,4> evOld = evMatrix(
+            +1,
+            phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
+            phiCosh(site, timeslice), phiSinh(site, timeslice)
+    );
+    num normnewphi = arma::norm(newphi,2);
+    num coshnewphi = std::cosh(dtau * normnewphi);
+    num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+    MatCpx::fixed<4,4> emvNew = evMatrix(
+            -1,
+            newphi[0], newphi[1], newphi[2],
+            coshnewphi, sinhnewphi
+    );
+    MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
+    deltanonzero.diag() -= cpx(1.0, 0);
+    return deltanonzero;
 }
 
 
@@ -2449,25 +2462,25 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
 
     enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
     if (spinProposalMethod == BOX) {
-    	adapting_what = ADAPT_BOX;
+        adapting_what = ADAPT_BOX;
     } else if (spinProposalMethod == ROTATE_THEN_SCALE) {
-    	// the following needs to match the order of moves as
-    	// used in updateInSlice()
-    	if (performedSweeps % 2 == 0) {
-    		// we did rotate moves last
-    		adapting_what = ADAPT_ROTATE;
-    	} else {
-    		// we did scale moves last
-    		adapting_what = ADAPT_SCALE;
-    	}
+        // the following needs to match the order of moves as
+        // used in updateInSlice()
+        if (performedSweeps % 2 == 0) {
+            // we did rotate moves last
+            adapting_what = ADAPT_ROTATE;
+        } else {
+            // we did scale moves last
+            adapting_what = ADAPT_SCALE;
+        }
     } else if (spinProposalMethod == ROTATE_AND_SCALE) {
-    	// after every interval of AccRatioAdjustmentSamples we alternate between
-    	// adjusting the parameter for the rotate and scale moves
-    	if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
-    		adapting_what = ADAPT_ROTATE;
-    	} else {
-    		adapting_what = ADAPT_SCALE;
-    	}
+        // after every interval of AccRatioAdjustmentSamples we alternate between
+        // adjusting the parameter for the rotate and scale moves
+        if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
+            adapting_what = ADAPT_ROTATE;
+        } else {
+            adapting_what = ADAPT_SCALE;
+        }
     }
     //Hold a reference to the accRatioLocal_*_RA we currently need
     std::reference_wrapper<RunningAverage> ra(accRatioLocal_box_RA);
@@ -2480,19 +2493,19 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
     ra.get().addValue(lastAccRatioLocal);
     using std::cout;
     if (ra.get().getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
-    	num avgAccRatio = ra.get().get();
-    	switch (adapting_what) {
-    	case ADAPT_BOX:
-			if (avgAccRatio < targetAccRatioLocal) {
-				phiDelta *= phiDeltaShrinkFactor;
-			} else if (avgAccRatio > targetAccRatioLocal) {
-				phiDelta *= phiDeltaGrowFactor;
-			}
-			cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
-    		break;
-    	case ADAPT_ROTATE:
-    		// angleDelta <=> cosine of spherical angle theta
-    		// reducing angleDelta <=> opening up the angle <=> reducing acceptance ratio
+        num avgAccRatio = ra.get().get();
+        switch (adapting_what) {
+        case ADAPT_BOX:
+            if (avgAccRatio < targetAccRatioLocal) {
+                phiDelta *= phiDeltaShrinkFactor;
+            } else if (avgAccRatio > targetAccRatioLocal) {
+                phiDelta *= phiDeltaGrowFactor;
+            }
+            cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
+            break;
+        case ADAPT_ROTATE:
+            // angleDelta <=> cosine of spherical angle theta
+            // reducing angleDelta <=> opening up the angle <=> reducing acceptance ratio
             if (avgAccRatio < targetAccRatioLocal and angleDelta < MaxAngleDelta) {
                 curminAngleDelta = angleDelta;
                 angleDelta += (curmaxAngleDelta - angleDelta) / 2;
@@ -2502,14 +2515,14 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
                 angleDelta -= (angleDelta - curminAngleDelta) / 2;
             }
             cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
-    		break;
-    	case ADAPT_SCALE:
-    		if (not adaptScaleDelta) {
-    			//do not change scaleDelta at all
-    			break;
-    		}
-    		// scaleDelta <=> width of gaussian distribution to select new radius
-    		// reducing scaleDelta <=> increasing acceptance ratio
+            break;
+        case ADAPT_SCALE:
+            if (not adaptScaleDelta) {
+                //do not change scaleDelta at all
+                break;
+            }
+            // scaleDelta <=> width of gaussian distribution to select new radius
+            // reducing scaleDelta <=> increasing acceptance ratio
             if (avgAccRatio > targetAccRatioLocal and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
                 curminScaleDelta = scaleDelta;
                 scaleDelta += (curmaxScaleDelta - scaleDelta) / 2;
@@ -2519,402 +2532,535 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
                 scaleDelta -= (scaleDelta - curminScaleDelta) / 2;
             }
             cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << scaleDelta << '\n';
-    		break;
-    	}
+            break;
+        }
     }
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 inline void DetSDW<TD,CB>::attemptTimesliceRescaleMove(uint32_t timeslice, num factor) {
-	timing.start("sdw-attemptTimesliceRescaleMove");
+    timing.start("sdw-attemptTimesliceRescaleMove");
 
-	//see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
+    //see hand-written notes and Ipython notebook sdw-rescale-move to understand these formulas
 
-	//original fields
-	//TODO: unnecessary copies
-	const VecNum a  {phi2.col(timeslice)};
-	const VecCpx b  {phi0.col(timeslice), -phi1.col(timeslice)};
-	const VecCpx bc {phi0.col(timeslice), +phi1.col(timeslice)};
-	const VecNum x  {phiSinh.col(timeslice)};
-	const VecNum c  {phiCosh.col(timeslice)};
+    //original fields
+    //TODO: unnecessary copies
+    const VecNum a  {phi2.col(timeslice)};
+    const VecCpx b  {phi0.col(timeslice), -phi1.col(timeslice)};
+    const VecCpx bc {phi0.col(timeslice), +phi1.col(timeslice)};
+    const VecNum x  {phiSinh.col(timeslice)};
+    const VecNum c  {phiCosh.col(timeslice)};
 
-	// //DEBUG
-	// VecNum oldphi0 = phi0.col(timeslice);
-	// VecNum oldphi1 = phi1.col(timeslice);
-	// VecNum oldphi2 = phi2.col(timeslice);
-	// debugSaveMatrix(oldphi0, "old_phi0");
-	// debugSaveMatrix(oldphi1, "old_phi1");
-	// debugSaveMatrix(oldphi2, "old_phi2");
+    // //DEBUG
+    // VecNum oldphi0 = phi0.col(timeslice);
+    // VecNum oldphi1 = phi1.col(timeslice);
+    // VecNum oldphi2 = phi2.col(timeslice);
+    // debugSaveMatrix(oldphi0, "old_phi0");
+    // debugSaveMatrix(oldphi1, "old_phi1");
+    // debugSaveMatrix(oldphi2, "old_phi2");
 
-	//rescaled fields
-	const VecNum rphi0 {factor * phi0.col(timeslice)};
-	const VecNum rphi1 {factor * phi1.col(timeslice)};
-	const VecNum rphi2 {factor * phi2.col(timeslice)};
-	const VecNum ra  {rphi2};
-	const VecCpx rb  {rphi0, -rphi1};
-	const VecCpx rbc {rphi0, +rphi1};
-	using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
-	const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
-	const VecNum rx    { sinh(dtau * rnorm) / rnorm };
-	const VecNum rc    { cosh(dtau * rnorm) };
+    //rescaled fields
+    const VecNum rphi0 {factor * phi0.col(timeslice)};
+    const VecNum rphi1 {factor * phi1.col(timeslice)};
+    const VecNum rphi2 {factor * phi2.col(timeslice)};
+    const VecNum ra  {rphi2};
+    const VecCpx rb  {rphi0, -rphi1};
+    const VecCpx rbc {rphi0, +rphi1};
+    using arma::pow; using arma::sqrt; using arma::sinh; using arma::cosh;
+    const VecNum rnorm { sqrt(pow(rphi0,2) + pow(rphi1,2) + pow(rphi2,2)) };
+    const VecNum rx    { sinh(dtau * rnorm) / rnorm };
+    const VecNum rc    { cosh(dtau * rnorm) };
 
-	//DEBUG
-	// debugSaveMatrix(rphi0, "new_phi0");
-	// debugSaveMatrix(rphi1, "new_phi1");
-	// debugSaveMatrix(rphi2, "new_phi2");
+    //DEBUG
+    // debugSaveMatrix(rphi0, "new_phi0");
+    // debugSaveMatrix(rphi1, "new_phi1");
+    // debugSaveMatrix(rphi2, "new_phi2");
 
-	// 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
-	// Delta is setup by 4x4 blocks of size NxN, each being diagonal.
-	// 4 blocks are zero, apart from that there are 5 different blocks:
-	const VecNum delta_a  { rc % a % x - ra % rx % c };
-	const VecNum delta_ma { -delta_a };
-	const VecNum delta_c  { rc % c - ra % rx % a % x - rx % arma::real(rb % bc) % x - arma::ones<VecNum>(N) };	//Note: rb % bc will result in a purely real result
-	// the block diagonals that are complex are stored with real and imaginary parts
-	// separated:
-	const VecNum delta_b_r  { rc % arma::real(b) % x - arma::real(rb) % rx % c };
-	const VecNum delta_b_i  { rc % arma::imag(b) % x - arma::imag(rb) % rx % c };
-	const VecNum delta_bc_r { delta_b_r };
-	const VecNum delta_bc_i { -delta_b_i };
+    // 1) Calculate Delta = exp(-dtau V(a',b',c'))*exp(+dtau V(a,b,c)) - 1
+    // Delta is setup by 4x4 blocks of size NxN, each being diagonal.
+    // 4 blocks are zero, apart from that there are 5 different blocks:
+    const VecNum delta_a  { rc % a % x - ra % rx % c };
+    const VecNum delta_ma { -delta_a };
+    const VecNum delta_c  { rc % c - ra % rx % a % x - rx % arma::real(rb % bc) % x - arma::ones<VecNum>(N) };    //Note: rb % bc will result in a purely real result
+    // the block diagonals that are complex are stored with real and imaginary parts
+    // separated:
+    const VecNum delta_b_r  { rc % arma::real(b) % x - arma::real(rb) % rx % c };
+    const VecNum delta_b_i  { rc % arma::imag(b) % x - arma::imag(rb) % rx % c };
+    const VecNum delta_bc_r { delta_b_r };
+    const VecNum delta_bc_i { -delta_b_i };
 
-	//DEBUG
-//	debugSaveMatrix(delta_a, "delta_a");
-//	debugSaveMatrix(delta_ma, "delta_ma");
-//	debugSaveMatrix(delta_c, "delta_c");
-//	debugSaveMatrix(delta_b_r , "delta_b_r");
-//	debugSaveMatrix(delta_b_i , "delta_b_i");
-//	debugSaveMatrix(delta_bc_r, "delta_bc_r");
-//	debugSaveMatrix(delta_bc_i, "delta_bc_i");
+    //DEBUG
+//    debugSaveMatrix(delta_a, "delta_a");
+//    debugSaveMatrix(delta_ma, "delta_ma");
+//    debugSaveMatrix(delta_c, "delta_c");
+//    debugSaveMatrix(delta_b_r , "delta_b_r");
+//    debugSaveMatrix(delta_b_i , "delta_b_i");
+//    debugSaveMatrix(delta_bc_r, "delta_bc_r");
+//    debugSaveMatrix(delta_bc_i, "delta_bc_i");
 
-	// real part of matrix represented by 4x4 array of pointers to our vectors
-	using std::array; using std::cref;
-	array< array<const VecNum*, 4>, 4> delta_r;
-	delta_r[0][0] = &delta_c;
-	delta_r[0][1] = 0;
-	delta_r[0][2] = &delta_a;
-	delta_r[0][3] = &delta_b_r;
-	delta_r[1][0] = 0;
-	delta_r[1][1] = &delta_c;
-	delta_r[1][2] = &delta_bc_r;
-	delta_r[1][3] = &delta_ma;
-	delta_r[2][0] = &delta_a;
-	delta_r[2][1] = &delta_b_r;
-	delta_r[2][2] = &delta_c;
-	delta_r[2][3] = 0;
-	delta_r[3][0] = &delta_bc_r;
-	delta_r[3][1] = &delta_ma;
-	delta_r[3][2] = 0;
-	delta_r[3][3] = &delta_c;
+    // real part of matrix represented by 4x4 array of pointers to our vectors
+    using std::array; using std::cref;
+    array< array<const VecNum*, 4>, 4> delta_r;
+    delta_r[0][0] = &delta_c;
+    delta_r[0][1] = 0;
+    delta_r[0][2] = &delta_a;
+    delta_r[0][3] = &delta_b_r;
+    delta_r[1][0] = 0;
+    delta_r[1][1] = &delta_c;
+    delta_r[1][2] = &delta_bc_r;
+    delta_r[1][3] = &delta_ma;
+    delta_r[2][0] = &delta_a;
+    delta_r[2][1] = &delta_b_r;
+    delta_r[2][2] = &delta_c;
+    delta_r[2][3] = 0;
+    delta_r[3][0] = &delta_bc_r;
+    delta_r[3][1] = &delta_ma;
+    delta_r[3][2] = 0;
+    delta_r[3][3] = &delta_c;
 
-	// imaginary part of matrix: only the antidiagonal blocks
-	array< array<const VecNum*, 4>, 4> delta_i {{}};		//init with nulls
-	delta_i[0][3] = &delta_b_i;
-	delta_i[1][2] = &delta_bc_i;
-	delta_i[2][1] = &delta_b_i;
-	delta_i[3][0] = &delta_bc_i;
+    // imaginary part of matrix: only the antidiagonal blocks
+    array< array<const VecNum*, 4>, 4> delta_i {{}};        //init with nulls
+    delta_i[0][3] = &delta_b_i;
+    delta_i[1][2] = &delta_bc_i;
+    delta_i[2][1] = &delta_b_i;
+    delta_i[3][0] = &delta_bc_i;
 
-	// 2) Compute the matrix M = I + Delta * (I - G(timeslice))
-	MatCpx oneMinusG { arma::eye(4*N,4*N) - g };
-	//DEBUG
-	// for (uint32_t r = 0; r < 4; ++r) {
-	// 	for (uint32_t c = 0; c < 4; ++c) {
-	// 		const VecNum* ptr = delta_r[r][c];
-	// 		std::string basename = "delta_r"+numToString(r)+"_c"+numToString(c);
-	// 		if (ptr) {
-	// 			debugSaveMatrix(*ptr, basename);
-	// 		} else {
-	// 			debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename);
-	// 		}
-	// 		const VecNum* ptr2 = delta_i[r][c];
-	// 		std::string basename2 = "delta_i"+numToString(r)+"_c"+numToString(c);
-	// 		if (ptr2) {
-	// 			debugSaveMatrix(*ptr2, basename2);
-	// 		} else {
-	// 			debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename2);
-	// 		}
-	// 	}
-	// }
-	MatCpx M { arma::eye(4*N,4*N), arma::zeros(4*N,4*N) };
+    // 2) Compute the matrix M = I + Delta * (I - G(timeslice))
+    MatCpx oneMinusG { arma::eye(4*N,4*N) - g };
+    //DEBUG
+    // for (uint32_t r = 0; r < 4; ++r) {
+    //     for (uint32_t c = 0; c < 4; ++c) {
+    //         const VecNum* ptr = delta_r[r][c];
+    //         std::string basename = "delta_r"+numToString(r)+"_c"+numToString(c);
+    //         if (ptr) {
+    //             debugSaveMatrix(*ptr, basename);
+    //         } else {
+    //             debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename);
+    //         }
+    //         const VecNum* ptr2 = delta_i[r][c];
+    //         std::string basename2 = "delta_i"+numToString(r)+"_c"+numToString(c);
+    //         if (ptr2) {
+    //             debugSaveMatrix(*ptr2, basename2);
+    //         } else {
+    //             debugSaveMatrix(VecNum(arma::zeros<VecNum>(N)), basename2);
+    //         }
+    //     }
+    // }
+    MatCpx M { arma::eye(4*N,4*N), arma::zeros(4*N,4*N) };
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-	//real parts
-	for (uint32_t row = 0; row < 4; ++row) {
-		for (uint32_t col = 0; col < 4; ++col) {
-			//skip the zero blocks of delta:
-			uint32_t skip_i;
-			switch (row) {
-			case 0: skip_i = 1; break;
-			case 1: skip_i = 0; break;
-			case 2: skip_i = 3; break;
-			case 3: skip_i = 2; break;
-			}
-			uint32_t start_i = 0;
-			for (uint32_t i = start_i; i < 4; ++i) {
-				if (i == skip_i) continue;
-				block(M,row,col) += arma::diagmat(*(delta_r[row][i])) *
-						block(oneMinusG, i, col);
-			}
-		}
-	}
-	//imaginary parts
-	for (uint32_t row = 0; row < 4; ++row) {
-		VecCpx temp { arma::zeros<VecNum>(N), *(delta_i[row][3 - row]) };   //antidiagonal: col = 3 - row
-		for (uint32_t i = 0; i < 4; ++i) {
-			block(M,row,i) += arma::diagmat(temp) * block(oneMinusG, 3 - row, i);
-		}
-	}
+    //real parts
+    for (uint32_t row = 0; row < 4; ++row) {
+        for (uint32_t col = 0; col < 4; ++col) {
+            //skip the zero blocks of delta:
+            uint32_t skip_i;
+            switch (row) {
+            case 0: skip_i = 1; break;
+            case 1: skip_i = 0; break;
+            case 2: skip_i = 3; break;
+            case 3: skip_i = 2; break;
+            }
+            uint32_t start_i = 0;
+            for (uint32_t i = start_i; i < 4; ++i) {
+                if (i == skip_i) continue;
+                block(M,row,col) += arma::diagmat(*(delta_r[row][i])) *
+                        block(oneMinusG, i, col);
+            }
+        }
+    }
+    //imaginary parts
+    for (uint32_t row = 0; row < 4; ++row) {
+        VecCpx temp { arma::zeros<VecNum>(N), *(delta_i[row][3 - row]) };   //antidiagonal: col = 3 - row
+        for (uint32_t i = 0; i < 4; ++i) {
+            block(M,row,i) += arma::diagmat(temp) * block(oneMinusG, 3 - row, i);
+        }
+    }
 #undef block
 
-	// //DEBUG
-	// debugSaveMatrix(MatNum(arma::real(g)), "gslice_old_real");
-	// debugSaveMatrix(MatNum(arma::imag(g)), "gslice_old_imag");
-	// debugSaveMatrixCpx(M, "M");
-	// MatCpx g_new = trans(solve(trans(M), trans(g)));
-	// debugSaveMatrix(MatNum(arma::real(g_new)), "gslice_new_real");
-	// debugSaveMatrix(MatNum(arma::imag(g_new)), "gslice_new_imag");
-	// //END_DEBUG
+    // //DEBUG
+    // debugSaveMatrix(MatNum(arma::real(g)), "gslice_old_real");
+    // debugSaveMatrix(MatNum(arma::imag(g)), "gslice_old_imag");
+    // debugSaveMatrixCpx(M, "M");
+    // MatCpx g_new = trans(solve(trans(M), trans(g)));
+    // debugSaveMatrix(MatNum(arma::real(g_new)), "gslice_new_real");
+    // debugSaveMatrix(MatNum(arma::imag(g_new)), "gslice_new_imag");
+    // //END_DEBUG
 
-	// 3) Compute probability of accepting the global rescale move
-	num probFermion = arma::det(M).real();
-	num probBoson = std::exp(-deltaSPhiTimesliceRescale(timeslice, factor));
-	num prob = probFermion * probBoson;
+    // 3) Compute probability of accepting the global rescale move
+    num probFermion = arma::det(M).real();
+    num probBoson = std::exp(-deltaSPhiTimesliceRescale(timeslice, factor));
+    num prob = probFermion * probBoson;
 
-	// //DEBUG check probBoson
-	// num sphi_old = phiAction();
+    // //DEBUG check probBoson
+    // num sphi_old = phiAction();
 
-	// //DEBUG info
-	// std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
-	// 		  << " \tprobBoson = " << probBoson << '\n';
+    // //DEBUG info
+    // std::cout << "Rescale factor " << factor << " -> probFermion = " << probFermion
+    //           << " \tprobBoson = " << probBoson << '\n';
 
-//	// DEBUG-CHECK
-//	VecNum debug_phi0_before = phi0.col(timeslice);
-//	VecNum debug_phi1_before = phi1.col(timeslice);
-//	VecNum debug_phi2_before = phi2.col(timeslice);
-//	num sphi_old = phiAction();
-//	phi0.col(timeslice) = rphi0;
-//	phi1.col(timeslice) = rphi1;
-//	phi2.col(timeslice) = rphi2;
-//	num sphi_new = phiAction();
-//	phi0.col(timeslice) = debug_phi0_before;
-//	phi1.col(timeslice) = debug_phi1_before;
-//	phi2.col(timeslice) = debug_phi2_before;
-//	num prob_check = std::exp(-(sphi_new - sphi_old));
-//	assert((prob_check - probBoson) / probBoson < 1E-10);
+//    // DEBUG-CHECK
+//    VecNum debug_phi0_before = phi0.col(timeslice);
+//    VecNum debug_phi1_before = phi1.col(timeslice);
+//    VecNum debug_phi2_before = phi2.col(timeslice);
+//    num sphi_old = phiAction();
+//    phi0.col(timeslice) = rphi0;
+//    phi1.col(timeslice) = rphi1;
+//    phi2.col(timeslice) = rphi2;
+//    num sphi_new = phiAction();
+//    phi0.col(timeslice) = debug_phi0_before;
+//    phi1.col(timeslice) = debug_phi1_before;
+//    phi2.col(timeslice) = debug_phi2_before;
+//    num prob_check = std::exp(-(sphi_new - sphi_old));
+//    assert((prob_check - probBoson) / probBoson < 1E-10);
 //
-//	MatCpx debug_Delta(4*N,4*N);
-//	debug_Delta = computePotentialExponential(-1, rphi0, rphi1, rphi2)
-//			* computePotentialExponential(+1, debug_phi0_before, debug_phi1_before, debug_phi2_before)
-//			- arma::eye<MatCpx>(4*N, 4*N);
-//	MatCpx debug_M(4*N,4*N);
-//	debug_M = arma::eye<MatCpx>(4*N, 4*N) + debug_Delta *
-//			(arma::eye<MatCpx>(4*N, 4*N) - g);
-//	num debug_det = arma::det(debug_M).real();
-//	assert(debug_det > 0);
-//	assert(probFermion > 0);
-//	assert((debug_det - probFermion) / probFermion < 1E-10);
-//	// END-DEBUG-CHECK
+//    MatCpx debug_Delta(4*N,4*N);
+//    debug_Delta = computePotentialExponential(-1, rphi0, rphi1, rphi2)
+//            * computePotentialExponential(+1, debug_phi0_before, debug_phi1_before, debug_phi2_before)
+//            - arma::eye<MatCpx>(4*N, 4*N);
+//    MatCpx debug_M(4*N,4*N);
+//    debug_M = arma::eye<MatCpx>(4*N, 4*N) + debug_Delta *
+//            (arma::eye<MatCpx>(4*N, 4*N) - g);
+//    num debug_det = arma::det(debug_M).real();
+//    assert(debug_det > 0);
+//    assert(probFermion > 0);
+//    assert((debug_det - probFermion) / probFermion < 1E-10);
+//    // END-DEBUG-CHECK
 
-//	// DEBUG - count shrink/Grow
-//	static int countShrink = 0;
-//	static int countGrow = 0;
-//	// ENd-DEBUG - count shrink/Grow
+//    // DEBUG - count shrink/Grow
+//    static int countShrink = 0;
+//    static int countGrow = 0;
+//    // ENd-DEBUG - count shrink/Grow
 
-	if (prob > 1.0 or rng.rand01() < prob) {
-//		// DEBUG - count shrink/Grow
-//		if (factor < 1.0) {
-//			++countShrink;
-//		} else if (factor > 1.0) {
-//			++countGrow;
-//		}
-//		// END-DEBUG - count shrink/Grow
+    if (prob > 1.0 or rng.rand01() < prob) {
+//        // DEBUG - count shrink/Grow
+//        if (factor < 1.0) {
+//            ++countShrink;
+//        } else if (factor > 1.0) {
+//            ++countGrow;
+//        }
+//        // END-DEBUG - count shrink/Grow
 
-		// //DEBUG info
-		// std::cout << "Accepted!" << std::endl;
+        // //DEBUG info
+        // std::cout << "Accepted!" << std::endl;
 
-		//count accepted update
-		++acceptedRescales;
+        //count accepted update
+        ++acceptedRescales;
 
-		//update phi-fields and dependent quantities
-		phi0.col(timeslice) = rphi0;
-		phi1.col(timeslice) = rphi1;
-		phi2.col(timeslice) = rphi2;
-		phiCosh.col(timeslice) = rc;
-		phiSinh.col(timeslice) = rx;
+        //update phi-fields and dependent quantities
+        phi0.col(timeslice) = rphi0;
+        phi1.col(timeslice) = rphi1;
+        phi2.col(timeslice) = rphi2;
+        phiCosh.col(timeslice) = rc;
+        phiSinh.col(timeslice) = rx;
 
-		// //DEBUG check probBoson
-		// num sphi_new = phiAction();
-		// num delta_sphi = sphi_new - sphi_old;
-		// num probCheck = std::exp(-delta_sphi);
-		// std::cout << "Check probBoson = " << probCheck << std::endl;
+        // //DEBUG check probBoson
+        // num sphi_new = phiAction();
+        // num delta_sphi = sphi_new - sphi_old;
+        // num probCheck = std::exp(-delta_sphi);
+        // std::cout << "Check probBoson = " << probCheck << std::endl;
 
-		using arma::trans; using arma::solve;
+        using arma::trans; using arma::solve;
 
-		//update Green function
-		g = trans(solve(trans(M), trans(g)));
-		//TODO: the three transpositions here bug me
+        //update Green function
+        g = trans(solve(trans(M), trans(g)));
+        //TODO: the three transpositions here bug me
                 
-		// //DEBUG
-		// std::cout << MatNum(arma::abs(g - g_new)).max() << std::endl;
-		// //END DEBUG
-	} else {
-		// //DEBUG info
-		// std::cout << "Rejected!" << std::endl;
+        // //DEBUG
+        // std::cout << MatNum(arma::abs(g - g_new)).max() << std::endl;
+        // //END DEBUG
+    } else {
+        // //DEBUG info
+        // std::cout << "Rejected!" << std::endl;
 
-		// //DEBUG check probBoson
+        // //DEBUG check probBoson
         // phi0.col(timeslice) = rphi0;
-		// phi1.col(timeslice) = rphi1;
-		// phi2.col(timeslice) = rphi2;
+        // phi1.col(timeslice) = rphi1;
+        // phi2.col(timeslice) = rphi2;
 
-		// //DEBUG check probBoson                
-		// num sphi_new = phiAction();
-		// num delta_sphi = sphi_new - sphi_old;
-		// num probCheck = std::exp(-delta_sphi);
+        // //DEBUG check probBoson                
+        // num sphi_new = phiAction();
+        // num delta_sphi = sphi_new - sphi_old;
+        // num probCheck = std::exp(-delta_sphi);
 
         // phi0.col(timeslice) = oldphi0;
-		// phi1.col(timeslice) = oldphi1;
-		// phi2.col(timeslice) = oldphi2;
+        // phi1.col(timeslice) = oldphi1;
+        // phi2.col(timeslice) = oldphi2;
 
-		// std::cout << "Check probBoson = " << probCheck << std::endl;
-	}
+        // std::cout << "Check probBoson = " << probCheck << std::endl;
+    }
 
-	// //DEBUG
-	// if (rng.rand01() < 0.15) {
-	// 	exit(1);
-	// }
-	// //END DEBUG
+    // //DEBUG
+    // if (rng.rand01() < 0.15) {
+    //     exit(1);
+    // }
+    // //END DEBUG
 
-	++attemptedRescales;
+    ++attemptedRescales;
 
-//	// DEBUG - count shrink/Grow
-//	std::cout << "Shrink: " << countShrink << " Grow: " << countGrow << "\n";
-//	// END-DEBUG - count shrink/Grow
+//    // DEBUG - count shrink/Grow
+//    std::cout << "Shrink: " << countShrink << " Grow: " << countGrow << "\n";
+//    // END-DEBUG - count shrink/Grow
 
-	timing.stop("sdw-attemptTimesliceRescaleMove");
+    timing.stop("sdw-attemptTimesliceRescaleMove");
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::globalMove() {
-	if (globalShift) {
-		if ((performedSweeps + 1) % globalShiftInterval == 0) {
-			//the current sweep count is a multiple of globalShiftInterval
-			attemptGlobalShiftMove();
-		}
-	}
+    if ((performedSweeps + 1) % globalMoveInterval == 0) {
+        //the current sweep count is a multiple of globalMoveInterval
+        if (globalShift) {
+            attemptGlobalShiftMove();
+        }
+        if (wolffClusterUpdate) {
+            attemptWolffClusterUpdate();
+        }
+    }
 }
 
 template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
+    using std::exp;
+    timing.start("sdw-attemptWolffClusterUpdate");
+
+    // compute current fermion weight
+    num old_green_det = arma::det(g).real();
+
+    // Backup phi*, Green's function and UdV-storage.
+    gmd.phi0 = phi0;
+    gmd.phi1 = phi1;
+    gmd.phi2 = phi2;
+    gmd.phiCosh = phiCosh;
+    gmd.phiSinh = phiSinh;
+    gmd.g.swap(g);
+    gmd.UdVStorage.swap(UdVStorage);
+
+    // choose random direction
+    Phi rd;
+    std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
+
+    auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
+        return Phi( {phi0(site,timeslice), phi1(site,timeslice), phi2(site,timeslice) } );
+    };
+    auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
+        // phi -> phi - 2* (phi . r) * r
+        Phi phi = getPhi(site, timeslice);
+        return phi - 2. * arma::dot(phi, rd) * rd;
+    };
+    auto projectedPhi = [&](uint32_t site, uint32_t timeslice) -> num {
+        return arma::dot(getPhi(site,timeslice), rd);
+    };
+    auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
+        phi0(site,timeslice) = phi[0];
+        phi1(site,timeslice) = phi[1];
+        phi2(site,timeslice) = phi[2];
+        this->updatePhiCoshSinh(site, timeslice);
+    };
+    auto flipPhi = [&](uint32_t site, uint32_t timeslice) -> void {
+        // phi -> phi - 2* (phi . rd) * rd
+        setPhi(site, timeslice, flippedPhi(site, timeslice));
+    };
+
+    // construct cluster
+    gmd.visited.zeros(N, m+1);            //inefficient to zero everything?
+    typedef typename GlobalMoveData::SpaceTimeIndex STI;
+    //next_sites contains the sites for which we still need to check the neighbors
+    gmd.next_sites = std::stack<STI>();
+
+    // cluster seed:
+    uint32_t timeslice = rng.randInt(1, m);
+    uint32_t site = rng.randInt(0, N-1);
+    flipPhi(site, timeslice);
+    gmd.visited(site, timeslice) = 1;
+    gmd.next_sites.push( STI(site, timeslice) );
+    uint32_t cluster_size = 1;
+    do {
+        std::tie(site, timeslice) = gmd.next_sites.top();
+        gmd.next_sites.pop();
+        // std::cout << site << "," << timeslice << "  ";
+
+        // probability to add neighbors to cluster:
+        // p = 1. - exp( min[0, bond_arg] )
+
+        // neigboring in space, equal time
+        for (auto site_neigh_iter = spaceNeigh.beginNeighbors(site);
+                site_neigh_iter != spaceNeigh.endNeighbors(site);
+                ++site_neigh_iter) {
+            uint32_t neigh_site = *site_neigh_iter;
+            if (not gmd.visited(neigh_site, timeslice)) {
+                num bond_arg = 2.* dtau * projectedPhi(site, timeslice)
+                                           * projectedPhi(neigh_site, timeslice);
+                if (bond_arg >= 0 or rng.rand01() <= (1. - exp(bond_arg))) {
+                    flipPhi(neigh_site, timeslice);
+                    gmd.visited(neigh_site, timeslice) = 1;
+                    gmd.next_sites.push( STI(neigh_site, timeslice) );
+                    ++cluster_size;
+                }
+            }
+        }
+        //neighboring in time, equal space
+        uint32_t time_neighbors[] = { timeNeigh(ChainDir::PLUS, timeslice), timeNeigh(ChainDir::MINUS, timeslice) };
+        for (uint neigh_time : time_neighbors) {
+            if (not gmd.visited(site, neigh_time)) {
+                num bond_arg = (2. / dtau) * projectedPhi(site, timeslice)
+                                           * projectedPhi(site, neigh_time);
+                if (bond_arg >= 0 or rng.rand01() <= (1. - exp(bond_arg))) {
+                    flipPhi(site, neigh_time);
+                    gmd.visited(site, neigh_time) = 1;
+                    gmd.next_sites.push( STI(site, neigh_time) );
+                    ++cluster_size;
+                }
+            }
+        }
+    } while (not gmd.next_sites.empty());
+
+    //recompute Green's function
+    setupUdVStorage();
+    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+    //compute new weight
+    num new_green_det = arma::det(g).real();
+
+    //compute transition probability
+    num prob_fermion = old_green_det / new_green_det;
+
+    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
+
+    attemptedWolffClusterUpdates += 1;
+    if (prob_fermion >= 1. or rng.rand01() < prob_fermion) {
+        //update accepted
+        acceptedWolffClusterUpdates += 1;
+        addedWolffClusterSize += num(cluster_size);
+        std::cout << "accept cluster\n";
+    } else {
+        //update rejected, restore previous state
+        phi0.swap(gmd.phi0);
+        phi1.swap(gmd.phi1);
+        phi2.swap(gmd.phi2);
+        phiCosh.swap(gmd.phiCosh);
+        phiSinh.swap(gmd.phiSinh);
+        g.swap(gmd.g);
+        UdVStorage.swap(gmd.UdVStorage);
+        std::cout << "reject cluster\n";
+    }
+
+    timing.stop("sdw-attemptWolffClusterUpdate");
+}
+
+
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::attemptGlobalShiftMove() {
-	timing.start("sdw-attemptGlobalShiftMove");
+    timing.start("sdw-attemptGlobalShiftMove");
 
-	// compute current weight
-	num old_scalar_action = phiAction();
-	num old_green_det = arma::det(g).real();
+    // compute current weight
+    num old_scalar_action = phiAction();
+    num old_green_det = arma::det(g).real();
 
-	// Backup phi*, Green's function and UdV-storage.
-	// We copy phi{0,1,2} because we add to these in the next step.
-	// Since the rest is recomputed entirely, we just swap the contents.
-	gsd.phi0 = phi0;
-	gsd.phi1 = phi1;
-	gsd.phi2 = phi2;
-	gsd.phiCosh.swap(phiCosh);
-	gsd.phiSinh.swap(phiSinh);
-	gsd.g.swap(g);
-	gsd.UdVStorage.swap(UdVStorage);
+    // Backup phi*, Green's function and UdV-storage.
+    // We copy phi{0,1,2} because we add to these in the next step.
+    // Since the rest is recomputed entirely, we just swap the contents.
+    gmd.phi0 = phi0;
+    gmd.phi1 = phi1;
+    gmd.phi2 = phi2;
+    gmd.phiCosh.swap(phiCosh);
+    gmd.phiSinh.swap(phiSinh);
+    gmd.g.swap(g);
+    gmd.UdVStorage.swap(UdVStorage);
 
-	// shift fields by a random, constant displacement
-	num r0 = rng.randRange(-phiDelta, +phiDelta);
-	phi0 += r0;
-	num r1 = rng.randRange(-phiDelta, +phiDelta);
-	phi1 += r1;
-	num r2 = rng.randRange(-phiDelta, +phiDelta);
-	phi2 += r2;
-	updatePhiCoshSinh();
+    // shift fields by a random, constant displacement
+    num r0 = rng.randRange(-phiDelta, +phiDelta);
+    phi0 += r0;
+    num r1 = rng.randRange(-phiDelta, +phiDelta);
+    phi1 += r1;
+    num r2 = rng.randRange(-phiDelta, +phiDelta);
+    phi2 += r2;
+    updatePhiCoshSinh();
 
-	//recompute Green's function
-	setupUdVStorage();
-	g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+    //recompute Green's function
+    setupUdVStorage();
+    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
-	//compute new weight
-	num new_scalar_action = phiAction();
-	num new_green_det = arma::det(g).real();
+    //compute new weight
+    num new_scalar_action = phiAction();
+    num new_green_det = arma::det(g).real();
 
-	//compute transition probability
-	num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
-	num prob_fermion = old_green_det / new_green_det;
-	num prob = prob_scalar * prob_fermion;
+    //compute transition probability
+    num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
+    num prob_fermion = old_green_det / new_green_det;
+    num prob = prob_scalar * prob_fermion;
 
-	std::cout << prob_scalar << "  " << prob_fermion << "\n";
+    std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
-	attemptedGlobalShifts += 1;
-	if (prob >= 1. or rng.rand01() < prob) {
-		//update accepted
-		acceptedGlobalShifts += 1;
-		std::cout << "accept globalShift\n";
-	} else {
-		//update rejected, restore previous state
-		phi0.swap(gsd.phi0);
-		phi1.swap(gsd.phi1);
-		phi2.swap(gsd.phi2);
-		phiCosh.swap(gsd.phiCosh);
-		phiSinh.swap(gsd.phiSinh);
-		g.swap(gsd.g);
-		UdVStorage.swap(gsd.UdVStorage);
-		std::cout << "reject globalShift\n";
-	}
+    attemptedGlobalShifts += 1;
+    if (prob >= 1. or rng.rand01() < prob) {
+        //update accepted
+        acceptedGlobalShifts += 1;
+        std::cout << "accept globalShift\n";
+    } else {
+        //update rejected, restore previous state
+        phi0.swap(gmd.phi0);
+        phi1.swap(gmd.phi1);
+        phi2.swap(gmd.phi2);
+        phiCosh.swap(gmd.phiCosh);
+        phiSinh.swap(gmd.phiSinh);
+        g.swap(gmd.g);
+        UdVStorage.swap(gmd.UdVStorage);
+        std::cout << "reject globalShift\n";
+    }
 
-	timing.stop("sdw-attemptGlobalShiftMove");
+    timing.stop("sdw-attemptGlobalShiftMove");
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 num DetSDW<TD,CB>::deltaSPhiTimesliceRescale(uint32_t timeslice, num factor) {
-	using std::pow;
-	num delta1 = 0;
-	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		uint32_t neighSites[] = {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)};   //for Icpc
-		for (uint32_t site_j : neighSites) {
-			delta1 += pow(phi0(site_i, timeslice) - phi0(site_j, timeslice), 2)
-					+ pow(phi1(site_i, timeslice) - phi1(site_j, timeslice), 2)
-					+ pow(phi2(site_i, timeslice) - phi2(site_j, timeslice), 2);
-		}
-	}
+    using std::pow;
+    num delta1 = 0;
+    for (uint32_t site_i = 0; site_i < N; ++site_i) {
+        uint32_t neighSites[] = {spaceNeigh(XPLUS, site_i), spaceNeigh(YPLUS, site_i)};   //for Icpc
+        for (uint32_t site_j : neighSites) {
+            delta1 += pow(phi0(site_i, timeslice) - phi0(site_j, timeslice), 2)
+                    + pow(phi1(site_i, timeslice) - phi1(site_j, timeslice), 2)
+                    + pow(phi2(site_i, timeslice) - phi2(site_j, timeslice), 2);
+        }
+    }
 
-	num delta2 = 0;
-	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		delta2 += pow(phi0(site_i, timeslice), 2)
-				+ pow(phi1(site_i, timeslice), 2)
-				+ pow(phi2(site_i, timeslice), 2);
-	}
+    num delta2 = 0;
+    for (uint32_t site_i = 0; site_i < N; ++site_i) {
+        delta2 += pow(phi0(site_i, timeslice), 2)
+                + pow(phi1(site_i, timeslice), 2)
+                + pow(phi2(site_i, timeslice), 2);
+    }
 
-	num delta3 = 0;
-	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		delta3 += pow(pow(phi0(site_i, timeslice), 2)
-					+ pow(phi1(site_i, timeslice), 2)
-				    + pow(phi2(site_i, timeslice), 2), 2);
-	}
+    num delta3 = 0;
+    for (uint32_t site_i = 0; site_i < N; ++site_i) {
+        delta3 += pow(pow(phi0(site_i, timeslice), 2)
+                    + pow(phi1(site_i, timeslice), 2)
+                    + pow(phi2(site_i, timeslice), 2), 2);
+    }
 
-	num delta4 = 0;
-	uint32_t timeslicePlus = timeNeigh(ChainDir::PLUS, timeslice);
-	uint32_t timesliceMinus = timeNeigh(ChainDir::MINUS, timeslice);
-	for (uint32_t site_i = 0; site_i < N; ++site_i) {
-		delta4 += (pow(factor,2) - 1.0) * (
-				      pow(phi0(site_i, timeslice), 2)
-					+ pow(phi1(site_i, timeslice), 2)
-					+ pow(phi2(site_i, timeslice), 2)
-				);
-		delta4 -= (factor - 1.0) * (
-					  phi0(site_i, timeslice) * (phi0(site_i, timesliceMinus) + phi0(site_i, timeslicePlus))
-					+ phi1(site_i, timeslice) * (phi1(site_i, timesliceMinus) + phi1(site_i, timeslicePlus))
-					+ phi2(site_i, timeslice) * (phi2(site_i, timesliceMinus) + phi2(site_i, timeslicePlus))
-				);
-	}
+    num delta4 = 0;
+    uint32_t timeslicePlus = timeNeigh(ChainDir::PLUS, timeslice);
+    uint32_t timesliceMinus = timeNeigh(ChainDir::MINUS, timeslice);
+    for (uint32_t site_i = 0; site_i < N; ++site_i) {
+        delta4 += (pow(factor,2) - 1.0) * (
+                      pow(phi0(site_i, timeslice), 2)
+                    + pow(phi1(site_i, timeslice), 2)
+                    + pow(phi2(site_i, timeslice), 2)
+                );
+        delta4 -= (factor - 1.0) * (
+                      phi0(site_i, timeslice) * (phi0(site_i, timesliceMinus) + phi0(site_i, timeslicePlus))
+                    + phi1(site_i, timeslice) * (phi1(site_i, timesliceMinus) + phi1(site_i, timeslicePlus))
+                    + phi2(site_i, timeslice) * (phi2(site_i, timesliceMinus) + phi2(site_i, timeslicePlus))
+                );
+    }
 
-	num delta = (dtau/2.0) * (pow(factor,2) - 1.0) * delta1
-			  + (dtau*r/2.0) * (pow(factor,2) - 1.0) * delta2
-			  + (dtau*u/4.0) * (pow(factor,4) - 1.0) * delta3
-			  + (1.0/(c*dtau)) * delta4;
+    num delta = (dtau/2.0) * (pow(factor,2) - 1.0) * delta1
+              + (dtau*r/2.0) * (pow(factor,2) - 1.0) * delta2
+              + (dtau*u/4.0) * (pow(factor,4) - 1.0) * delta3
+              + (1.0/(c*dtau)) * delta4;
 
-	return delta;
+    return delta;
 }
 
 
@@ -2942,163 +3088,163 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeNewField(uint32_t site, ui
 
 template<bool TD, CheckerboardMethod CB>
 typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedField(uint32_t site, uint32_t timeslice) {
-	//old orientation
-	num x = phi0(site, timeslice);
-	num y = phi1(site, timeslice);
-	num z = phi2(site, timeslice);
-	//squares:
-	num x2 = pow(x, 2.0);
-	num y2 = pow(y, 2.0);
-	num z2 = pow(z, 2);
-	//squared length
-	num r2 = x2 + y2 + z2;
-	//length
-	num r = sqrt(r2);
+    //old orientation
+    num x = phi0(site, timeslice);
+    num y = phi1(site, timeslice);
+    num z = phi2(site, timeslice);
+    //squares:
+    num x2 = pow(x, 2.0);
+    num y2 = pow(y, 2.0);
+    num z2 = pow(z, 2);
+    //squared length
+    num r2 = x2 + y2 + z2;
+    //length
+    num r = sqrt(r2);
 
-	//new angular coordinates:
-	num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
-	num phi = rng.rand01() * 2.0 * M_PI;
-	num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
-	num cosPhi = cos(phi);
-	num sinPhi = sin(phi);
+    //new angular coordinates:
+    num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+    num phi = rng.rand01() * 2.0 * M_PI;
+    num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+    num cosPhi = cos(phi);
+    num sinPhi = sin(phi);
 
-	// To find the new orientation, we first consider the normalized old spin
-	num x2n = x2 / r2;
-	num y2n = y2 / r2;
-	num xn = x / r;
-	num yn = y / r;
-	num zn = z / r;
+    // To find the new orientation, we first consider the normalized old spin
+    num x2n = x2 / r2;
+    num y2n = y2 / r2;
+    num xn = x / r;
+    num yn = y / r;
+    num zn = z / r;
 
-	//new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
-	// this gives a normalized vector
-	num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
-	num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
-	num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
+    //new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+    // this gives a normalized vector
+    num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
+    num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
+    num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
 
-	// Then we set the length of the new spin appropriately
-	newx *= r;
-	newy *= r;
-	newz *= r;
+    // Then we set the length of the new spin appropriately
+    newx *= r;
+    newy *= r;
+    newz *= r;
 
-	Phi newphi;
-	newphi[0] = newx;
-	newphi[1] = newy;
-	newphi[2] = newz;
-	return std::make_tuple(true, newphi);
+    Phi newphi;
+    newphi[0] = newx;
+    newphi[1] = newy;
+    newphi[2] = newz;
+    return std::make_tuple(true, newphi);
 }
 
 template<bool TD, CheckerboardMethod CB>
 typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice) {
-	using std::pow; using std::abs;
-	//old orientation
-	num x = phi0(site, timeslice);
-	num y = phi1(site, timeslice);
-	num z = phi2(site, timeslice);
-	//squares
-	num x2 = pow(x, 2);
-	num y2 = pow(y, 2);
-	num z2 = pow(z, 2);
-	//cubed length
-	num r3 = pow(x2 + y2 + z2, 3.0/2.0);
+    using std::pow; using std::abs;
+    //old orientation
+    num x = phi0(site, timeslice);
+    num y = phi1(site, timeslice);
+    num z = phi2(site, timeslice);
+    //squares
+    num x2 = pow(x, 2);
+    num y2 = pow(y, 2);
+    num z2 = pow(z, 2);
+    //cubed length
+    num r3 = pow(x2 + y2 + z2, 3.0/2.0);
 
-	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
-	//We use scaleDelta as the standard deviation of that distribution.
-	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
-	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-	//want to bias against long lengths
-	num new_r3 = normal_distribution.get(scaleDelta, r3);
-	num scale = 1.0;
-	bool valid = true;
-	// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-	// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-	// and declare the update as to be rejected.
-	// Otherwise re scale the original spin appropriately.
-	if (new_r3 <= 0) {
-		scale = 1.0;
-		valid = false;
-	} else {
-		scale = pow((new_r3 / r3), (1.0 / 3.0));
-		valid = true;
-	}
+    //Choose a new cubed length from the Gaussian distribution around the original cubed length.
+    //We use scaleDelta as the standard deviation of that distribution.
+    //It is nececssary to consider the cubed length, as we have in spherical coordinates for
+    //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+    //want to bias against long lengths
+    num new_r3 = normal_distribution.get(scaleDelta, r3);
+    num scale = 1.0;
+    bool valid = true;
+    // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+    // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+    // and declare the update as to be rejected.
+    // Otherwise re scale the original spin appropriately.
+    if (new_r3 <= 0) {
+        scale = 1.0;
+        valid = false;
+    } else {
+        scale = pow((new_r3 / r3), (1.0 / 3.0));
+        valid = true;
+    }
 
-	num new_x = x * scale;
-	num new_y = y * scale;
-	num new_z = z * scale;
+    num new_x = x * scale;
+    num new_y = y * scale;
+    num new_z = z * scale;
 
-	Phi new_phi;
-	new_phi[0] = new_x;
-	new_phi[1] = new_y;
-	new_phi[2] = new_z;
-	return std::make_tuple(valid, new_phi);
+    Phi new_phi;
+    new_phi[0] = new_x;
+    new_phi[1] = new_y;
+    new_phi[2] = new_z;
+    return std::make_tuple(valid, new_phi);
 }
 
 template<bool TD, CheckerboardMethod CB>
 typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice) {
-	//old orientation
-	num x = phi0(site, timeslice);
-	num y = phi1(site, timeslice);
-	num z = phi2(site, timeslice);
-	//squares:
-	num x2 = pow(x, 2);
-	num y2 = pow(y, 2);
-	num z2 = pow(z, 2);
-	//squared length
-	num r2 = x2 + y2 + z2;
-	//length
-	num r = sqrt(r2);
+    //old orientation
+    num x = phi0(site, timeslice);
+    num y = phi1(site, timeslice);
+    num z = phi2(site, timeslice);
+    //squares:
+    num x2 = pow(x, 2);
+    num y2 = pow(y, 2);
+    num z2 = pow(z, 2);
+    //squared length
+    num r2 = x2 + y2 + z2;
+    //length
+    num r = sqrt(r2);
 
-	//cubed length
-	num r3 = pow(r, 3);
+    //cubed length
+    num r3 = pow(r, 3);
 
-	//Choose a new cubed length from the Gaussian distribution around the original cubed length.
-	//We use scaleDelta as the standard deviation of that distribution.
-	//It is nececssary to consider the cubed length, as we have in spherical coordinates for
-	//the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-	//want to bias against long lengths
-	num new_r3 = normal_distribution.get(scaleDelta, r3);
-	if (new_r3 <= 0) {
-		// The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-		// be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-		// and declare it as to be rejected.
-		Phi newphi;
-		newphi[0] = x;
-		newphi[1] = y;
-		newphi[2] = z;
-		return std::make_tuple(false, newphi);
-	} else {
-		// otherwise we scale the spin appropriately and also change its orientation
+    //Choose a new cubed length from the Gaussian distribution around the original cubed length.
+    //We use scaleDelta as the standard deviation of that distribution.
+    //It is nececssary to consider the cubed length, as we have in spherical coordinates for
+    //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+    //want to bias against long lengths
+    num new_r3 = normal_distribution.get(scaleDelta, r3);
+    if (new_r3 <= 0) {
+        // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+        // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+        // and declare it as to be rejected.
+        Phi newphi;
+        newphi[0] = x;
+        newphi[1] = y;
+        newphi[2] = z;
+        return std::make_tuple(false, newphi);
+    } else {
+        // otherwise we scale the spin appropriately and also change its orientation
 
-		//new angular coordinates:
-		num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
-		num phi = rng.rand01() * 2.0 * M_PI;
-		num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
-		num cosPhi = cos(phi);
-		num sinPhi = sin(phi);
+        //new angular coordinates:
+        num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+        num phi = rng.rand01() * 2.0 * M_PI;
+        num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+        num cosPhi = cos(phi);
+        num sinPhi = sin(phi);
 
-		// To find the new orientation, we first consider the normalized old spin
-		num x2n = x2 / r2;
-		num y2n = y2 / r2;
-		num xn = x / r;
-		num yn = y / r;
-		num zn = z / r;
-		// new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
-		// this gives a normalized vector
-		num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
-		num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
-		num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
+        // To find the new orientation, we first consider the normalized old spin
+        num x2n = x2 / r2;
+        num y2n = y2 / r2;
+        num xn = x / r;
+        num yn = y / r;
+        num zn = z / r;
+        // new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+        // this gives a normalized vector
+        num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
+        num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
+        num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
 
-		// Then we set the length of the new spin appropriately
-		num new_r = pow(new_r3, (1.0 / 3.0));
-		newx *= new_r;
-		newy *= new_r;
-		newz *= new_r;
+        // Then we set the length of the new spin appropriately
+        num new_r = pow(new_r3, (1.0 / 3.0));
+        newx *= new_r;
+        newy *= new_r;
+        newz *= new_r;
 
-		Phi newphi;
-		newphi[0] = newx;
-		newphi[1] = newy;
-		newphi[2] = newz;
-		return std::make_tuple(true, newphi);
-	}
+        Phi newphi;
+        newphi[0] = newx;
+        newphi[1] = newy;
+        newphi[2] = newz;
+        return std::make_tuple(true, newphi);
+    }
 }
 
 
@@ -3202,16 +3348,23 @@ void DetSDW<TD,CB>::thermalizationOver() {
               << "recent local accRatio = " << accRatioLocal_box_RA.get()
               << std::endl;
     if (rescale) {
-    	num ratio = num(acceptedRescales) / num(attemptedRescales);
-    	std::cout << "Timeslice rescale move acceptance ratio = " << ratio
-    			  << std::endl;
+        num ratio = num(acceptedRescales) / num(attemptedRescales);
+        std::cout << "Timeslice rescale move acceptance ratio = " << ratio
+                  << std::endl;
     }
     if (globalShift) {
-    	num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
-    	std::cout << "globalShiftMove acceptance ratio = " << ratio
-    			  << std::endl;
+        num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
+        std::cout << "globalShiftMove acceptance ratio = " << ratio
+                  << std::endl;
     }
-
+    if (wolffClusterUpdate) {
+        num ratio = num(acceptedWolffClusterUpdates) /
+                num(attemptedWolffClusterUpdates);
+        num avgsize = addedWolffClusterSize / num(acceptedWolffClusterUpdates);
+        std::cout << "wolffClusterUpdate acceptance ratio = " << ratio
+                  << ", average accepted size = " << avgsize << "\n"
+                  << std::endl;
+    }
 }
 
 
@@ -3219,28 +3372,28 @@ void DetSDW<TD,CB>::thermalizationOver() {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimple(bool takeMeasurements) {
     sweepSimple_skeleton(takeMeasurements,
-    					 sdwComputeBmat(this),
-    					 [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
-    					 [this]() {this->initMeasurements();},
-    					 [this](uint32_t timeslice) {this->measure(timeslice);},
-    					 [this]() {this->finishMeasurements();});
+                         sdwComputeBmat(this),
+                         [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
+                         [this]() {this->initMeasurements();},
+                         [this](uint32_t timeslice) {this->measure(timeslice);},
+                         [this]() {this->finishMeasurements();});
     ++performedSweeps;
 }
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweepSimpleThermalization() {
     sweepSimpleThermalization_skeleton(
-    		sdwComputeBmat(this),
-    		[this](uint32_t timeslice) {
-    			this->updateInSliceThermalization(timeslice);
-    		});
+            sdwComputeBmat(this),
+            [this](uint32_t timeslice) {
+                this->updateInSliceThermalization(timeslice);
+            });
     ++performedSweeps;
 }
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
     sweep_skeleton(takeMeasurements,
-    			   sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
+                   sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
                    [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
                    [this]() {this->initMeasurements();},
@@ -3255,108 +3408,108 @@ void DetSDW<TD,CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
                                  [this](uint32_t timeslice) {
-    								this->updateInSliceThermalization(timeslice);
-    							 },
-    							 [this]() {this->globalMove();});
+                                    this->updateInSliceThermalization(timeslice);
+                                 },
+                                 [this]() {this->globalMove();});
     ++performedSweeps;
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 MatCpx DetSDW<TD,CB>::shiftGreenSymmetric() {
-	typedef arma::subview<cpx> SubMatCpx;			//don't do references or const-references of this type
-	if (CB == CB_NONE) {
-		//non-checkerboard
-		return shiftGreenSymmetric_impl(
-						//rightMultiply
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input * propK_half_inv[band];
-			},
-			//leftMultiply
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = propK_half[band] * input;
-			}
-		);
-	}
-	// unclear to me: why do I need to explicitly qualify 'this->' in the lambdas?
-	else if (CB == CB_SANTOS) {
-		return shiftGreenSymmetric_impl(
-						//rightMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
-			// to the right of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;			//copy
-				this->cb_santos_applyBondFactorsRight(output, YPLUS, 1, coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				this->cb_santos_applyBondFactorsRight(output, XPLUS, 1, coshHopHorHalf[band], +sinhHopHorHalf[band]);
-				this->cb_santos_applyBondFactorsRight(output, YPLUS, 0, coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				this->cb_santos_applyBondFactorsRight(output, XPLUS, 0, coshHopHorHalf[band], +sinhHopHorHalf[band]);
-			},
-			//leftMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
-			// to the left of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;			//copy
-				this->cb_santos_applyBondFactorsLeft(output, XPLUS, 0, coshHopHorHalf[band], -sinhHopHorHalf[band]);
-				this->cb_santos_applyBondFactorsLeft(output, YPLUS, 0, coshHopVerHalf[band], -sinhHopVerHalf[band]);
-				this->cb_santos_applyBondFactorsLeft(output, XPLUS, 1, coshHopHorHalf[band], -sinhHopHorHalf[band]);
-				this->cb_santos_applyBondFactorsLeft(output, YPLUS, 1, coshHopVerHalf[band], -sinhHopVerHalf[band]);
-			}
-		);
-	}
-	else if (CB == CB_ASSAAD) {
-		return shiftGreenSymmetric_impl(
-						//rightMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
-			// to the right of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;      //copy
-				this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
-																 coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-														   	   	 coshHopVerHalf[band], +sinhHopVerHalf[band]);
-			},
-			//leftMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{- dtau K^band_b / 2} e^{- dtau K^band_a / 2} * [Input]
-			// to the left of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;      //copy
-				this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
-											 	 	 	  	  	coshHopVerHalf[band], -sinhHopVerHalf[band]);
-				this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
-																coshHopVerHalf[band], -sinhHopVerHalf[band]);
-			}
-		);
-	}
-	else if (CB == CB_ASSAAD_BERG) {
-		return shiftGreenSymmetric_impl(
-			//rightMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
-			// to the right of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;      //copy
-				this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
-																 coshHopVerHalf[band], +sinhHopVerHalf[band]);
-				this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-														   	   	 coshHopVerHalf[band], +sinhHopVerHalf[band]);
-			},
-			//leftMultiply
-			// output and input are NxN blocks of a complex matrix
-			// this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2} * [Input]
-			// to the left of input and stores the result in output
-			[this](SubMatCpx output, SubMatCpx input, Band band) -> void {
-				output = input;      //copy
-				this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
-											 	 	 	  	  	coshHopVerHalf[band], -sinhHopVerHalf[band]);
-				this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
-																coshHopVerHalf[band], -sinhHopVerHalf[band]);
-			}
-		);
-	}
+    typedef arma::subview<cpx> SubMatCpx;            //don't do references or const-references of this type
+    if (CB == CB_NONE) {
+        //non-checkerboard
+        return shiftGreenSymmetric_impl(
+                        //rightMultiply
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input * propK_half_inv[band];
+            },
+            //leftMultiply
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = propK_half[band] * input;
+            }
+        );
+    }
+    // unclear to me: why do I need to explicitly qualify 'this->' in the lambdas?
+    else if (CB == CB_SANTOS) {
+        return shiftGreenSymmetric_impl(
+                        //rightMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+            // to the right of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;            //copy
+                this->cb_santos_applyBondFactorsRight(output, YPLUS, 1, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                this->cb_santos_applyBondFactorsRight(output, XPLUS, 1, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+                this->cb_santos_applyBondFactorsRight(output, YPLUS, 0, coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                this->cb_santos_applyBondFactorsRight(output, XPLUS, 0, coshHopHorHalf[band], +sinhHopHorHalf[band]);
+            },
+            //leftMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2}
+            // to the left of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;            //copy
+                this->cb_santos_applyBondFactorsLeft(output, XPLUS, 0, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+                this->cb_santos_applyBondFactorsLeft(output, YPLUS, 0, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                this->cb_santos_applyBondFactorsLeft(output, XPLUS, 1, coshHopHorHalf[band], -sinhHopHorHalf[band]);
+                this->cb_santos_applyBondFactorsLeft(output, YPLUS, 1, coshHopVerHalf[band], -sinhHopVerHalf[band]);
+            }
+        );
+    }
+    else if (CB == CB_ASSAAD) {
+        return shiftGreenSymmetric_impl(
+                        //rightMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+            // to the right of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;      //copy
+                this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                                 coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                                       coshHopVerHalf[band], +sinhHopVerHalf[band]);
+            },
+            //leftMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies e^{- dtau K^band_b / 2} e^{- dtau K^band_a / 2} * [Input]
+            // to the left of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;      //copy
+                this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                                       coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                                coshHopVerHalf[band], -sinhHopVerHalf[band]);
+            }
+        );
+    }
+    else if (CB == CB_ASSAAD_BERG) {
+        return shiftGreenSymmetric_impl(
+            //rightMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
+            // to the right of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;      //copy
+                this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                                 coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                                       coshHopVerHalf[band], +sinhHopVerHalf[band]);
+            },
+            //leftMultiply
+            // output and input are NxN blocks of a complex matrix
+            // this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2} * [Input]
+            // to the left of input and stores the result in output
+            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+                output = input;      //copy
+                this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                                       coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                                coshHopVerHalf[band], -sinhHopVerHalf[band]);
+            }
+        );
+    }
 }
 
 //RightMultiply and LeftMultiply should be functors for complex matrix subviews,
@@ -3368,48 +3521,48 @@ template<class RightMultiply, class LeftMultiply>
 MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     //submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-	MatCpx tempG(4*N, 4*N);
-	const MatCpx& oldG = g;
-	//multiply e^(dtau/2 K) from the right
-	for (uint32_t row = 0; row < 4; ++row) {
-		//block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
-		rightMultiply(block(tempG, row, 0), block(oldG, row, 0), XBAND);
-		rightMultiply(block(tempG, row, 1), block(oldG, row, 1), XBAND);
-		rightMultiply(block(tempG, row, 2), block(oldG, row, 2), YBAND);
-		rightMultiply(block(tempG, row, 3), block(oldG, row, 3), YBAND);
-	}
-	//multiply e^(-dtau/2 K) from the left
-	MatCpx newG(4*N, 4*N);
-	for (uint32_t col = 0; col < 4; ++col) {
-		//block(newG, 0, col) = propKx_half * block(tempG, 0, col);
-		leftMultiply(block(newG, 0, col), block(tempG, 0, col), XBAND);
-		leftMultiply(block(newG, 1, col), block(tempG, 1, col), XBAND);
-		leftMultiply(block(newG, 2, col), block(tempG, 2, col), YBAND);
-		leftMultiply(block(newG, 3, col), block(tempG, 3, col), YBAND);
-	}
+    MatCpx tempG(4*N, 4*N);
+    const MatCpx& oldG = g;
+    //multiply e^(dtau/2 K) from the right
+    for (uint32_t row = 0; row < 4; ++row) {
+        //block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
+        rightMultiply(block(tempG, row, 0), block(oldG, row, 0), XBAND);
+        rightMultiply(block(tempG, row, 1), block(oldG, row, 1), XBAND);
+        rightMultiply(block(tempG, row, 2), block(oldG, row, 2), YBAND);
+        rightMultiply(block(tempG, row, 3), block(oldG, row, 3), YBAND);
+    }
+    //multiply e^(-dtau/2 K) from the left
+    MatCpx newG(4*N, 4*N);
+    for (uint32_t col = 0; col < 4; ++col) {
+        //block(newG, 0, col) = propKx_half * block(tempG, 0, col);
+        leftMultiply(block(newG, 0, col), block(tempG, 0, col), XBAND);
+        leftMultiply(block(newG, 1, col), block(tempG, 1, col), XBAND);
+        leftMultiply(block(newG, 2, col), block(tempG, 2, col), YBAND);
+        leftMultiply(block(newG, 3, col), block(tempG, 3, col), YBAND);
+    }
 #undef block
-	return newG;
+    return newG;
 }
 
 
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::consistencyCheck() {
-	for (uint32_t k = 1; k <= m; ++k) {
-		for (uint32_t site = 0; site < N; ++site) {
-			num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-									+ std::pow(phi1(site, k), 2)
-									+ std::pow(phi2(site, k), 2));
-			num relDiffCosh = std::abs((phiCosh(site, k) - std::cosh(dtau * phiNorm)) / phiCosh(site, k));
-			if (relDiffCosh > 1E-10) {
-				throw GeneralError("phiCosh is inconsistent");
-			}
-			num relDiffSinh = std::abs((phiSinh(site, k) - (std::sinh(dtau * phiNorm) / phiNorm)) / phiSinh(site, k));
-			if (relDiffSinh > 1E-10) {
-				throw GeneralError("phiSinh is inconsistent");
-			}
-		}
-	}
+    for (uint32_t k = 1; k <= m; ++k) {
+        for (uint32_t site = 0; site < N; ++site) {
+            num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
+                                    + std::pow(phi1(site, k), 2)
+                                    + std::pow(phi2(site, k), 2));
+            num relDiffCosh = std::abs((phiCosh(site, k) - std::cosh(dtau * phiNorm)) / phiCosh(site, k));
+            if (relDiffCosh > 1E-10) {
+                throw GeneralError("phiCosh is inconsistent");
+            }
+            num relDiffSinh = std::abs((phiSinh(site, k) - (std::sinh(dtau * phiNorm) / phiNorm)) / phiSinh(site, k));
+            if (relDiffSinh > 1E-10) {
+                throw GeneralError("phiSinh is inconsistent");
+            }
+        }
+    }
 }
 
 
