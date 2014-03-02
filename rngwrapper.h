@@ -20,6 +20,8 @@ extern "C" {
 #include "dsfmt/dSFMT.h"
 }
 
+#include <tuple>
+#include <cmath>
 #include "boost/serialization/string.hpp"
 #include "boost/serialization/access.hpp"
 #include "boost/serialization/export.hpp"
@@ -51,7 +53,19 @@ public:
     //{low, low + 1, . . . , high}. One call to rand01()
     int randInt(int low, int high) {
         return low + static_cast<int> ((high - low + 1.0) * rand01());
-    };
+    }
+
+    std::tuple<double,double,double> randPointOnSphere() {
+    	double phi = randRange(0., 2.*M_PI);
+    	double costheta = randRange(-1., 1.0);
+    	double sintheta = std::sqrt(1. - costheta*costheta);
+    	double cosphi = std::cos(phi);
+    	double sinphi = std::sin(phi);
+    	double x = cosphi * sintheta;
+    	double y = sinphi * sintheta;
+    	double z = costheta;
+    	return std::make_tuple(x, y, z);
+    }
 
     //saving/loading state without Boost serialization
     void saveState() const;
