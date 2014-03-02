@@ -154,12 +154,16 @@ public:
     uint32_t operator()(ChainDir latticeDirection, uint32_t site) const {
         return PeriodicChainNearestNeighbors::operator()((uint32_t) latticeDirection, site);
     }
+private:
+    //hide these as they are not easy to make work correctly and are not important
+
+    typedef PeriodicCubicLatticeNearestNeighbors Base;
     //iterators over the nearest neighbors of a site:
     auto beginNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
-        return PeriodicCubicLatticeNearestNeighbors::beginNeighbors(site - startWith) + startWith;
+    	return Base::beginNeighbors(site);
     }
     auto endNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
-        return PeriodicCubicLatticeNearestNeighbors::endNeighbors(site - startWith) + startWith;
+    	return Base::endNeighbors(site);
     }
 };
 
