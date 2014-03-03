@@ -2820,7 +2820,7 @@ void DetSDW<TD,CB>::globalMove() {
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
-    using std::exp;
+    using std::exp; using std::cout;
     timing.start("sdw-attemptWolffClusterUpdate");
 
     // compute current fermion weight
@@ -2862,7 +2862,7 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     };
 
     // construct cluster
-    gmd.visited.zeros(N, m+1);            //inefficient to zero everything?
+    gmd.visited.zeros(N, m+1);
     typedef typename GlobalMoveData::SpaceTimeIndex STI;
     //next_sites contains the sites for which we still need to check the neighbors
     gmd.next_sites = std::stack<STI>();
@@ -2889,8 +2889,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
             uint32_t neigh_site = *site_neigh_iter;
             if (not gmd.visited(neigh_site, timeslice)) {
                 num bond_arg = 2.* dtau * projectedPhi(site, timeslice)
-                                           * projectedPhi(neigh_site, timeslice);
-                if (bond_arg >= 0 or rng.rand01() <= (1. - exp(bond_arg))) {
+                                        * projectedPhi(neigh_site, timeslice);
+                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
                     flipPhi(neigh_site, timeslice);
                     gmd.visited(neigh_site, timeslice) = 1;
                     gmd.next_sites.push( STI(neigh_site, timeslice) );
@@ -2904,7 +2904,7 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
             if (not gmd.visited(site, neigh_time)) {
                 num bond_arg = (2. / dtau) * projectedPhi(site, timeslice)
                                            * projectedPhi(site, neigh_time);
-                if (bond_arg >= 0 or rng.rand01() <= (1. - exp(bond_arg))) {
+                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
                     flipPhi(site, neigh_time);
                     gmd.visited(site, neigh_time) = 1;
                     gmd.next_sites.push( STI(site, neigh_time) );
