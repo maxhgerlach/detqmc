@@ -245,8 +245,11 @@ protected:
     //call in a derived class:
     //  Callable_GC_k2_k1: take arguments green component, timeslices k2 > k1,
     //  and give the corresponding B-matrix
+    //
+    //This will setup the UdV storage used to compute Green's functions from scratch
+    //in the following sweep-down and also compute the Green's function G(\beta)
     template<class Callable_GC_k2_k1>
-    void setupUdVStorage_skeleton(Callable_GC_k2_k1 computeBmat);
+    void setupUdVStorage_and_calculateGreen_skeleton(Callable_GC_k2_k1 computeBmat);
 
     //helpers for sweep_skeleton(), sweepThermalization_skeleton():
     //
@@ -267,9 +270,9 @@ protected:
     void advanceUpGreen(Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         uint32_t l, uint32_t gc);
 
-    template<class Callable_GC_mat_k2_k1>
-    void advanceUpUpdateStorage(Callable_GC_mat_k2_k1 leftMultiplyBmat,
-                                uint32_t l, uint32_t gc);
+//    template<class Callable_GC_mat_k2_k1>
+//    void advanceUpUpdateStorage(Callable_GC_mat_k2_k1 leftMultiplyBmat,
+//                                uint32_t l, uint32_t gc);
 
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1>
     void wrapUpGreen(a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
@@ -435,7 +438,7 @@ std::vector<KeyValueObservable> DetModelGC<GC,V,TimeDisplaced>::getKeyValueObser
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_k2_k1>
-void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
+void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton(
         Callable_GC_k2_k1 computeBmat) {
     timing.start("setupUdVStorage");
     auto setup = [this, &computeBmat](uint32_t gc) {
@@ -458,7 +461,13 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_skeleton(
             storage[l+1].V = UdV_temp.V * V_l;
         }
     };
+
     for_each_gc(setup);
+
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+        updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
+    }
+
     lastSweepDir = SweepDirection::Up;
     timing.stop("setupUdVStorage");
 }
@@ -759,38 +768,38 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 
     updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
 
-    //storage[l + 1] = UdV_temp;    //storage would be wrong after updateInSlice!
+    storage[l + 1] = UdV_temp;
 
     timing.stop("advanceUpGreen");
 }
 
-//Given B(l*s*dtau, 0) from the last step in the storage, compute
-//B([(l+1)*s or m]*dtau, 0) and put it into storage
-template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class Callable_GC_mat_k2_k1>
-void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
-        Callable_GC_mat_k2_k1 leftMultiplyBmat,
-        uint32_t l, uint32_t gc)
-{
-    timing.start("advanceUpUpdateStorage");
-
-    std::vector<UdVV>& storage = (*UdVStorage)[gc];
-
-    const uint32_t k_l = s*l;
-    const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
-
-    //from the last step the following are B(k_l*dtau, 0):
-    const MatV& U_l = storage[l].U;
-    const VecV& d_l = storage[l].d;
-    const MatV& V_l = storage[l].V;
-    //the new B(k_lp1*dtau, 0):
-    storage[l+1] = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l)
-                                   * arma::diagmat(d_l));
-
-    storage[l+1].V *= V_l;
-
-    timing.stop("advanceUpUpdateStorage");
-};
+////Given B(l*s*dtau, 0) from the last step in the storage, compute
+////B([(l+1)*s or m]*dtau, 0) and put it into storage
+//template<uint32_t GC, typename V, bool TimeDisplaced>
+//template<class Callable_GC_mat_k2_k1>
+//void DetModelGC<GC,V,TimeDisplaced>::advanceUpUpdateStorage(
+//        Callable_GC_mat_k2_k1 leftMultiplyBmat,
+//        uint32_t l, uint32_t gc)
+//{
+//    timing.start("advanceUpUpdateStorage");
+//
+//    std::vector<UdVV>& storage = (*UdVStorage)[gc];
+//
+//    const uint32_t k_l = s*l;
+//    const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
+//
+//    //from the last step the following are B(k_l*dtau, 0):
+//    const MatV& U_l = storage[l].U;
+//    const VecV& d_l = storage[l].d;
+//    const MatV& V_l = storage[l].V;
+//    //the new B(k_lp1*dtau, 0):
+//    storage[l+1] = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l)
+//                                   * arma::diagmat(d_l));
+//
+//    storage[l+1].V *= V_l;
+//
+//    timing.stop("advanceUpUpdateStorage");
+//};
 
 ////compute the green function at k+1 by wrapping the one at k (accumulates rounding errors),
 ////also handle the time-displaced Green functions
@@ -892,30 +901,43 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
     for (uint32_t gc = 0; gc < GC; ++gc) {
         (*UdVStorage)[gc][0] = eye_UdV;
     }
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+    	advanceUpGreen(leftMultiplyBmat, 0, gc);
+    }
     //sweep up:
     for (uint32_t l = 1; l < n - 1; ++l) {
-        for (uint32_t gc = 0; gc < GC; ++gc) {
-            advanceUpGreen(leftMultiplyBmat, l-1, gc);
-        }
         updateInSliceAndMaybeMeasure(l*s);
+        for (uint32_t k = l*s + 1; k <= l*s; ++k) {
+        	for (uint32_t gc = 0; gc < GC; ++gc) {
+        		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
+        	}
+        	updateInSliceAndMaybeMeasure(k);
+        }
         for (uint32_t gc = 0; gc < GC; ++gc) {
-            advanceUpUpdateStorage(leftMultiplyBmat, l-1, gc);
+        	advanceUpGreen(leftMultiplyBmat, l, gc);		//new version
         }
-        for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
-            for (uint32_t gc = 0; gc < GC; ++gc) {
-                wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-            }
-            updateInSliceAndMaybeMeasure(k);
-        }
+//        for (uint32_t gc = 0; gc < GC; ++gc) {
+//            advanceUpGreen(leftMultiplyBmat, l-1, gc);
+//        }
+//        updateInSliceAndMaybeMeasure(l*s);
+//        for (uint32_t gc = 0; gc < GC; ++gc) {
+//            advanceUpUpdateStorage(leftMultiplyBmat, l-1, gc);
+//        }
+//        for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
+//            for (uint32_t gc = 0; gc < GC; ++gc) {
+//                wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
+//            }
+//            updateInSliceAndMaybeMeasure(k);
+//        }
     }
     //special handling for the highest time-slices
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-    	advanceUpGreen(leftMultiplyBmat, n - 2, gc);
-    }
+//    for (uint32_t gc = 0; gc < GC; ++gc) {
+//    	advanceUpGreen(leftMultiplyBmat, n - 2, gc);
+//    }
     updateInSliceAndMaybeMeasure(s*(n-1));
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-        advanceUpUpdateStorage(leftMultiplyBmat, n - 2, gc);
-    }
+//    for (uint32_t gc = 0; gc < GC; ++gc) {
+//        advanceUpUpdateStorage(leftMultiplyBmat, n - 2, gc);
+//    }
     // at the highest timeslices the green-function-recalculation-from-scratch may
     // occur after less than s timeslices:
     for (uint32_t k = (n-1)*s + 1; k < m; ++k) {
@@ -928,9 +950,9 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
     	advanceUpGreen(leftMultiplyBmat, n - 1, gc);
     }
     updateInSliceAndMaybeMeasure(m);
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-        advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
-    }
+//    for (uint32_t gc = 0; gc < GC; ++gc) {
+//        advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
+//    }
 
     if (takeMeasurements) {
     	finishMeasurement();
@@ -963,12 +985,11 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 		}
 	};
 
-    //to compute green function for timeslice tau=beta:
-    //we need VlDlUl = B(beta, beta) = I and UrDrVr = B(beta, 0).
-    //The latter is given in storage slice n from the last sweep.
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
-    }
+	//Precondition for the following:
+    //We need to have computed the Green function for time slice k=m (at tau=beta)
+	//[this is done by setupUdVStorage_and_calculateGreen_skeleton as well as by
+	// sweepUp]
+
     for (uint32_t gc = 0; gc < GC; ++gc) {
         (*UdVStorage)[gc][n] = eye_UdV;
     }

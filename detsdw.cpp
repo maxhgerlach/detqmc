@@ -258,7 +258,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
     setupPropK();
 
-    setupUdVStorage();
+    setupUdVStorage_and_calculateGreen();
 
     using std::cref;
     using namespace boost::assign;
@@ -306,8 +306,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 }
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::setupUdVStorage() {
-    setupUdVStorage_skeleton(sdwComputeBmat(this));
+void DetSDW<TD,CB>::setupUdVStorage_and_calculateGreen() {
+    setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
 }
 
 template<bool TD, CheckerboardMethod CB>
@@ -2915,8 +2915,7 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     } while (not gmd.next_sites.empty());
 
     //recompute Green's function
-    setupUdVStorage();
-    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
     //compute new weight
     num new_green_det = arma::det(g).real();
@@ -2977,8 +2976,7 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     updatePhiCoshSinh();
 
     //recompute Green's function
-    setupUdVStorage();
-    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
     //compute new weight
     num new_scalar_action = phiAction();

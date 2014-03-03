@@ -312,7 +312,7 @@ protected:
     void updatePhiCoshSinh();	//compute new entries of phiCosh and phiSinh from current phi0, phi1, phi2
     void updatePhiCoshSinh(uint32_t site, uint32_t timeslice);	//the same, for a single spin
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
-    void setupUdVStorage();
+    void setupUdVStorage_and_calculateGreen();
 
     //the following are template functions to allow applying them
     //to submatrices as well
@@ -595,7 +595,7 @@ public:
         serializeContentsCommon(sck, ar);
         //the fields now have a valid state, update UdV-storage to start
         //sweeping again
-        setupUdVStorage_skeleton(sdwComputeBmat(this));
+        setupUdVStorage_and_calculateGreen();
         //now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
     }
 
