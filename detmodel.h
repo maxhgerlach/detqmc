@@ -930,9 +930,9 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
     	advanceUpGreen(leftMultiplyBmat, 0, gc);
     }
     //sweep up:
-    for (uint32_t l = 1; l < n - 1; ++l) {
+    for (uint32_t l = 1; l <= n - 2; ++l) {
         updateInSliceAndMaybeMeasure(l*s);
-        for (uint32_t k = l*s + 1; k <= l*s; ++k) {
+        for (uint32_t k = l*s + 1; k <= l*s + s-1; ++k) {
         	for (uint32_t gc = 0; gc < GC; ++gc) {
         		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
         	}
@@ -941,31 +941,12 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
         for (uint32_t gc = 0; gc < GC; ++gc) {
         	advanceUpGreen(leftMultiplyBmat, l, gc);		//new version
         }
-//        for (uint32_t gc = 0; gc < GC; ++gc) {
-//            advanceUpGreen(leftMultiplyBmat, l-1, gc);
-//        }
-//        updateInSliceAndMaybeMeasure(l*s);
-//        for (uint32_t gc = 0; gc < GC; ++gc) {
-//            advanceUpUpdateStorage(leftMultiplyBmat, l-1, gc);
-//        }
-//        for (uint32_t k = l*s + 1; k <= l*s + (s-1); ++k) {
-//            for (uint32_t gc = 0; gc < GC; ++gc) {
-//                wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-//            }
-//            updateInSliceAndMaybeMeasure(k);
-//        }
     }
     //special handling for the highest time-slices
-//    for (uint32_t gc = 0; gc < GC; ++gc) {
-//    	advanceUpGreen(leftMultiplyBmat, n - 2, gc);
-//    }
     updateInSliceAndMaybeMeasure(s*(n-1));
-//    for (uint32_t gc = 0; gc < GC; ++gc) {
-//        advanceUpUpdateStorage(leftMultiplyBmat, n - 2, gc);
-//    }
     // at the highest timeslices the green-function-recalculation-from-scratch may
     // occur after less than s timeslices:
-    for (uint32_t k = (n-1)*s + 1; k < m; ++k) {
+    for (uint32_t k = (n-1)*s + 1; k <= m - 1; ++k) {
     	for (uint32_t gc = 0; gc < GC; ++gc) {
     		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
     	}
