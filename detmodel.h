@@ -335,6 +335,7 @@ protected:
     // During the sweep: hold the matrix elements of the equal-time Green's function for the
     // current timeslice
     checkarray<MatV, GreenComponents> green;
+    uint32_t currentTimeslice;					//currently green is valid for this timeslice
 
     //The UdV-instances in UdVStorage will not move around after setup, so storing
     //the (rather big) objects in the vector is fine.
@@ -387,6 +388,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
     green(), //greenFwd(), greenBwd(),
+    currentTimeslice(),
     eye_UdV(sz), UdVStorage(new checkarray<std::vector<UdVV>, GC>),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
@@ -467,6 +469,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
     for (uint32_t gc = 0; gc < GC; ++gc) {
         updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
     }
+    currentTimeslice = m;
 
     lastSweepDir = SweepDirection::Up;
     timing.stop("setupUdVStorage");
@@ -648,6 +651,10 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 {
     timing.start("advanceDownGreen");
 
+    //this is the point where the function should be called in the sweep,
+    //even though we do not actually use green explicitly here
+    assert(currentTimeslice == s*(l-1) + 1);
+
     std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
     const uint32_t k_l = ((l < n) ? (s*l) : (m));
@@ -668,6 +675,8 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
     const UdVV& UdV_R = storage[l - 1];
     updateGreenFunctionUdV(gc, UdV_L, UdV_R);
     storage[l - 1] = UdV_L;
+
+    currentTimeslice = s*(l-1);
 
     timing.stop("advanceDownGreen");
 }
@@ -726,12 +735,16 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 {
     timing.start("wrapDownGreen");
 
+    assert(currentTimeslice == k);
+
     green[gc] = leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc], k, k-1),
     								k, k-1);
     if (TimeDisplaced) {
 //        greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv(gc, greenFwd[gc].slice(k), k, k-1);
 //        greenBwd[gc].slice(k - 1) = rightMultiplyBmat(gc, greenBwd[gc].slice(k), k, k-1);
     }
+
+    currentTimeslice = k-1;
 
     timing.stop("wrapDownGreen");
 }
@@ -752,6 +765,10 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     const uint32_t k_l = s*l;
     const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
 
+    //this is the point where the function should be called in the sweep,
+    //even though we do not actually use green explicitly here
+    assert(currentTimeslice == k_lp1 - 1);
+
     //The following is B(beta, k_lp1*dtau), valid from the last sweep
     const UdVV& UdV_lp1 = storage[l + 1];
 
@@ -769,6 +786,8 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
 
     storage[l + 1] = UdV_temp;
+
+    currentTimeslice = k_lp1;
 
     timing.stop("advanceUpGreen");
 }
@@ -853,6 +872,8 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
 //  MatV B_kp1 = computeBmat[greenComponent](k + 1, k);
 //  green[greenComponent].slice(k + 1) = B_kp1 * green[greenComponent].slice(k) * arma::inv(B_kp1);
 
+    assert(currentTimeslice == k);
+
     green[gc] = leftMultiplyBmat(gc, rightMultiplyBmatInv(gc, green[gc], k+1, k), k+1, k);
 
     if (TimeDisplaced) {
@@ -861,6 +882,9 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
 //        //  greenBwd[greenComponent].slice(k + 1) = greenBwd[greenComponent].slice(k) * arma::inv(B_kp1);
 //        greenBwd[gc].slice(k + 1) = rightMultiplyBmatInv(gc, greenBwd[gc].slice(k), k+1, k);
     }
+
+    currentTimeslice = k + 1;
+
     timing.stop("wrapUpGreen");
 }
 
@@ -880,6 +904,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
 	}
 
 	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+		assert(currentTimeslice == timeslice);
 		funcUpdateInSlice(timeslice);
 		if (takeMeasurements) {
 			measure(timeslice);
@@ -979,6 +1004,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 	}
 
 	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+		assert(currentTimeslice == timeslice);
 		funcUpdateInSlice(timeslice);
 		if (takeMeasurements) {
 			measure(timeslice);
