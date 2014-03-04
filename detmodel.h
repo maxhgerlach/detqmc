@@ -15,6 +15,7 @@
 #include <vector>
 #include <tuple>
 #include <armadillo>
+#include <cassert>
 
 #include "tools.h"
 #include "checkarray.h"

@@ -195,7 +195,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
         fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
-        dud(N, delaySteps), gmd(N, m)
+        dud(N, delaySteps), gmd(N, m),
+        timeslices_included_in_measurement()
 {
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
     assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
@@ -380,6 +381,8 @@ template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::initMeasurements() {
     timing.start("sdw-measure");
 
+    timeslices_included_in_measurement.clear();
+
     //normphi, meanPhi
     normPhi = 0;
     meanPhi.zeros();
@@ -410,6 +413,8 @@ void DetSDW<TD,CB>::initMeasurements() {
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     timing.start("sdw-measure");
+
+    timeslices_included_in_measurement.insert(timeslice);
 
     MatCpx gshifted = shiftGreenSymmetric();
 
@@ -588,6 +593,8 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::finishMeasurements() {
+	assert(timeslices_included_in_measurement.size() == m);
+
     //normphi, meanPhi, sdw-susceptibility
     normPhi /= num(N * m);
     meanPhi /= num(N * m);
