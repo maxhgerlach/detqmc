@@ -225,7 +225,9 @@ protected:
     //todo: get rid of this MatNum4 business
     MatV4 greenFromUdV_timedisplaced(const UdVV& UdV_l, const UdVV& UdV_r) const;
     //use a faster method that does not yield information about the time-displaced
-    //Green functions
+    //Green functions.
+    // Uses B(beta, tau) = V_l d_l U_l   and     B(tau, 0) = U_r d_r V_r,
+    // computes G(tau) = [Id + B(tau,0).B(beta,tau)]^{-1}
     MatV greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const;
     //The following is useful to compute G(\beta) = [1 + B(\beta, 0)]^{-1}
     MatV greenFromEye_and_UdV(const UdVV& UdV_r) const;
