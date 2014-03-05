@@ -660,9 +660,12 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 {
     timing.start("advanceDownGreen");
 
-    //this is the point where the function should be called in the sweep,
-    //even though we do not actually use green explicitly here
-    assert(currentTimeslice == s*(l-1) + 1);
+    //This is the point where the function should be called in the
+    //sweep, even though we do not actually use green explicitly here.
+    //The sweep is now set-up in such a way, that we do one
+    //superfluous wrap-up step, this means the advance-functions serve
+    //as a refresh of the current time slice.
+    assert(currentTimeslice == s*(l-1));
 
     std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
@@ -683,6 +686,7 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
     //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
     const UdVV& UdV_R = storage[l - 1];
     updateGreenFunctionUdV(gc, UdV_L, UdV_R);
+
     storage[l - 1] = UdV_L;
 
     currentTimeslice = s*(l-1);
@@ -780,9 +784,12 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     const uint32_t k_l = s*l;
     const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
 
-    //this is the point where the function should be called in the sweep,
-    //even though we do not actually use green explicitly here
-    assert(currentTimeslice == k_lp1 - 1);
+    //This is the point where the function should be called in the
+    //sweep, even though we do not actually use green explicitly here.
+    //The sweep is now set-up in such a way, that we do one
+    //superfluous wrap-up step, this means the advance-functions serve
+    //as a refresh of the current time slice.
+    assert(currentTimeslice == k_lp1);
 
     //The following is B(beta, k_lp1*dtau), valid from the last sweep
     const UdVV& UdV_lp1 = storage[l + 1];
@@ -905,78 +912,63 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-		  class CallableUpdateInSlice,
-		  class Callable_init, class Callable_measure_k, class Callable_finish>
-void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
-			 a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
-			 b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
-			 CallableUpdateInSlice funcUpdateInSlice,
-			 Callable_init initMeasurement, Callable_measure_k measure,
-			 Callable_finish finishMeasurement)
+	  class CallableUpdateInSlice,
+	  class Callable_init, class Callable_measure_k, class Callable_finish>
+void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
+        bool takeMeasurements,
+        a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
+        b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
+        CallableUpdateInSlice funcUpdateInSlice,
+        Callable_init initMeasurement, Callable_measure_k measure,
+        Callable_finish finishMeasurement)
 {
-	if (takeMeasurements) {
-		initMeasurement();
-	}
+    if (takeMeasurements) {
+        initMeasurement();
+    }
 
-	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
-		assert(currentTimeslice == timeslice);
-		funcUpdateInSlice(timeslice);
-		if (takeMeasurements) {
-			measure(timeslice);
-		}
-	};
+    auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+        assert(currentTimeslice == timeslice);
+        funcUpdateInSlice(timeslice);
+        if (takeMeasurements) {
+            measure(timeslice);
+        }
+    };
 
-	//Precondition for the following:
+    //Precondition for the following:
     //We need to have computed the Green function for time slice k=0 so that the first
-    //wrap-up step is correct.
+    //wrap-up step is correct [done by sweepDown],
+    //and our storage contains (UdV)_l = B(beta, l*s*dtau) for l = 0, ..., n
 
-	//First wrap-up step:
-    for (uint32_t k = 1; k <= s-1; ++k) {
+    //set storage at k=0 to unity for the up-coming sweep:
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+        (*UdVStorage)[gc][0] = eye_UdV;
+    }
+    //sweep up:
+    for (uint32_t l = 0; l <= n - 2; ++l) {
+        for (uint32_t k = l*s + 1; k <= (l+1)*s; ++k) { // s wrap-up steps
+            for (uint32_t gc = 0; gc < GC; ++gc) {
+                wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
+            }
+            updateInSliceAndMaybeMeasure(k);
+        }
+        for (uint32_t gc = 0; gc < GC; ++gc) {
+            advanceUpGreen(leftMultiplyBmat, l, gc);        //new version
+        }
+    }
+    //special handling for the highest time-slices
+    for (uint32_t k = (n - 1)*s + 1; k <= m; ++k) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
             wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
         }
         updateInSliceAndMaybeMeasure(k);
     }
-    //set storage at k=0 to unity for the up-coming sweep:
+    //refresh Green's function at highest time-slice
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        (*UdVStorage)[gc][0] = eye_UdV;
+        advanceUpGreen(leftMultiplyBmat, n - 1, gc);        //new version
     }
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-    	advanceUpGreen(leftMultiplyBmat, 0, gc);
-    }
-    //sweep up:
-    for (uint32_t l = 1; l <= n - 2; ++l) {
-        updateInSliceAndMaybeMeasure(l*s);
-        for (uint32_t k = l*s + 1; k <= l*s + s-1; ++k) {
-        	for (uint32_t gc = 0; gc < GC; ++gc) {
-        		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-        	}
-        	updateInSliceAndMaybeMeasure(k);
-        }
-        for (uint32_t gc = 0; gc < GC; ++gc) {
-        	advanceUpGreen(leftMultiplyBmat, l, gc);		//new version
-        }
-    }
-    //special handling for the highest time-slices
-    updateInSliceAndMaybeMeasure(s*(n-1));
-    // at the highest timeslices the green-function-recalculation-from-scratch may
-    // occur after less than s timeslices:
-    for (uint32_t k = (n-1)*s + 1; k <= m - 1; ++k) {
-    	for (uint32_t gc = 0; gc < GC; ++gc) {
-    		wrapUpGreen(leftMultiplyBmat, rightMultiplyBmatInv, k - 1, gc);
-    	}
-    	updateInSliceAndMaybeMeasure(k);
-    }
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-    	advanceUpGreen(leftMultiplyBmat, n - 1, gc);
-    }
-    updateInSliceAndMaybeMeasure(m);
-//    for (uint32_t gc = 0; gc < GC; ++gc) {
-//        advanceUpUpdateStorage(leftMultiplyBmat, n - 1, gc);
-//    }
 
     if (takeMeasurements) {
-    	finishMeasurement();
+        finishMeasurement();
     }
 
     consistencyCheck();
@@ -985,60 +977,61 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(bool takeMeasurements,
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-		  class CallableUpdateInSlice,
-		  class Callable_init, class Callable_measure_k, class Callable_finish>
+          class CallableUpdateInSlice,
+          class Callable_init, class Callable_measure_k, class Callable_finish>
 void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
-		bool takeMeasurements,
-		a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
-		b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
-		CallableUpdateInSlice funcUpdateInSlice,
-		Callable_init initMeasurement, Callable_measure_k measure,
-		Callable_finish finishMeasurement)
+        bool takeMeasurements,
+        a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+        b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
+        CallableUpdateInSlice funcUpdateInSlice,
+        Callable_init initMeasurement, Callable_measure_k measure,
+        Callable_finish finishMeasurement)
 {
-	if (takeMeasurements) {
-		initMeasurement();
-	}
+    if (takeMeasurements) {
+        initMeasurement();
+    }
 
-	auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
-		assert(currentTimeslice == timeslice);
-		funcUpdateInSlice(timeslice);
-		if (takeMeasurements) {
-			measure(timeslice);
-		}
-	};
+    auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
+        assert(currentTimeslice == timeslice);
+        funcUpdateInSlice(timeslice);
+        if (takeMeasurements) {
+            measure(timeslice);
+        }
+    };
 
-	//Precondition for the following:
+    //Precondition for the following:
     //We need to have computed the Green function for time slice k=m (at tau=beta)
-	//[this is done by setupUdVStorage_and_calculateGreen_skeleton as well as by
-	// sweepUp]
+    //[this is done by setupUdVStorage_and_calculateGreen_skeleton as well as by
+    //sweepUp], and our storage contains (UdV)_l = B(l*s*dtau, 0) for l = 1, ..., n
 
+    // Handle timeslices between l=n (-> k=m) and k=s*(n-1) + 1,
+    // in contrast to the lower values of l, these may be less than s
+    for (uint32_t k = m; k >= (n-1)*s + 1; --k) {
+        updateInSliceAndMaybeMeasure(k);
+        for (uint32_t gc = 0; gc < GC; ++gc) {
+            wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k, gc);
+        }
+    }
+
+    // Handle the remaining timeslices, including advanceDown steps to refresh
+    // the Green's function
     for (uint32_t gc = 0; gc < GC; ++gc) {
         (*UdVStorage)[gc][n] = eye_UdV;
     }
-    // Handle timeslices between l=n (-> k=m) and l=n-1 (-> k=s*(n-1)).
-    // in contrast to the lower values of l, this may be less than s
-    updateInSliceAndMaybeMeasure(m);
-    for (uint32_t k = m - 1; k >= (n-1)*s + 1; --k) {
-    	for (uint32_t gc = 0; gc < GC; ++gc) {
-    		wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
-    	}
-    	updateInSliceAndMaybeMeasure(k);
-    }
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-    	advanceDownGreen(rightMultiplyBmat, n, gc);
-    }
-    // Handle the remaining timeslices.
     for (uint32_t l = n - 1; l >= 1; --l) {
-        updateInSliceAndMaybeMeasure(l*s);
-        for (uint32_t k = l*s - 1; k >= (l-1)*s + 1; --k) {
-            for (uint32_t gc = 0; gc < GC; ++gc) {
-                wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k + 1, gc);
-            }
-            updateInSliceAndMaybeMeasure(k);
-        }
         for (uint32_t gc = 0; gc < GC; ++gc) {
-            advanceDownGreen(rightMultiplyBmat, l, gc);
+            advanceDownGreen(rightMultiplyBmat, l + 1, gc);
         }
+        for (uint32_t k = l*s; k >= (l-1)*s + 1; --k) {
+            updateInSliceAndMaybeMeasure(k);
+            for (uint32_t gc = 0; gc < GC; ++gc) {
+                wrapDownGreen(leftMultiplyBmatInv, rightMultiplyBmat, k, gc);
+            }
+        }
+    }
+    // refresh the Green's function at k=0 so we are ready to sweep-up
+    for (uint32_t gc = 0; gc < GC; ++gc) {
+        advanceDownGreen(rightMultiplyBmat, 1, gc);
     }
 
     if (takeMeasurements) {
@@ -1055,7 +1048,7 @@ template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
          class Callable_init, class Callable_measure_k, class Callable_finish,
          class Callable_GlobalUpdate>
 void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
-		bool takeMeasurements,
+        bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
@@ -1069,13 +1062,13 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
 
     if (lastSweepDir == SweepDirection::Up) {
         sweepDown(takeMeasurements,
-        		  leftMultiplyBmatInv, rightMultiplyBmat,
+                  leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSlice,
                   initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
         sweepUp(takeMeasurements,
-        		leftMultiplyBmat, rightMultiplyBmatInv,
+                leftMultiplyBmat, rightMultiplyBmatInv,
                 updateInSlice,
                 initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Up;
@@ -1100,17 +1093,17 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
     timing.start("sweep");
 
     if (lastSweepDir == SweepDirection::Up) {
-        sweepDown(false,									//no measurements
-        		  leftMultiplyBmatInv, rightMultiplyBmat,
+        sweepDown(false,                                    //no measurements
+                  leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSliceThermalization,
-                  VoidNoOp(), VoidNoOp(), VoidNoOp()		//no measurements
+                  VoidNoOp(), VoidNoOp(), VoidNoOp()        //no measurements
                   );
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
         sweepUp(false,
-        		leftMultiplyBmat, rightMultiplyBmatInv,		//no measurements
+                leftMultiplyBmat, rightMultiplyBmatInv,        //no measurements
                 updateInSliceThermalization,
-                VoidNoOp(), VoidNoOp(), VoidNoOp()		//no measurements
+                VoidNoOp(), VoidNoOp(), VoidNoOp()        //no measurements
                 );
         lastSweepDir = SweepDirection::Up;
         globalUpdate();
