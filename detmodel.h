@@ -646,6 +646,12 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunctionUdV(
 
 //compute the green function in timeslice s*(l-1) from scratch with the help
 //of the B-matrices computed before in the last up-sweep
+//
+//preconditions: storage[l] contains B(beta, l*s*dtau)
+//               storage[l - 1] contains B((l-1)*s*dtau, 0)
+//
+//postconditions: storage[l - 1] contains B(beta, (l-1)*s*dtau)
+//                green is G((l-1)*s*dtau)
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
@@ -755,6 +761,12 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 
 //update the green function in timeslice s*(l+1) [or m] from scratch with the help
 //of B-matrices computed before
+//
+// preconditions: storage[l + 1] contains B(beta, (l+1)*s*dtau)		[or B(\beta,\beta)]
+//                storage[l] contains B(l*s*dtau, 0)
+//
+// postconditions: storage[l + 1] contains B((l+1)*s*dtau, 0)
+//                 green is G((l+1)*s*dtau)
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
