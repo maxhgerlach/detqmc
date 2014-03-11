@@ -2847,7 +2847,11 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
 
     auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
-        return Phi( {phi0(site,timeslice), phi1(site,timeslice), phi2(site,timeslice) } );
+        Phi result;
+	result[0] = phi0(site,timeslice);
+	result[1] = phi1(site,timeslice);
+	result[2] = phi2(site,timeslice);
+        return result;
     };
     auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
         // phi -> phi - 2* (phi . r) * r
