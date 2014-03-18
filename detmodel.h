@@ -226,11 +226,11 @@ protected:
     MatV4 greenFromUdV_timedisplaced(const UdVV& UdV_l, const UdVV& UdV_r) const;
     //use a faster method that does not yield information about the time-displaced
     //Green functions.
-    // Uses B(beta, tau) = V_l d_l U_l   and     B(tau, 0) = U_r d_r V_r,
+    // Uses B(beta, tau) = V_l d_l U_t_l.t()   and     B(tau, 0) = U_r d_r V_t_r.t(),
     // computes G(tau) = [Id + B(tau,0).B(beta,tau)]^{-1}
-    MatV greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const;
+    void greenFromUdV(MatV& green_out, const UdVV& UdV_l, const UdVV& UdV_r) const;
     //The following is useful to compute G(\beta) = [1 + B(\beta, 0)]^{-1}
-    MatV greenFromEye_and_UdV(const UdVV& UdV_r) const;
+    void greenFromEye_and_UdV(MatV& green_out, const UdVV& UdV_r) const;
 
     //compute Green function from UdV-decomposed matrices L/R
     //for a single timeslice and update the member variables green --
@@ -343,8 +343,10 @@ protected:
     //The UdV-instances in UdVStorage will not move around after setup, so storing
     //the (rather big) objects in the vector is fine.
     //However, for instance for deciding on doing a global update we need the possibility
-    //to swap the whole vector of UdV's. For this reason: handlethe whole container over
+    //to swap the whole vector of UdV's. For this reason: handle the whole container over
     //a unique_ptr.
+    //Remember that to recover the decomposed matrices: m == U * diag(d) * trans(V)
+    //The conjugate-transpose still needs to be taken.
     const UdVV eye_UdV;
     std::unique_ptr<checkarray<std::vector<UdVV>, GreenComponents>> UdVStorage;
 
@@ -454,16 +456,14 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
         storage[1] = udvDecompose(computeBmat(gc, s, 0));
 
         for (uint32_t l = 1; l <= n - 1; ++l) {
-            const MatV& U_l = storage[l].U;
-            const VecV& d_l = storage[l].d;
-            const MatV& V_l = storage[l].V;
-            const uint32_t k_l = s*l;
+            const MatV&   U_l   = storage[l].U;
+            const VecNum& d_l   = storage[l].d;
+            const MatV&   V_t_l = storage[l].V_t;
+            const uint32_t k_l   = s*l;
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
             MatV B_lp1 = computeBmat(gc, k_lp1, k_l);
-            UdVV UdV_temp = udvDecompose<V>((B_lp1 * U_l) * arma::diagmat(d_l));
-            storage[l+1].U = UdV_temp.U;
-            storage[l+1].d = UdV_temp.d;
-            storage[l+1].V = UdV_temp.V * V_l;
+            storage[l+1] = udvDecompose<V>((B_lp1 * U_l) * arma::diagmat(d_l));
+            storage[l+1].V_t = storage[l+1].V_t * V_t_l;
         }
     };
 
@@ -525,48 +525,69 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
-typename DetModelGC<GC,V,TimeDisplaced>::MatV DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(const UdVV& UdV_l, const UdVV& UdV_r) const {
+void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
+		MatV& green_out,
+		const UdVV& UdV_l,
+		const UdVV& UdV_r) const {
     timing.start("greenFromUdV");
     //variable names changed according to labeling in notes
-    const MatV& V_l = UdV_l.U;   //!
-    const VecV& d_l = UdV_l.d;
-    const MatV& U_l = UdV_l.V;   //!
-    const MatV& U_r = UdV_r.U;
-    const VecV& d_r = UdV_r.d;
-    const MatV& V_r = UdV_r.V;
+    const MatV&   V_l   = UdV_l.U;   //!
+    const VecNum& d_l   = UdV_l.d;
+    const MatV&   U_t_l = UdV_l.V_t;   //!
+    const MatV&   U_r   = UdV_r.U;
+    const VecNum& d_r   = UdV_r.d;
+    const MatV&   V_t_r = UdV_r.V_t;
 
-    using arma::inv; using arma::diagmat; using arma::eye;
+    using arma::diagmat; using arma::trans;
 
-    UdVV UdV_temp = udvDecompose<V>( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
+//    UdVV UdV_temp = udvDecompose<V>( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
 
-    MatV green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+    UdVV UdV_temp = udvDecompose<V>(
+    		trans(U_r) * U_t_l +
+    		diagmat(d_r) * trans(V_t_r) * V_l * diagmat(d_l)
+    );
+
+//    MatV green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+
+    green_out = U_t_l * trans(UdV_temp.V_t) *
+    		diagmat(1.0 / UdV_temp.d) *
+    		trans(U_r * UdV_temp.U);
 
     timing.stop("greenFromUdV");
-
-    return green;
+//    return green;
 }
 
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
-typename DetModelGC<GC,V,TimeDisplaced>::MatV DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(const UdVV& UdV_r) const {
+void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
+		MatV& green_out,
+		const UdVV& UdV_r) const {
 	timing.start("greenFromUdV");
-	//variable names changed according to labeling in notes
-	//
-	//Here we consider the special case V_l*d_l*U_l = 1
-    const MatV& U_r = UdV_r.U;
-    const VecV& d_r = UdV_r.d;
-    const MatV& V_r = UdV_r.V;
+	//Here we consider the special case V_l*d_l*U_t_l.t() = 1
+    const MatV&   U_r   = UdV_r.U;
+    const VecNum& d_r   = UdV_r.d;
+    const MatV&   V_t_r = UdV_r.V_t;
 
-    using arma::inv; using arma::diagmat; using arma::eye;
+//    using arma::inv; using arma::diagmat; using arma::eye;
 
-    UdVV UdV_temp = udvDecompose<V>( inv(V_r * U_r) + diagmat(d_r) );
+//    UdVV UdV_temp = udvDecompose<V>( inv(V_r * U_r) + diagmat(d_r) );
 
-    MatV green = inv(UdV_temp.V * V_r) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+//    MatV green = inv(UdV_temp.V * V_r) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
+
+    using arma::diagmat; using arma::trans;
+
+    UdVV UdV_temp = udvDecompose<V>(
+    		trans(U_r) * V_t_r + diagmat(d_r)
+    );
+
+    green_out = V_t_r * trans(UdV_temp.V_t) *
+    		diagmat(1.0 / UdV_temp.d) *
+    		trans(U_r * UdV_temp.U);
 
     timing.stop("greenFromUdV");
 
-    return green;
+//    return green;
 }
 
 
@@ -577,12 +598,12 @@ typename DetModelGC<GC,V,TimeDisplaced>::MatV4 DetModelGC<GC,V,TimeDisplaced>::g
     timing.start("greenFromUdV_timedisplaced");
 
     //Ul vs Vl to be compatible with labeling in the notes
-    const MatV& Ul = UdV_l.V;   //!
-    const VecV& dl = UdV_l.d;
-    const MatV& Vl = UdV_l.U;   //!
-    const MatV& Ur = UdV_r.U;
-    const VecV& dr = UdV_r.d;
-    const MatV& Vr = UdV_r.V;
+    const MatV&   Ul = UdV_l.V;   //!
+    const VecNum& dl = UdV_l.d;
+    const MatV&   Vl = UdV_l.U;   //!
+    const MatV&   Ur = UdV_r.U;
+    const VecNum& dr = UdV_r.d;
+    const MatV&   Vr = UdV_r.V;
 
     uint32_t sz = Ul.n_rows;
 
@@ -638,7 +659,7 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunctionUdV(
 //                greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice))
 //            = greenFromUdV_timedisplaced(UdV_L, UdV_R);
     } else {
-        green[gc] = greenFromUdV(UdV_L, UdV_R);
+        greenFromUdV(green[gc], UdV_L, UdV_R);
     }
 }
 
@@ -669,18 +690,19 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 
     std::vector<UdVV>& storage = (*UdVStorage)[gc];
 
-    const uint32_t k_l = ((l < n) ? (s*l) : (m));
+    const uint32_t k_l   = ((l < n) ? (s*l) : (m));
     const uint32_t k_lm1 = s*(l-1);
 
     //U_l, d_l, V_l correspond to B(beta,k_l*dtau) [set in the last step]
-    const MatV& U_l = storage[l].U;
-    const VecV& d_l = storage[l].d;
-    const MatV& V_l = storage[l].V;
+    const MatV&   U_l   = storage[l].U;
+    const VecNum& d_l   = storage[l].d;
+    const MatV&   V_t_l = storage[l].V_t;
 
     //UdV_L will correspond to B(beta,k_lm1*dtau)
-    UdVV UdV_L = udvDecompose<V>(arma::diagmat(d_l) *
-                                 rightMultiplyBmat(gc, V_l, k_l, k_lm1));
-
+    UdVV UdV_L = udvDecompose<V>(
+    		arma::diagmat(d_l) *
+    		rightMultiplyBmat(gc, trans(V_t_l), k_l, k_lm1)
+    );
     UdV_L.U = U_l * UdV_L.U;
 
     //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
@@ -795,15 +817,15 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     const UdVV& UdV_lp1 = storage[l + 1];
 
     //from the last step the following are B(k_l*dtau, 0):
-    const MatV& U_l = storage[l].U;
-    const VecV& d_l = storage[l].d;
-    const MatV& V_l = storage[l].V;
+    const MatV&   U_l   = storage[l].U;
+    const VecNum& d_l   = storage[l].d;
+    const MatV&   V_t_l = storage[l].V_t;
 
     //UdV_temp will be the new B(k_lp1*dtau, 0):
     UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l) *
                                     arma::diagmat(d_l));
 
-    UdV_temp.V *= V_l;
+    UdV_temp.V_t = V_t_l * UdV_temp.V_t;
 
     updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
 
