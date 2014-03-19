@@ -12,6 +12,7 @@
 #include <armadillo>
 #include "timing.h"
 #include "exceptions.h"
+#include "tools.h"
 
 #include "boost_serialize_armadillo.h"
 
@@ -61,8 +62,15 @@ UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
     //mat == U * diag(d) * trans(V_t)
     bool ok = arma::svd(result.U, result.d, result.V_t, mat);
     if (not ok) {
-    	throw GeneralError("SVD failed");
+    	// try the standard method instead of divide-and-conquer
+    	bool ok2 = arma::svd(result.U, result.d, result.V_t, mat, "std");
+    	if (not (ok2)) {
+    		throw GeneralError("SVD failed");
+    	}
     }
+//    print_matrix_diff(mat,
+//    		(result.U * arma::diagmat(result.d) * result.V_t.t()).eval(),
+//    		"SVD");
 
 //    timing.start("qr");
 //    arma::qr(result.U, result.V, mat);
