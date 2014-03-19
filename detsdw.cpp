@@ -304,6 +304,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 //
+
+    consistencyCheck();
 }
 
 template<bool TD, CheckerboardMethod CB>
@@ -2858,9 +2860,9 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
 
     auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
         Phi result;
-	result[0] = phi0(site,timeslice);
-	result[1] = phi1(site,timeslice);
-	result[2] = phi2(site,timeslice);
+        result[0] = phi0(site,timeslice);
+		result[1] = phi1(site,timeslice);
+		result[2] = phi2(site,timeslice);
         return result;
     };
     auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
@@ -3590,6 +3592,7 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::consistencyCheck() {
+	// phi*, phiCosh, phiSinh
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
             num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
@@ -3605,6 +3608,21 @@ void DetSDW<TD,CB>::consistencyCheck() {
             }
         }
     }
+    // UdV storage -- unitarity
+//    for (uint32_t l = 0; l <= n; ++l) {
+//    	const MatCpx& U   = (*UdVStorage)[0][l].U;
+//    	const MatCpx& V_t = (*UdVStorage)[0][l].V_t;
+//    	print_matrix_diff(
+//    			(U*U.t()).eval(),
+//    			eye_gc,
+//    			"U l=" + numToString(l)
+//    	);
+//    	print_matrix_diff(
+//    			(V_t.t()*V_t).eval(),
+//    			eye_gc,
+//    			"V l=" + numToString(l)
+//    	);
+//    }
 }
 
 

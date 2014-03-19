@@ -254,6 +254,7 @@ protected:
     template<class Callable_GC_k2_k1>
     void setupUdVStorage_and_calculateGreen_skeleton(Callable_GC_k2_k1 computeBmat);
 
+
     //helpers for sweep_skeleton(), sweepThermalization_skeleton():
     //
     //Callable_GC_mat_k2_k1: take arguments green-component, some matrix,
@@ -348,6 +349,7 @@ protected:
     //Remember that to recover the decomposed matrices: m == U * diag(d) * trans(V)
     //The conjugate-transpose still needs to be taken.
     const UdVV eye_UdV;
+    const MatV eye_gc;
     std::unique_ptr<checkarray<std::vector<UdVV>, GreenComponents>> UdVStorage;
 
     enum class SweepDirection: int {Up = 1, Down = -1};
@@ -394,7 +396,8 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     dtau(pars.dtau),
     green(), //greenFwd(), greenBwd(),
     currentTimeslice(),
-    eye_UdV(sz), UdVStorage(new checkarray<std::vector<UdVV>, GC>),
+    eye_UdV(sz), eye_gc(arma::eye<MatV>(sz, sz)),
+    UdVStorage(new checkarray<std::vector<UdVV>, GC>),
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
 {
@@ -477,6 +480,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
     lastSweepDir = SweepDirection::Up;
     timing.stop("setupUdVStorage");
 }
+
 
 
 //warning: the thermalization version below is almost a copy of this -- without measurements
@@ -707,7 +711,14 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
 
     //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
     const UdVV& UdV_R = storage[l - 1];
+
+//    //Accuracy check:
+//    MatV g_wrapped = green[gc];
+
     updateGreenFunctionUdV(gc, UdV_L, UdV_R);
+
+//    //Accuracy check:
+//    print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Down");
 
     storage[l - 1] = UdV_L;
 
@@ -827,7 +838,13 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 
     UdV_temp.V_t = V_t_l * UdV_temp.V_t;
 
+//    //Accuracy check:
+//    MatV g_wrapped = green[gc];
+
     updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
+
+//    //Accuracy check:
+//    print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Up");
 
     storage[l + 1] = UdV_temp;
 

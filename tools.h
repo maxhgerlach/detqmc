@@ -19,6 +19,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
+#include <armadillo>
 
 //only use with small numbers!
 inline uint32_t uint_pow(uint32_t base, uint32_t exponent) {
@@ -129,6 +130,30 @@ std::vector<std::string> glob(const std::string& path);
 struct VoidNoOp {
 	void operator()(...) const { };
 };
+
+
+typedef double num;
+typedef std::complex<num> cpx;
+typedef arma::Mat<num> MatNum;
+typedef arma::Mat<cpx> MatCpx;
+template<class Matrix>
+inline void print_matrix_diff(Matrix mat1, Matrix mat2,
+		const std::string& name) {
+	//MatNum diff_wrapped = arma::abs(mat1 - mat2) / arma::abs(mat1);
+	MatNum diff = arma::abs(mat1 - mat2);
+	using arma::max; using arma::mean;
+	std::cout << name << ": max  diff = " << max(max(diff)) << "\n";
+	std::cout << name << ": mean diff = " << mean(mean(diff)) << "\n";
+}
+
+template<class Matrix>
+inline void print_matrix_rel_diff(Matrix mat1, Matrix mat2,
+		const std::string& name) {
+	MatNum diff = arma::abs(mat1 - mat2) / arma::abs(mat1);
+	using arma::max; using arma::mean;
+	std::cout << name << ": max  rel diff = " << max(max(diff))   << "\n";
+	std::cout << name << ": mean rel diff = " << mean(mean(diff)) << "\n";
+}
 
 
 #endif /* TOOLS_H_ */

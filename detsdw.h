@@ -71,12 +71,14 @@ protected:
     // using Base::greenFwd;
     // using Base::greenBwd;
     using Base::UdVStorage;
+    using Base::eye_gc;
     using Base::lastSweepDir;
     using Base::obsScalar;
     using Base::obsVector;
     using Base::obsKeyValue;
     using Base::beta;
     using Base::s;
+    using Base::currentTimeslice;
 
     typedef typename Base::UdVV UdVV;
 
