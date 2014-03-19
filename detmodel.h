@@ -463,7 +463,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
             MatV B_lp1 = computeBmat(gc, k_lp1, k_l);
             storage[l+1] = udvDecompose<V>((B_lp1 * U_l) * arma::diagmat(d_l));
-            storage[l+1].V_t = storage[l+1].V_t * V_t_l;
+            storage[l+1].V_t =  V_t_l * storage[l+1].V_t;			//!!
         }
     };
 
@@ -549,7 +549,7 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 
 //    MatV green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
 
-    green_out = U_t_l * trans(UdV_temp.V_t) *
+    green_out = U_t_l * UdV_temp.V_t *
     		diagmat(1.0 / UdV_temp.d) *
     		trans(U_r * UdV_temp.U);
 
@@ -581,7 +581,7 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
     		trans(U_r) * V_t_r + diagmat(d_r)
     );
 
-    green_out = V_t_r * trans(UdV_temp.V_t) *
+    green_out = V_t_r * UdV_temp.V_t *
     		diagmat(1.0 / UdV_temp.d) *
     		trans(U_r * UdV_temp.U);
 
