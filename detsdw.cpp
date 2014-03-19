@@ -187,7 +187,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
         adaptScaleDelta(pars.adaptScaleVariance),
         performedSweeps(0),
-        normPhi(0), meanPhi(), normMeanPhi(0), sdwSusc(0),
+        normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
         kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
         occ(), occX(occ[XBAND]), occY(occ[YBAND]),
@@ -265,6 +265,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
             ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
+            ScalarObservable(cref(meanPhiSquared), "meanPhiSquared", "mps"),
             ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
             ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
             ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
@@ -389,6 +390,7 @@ void DetSDW<TD,CB>::initMeasurements() {
     normPhi = 0;
     meanPhi.zeros();
     normMeanPhi = 0;
+    meanPhiSquared = 0;
 
     //sdw-susceptibility
     sdwSusc = 0;
@@ -601,6 +603,7 @@ void DetSDW<TD,CB>::finishMeasurements() {
     normPhi /= num(N * m);
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
+    meanPhiSquared = arma::dot(meanPhi, meanPhi);
 
     Phi phi_0;
     phi_0[0] = phi0(0, m);

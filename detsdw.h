@@ -237,8 +237,9 @@ protected:
     uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
 
     //Observables:
-    num normPhi;        //averaged norm of field
+    num normPhi;        //averaged norm of field			//not very sensible physically
     Phi meanPhi;		//averaged field
+    num meanPhiSquared;	//square of averaged field
     num normMeanPhi;	//norm of averaged field
     num sdwSusc;        //spin-density-wave susceptibility
 
