@@ -2830,8 +2830,18 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     using std::exp; using std::cout;
     timing.start("sdw-attemptWolffClusterUpdate");
 
-    // compute current fermion weight
-    num old_green_det = arma::det(g).real();
+    // compute current fermion weight (implicitly given by singular values)
+
+    //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
+    //after sweepUp.
+    assert(currentTimeslice == m);
+    // The product of the singular values of g is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and
+    // very small numbers --> over/underflows!  Instead use the
+    // fact that the SV's are sorted by magnitude and compare them
+    // term by term with the SV's of the updated Green's function.
+    VecNum old_green_sv = arma::svd(g);
 
     // Backup phi*, Green's function and UdV-storage.
     gmd.phi0 = phi0;
@@ -2928,11 +2938,14 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     //recompute Green's function
     setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
-    //compute new weight
-    num new_green_det = arma::det(g).real();
-
-    //compute transition probability
-    num prob_fermion = old_green_det / new_green_det;
+    //compute fermion transition probability; new weight given implicitly:
+    VecNum new_green_sv = arma::svd(g);
+    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+    //green_sv_ratios.print(std::cout);
+    num prob_fermion = 1.0;
+    for (num sv_ratio : green_sv_ratios) {
+    	prob_fermion *= sv_ratio;
+    }
 
     std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
 
@@ -2964,7 +2977,19 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
 
     // compute current weight
     num old_scalar_action = phiAction();
-    num old_green_det = arma::det(g).real();
+    //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
+    //after sweepUp.
+    assert(currentTimeslice == m);
+    //num old_green_det = arma::det(g).real();
+//    num old_green_det = Base::abs_det_green_from_storage();
+//    std::cout << old_green_det << "\n";
+    // The product of the singular values of g is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and
+    // very small numbers --> over/underflows!  Instead use the
+    // fact that the SV's are sorted by magnitude and compare them
+    // term by term with the SV's of the updated Green's function.
+    VecNum old_green_sv = arma::svd(g);
 
     // Backup phi*, Green's function and UdV-storage.
     // We copy phi{0,1,2} because we add to these in the next step.
@@ -2991,11 +3016,19 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
 
     //compute new weight
     num new_scalar_action = phiAction();
-    num new_green_det = arma::det(g).real();
+    //num new_green_det = Base::abs_det_green_from_storage();
+    //std::cout << new_green_det << "\n";
+    VecNum new_green_sv = arma::svd(g);
 
     //compute transition probability
     num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
-    num prob_fermion = old_green_det / new_green_det;
+//    num prob_fermion = old_green_det / new_green_det;
+    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+    num prob_fermion = 1.0;
+    for (num sv_ratio : green_sv_ratios) {
+    	prob_fermion *= sv_ratio;
+    }
+
     num prob = prob_scalar * prob_fermion;
 
     std::cout << prob_scalar << "  " << prob_fermion << "\n";
