@@ -375,6 +375,20 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     if (globalShift or wolffClusterUpdate) {
         META_INSERT(globalMoveInterval);
     }
+    if (globalShift) {
+    	num globalShiftAccRatio =
+    			num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
+    	META_INSERT(globalShiftAccRatio);
+    }
+    if (wolffClusterUpdate) {
+    	num wolffClusterUpdateAccRatio =
+    			num(acceptedWolffClusterUpdates) /
+    			num(attemptedWolffClusterUpdates);
+    	META_INSERT(wolffClusterUpdateAccRatio);
+    	num averageAcceptedWolffClusterSize =
+    			addedWolffClusterSize / num(acceptedWolffClusterUpdates);
+    	META_INSERT(averageAcceptedWolffClusterSize);
+    }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
     return meta;
