@@ -607,6 +607,11 @@ public:
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
     	(void)sck;
     	ar & acceptedRescales & attemptedRescales;
+    	ar & acceptedGlobalShifts;
+    	ar & attemptedGlobalShifts;
+    	ar & acceptedWolffClusterUpdates;
+    	ar & attemptedWolffClusterUpdates;
+    	ar & addedWolffClusterSize;
         ar & phi0 & phi1 & phi2;
         ar & phiCosh & phiSinh;
         ar & phiDelta & angleDelta & scaleDelta;
