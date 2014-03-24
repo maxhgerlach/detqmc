@@ -20,6 +20,7 @@
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
+typedef arma::Mat<uint32_t> MatUInt;
 typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
@@ -204,9 +205,35 @@ protected:
     MatNum phi0;
     MatNum phi1;
     MatNum phi2;
+    //discrete field for cdwU: l_i(\tau_k) == cdwl(i,k)
+    MatUInt cdwl;
     //evaluation of element-wise functions of phi:
     MatNum phiCosh;         // cosh(dtau * |phi|)
     MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
+
+    //lookup values for discrete field:
+    static inline num cdwl_gamma(uint32_t l) {
+    	switch (l) {
+    	case +1:
+    	case -1:
+    		return (3. + std::sqrt(6.)) / 12.;
+    	case +2:
+    	case -2:
+    		return (3. - std::sqrt(6.)) / 12.;
+    	}
+    }
+    static inline num cdwl_eta(uint32_t l) {
+    	switch (l) {
+    	case +1:
+    		return  std::sqrt(2. * (3. - std::sqrt(6.)));
+    	case -1:
+    		return -std::sqrt(2. * (3. - std::sqrt(6.)));
+    	case +2:
+    		return  std::sqrt(2. * (3. + std::sqrt(6.)));
+    	case -2:
+    		return -std::sqrt(2. * (3. + std::sqrt(6.)));
+    	}
+    }
 
 
     num phiDelta;       //MC step size for field components (box update)
