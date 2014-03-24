@@ -1866,45 +1866,11 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        //compute non-zero elements of delta
-        //evMatrix(): yield a 4x4 matrix containing the entries for the
-        //current lattice site and time slice of e^(sign*dtau*V) with
-        //given values of the field phi at that space-time location [and of
-        //cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
-        auto evMatrix = [](int sign, num kphi0, num kphi1,
-                           num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
-            MatNum::fixed<4,4> ev_real;
-            ev_real.diag().fill(kphiCosh);
-            ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-            ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
-            ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
-            ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
-            ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
-
-            MatCpx::fixed<4,4> ev;
-            ev.set_real(ev_real);
-            ev(0,3).imag(-sign * kphi1 * kphiSinh);
-            ev(1,2).imag( sign * kphi1 * kphiSinh);
-            ev(2,1).imag(-sign * kphi1 * kphiSinh);
-            ev(3,0).imag( sign * kphi1 * kphiSinh);
-
-            return ev;
-        };
-        MatCpx::fixed<4,4> evOld = evMatrix(
-                +1,
-                phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
-                phiCosh(site, timeslice), phiSinh(site, timeslice)
-                );
+        MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(
+        		newphi, timeslice, site);
         num normnewphi = arma::norm(newphi,2);
         num coshnewphi = std::cosh(dtau * normnewphi);
         num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
-        MatCpx::fixed<4,4> emvNew = evMatrix(
-                -1,
-                newphi[0], newphi[1], newphi[2],
-                coshnewphi, sinhnewphi
-                );
-        MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
-        deltanonzero.diag() -= cpx(1.0, 0);
 
         //****
         //Compute the determinant and inverse of I + Delta*(I - G)
@@ -2240,49 +2206,11 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
         num probSPhi = std::exp(-dsphi);
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        //TODO: put calculation of deltanonzero into separate function
-
-        //compute non-zero elements of delta
-        // deltanonzero is \Delta^i from the notes
-        //
-        //evMatrix(): yield a 4x4 matrix containing the entries for the
-        //current lattice site and time slice of e^(sign*dtau*V) with
-        //given values of the field phi at that space-time location [and of
-        //cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
-        auto evMatrix = [](int sign, num kphi0, num kphi1,
-                           num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
-            MatNum::fixed<4,4> ev_real;
-            ev_real.diag().fill(kphiCosh);
-            ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-            ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
-            ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
-            ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
-            ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
-
-            MatCpx::fixed<4,4> ev;
-            ev.set_real(ev_real);
-            ev(0,3).imag(-sign * kphi1 * kphiSinh);
-            ev(1,2).imag( sign * kphi1 * kphiSinh);
-            ev(2,1).imag(-sign * kphi1 * kphiSinh);
-            ev(3,0).imag( sign * kphi1 * kphiSinh);
-
-            return ev;
-        };
-        MatCpx::fixed<4,4> evOld = evMatrix(
-                +1,
-                phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
-                phiCosh(site, timeslice), phiSinh(site, timeslice)
-                );
+        MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(
+        		newphi, timeslice, site);
         num normnewphi = arma::norm(newphi,2);
         num coshnewphi = std::cosh(dtau * normnewphi);
         num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
-        MatCpx::fixed<4,4> emvNew = evMatrix(
-                -1,
-                newphi[0], newphi[1], newphi[2],
-                coshnewphi, sinhnewphi
-                );
-        MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
-        deltanonzero.diag() -= cpx(1.0, 0);
 
         //Compute the 4x4 submatrix of G that corresponds to the site i
         //g_sub = g[i::N, i::N]
