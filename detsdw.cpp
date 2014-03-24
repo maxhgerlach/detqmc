@@ -158,6 +158,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         checkerboardMethod(pars.checkerboardMethod),
         L(pars.L), N(L*L), r(pars.r),
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
+        cdwU(pars.cdwU),
         mu(pars.mu),
         c(1), u(1), lambda(1), //TODO: make these controllable by parameter
         bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
@@ -356,6 +357,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(txver);
     META_INSERT(tyhor);
     META_INSERT(tyver);
+    META_INSERT(cdwU);
     META_INSERT(mu);
     META_INSERT(L);
     META_INSERT(d);

@@ -101,6 +101,7 @@ protected:
     const num txver;
     const num tyhor;
     const num tyver;
+    const num cdwU;
     const num mu;
     const num c;
     const num u;

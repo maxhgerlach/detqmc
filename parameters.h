@@ -44,6 +44,7 @@ struct ModelParams {
     num txver;  //SDW
     num tyhor;  //SDW
     num tyver;  //SDW
+    num cdwU;	//SDW -- hoping to get a CDW transition
     num mu;
     uint32_t L;
     uint32_t d;
@@ -92,6 +93,7 @@ private:
         ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
            & spinProposalMethod & adaptScaleVariance & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
+           & cdwU
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
            & globalUpdateInterval & globalShift & wolffClusterUpdate
