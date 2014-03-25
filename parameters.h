@@ -57,11 +57,6 @@ struct ModelParams {
 
     std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
-    bool rescale;	//perform timeslice rescale move?
-    uint32_t rescaleInterval;		// attempt global rescale move every # sweeps
-    num rescaleGrowthFactor;		// factor by which to size up the fields
-    num rescaleShrinkFactor;		// factor by which to size down the fields
-
     uint32_t globalUpdateInterval;	//attempt global move every # sweeps
     bool globalShift;				//perform a global constant shift move?
     bool wolffClusterUpdate;		//perform a Wolff single cluster update?
@@ -78,7 +73,6 @@ struct ModelParams {
             txhor(), txver(), tyhor(), tyver(),
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
-            rescale(), rescaleInterval(), rescaleGrowthFactor(), rescaleShrinkFactor(),
             globalUpdateInterval(), globalShift(), wolffClusterUpdate(),
             repeatUpdateInSlice(),
             specified() {
@@ -95,7 +89,6 @@ private:
            & t & U & r & txhor & txver & tyhor & tyver
            & cdwU
            & mu & L & d & beta & m & dtau & s & accRatio & bc
-           & rescale & rescaleInterval & rescaleGrowthFactor & rescaleShrinkFactor
            & globalUpdateInterval & globalShift & wolffClusterUpdate
            & repeatUpdateInSlice
            & specified;

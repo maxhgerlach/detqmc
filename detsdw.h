@@ -148,13 +148,6 @@ protected:
     SpinProposalMethod_Type spinProposalMethod;
     uint32_t delaySteps;					//for delayed updates
 
-    const bool rescale;
-    const uint32_t rescaleInterval;
-    const num rescaleGrowthFactor;
-    const num rescaleShrinkFactor;
-    uint32_t acceptedRescales;
-    uint32_t attemptedRescales;
-
     const bool globalShift;
     const bool wolffClusterUpdate;
     const uint32_t globalMoveInterval;
@@ -480,10 +473,6 @@ protected:
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
 
-    //Try a timeslice-global move, where all the phi-fields of a timeslice are multiplied
-    //by a common factor.
-    void attemptTimesliceRescaleMove(uint32_t timeslice, num factor);
-    num deltaSPhiTimesliceRescale(uint32_t timeslice, num factor);
 
     void globalMove();
     //Try a global move, where the fields on all sites and timeslices are shifted
@@ -634,7 +623,6 @@ public:
     template<class Archive>
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
     	(void)sck;
-    	ar & acceptedRescales & attemptedRescales;
     	ar & acceptedGlobalShifts;
     	ar & attemptedGlobalShifts;
     	ar & acceptedWolffClusterUpdates;
