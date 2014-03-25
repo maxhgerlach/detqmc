@@ -20,7 +20,6 @@
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
-typedef arma::Mat<uint32_t> MatUInt;
 typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
@@ -199,13 +198,16 @@ protected:
     MatNum phi1;
     MatNum phi2;
     //discrete field for cdwU: l_i(\tau_k) == cdwl(i,k)
-    MatUInt cdwl;
-    //evaluation of element-wise functions of phi:
-    MatNum phiCosh;         // cosh(dtau * |phi|)
-    MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
+    MatInt cdwl;
+    //evaluation of element-wise functions of phi and cdwl:
+//    MatNum phiCosh;         // cosh(dtau * |phi|)
+//    MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
+    //with arg = sqrt(dtau cdwU^2 eta^2 + dtau^2 |phi|^2)
+    MatNum coshTerm;	// cosh(arg)
+    MatNum sinhTerm;	// sinh(arg) / arg
 
     //lookup values for discrete field:
-    static inline num cdwl_gamma(uint32_t l) {
+    static inline num cdwl_gamma(int32_t l) {
     	switch (l) {
     	case +1:
     	case -1:
@@ -215,7 +217,7 @@ protected:
     		return (3. - std::sqrt(6.)) / 12.;
     	}
     }
-    static inline num cdwl_eta(uint32_t l) {
+    static inline num cdwl_eta(int32_t l) {
     	switch (l) {
     	case +1:
     		return  std::sqrt(2. * (3. - std::sqrt(6.)));
@@ -233,8 +235,8 @@ protected:
     num angleDelta;		//  for rotation update (this is the minimal cos\theta)
     num scaleDelta;		//  for scaling update (the standard deviation of the gaussian radius update)
     //used to adjust phiDelta/angleDelta/scaleDelta; acceptance ratios for local field updates
-    num targetAccRatioLocal;
-    num lastAccRatioLocal;
+    num targetAccRatioLocal_phi;
+    num lastAccRatioLocal_phi;
     RunningAverage accRatioLocal_box_RA, accRatioLocal_rotate_RA, accRatioLocal_scale_RA;
 
     //adjustment of phiDelta, angleDelta, scaleDelta:
@@ -332,9 +334,10 @@ protected:
         return y*L + x;
     }
 
-    void setupRandomPhi();
-    void updatePhiCoshSinh();	//compute new entries of phiCosh and phiSinh from current phi0, phi1, phi2
-    void updatePhiCoshSinh(uint32_t site, uint32_t timeslice);	//the same, for a single spin
+    void setupRandomField();
+    std::tuple<num,num> getCoshSinhTerm(num phi0, num phi1, num phi2, int32_t cdwl);		// return (coshTerm, sinhTerm) for these field values
+    void updateCoshSinhTerms();	//compute new entries of coshTerm and sinhTerm from current phi0, phi1, phi2, cdwl
+    void updateCoshSinhTerms(uint32_t site, uint32_t timeslice);	//the same, for a single site
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
     void setupUdVStorage_and_calculateGreen();
 
@@ -407,11 +410,24 @@ protected:
     MatCpx leftMultiplyBkInv(const MatCpx& orig, uint32_t k);   //multiply B(k,k-1)^-1 from left to orig, return result
 
 
+
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
+
+
+    //helpers for computeBmatSDW and the checkerboard variations
+    //for the cdwl-discrete field
+    //return the product of gamma_l_i for cdwl
+    template<class Vec>
+    num prefactor_gamma_cdwl(Vec cdwl);
+    // compute sqrt(dtau) * cdwU * eta_li_i for cdwl
+    template<class Vec>
+    VecNum compute_d_for_cdwl(Vec cdwl);
+    num compute_d_for_cdwl_site(num cdwl);
+
 
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
     // for one timeslice. This may be useful for checks.
-    MatCpx computePotentialExponential(int sign, VecNum phi0, VecNum phi1, VecNum phi2);
+    MatCpx computePotentialExponential(int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl);
 
 
     //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
@@ -424,30 +440,31 @@ protected:
     //update the auxiliary field and the green function in the single timeslice
     void updateInSlice(uint32_t timeslice);
     //this template member function calls the right one of those below
+    //return acceptance ratio for that sweepm
     template<class CallableProposeSpin>
-    void callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
+    num callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
     	switch(updateMethod) {
     	case ITERATIVE:
-    		updateInSlice_iterative(timeslice, proposeSpin);
-    		break;
+    		return updateInSlice_iterative(timeslice, proposeSpin);
     	case WOODBURY:
-    		updateInSlice_woodbury(timeslice, proposeSpin);
-    		break;
+    		return updateInSlice_woodbury(timeslice, proposeSpin);
     	case DELAYED:
-    		updateInSlice_delayed(timeslice, proposeSpin);
-    		break;
+    		return updateInSlice_delayed(timeslice, proposeSpin);
     	}
     };
-    //specific implementations of updateInSlice, the callable parameter is for one of the field proposal routines below
-    //CallableProposeSpin should have the signature tuple<bool,Phi>(uint32_t site, uint32_t timeslice)
-    //the returned bool is false if the returned field needs to be rejected (e.g. negative magnitude)
-    template<class CallableProposeSpin>
-    void updateInSlice_iterative(uint32_t timeslice, CallableProposeSpin proposeSpin);
-    template<class CallableProposeSpin>
-    void updateInSlice_woodbury(uint32_t timeslice, CallableProposeSpin proposeSpin);
+    //specific implementations of updateInSlice, the callable parameter is for one of the field proposal routines below,
+    //return the acceptance ratio for that sweep
+    //CallableProposeLocalUpdate should have the signature tuple<Changed,Phi,uint32_t>(uint32_t site, uint32_t timeslice).
+    //This either changes phi or cdwl locally and returns the new values for both.
+    //The returned enum Changed is defined a bit below and contains what has changed or whether the update
+    //is rejected (e.g. negative magnitude of phi)
+    template<class CallableProposeLocalUpdate>
+    num updateInSlice_iterative(uint32_t timeslice, CallableProposeLocalUpdate proposeLocalUpdate);
+    template<class CallableProposeLocalUpdate>
+    num updateInSlice_woodbury(uint32_t timeslice, CallableProposeLocalUpdate proposeLocalUpdate);
    	//this one uses a nested struct because for some status
-    template<class CallableProposeSpin>
-    void updateInSlice_delayed(uint32_t timeslice, CallableProposeSpin proposeSpin);
+    template<class CallableProposeLocalUpdate>
+    num updateInSlice_delayed(uint32_t timeslice, CallableProposeLocalUpdate proposeLocalUpdate);
     struct DelayedUpdatesData {		//some helper data for updatesInSlice_delayed that should not be realloced all the time
     	MatCpx X;
     	MatCpx Y;
@@ -465,14 +482,24 @@ protected:
     void updateInSliceThermalization(uint32_t timeslice);
 
     //functions used by updateInSlice:
-    typedef std::tuple<bool,Phi> boolPhi;
-    boolPhi proposeNewField(uint32_t site, uint32_t timeslice);				//from a box
-    boolPhi proposeRotatedField(uint32_t site, uint32_t timeslice);			//same length, new angles
-    boolPhi proposeScaledField(uint32_t site, uint32_t timeslice);			//new length, same angles
-    boolPhi proposeRotatedScaledField(uint32_t site, uint32_t timeslice);	//new length, new angles
+    //--------------------------------
+    enum Changed {
+    	NONE = 0, 	// reject update
+    	PHI = 1,	// new phi, consider bosonic action & fermion determinant
+    	CDWL = 2	// new discrete field, consider only fermion determinant
+    };
+    typedef std::tuple<Changed,Phi,int32_t> changedPhiInt;
+    //generate a new phi:
+    changedPhiInt proposeNewPhiBox(uint32_t site, uint32_t timeslice);			//from a box
+    changedPhiInt proposeRotatedPhi(uint32_t site, uint32_t timeslice);		//same length, new angles
+    changedPhiInt proposeScaledPhi(uint32_t site, uint32_t timeslice);			//new length, same angles
+    changedPhiInt proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice);	//new length, new angles
+    //generate a new cdwl:
+    changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);			//choose Metropolis-randomly from +-1, +-2
+    //more generic helpers
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
-    MatCpx::fixed<4,4> get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site);
-
+    MatCpx::fixed<4,4> get_delta_forsite(Phi newphi, int32_t new_cdwl,
+    		uint32_t timeslice, uint32_t site);
 
     void globalMove();
     //Try a global move, where the fields on all sites and timeslices are shifted
@@ -487,8 +514,8 @@ protected:
     	MatNum phi0;
     	MatNum phi1;
     	MatNum phi2;
-    	MatNum phiCosh;         // cosh(dtau * |phi|)
-    	MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
+    	MatNum coshTerm;
+    	MatNum sinhTerm;
 
     	MatCpx g;
 
@@ -501,7 +528,7 @@ protected:
     	std::stack<SpaceTimeIndex> next_sites;
     	GlobalMoveData(uint32_t N, uint32_t m) :
     			phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
-    			phiCosh(N, m+1), phiSinh(N, m+1), g(4*N, 4*N),
+    			coshTerm(N, m+1), sinhTerm(N, m+1), g(4*N, 4*N),
     			UdVStorage(new checkarray<std::vector<UdVV>, 1>),
     			visited(N, m+1), next_sites()
     	{ }
@@ -629,9 +656,10 @@ public:
     	ar & attemptedWolffClusterUpdates;
     	ar & addedWolffClusterSize;
         ar & phi0 & phi1 & phi2;
-        ar & phiCosh & phiSinh;
+        ar & cdwl;
+        ar & coshTerm & sinhTerm;
         ar & phiDelta & angleDelta & scaleDelta;
-        ar & targetAccRatioLocal & lastAccRatioLocal;
+        ar & targetAccRatioLocal_phi & lastAccRatioLocal_phi;
         ar & accRatioLocal_box_RA & accRatioLocal_rotate_RA & accRatioLocal_scale_RA;
         ar & curminAngleDelta & curmaxAngleDelta;
         ar & curminScaleDelta & curmaxScaleDelta;

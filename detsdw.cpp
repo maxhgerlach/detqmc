@@ -175,9 +175,9 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
         propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
         g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-        phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), phiCosh(N, m+1), phiSinh(N, m+1),
+        phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1), coshTerm(N, m+1), sinhTerm(N, m+1),
         phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
-        targetAccRatioLocal(pars.accRatio), lastAccRatioLocal(0),
+        targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
         accRatioLocal_box_RA(AccRatioAdjustmentSamples),
         accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
         accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
@@ -231,7 +231,7 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         // "safe default"
         spinProposalMethod = BOX;
     }
-    setupRandomPhi();
+    setupRandomField();
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
     //So for actual calculations an additional minus-sign needs to be included.
@@ -348,7 +348,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     } else if (bc == APBC_XY) {
           meta["bc"] = "apbc-xy";
     }
-    META_INSERT(targetAccRatioLocal);
+    META_INSERT(targetAccRatioLocal_phi);
     META_INSERT(r);
     META_INSERT(txhor);
     META_INSERT(txver);
@@ -937,39 +937,46 @@ void DetSDW<TD,CB>::finishMeasurements() {
 //}
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::setupRandomPhi() {
+void DetSDW<TD,CB>::setupRandomField() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
             phi0(site, k) = rng.randRange(PhiLow, PhiHigh);
             phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
             phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
-            num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-                                    + std::pow(phi1(site, k), 2)
-                                    + std::pow(phi2(site, k), 2));
-            phiCosh(site, k) = std::cosh(dtau * phiNorm);
-            phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
+            num r = rng.rand01();
+            if 		(r <= 0.25) cdwl(site, k) = +2;
+            else if (r <= 0.5)	cdwl(site, k) = -2;
+            else if (r <= 0.75)	cdwl(site, k) = +1;
+            else				cdwl(site, k) = -1;
+            updateCoshSinhTerms(site, k);
         }
     }
 }
 
+
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updatePhiCoshSinh(uint32_t site, uint32_t k) {
-    num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-                          + std::pow(phi1(site, k), 2)
-                          + std::pow(phi2(site, k), 2));
-    phiCosh(site, k) = std::cosh(dtau * phiNorm);
-    phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
+std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTerm(
+		num phi0, num phi1, num phi2, int32_t cdwl) {
+    num phiSquared = std::pow(phi0, 2)
+    				+ std::pow(phi1, 2)
+    				+ std::pow(phi2, 2);
+    num arg = std::sqrt(
+    		dtau * pow(cdwU,2) * pow(cdwl_eta(cdwl),2) +
+    		pow(dtau,2) * phiSquared);
+    return std::make_tuple(std::cosh(arg), std::sinh(arg) / arg);
 }
 
 template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updatePhiCoshSinh() {
+void DetSDW<TD,CB>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
+	std::tie(coshTerm(site,k), sinhTerm(site,k)) = getCoshSinhTerm(
+			phi0(site,k), phi1(site,k), phi2(site,k), cdwl(site,k));
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateCoshSinhTerms() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
-            num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-                                    + std::pow(phi1(site, k), 2)
-                                    + std::pow(phi2(site, k), 2));
-            phiCosh(site, k) = std::cosh(dtau * phiNorm);
-            phiSinh(site, k) = std::sinh(dtau * phiNorm) / phiNorm;
+        	updateCoshSinhTerms(site,k);
         }
     }
 }
@@ -1016,6 +1023,39 @@ void DetSDW<TD,CB>::setupPropK() {
     }
 }
 
+template<bool TD, CheckerboardMethod CB>
+template<class Vec>
+num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec cdwl) {
+	uint32_t count_pm1 = 0;
+	uint32_t count_pm2 = 0;
+	for (uint32_t i = 0; i < N; ++i) {
+		if (cdwl[i] == +1 or cdwl[i] == -1) {
+			++count_pm1;
+		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
+			++count_pm2;
+		}
+	}
+	num prefactor = std::pow((3. + std::sqrt(6.)) / 12., count_pm1) *
+					std::pow((3. - std::sqrt(6.)) / 12., count_pm2);
+	return prefactor;
+}
+
+
+template<bool TD, CheckerboardMethod CB>
+template<class Vec>
+VecNum DetSDW<TD,CB>::compute_d_for_cdwl(Vec cdwl) {
+	VecNum kd(N);
+	for (uint32_t i = 0; i < N; ++ i) {
+		kd[i] = std::sqrt(dtau) * cdwU * cdwl[i];	//TODO: check assembly -- operations removed
+	}
+	return kd;
+}
+template<bool TD, CheckerboardMethod CB> inline
+num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
+	return std::sqrt(dtau) * cdwU * cdwl;
+}
+
+
 
 template<bool TD, CheckerboardMethod CB>
 MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
@@ -1038,39 +1078,61 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                 return result.submat(row * N, col * N,
                         (row + 1) * N - 1, (col + 1) * N - 1);
             };
-            const auto& kphi0 = phi0.col(k);
-            const auto& kphi1 = phi1.col(k);
-            const auto& kphi2 = phi2.col(k);
+            //dtau included here:
+            VecNum kphi0 = this->dtau * phi0.col(k);
+            VecNum kphi1 = this->dtau * phi1.col(k);
+            VecNum kphi2 = this->dtau * phi2.col(k);
             //      debugSaveMatrix(kphi0, "kphi0");
             //      debugSaveMatrix(kphi1, "kphi1");
             //      debugSaveMatrix(kphi2, "kphi2");
-            const auto& kphiCosh = phiCosh.col(k);
-            const auto& kphiSinh = phiSinh.col(k);
-            //TODO: is this the best way to set the real and imaginary parts of a complex submatrix?
-            //TODO: compare to using set_real / set_imag
-            block(0, 0) = MatCpx(diagmat(kphiCosh) * propKx,
+            VecNum kcoshTerm = coshTerm.col(k);
+            VecNum ksinhTerm = sinhTerm.col(k);
+            VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
+
+            //prefactor for discrete field (product of gamma_l_i)
+            //this needs to cover all entries of the matrix, so in that case
+            //we change kcoshTerm and ksinhTerm
+            if (cdwU > 0) {
+            	num prefactor = this->prefactor_gamma_cdwl(cdwl.col(k));
+            	kcoshTerm *= prefactor;
+            	ksinhTerm *= prefactor;
+            }
+
+            //is this the best way to set the real and imaginary parts of a complex submatrix?
+            //TODO: below some multiplications are repeated, could be pulled out -- however, currently this routine is not called when the checkerboard approx is used anyway
+            block(0, 0) = MatCpx(
+            		diagmat(kcoshTerm + kd % ksinhTerm) * propKx,
                     zeros(N,N));
             block(0, 1).zeros();
-            block(0, 2) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKy,
+            block(0, 2) = MatCpx(
+            		diagmat(-kphi2 % ksinhTerm) * propKy,
                     zeros(N,N));
-            block(0, 3) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-                    diagmat(+kphi1 % kphiSinh) * propKy);
+            block(0, 3) = MatCpx(
+            		diagmat(-kphi0 % ksinhTerm) * propKy,
+                    diagmat(+kphi1 % ksinhTerm) * propKy);
             block(1, 0).zeros();
             block(1, 1) = block(0, 0);
-            block(1, 2) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKy,
-                    diagmat(-kphi1 % kphiSinh) * propKy);
-            block(1, 3) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKy,
+            block(1, 2) = MatCpx(
+            		diagmat(-kphi0 % ksinhTerm) * propKy,
+                    diagmat(-kphi1 % ksinhTerm) * propKy);
+            block(1, 3) = MatCpx(
+            		diagmat(+kphi2 % ksinhTerm) * propKy,
                     zeros(N,N));
-            block(2, 0) = MatCpx(diagmat(-kphi2 % kphiSinh) * propKx,
+            block(2, 0) = MatCpx(
+            		diagmat(-kphi2 % ksinhTerm) * propKx,
                     zeros(N,N));
-            block(2, 1) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-                    diagmat(+kphi1 % kphiSinh) * propKx);
-            block(2, 2) = MatCpx(diagmat(kphiCosh) * propKy,
+            block(2, 1) = MatCpx(
+            		diagmat(-kphi0 % ksinhTerm) * propKx,
+                    diagmat(+kphi1 % ksinhTerm) * propKx);
+            block(2, 2) = MatCpx(
+            		diagmat(kcoshTerm - kd % ksinhTerm) * propKy,
                     zeros(N,N));
             block(2, 3).zeros();
-            block(3, 0) = MatCpx(diagmat(-kphi0 % kphiSinh) * propKx,
-                    diagmat(-kphi1 % kphiSinh) * propKx);
-            block(3, 1) = MatCpx(diagmat(+kphi2 % kphiSinh) * propKx,
+            block(3, 0) = MatCpx(
+            		diagmat(-kphi0 % ksinhTerm) * propKx,
+                    diagmat(-kphi1 % ksinhTerm) * propKx);
+            block(3, 1) = MatCpx(
+            		diagmat(+kphi2 % ksinhTerm) * propKx,
                     zeros(N,N));
             block(3, 2).zeros();
             block(3, 3) = block(2, 2);
@@ -1106,11 +1168,16 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 
 template<bool TD, CheckerboardMethod CB> inline
 MatCpx DetSDW<TD,CB>::computePotentialExponential(
-        int sign, VecNum phi0, VecNum phi1, VecNum phi2) {
+        int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl) {
     const VecCpx a (phi2, arma::zeros<VecNum>(N));
     const VecCpx b (phi0, -phi1);
     const VecCpx bc(phi0, +phi1);
 
+    VecCpx d(N);
+    for (uint32_t i = 0; i < N; ++i) {
+    	d[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);
+    }
+    d.set_imag(arma::zeros<VecNum>(N));
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     MatCpx V(4*N, 4*N);
     V.zeros(4*N, 4*N);
@@ -1122,14 +1189,23 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
     block(V,2,1).diag() = b;
     block(V,3,0).diag() = bc;
     block(V,3,1).diag() = -a;
+
+    MatCpx D(4*N, 4*N);
+    D.zeros(4*N, 4*N);
+    block(D,0,0).diag()	= d;
+    block(D,1,1).diag()	= d;
+    block(D,2,2).diag()	= -d;
+    block(D,3,3).diag()	= -d;
 #undef block
 
     VecNum eigval;
     MatCpx eigvec;
-    arma::eig_sym(eigval, eigvec, V);
+    arma::eig_sym(eigval, eigvec, dtau*V - D);
 
     MatCpx result(4*N, 4*N);
-    result = eigvec * arma::diagmat(arma::exp(sign * dtau * eigval)) * arma::trans(eigvec);
+    result = eigvec * arma::diagmat(arma::exp(sign * eigval)) * arma::trans(eigvec);
+
+    result *= prefactor_gamma_cdwl(cdwl);
 
     return result;
 }
@@ -1489,41 +1565,48 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-
-    num muTerm = std::exp(dtau*mu);            // include chemical potential here
+	//overall factor for entire matrix
+	// includes chemical potential
+	// with cdwU includes discrete field prefactor
+    num ovFac = std::exp(dtau*mu);
+    if (cdwU > 0) {
+    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
+    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum c = muTerm * phiCosh.col(k);   // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);      // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  muTerm * kphi2 % kphiSinh;
-    VecNum max = -muTerm * kphi2 % kphiSinh;
+    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
+    const auto& ksinhTerm = sinhTerm.col(k);
+    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
+    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
+    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
+    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx mbx  = muTerm * -b  % kphiSinh;
-    VecCpx mbcx = muTerm * -bc % kphiSinh;
+    VecCpx mbx  = ovFac * dtau * -b  % ksinhTerm;
+    VecCpx mbcx = ovFac * dtau * -bc % ksinhTerm;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-        block(result, 0, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
+        block(result, 0, col) = diagmat(cd)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
                               + diagmat(max)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1, false)
                               + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
 
-        block(result, 1, col) = diagmat(c)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1, false)
+        block(result, 1, col) = diagmat(cd)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1, false)
                               + diagmat(mbcx) * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1, false)
-                              + diagmat(ax) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
+                              + diagmat(ax)   * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
 
         block(result, 2, col) = diagmat(max)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
                               + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1, false)
-                              + diagmat(c)   * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1, false);
+                              + diagmat(cmd)  * cbLMultHoppingExp(block(orig, 2, col), YBAND, -1, false);
 
         block(result, 3, col) = diagmat(mbcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
-                              + diagmat(ax) * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1, false)
-                              + diagmat(c)   * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
+                              + diagmat(ax)   * cbLMultHoppingExp(block(orig, 1, col), XBAND, -1, false)
+                              + diagmat(cmd)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
     }
 #undef block
     return result;
@@ -1558,40 +1641,48 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    num muTerm = std::exp(-dtau*mu);            // include chemical potential here
+  	//overall factor for entire matrix
+	// includes chemical potential
+	// with cdwU includes discrete field prefactor
+    num ovFac = std::exp(-dtau*mu);
+    if (cdwU > 0) {
+    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
+    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum c = muTerm * phiCosh.col(k);     // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);        // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  muTerm * kphi2 % kphiSinh;
-    VecNum max = -muTerm * kphi2 % kphiSinh;
+    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
+    const auto& ksinhTerm = sinhTerm.col(k);
+    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
+    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
+    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
+    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
     VecCpx b  {kphi0, -kphi1};
-    VecCpx bc {kphi0, +kphi1};
-    VecCpx bx  = muTerm * b  % kphiSinh;
-    VecCpx bcx = muTerm * bc % kphiSinh;
+    VecCpx bc {kphi0, kphi1};
+    VecCpx bx  = ovFac * dtau * b  % ksinhTerm;
+    VecCpx bcx = ovFac * dtau * bc % ksinhTerm;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t col = 0; col < 4; ++col) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(dtau*V) matrix
-        block(result, 0, col) = cbLMultHoppingExp(diagmat(c)   * block(orig, 0, col), XBAND, +1, true)
+        block(result, 0, col) = cbLMultHoppingExp(diagmat(cmd) * block(orig, 0, col), XBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(ax)  * block(orig, 2, col), XBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(bx)  * block(orig, 3, col), XBAND, +1, true);
 
-        block(result, 1, col) = cbLMultHoppingExp(diagmat(c)   * block(orig, 1, col), XBAND, +1, true)
+        block(result, 1, col) = cbLMultHoppingExp(diagmat(cmd) * block(orig, 1, col), XBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(bcx) * block(orig, 2, col), XBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(max) * block(orig, 3, col), XBAND, +1, true);
 
         block(result, 2, col) = cbLMultHoppingExp(diagmat(ax)  * block(orig, 0, col), YBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(bx)  * block(orig, 1, col), YBAND, +1, true)
-                              + cbLMultHoppingExp(diagmat(c)   * block(orig, 2, col), YBAND, +1, true);
+                              + cbLMultHoppingExp(diagmat(cd)  * block(orig, 2, col), YBAND, +1, true);
 
         block(result, 3, col) = cbLMultHoppingExp(diagmat(bcx) * block(orig, 0, col), YBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(max) * block(orig, 1, col), YBAND, +1, true)
-                              + cbLMultHoppingExp(diagmat(c)   * block(orig, 3, col), YBAND, +1, true);
+                              + cbLMultHoppingExp(diagmat(cd)  * block(orig, 3, col), YBAND, +1, true);
     }
 #undef block
     return result;
@@ -1630,40 +1721,48 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    num muTerm = std::exp(dtau*mu);            // include chemical potential here
+	//overall factor for entire matrix
+	// includes chemical potential
+	// with cdwU includes discrete field prefactor
+    num ovFac = std::exp(dtau*mu);
+    if (cdwU > 0) {
+    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
+    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    VecNum c = muTerm * phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);      // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  muTerm * kphi2 % kphiSinh;
-    VecNum max = -muTerm * kphi2 % kphiSinh;
+    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
+    const auto& ksinhTerm = sinhTerm.col(k);
+    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
+    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
+    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
+    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx mbx  = muTerm * -b  % kphiSinh;
-    VecCpx mbcx = muTerm * -bc % kphiSinh;
+    VecCpx mbx  = ovFac * dtau * -b  % ksinhTerm;
+    VecCpx mbcx = ovFac * dtau * -bc % ksinhTerm;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t row = 0; row < 4; ++row) {
             using arma::diagmat;
             //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(c),    XBAND, -1, false)
+            block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 2) * diagmat(max),  XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbcx), XBAND, -1, false);
 
-            block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(c),    XBAND, -1, false)
+            block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(cd),   XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbx),  XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 3) * diagmat(ax),   XBAND, -1, false);
 
             block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(c),    YBAND, -1, false);
+                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cmd),  YBAND, -1, false);
 
             block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(c),    YBAND, -1, false);
+                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
     }
 
 #undef block
@@ -1696,40 +1795,48 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    num muTerm = std::exp(-dtau*mu);            // include chemical potential here
+  	//overall factor for entire matrix
+	// includes chemical potential
+	// with cdwU includes discrete field prefactor
+    num ovFac = std::exp(-dtau*mu);
+    if (cdwU > 0) {
+    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
+    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum c = muTerm * phiCosh.col(k);         // cosh(dtau * |phi|)
-    const auto& kphiSinh = phiSinh.col(k);            // sinh(dtau * |phi|) / |phi|
-    VecNum ax  =  muTerm * kphi2 % kphiSinh;
-    VecNum max = -muTerm * kphi2 % kphiSinh;
+    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
+    const auto& ksinhTerm = sinhTerm.col(k);
+    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
+    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
+    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
+    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx bx  = muTerm * b  % kphiSinh;
-    VecCpx bcx = muTerm * bc % kphiSinh;
+    VecCpx bx  = ovFac * dtau * b  % ksinhTerm;
+    VecCpx bcx = ovFac * dtau * bc % ksinhTerm;
 
     MatCpx result(4*N, 4*N);
 
     for (uint32_t row = 0; row < 4; ++row) {
         using arma::diagmat;
         //only three terms each time because of zero blocks in the E^(+dtau*V) matrix
-        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(c)
+        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(cmd)
                               + cbRMultHoppingExp(block(orig, row, 2), YBAND, +1, true) * diagmat(ax)
                               + cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(bcx);
 
-        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1), XBAND, +1, true) * diagmat(c)
+        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1), XBAND, +1, true) * diagmat(cmd)
                               + cbRMultHoppingExp(block(orig, row, 2), YBAND, +1, true) * diagmat(bx)
                               + cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(max);
 
         block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(ax)
                               + cbRMultHoppingExp(block(orig, row, 1), XBAND, +1, true) * diagmat(bcx)
-                              + cbRMultHoppingExp(block(orig, row, 2), YBAND, +1, true) * diagmat(c);
+                              + cbRMultHoppingExp(block(orig, row, 2), YBAND, +1, true) * diagmat(cd);
 
         block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(bx)
                               + cbRMultHoppingExp(block(orig, row, 1), XBAND, +1, true) * diagmat(max)
-                              + cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(c);
+                              + cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(cd);
     }
     return result;
 #undef block
@@ -1771,65 +1878,62 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     //state during serialization
     normal_distribution.reset();
 
+    // update phi-fields according to chosen method
     for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
         switch (spinProposalMethod) {
         case BOX:
-            callUpdateInSlice_for_updateMethod(timeslice,
-                [this](uint32_t site, uint32_t timeslice) -> boolPhi {
-                    return this->proposeNewField(site, timeslice);
+            lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                    return this->proposeNewPhiBox(site, timeslice);
                 }
             );
             break;
         case ROTATE_THEN_SCALE:
             //each sweep, alternate between rotating and scaling
             if (performedSweeps % 2 == 0) {
-                callUpdateInSlice_for_updateMethod(timeslice,
-                    [this](uint32_t site, uint32_t timeslice) -> boolPhi {
-                        return this->proposeRotatedField(site, timeslice);
+                lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                        return this->proposeRotatedPhi(site, timeslice);
                     }
                 );
             } else {
-                callUpdateInSlice_for_updateMethod(timeslice,
-                    [this](uint32_t site, uint32_t timeslice) -> boolPhi {
-                        return this->proposeScaledField(site, timeslice);
+                lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                        return this->proposeScaledPhi(site, timeslice);
                     }
                 );
             }
             break;
         case ROTATE_AND_SCALE:
-            callUpdateInSlice_for_updateMethod(timeslice,
-                [this](uint32_t site, uint32_t timeslice) -> boolPhi {
-                    return this->proposeRotatedScaledField(site, timeslice);
+            lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                    return this->proposeRotatedScaledPhi(site, timeslice);
                 }
             );
             break;
         }
     }
 
-    if (rescale) {
-        if (performedSweeps % rescaleInterval == 0) {
-            num rnd = rng.rand01();
-            if (rnd <= 0.5) {
-                attemptTimesliceRescaleMove(timeslice, rescaleGrowthFactor);
-            } else {
-                //attemptGlobalRescaleMove(timeslice, rescaleShrinkFactor);
-                attemptTimesliceRescaleMove(timeslice, 1.0 / rescaleGrowthFactor);
-            }
-        }
-    }
+    //Update discrete cdwl fields
+    //currently just discard this accratio
+    callUpdateInSlice_for_updateMethod(timeslice,
+    		[this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+    	return this->proposeNewCDWl(site, timeslice);
+    } );
 
     timing.stop("sdw-updateInSlice");
 }
 
 template<bool TD, CheckerboardMethod CB>
 template<class Callable>
-void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeSpin) {
-    lastAccRatioLocal = 0;
+num DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLocalUpdate) {
+    num accratio = 0.;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi;
-        bool newphi_valid;
-        std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
-        if (not newphi_valid) {
+        int32_t new_cdwl;
+        Changed changed;
+        std::tie(changed, newphi, new_cdwl) = proposeLocalUpdate(site, timeslice);
+        if (changed == NONE) {
             //reject this change
             continue;
         }
@@ -1851,17 +1955,17 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 //      debugSaveMatrix(newphi1, "new_phi1");
 //      debugSaveMatrix(newphi2, "new_phi2");
 
-        num dsphi = deltaSPhi(site, timeslice, newphi);
-        num probSPhi = std::exp(-dsphi);
+        num probSPhi = 1.;
+        if (changed == PHI) {
+        	num dsphi = deltaSPhi(site, timeslice, newphi);
+        	probSPhi = std::exp(-dsphi);
+        }
 //      std::cout << probSPhi << std::endl;
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(
-        		newphi, timeslice, site);
-        num normnewphi = arma::norm(newphi,2);
-        num coshnewphi = std::cosh(dtau * normnewphi);
-        num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+        MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(
+        		newphi, new_cdwl, timeslice, site);
 
         //****
         //Compute the determinant and inverse of I + Delta*(I - G)
@@ -1873,18 +1977,18 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
         //Compute the values of these rows [O(N)]:
         checkarray<VecCpx, 4> rows;
         for (uint32_t r = 0; r < 4; ++r) {
-            //TODO: Here are some unnecessary operations: deltanonzero contains many repeated
+            //TODO: Here are some unnecessary operations: delta_forsite contains many repeated
             //elements, and even some zeros
             rows[r] = VecCpx(4*N);
             for (uint32_t col = 0; col < 4*N; ++col) {
-                rows[r][col] = -deltanonzero(r,0) * g.col(col)[site];
+                rows[r][col] = -delta_forsite(r,0) * g.col(col)[site];
             }
-            rows[r][site] += deltanonzero(r,0);
+            rows[r][site] += delta_forsite(r,0);
             for (uint32_t dc = 1; dc < 4; ++dc) {
                 for (uint32_t col = 0; col < 4*N; ++col) {
-                    rows[r][col] += -deltanonzero(r,dc) * g.col(col)[site + dc*N];
+                    rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*N];
                 }
-                rows[r][site + dc*N] += deltanonzero(r,dc);
+                rows[r][site + dc*N] += delta_forsite(r,dc);
             }
         }
 
@@ -1998,14 +2102,14 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
 
         if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
-            lastAccRatioLocal += 1.0;
+            accratio += 1;
 
 //          num phisBefore = phiAction();
             phi0(site, timeslice) = newphi[0];
             phi1(site, timeslice) = newphi[1];
             phi2(site, timeslice) = newphi[2];
-            phiCosh(site, timeslice) = coshnewphi;
-            phiSinh(site, timeslice) = sinhnewphi;
+            cdwl(site, timeslice) = new_cdwl;
+            updateCoshSinhTerms(site, timeslice);
 //          num phisAfter = phiAction();
 //          std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
 //                  (phisAfter - phisBefore) << std::endl;
@@ -2177,31 +2281,34 @@ void DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable propose
             //****
         }
     }
-    lastAccRatioLocal /= num(N);
+    accratio /= num(N);
+    return accratio;
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 template<class Callable>
-void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeSpin) {
-    lastAccRatioLocal = 0;
+num DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocalUpdate) {
+	num accratio = 0.;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi;
-        bool newphi_valid;
-        std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
-        if (not newphi_valid) {
+        int32_t new_cdwl;
+        Changed changed;
+        std::tie(changed, newphi, new_cdwl) = proposeLocalUpdate(site, timeslice);
+        if (changed == NONE) {
             //reject this change
             continue;
         }
-        num dsphi = deltaSPhi(site, timeslice, newphi);
-        num probSPhi = std::exp(-dsphi);
+
+        num probSPhi = 1.;
+        if (changed == PHI) {
+        	num dsphi = deltaSPhi(site, timeslice, newphi);
+        	probSPhi = std::exp(-dsphi);
+        }
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(
-        		newphi, timeslice, site);
-        num normnewphi = arma::norm(newphi,2);
-        num coshnewphi = std::cosh(dtau * normnewphi);
-        num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+        MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(
+            newphi, new_cdwl, timeslice, site);
 
         //Compute the 4x4 submatrix of G that corresponds to the site i
         //g_sub = g[i::N, i::N]
@@ -2214,21 +2321,21 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
 
         //the determinant ratio for the spin update is given by the determinant
         //of the following matrix M
-        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;
+        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * delta_forsite;
 
         num probSFermion = arma::det(M).real();
 
         num prob = probSPhi * probSFermion;
 
         if (prob > 1.0 or rng.rand01() < prob) {
-            //count accepted update
-            lastAccRatioLocal += 1.0;
+        	//count accepted update
+        	accratio += 1.0;
 
             phi0(site, timeslice) = newphi[0];
             phi1(site, timeslice) = newphi[1];
             phi2(site, timeslice) = newphi[2];
-            phiCosh(site, timeslice) = coshnewphi;
-            phiSinh(site, timeslice) = sinhnewphi;
+            cdwl(site, timeslice) = new_cdwl;
+            updateCoshSinhTerms(site, timeslice);
 
             //update g
 
@@ -2244,18 +2351,19 @@ void DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeS
             for (uint32_t c = 0; c < 4; ++c) {
                 g_times_mat_U.col(c) = g.col(site + c*N);
             }
-            g_times_mat_U = g_times_mat_U * deltanonzero;
+            g_times_mat_U = g_times_mat_U * delta_forsite;
 
             g += (g_times_mat_U) * (arma::inv(M) * mat_V);
         }
     }
-    lastAccRatioLocal /= num(N);
+    accratio /= num(N);
+    return accratio;
 }
 
 template<bool TD, CheckerboardMethod CB>
 template<class Callable>
-void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSpin) {
-    lastAccRatioLocal = 0;
+num DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
+    num accratio = 0.;
 
     auto getX = [this](uint32_t step) {
         return dud.X.cols(4*step, 4*step + 3);
@@ -2283,19 +2391,19 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSp
         uint32_t j = 0;
         while (j < delayStepsNow and site < N) {
             Phi newphi;
-            bool newphi_valid;
-            std::tie(newphi_valid, newphi) = proposeSpin(site, timeslice);
-            if (newphi_valid) {
-                //new phi is not rejected immeadiately, figure out if we should accept the update
-                num dsphi = deltaSPhi(site, timeslice, newphi);
-                num probSPhi = std::exp(-dsphi);
+            int32_t new_cdwl;
+            Changed changed;
+            std::tie(changed, newphi, new_cdwl) = proposeLocalUpdate(site, timeslice);
 
-                MatCpx::fixed<4,4> deltanonzero = get_deltanonzero(newphi, timeslice, site);
-                //TODO: die naechsten drei Rechnungen werden auch schon in get_deltanonzero
-                //durchgefuehrt...
-                num normnewphi = arma::norm(newphi,2);
-                num coshnewphi = std::cosh(dtau * normnewphi);
-                num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+            if (changed != NONE) {
+                //local update is not rejected immeadiately, figure out if we should accept it
+            	num probSPhi = 1.0;
+            	if (changed == PHI) {
+            		num dsphi = deltaSPhi(site, timeslice, newphi);
+            		probSPhi = std::exp(-dsphi);
+            	}
+
+                MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(newphi, new_cdwl, timeslice, site);
 
                 take4rows(dud.Rj, g, site);
                 for (uint32_t l = 0; l < j; ++l) {
@@ -2305,19 +2413,19 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSp
 
                 take4cols(dud.Sj, dud.Rj, site);
 
-                dud.Mj = eye4cpx - dud.Sj * deltanonzero + deltanonzero;
+                dud.Mj = eye4cpx - dud.Sj * delta_forsite + delta_forsite;
                 num probSFermion = arma::det(dud.Mj).real();
 
                 num prob = probSPhi * probSFermion;
                 if (prob > 1.0 or rng.rand01() < prob) {
-                    //count accepted update
-                    lastAccRatioLocal += 1.0;
+                	//count accepted update
+                	accratio += 1.0;
 
                     phi0(site, timeslice) = newphi[0];
                     phi1(site, timeslice) = newphi[1];
                     phi2(site, timeslice) = newphi[2];
-                    phiCosh(site, timeslice) = coshnewphi;
-                    phiSinh(site, timeslice) = sinhnewphi;
+                    cdwl(site, timeslice) = new_cdwl;
+                    updateCoshSinhTerms(site, timeslice);
 
                     //we need Cj only to update X
                     take4cols(dud.Cj, g, site);
@@ -2332,7 +2440,7 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSp
                     }
 
                     //update X and Y
-                    getX(j) = dud.Cj * deltanonzero;
+                    getX(j) = dud.Cj * delta_forsite;
                     getY(j) = arma::inv(dud.Mj) * dud.Rj;
                     //count successful delayed update
                     j += 1;
@@ -2349,56 +2457,59 @@ void DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeSp
             g += dud.X*dud.Y;
         }
     }
-
-    lastAccRatioLocal /= num(N);
+    accratio /= num(N);
+    return accratio;
 }
 
 template<bool TD, CheckerboardMethod CB>
-MatCpx::fixed<4,4> DetSDW<TD,CB>::get_deltanonzero(Phi newphi, uint32_t timeslice, uint32_t site) {
+MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
+		uint32_t timeslice, uint32_t site) {
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
     //compute non-zero elements of delta
-    // deltanonzero is \Delta^i from the notes
+    // delta_forsite is \Delta^i from the notes
     //
     //evMatrix(): yield a 4x4 matrix containing the entries for the
-    //current lattice site and time slice of e^(sign*dtau*V) with
-    //given values of the field phi at that space-time location [and of
-    //cosh(dtau*|phi|) and sinh(dtau*|phi|) / |phi|]
-    auto evMatrix = [](int sign, num kphi0, num kphi1,
-            num kphi2, num kphiCosh, num kphiSinh) -> MatCpx::fixed<4,4> {
+    //current lattice site and time slice of e^(sign*dtau*V)
+    auto evMatrix = [this](int sign, num kphi0, num kphi1,
+            num kphi2, int32_t cdwl, num kcoshTerm, num ksinhTerm) -> MatCpx::fixed<4,4> {
         MatNum::fixed<4,4> ev_real;
-        ev_real.diag().fill(kphiCosh);
+        num kd = this->compute_d_for_cdwl_site(cdwl);
+        num dtau = this->dtau;
+        ev_real(0,0) = ev_real(1,1) = kcoshTerm - sign * kd * ksinhTerm;
+        ev_real(2,2) = ev_real(3,3) = kcoshTerm + sign * kd * ksinhTerm;
         ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-        ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * kphiSinh;
-        ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * kphiSinh;
-        ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * kphiSinh;
-        ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * kphiSinh;
+        ev_real(2,0) = ev_real(0,2) =  sign * dtau * kphi2 * ksinhTerm;
+        ev_real(2,1) = ev_real(0,3) =  sign * dtau * kphi0 * ksinhTerm;
+        ev_real(3,0) = ev_real(1,2) =  sign * dtau * kphi0 * ksinhTerm;
+        ev_real(3,1) = ev_real(1,3) = -sign * dtau * kphi2 * ksinhTerm;
 
-        MatCpx::fixed<4,4> ev;
-        ev.set_real(ev_real);
-        ev(0,3).imag(-sign * kphi1 * kphiSinh);
-        ev(1,2).imag( sign * kphi1 * kphiSinh);
-        ev(2,1).imag(-sign * kphi1 * kphiSinh);
-        ev(3,0).imag( sign * kphi1 * kphiSinh);
+        MatNum::fixed<4,4> ev_imag;
+        ev_imag.zeros();
+        ev_imag(0,3) = -sign * dtau * kphi1 * ksinhTerm;
+        ev_imag(1,2) =  sign * dtau * kphi1 * ksinhTerm;
+        ev_imag(2,1) = -sign * dtau * kphi1 * ksinhTerm;
+        ev_imag(3,0) =  sign * dtau * kphi1 * ksinhTerm;
 
-        return ev;
+        return MatCpx::fixed<4,4>(ev_real, ev_imag);
     };
     MatCpx::fixed<4,4> evOld = evMatrix(
             +1,
             phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
-            phiCosh(site, timeslice), phiSinh(site, timeslice)
+            cdwl(site, timeslice),
+            coshTerm(site, timeslice), sinhTerm(site, timeslice)
     );
-    num normnewphi = arma::norm(newphi,2);
-    num coshnewphi = std::cosh(dtau * normnewphi);
-    num sinhnewphi = std::sinh(dtau * normnewphi) / normnewphi;
+    num coshTerm_new, sinhTerm_new;
+    std::tie(coshTerm_new, sinhTerm_new) = getCoshSinhTerm(newphi[0], newphi[1], newphi[2], new_cdwl);
     MatCpx::fixed<4,4> emvNew = evMatrix(
             -1,
+            new_cdwl,
             newphi[0], newphi[1], newphi[2],
-            coshnewphi, sinhnewphi
+            coshTerm_new, sinhTerm_new
     );
-    MatCpx::fixed<4,4> deltanonzero = emvNew * evOld;
-    deltanonzero.diag() -= cpx(1.0, 0);
-    return deltanonzero;
+    MatCpx::fixed<4,4> delta_forsite = emvNew * evOld;
+    delta_forsite.diag() -= cpx(1.0, 0);
+    return delta_forsite;
 }
 
 
@@ -2437,31 +2548,31 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
     case ADAPT_SCALE: ra = accRatioLocal_scale_RA; break;
     }
 
-    ra.get().addValue(lastAccRatioLocal);
+    ra.get().addValue(lastAccRatioLocal_phi);
     using std::cout;
     if (ra.get().getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
         num avgAccRatio = ra.get().get();
         switch (adapting_what) {
         case ADAPT_BOX:
-            if (avgAccRatio < targetAccRatioLocal) {
+            if (avgAccRatio < targetAccRatioLocal_phi) {
                 phiDelta *= phiDeltaShrinkFactor;
-            } else if (avgAccRatio > targetAccRatioLocal) {
+            } else if (avgAccRatio > targetAccRatioLocal_phi) {
                 phiDelta *= phiDeltaGrowFactor;
             }
-            cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
+//            cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
             break;
         case ADAPT_ROTATE:
             // angleDelta <=> cosine of spherical angle theta
             // reducing angleDelta <=> opening up the angle <=> reducing acceptance ratio
-            if (avgAccRatio < targetAccRatioLocal and angleDelta < MaxAngleDelta) {
+            if (avgAccRatio < targetAccRatioLocal_phi and angleDelta < MaxAngleDelta) {
                 curminAngleDelta = angleDelta;
                 angleDelta += (curmaxAngleDelta - angleDelta) / 2;
             }
-            else if (avgAccRatio > targetAccRatioLocal and angleDelta > MinAngleDelta) {
+            else if (avgAccRatio > targetAccRatioLocal_phi and angleDelta > MinAngleDelta) {
                 curmaxAngleDelta = angleDelta;
                 angleDelta -= (angleDelta - curminAngleDelta) / 2;
             }
-            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
+//            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
             break;
         case ADAPT_SCALE:
             if (not adaptScaleDelta) {
@@ -2470,15 +2581,15 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
             }
             // scaleDelta <=> width of gaussian distribution to select new radius
             // reducing scaleDelta <=> increasing acceptance ratio
-            if (avgAccRatio > targetAccRatioLocal and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
+            if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
                 curminScaleDelta = scaleDelta;
                 scaleDelta += (curmaxScaleDelta - scaleDelta) / 2;
             }
-            else if (avgAccRatio > targetAccRatioLocal and scaleDelta > MinScaleDelta) {
+            else if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta > MinScaleDelta) {
                 curmaxScaleDelta = scaleDelta;
                 scaleDelta -= (scaleDelta - curminScaleDelta) / 2;
             }
-            cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << scaleDelta << '\n';
+//            cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << scaleDelta << '\n';
             break;
         }
     }
@@ -2522,8 +2633,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     gmd.phi0 = phi0;
     gmd.phi1 = phi1;
     gmd.phi2 = phi2;
-    gmd.phiCosh = phiCosh;
-    gmd.phiSinh = phiSinh;
+    gmd.coshTerm = coshTerm;
+    gmd.sinhTerm = sinhTerm;
     gmd.g.swap(g);
     gmd.UdVStorage.swap(UdVStorage);
 
@@ -2550,7 +2661,7 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
         phi0(site,timeslice) = phi[0];
         phi1(site,timeslice) = phi[1];
         phi2(site,timeslice) = phi[2];
-        this->updatePhiCoshSinh(site, timeslice);
+        this->updateCoshSinhTerms(site, timeslice);
     };
     auto flipPhi = [&](uint32_t site, uint32_t timeslice) -> void {
         // phi -> phi - 2* (phi . rd) * rd
@@ -2635,8 +2746,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
         phi0.swap(gmd.phi0);
         phi1.swap(gmd.phi1);
         phi2.swap(gmd.phi2);
-        phiCosh.swap(gmd.phiCosh);
-        phiSinh.swap(gmd.phiSinh);
+        coshTerm.swap(gmd.coshTerm);
+        sinhTerm.swap(gmd.sinhTerm);
         g.swap(gmd.g);
         UdVStorage.swap(gmd.UdVStorage);
         std::cout << "reject cluster\n";
@@ -2672,8 +2783,8 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     gmd.phi0 = phi0;
     gmd.phi1 = phi1;
     gmd.phi2 = phi2;
-    gmd.phiCosh.swap(phiCosh);
-    gmd.phiSinh.swap(phiSinh);
+    gmd.coshTerm.swap(coshTerm);
+    gmd.sinhTerm.swap(sinhTerm);
     gmd.g.swap(g);
     gmd.UdVStorage.swap(UdVStorage);
 
@@ -2684,7 +2795,7 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     phi1 += r1;
     num r2 = rng.randRange(-phiDelta, +phiDelta);
     phi2 += r2;
-    updatePhiCoshSinh();
+    updateCoshSinhTerms();
 
     //recompute Green's function
     setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
@@ -2718,8 +2829,8 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
         phi0.swap(gmd.phi0);
         phi1.swap(gmd.phi1);
         phi2.swap(gmd.phi2);
-        phiCosh.swap(gmd.phiCosh);
-        phiSinh.swap(gmd.phiSinh);
+        coshTerm.swap(gmd.coshTerm);
+        sinhTerm.swap(gmd.sinhTerm);
         g.swap(gmd.g);
         UdVStorage.swap(gmd.UdVStorage);
         std::cout << "reject globalShift\n";
@@ -2733,7 +2844,7 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
 
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiUInt DetSDW<TD,CB>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
     Phi phi;
     phi[0] = phi0(site, timeslice);
     phi[1] = phi1(site, timeslice);
@@ -2748,7 +2859,7 @@ typename DetSDW<TD,CB>::changedPhiUInt DetSDW<TD,CB>::proposeNewPhiBox(uint32_t 
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiUInt DetSDW<TD,CB>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
     //old orientation
     num x = phi0(site, timeslice);
     num y = phi1(site, timeslice);
@@ -2791,11 +2902,11 @@ typename DetSDW<TD,CB>::changedPhiUInt DetSDW<TD,CB>::proposeRotatedPhi(uint32_t
     newphi[0] = newx;
     newphi[1] = newy;
     newphi[2] = newz;
-    return std::make_tuple(true, newphi);
+    return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeScaledField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
     using std::pow; using std::abs;
     //old orientation
     num x = phi0(site, timeslice);
@@ -2836,11 +2947,11 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeScaledField(uint32_t site,
     new_phi[0] = new_x;
     new_phi[1] = new_y;
     new_phi[2] = new_z;
-    return std::make_tuple(valid, new_phi);
+    return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
 }
 
 template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_t site, uint32_t timeslice) {
+typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
     //old orientation
     num x = phi0(site, timeslice);
     num y = phi1(site, timeslice);
@@ -2871,7 +2982,7 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
         newphi[0] = x;
         newphi[1] = y;
         newphi[2] = z;
-        return std::make_tuple(false, newphi);
+        return std::make_tuple(NONE, newphi, cdwl(site,timeslice));
     } else {
         // otherwise we scale the spin appropriately and also change its orientation
 
@@ -2904,8 +3015,24 @@ typename DetSDW<TD,CB>::boolPhi DetSDW<TD,CB>::proposeRotatedScaledField(uint32_
         newphi[0] = newx;
         newphi[1] = newy;
         newphi[2] = newz;
-        return std::make_tuple(true, newphi);
+        return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
     }
+}
+
+template<bool TD, CheckerboardMethod CB>
+typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewCDWl(
+		uint32_t site, uint32_t timeslice) {
+	int32_t cdwl_new;
+	num r = rng.rand01();
+	if 		(r <= 0.25) cdwl_new = +2;
+	else if (r <= 0.5)	cdwl_new = -2;
+	else if (r <= 0.75)	cdwl_new = +1;
+	else				cdwl_new = -1;
+        Phi samephi;
+        samephi[0] = phi0(site,timeslice);
+        samephi[1] = phi1(site,timeslice);
+        samephi[2] = phi2(site,timeslice);
+	return std::make_tuple(CDWL, samephi, cdwl_new);
 }
 
 
@@ -3204,20 +3331,29 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::consistencyCheck() {
-	// phi*, phiCosh, phiSinh
+	// phi*, coshTerm, sinhTerm
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
-            num phiNorm = std::sqrt(std::pow(phi0(site, k), 2)
-                                    + std::pow(phi1(site, k), 2)
-                                    + std::pow(phi2(site, k), 2));
-            num relDiffCosh = std::abs((phiCosh(site, k) - std::cosh(dtau * phiNorm)) / phiCosh(site, k));
+        	num coshTermBefore = coshTerm(site, k);
+        	num sinhTermBefore = sinhTerm(site, k);
+        	updateCoshSinhTerms(site, k);
+            num relDiffCosh = std::abs((coshTerm(site, k) - coshTermBefore) / coshTermBefore);
             if (relDiffCosh > 1E-10) {
-                throw GeneralError("phiCosh is inconsistent");
+                throw GeneralError("coshTerm is inconsistent");
             }
-            num relDiffSinh = std::abs((phiSinh(site, k) - (std::sinh(dtau * phiNorm) / phiNorm)) / phiSinh(site, k));
+            num relDiffSinh = std::abs((sinhTerm(site, k) - sinhTermBefore) / sinhTermBefore);
             if (relDiffSinh > 1E-10) {
-                throw GeneralError("phiSinh is inconsistent");
+                throw GeneralError("sinhTerm is inconsistent");
             }
+        }
+    }
+    // cdwl
+    for (uint32_t k = 1; k <= m; ++k) {
+        for (uint32_t site = 0; site < N; ++site) {
+        	int32_t l = cdwl(site, k);
+        	if (l != +2 and l != -2 and l != +1 and l != -1) {
+        		throw GeneralError("cdwl is inconsistent");
+        	}
         }
     }
     // UdV storage -- unitarity
