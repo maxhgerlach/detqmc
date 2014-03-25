@@ -44,8 +44,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
     neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
-            "tyver", "rescale", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
-            "globalShift";
+            "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
+            "globalShift", "wolffClusterUpdate";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
