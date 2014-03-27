@@ -142,6 +142,7 @@ inline void print_matrix_diff(Matrix mat1, Matrix mat2,
 	//MatNum diff_wrapped = arma::abs(mat1 - mat2) / arma::abs(mat1);
 	MatNum diff = arma::abs(mat1 - mat2);
 	using arma::max; using arma::mean;
+	std::cout << name << ": mean = " << arma::mean(arma::mean(arma::abs(mat1))) << "\n";
 	std::cout << name << ": max  diff = " << max(max(diff)) << "\n";
 	std::cout << name << ": mean diff = " << mean(mean(diff)) << "\n";
 }

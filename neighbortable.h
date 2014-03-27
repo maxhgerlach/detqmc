@@ -125,7 +125,9 @@ public:
     PeriodicSquareLatticeNearestNeighbors(uint32_t L)
         : PeriodicCubicLatticeNearestNeighbors(2, L)
     {
-        //nearestNeighbors.save("neighbors.csv", arma::csv_ascii);
+    }
+    void save(const std::string& file = "neighbors.csv") {
+    	nearestNeighbors.save(file, arma::csv_ascii);
     }
 };
 

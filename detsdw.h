@@ -229,6 +229,8 @@ protected:
     		return  std::sqrt(2. * (3. + std::sqrt(6.)));
     	case -2:
     		return -std::sqrt(2. * (3. + std::sqrt(6.)));
+    	default:
+    		return 0;
     	}
     }
 
@@ -420,10 +422,10 @@ protected:
     //for the cdwl-discrete field
     //return the product of gamma_l_i for cdwl
     template<class Vec>
-    num prefactor_gamma_cdwl(Vec cdwl);
+    num prefactor_gamma_cdwl(const Vec& cdwl);
     // compute sqrt(dtau) * cdwU * eta_li_i for cdwl
     template<class Vec>
-    VecNum compute_d_for_cdwl(Vec cdwl);
+    VecNum compute_d_for_cdwl(const Vec& cdwl);
     num compute_d_for_cdwl_site(num cdwl);
 
 
@@ -452,6 +454,8 @@ protected:
     		return updateInSlice_woodbury(timeslice, proposeSpin);
     	case DELAYED:
     		return updateInSlice_delayed(timeslice, proposeSpin);
+    	default:
+    		return 0;
     	}
     };
     //specific implementations of updateInSlice, the callable parameter is for one of the field proposal routines below,
