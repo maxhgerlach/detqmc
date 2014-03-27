@@ -1026,6 +1026,25 @@ void DetSDW<TD,CB>::setupPropK() {
 template<bool TD, CheckerboardMethod CB>
 template<class Vec>
 num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
+	return 1.0;
+//
+//	uint32_t count_pm1 = 0;
+//	uint32_t count_pm2 = 0;
+//	for (uint32_t i = 0; i < N; ++i) {
+//		if (cdwl[i] == +1 or cdwl[i] == -1) {
+//			++count_pm1;
+//		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
+//			++count_pm2;
+//		}
+//	}
+//	num prefactor = std::pow(3. + std::sqrt(6.), count_pm1) *
+//					std::pow(3. - std::sqrt(6.), count_pm2);
+//	return prefactor;
+}
+
+template<bool TD, CheckerboardMethod CB>
+template<class Vec>
+num DetSDW<TD,CB>::ln_prefactor_gamma_cdwl(const Vec& cdwl) {
 	uint32_t count_pm1 = 0;
 	uint32_t count_pm2 = 0;
 	for (uint32_t i = 0; i < N; ++i) {
@@ -1035,9 +1054,9 @@ num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
 			++count_pm2;
 		}
 	}
-	num prefactor = std::pow(3. + std::sqrt(6.), count_pm1) *
-					std::pow(3. - std::sqrt(6.), count_pm2);
-	return prefactor;
+	num ln_prefactor = count_pm1 * std::log(3. + std::sqrt(6.)) +
+			count_pm2 * std::log(3. - std::sqrt(6.));
+	return ln_prefactor;
 }
 
 
@@ -1046,12 +1065,14 @@ template<class Vec>
 VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
 	VecNum kd(N);
 	for (uint32_t i = 0; i < N; ++ i) {
-		kd[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);	//TODO: check assembly -- operations removed
+		kd[i] = compute_d_for_cdwl_site_no_prefactor(cdwl[i]);
 	}
+	kd += ln_prefactor_gamma_cdwl(cdwl);
 	return kd;
 }
 template<bool TD, CheckerboardMethod CB> inline
-num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
+num DetSDW<TD,CB>::compute_d_for_cdwl_site_no_prefactor(num cdwl) {
+	//TODO: check assembly -- operations removed
 	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
 
@@ -2478,7 +2499,7 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
     auto evMatrix = [this](int sign, num kphi0, num kphi1,
             num kphi2, int32_t cdwl, num kcoshTerm, num ksinhTerm) -> MatCpx::fixed<4,4> {
         MatNum::fixed<4,4> ev_real;
-        num kd = this->compute_d_for_cdwl_site(cdwl);
+        num kd = this->compute_d_for_cdwl_site_no_prefactor(cdwl);
         num dtau = this->dtau;
         ev_real(0,0) = ev_real(1,1) = kcoshTerm - sign * kd * ksinhTerm;
         ev_real(2,2) = ev_real(3,3) = kcoshTerm + sign * kd * ksinhTerm;

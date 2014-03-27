@@ -423,10 +423,13 @@ protected:
     //return the product of gamma_l_i for cdwl
     template<class Vec>
     num prefactor_gamma_cdwl(const Vec& cdwl);
-    // compute sqrt(dtau) * cdwU * eta_li_i for cdwl
+    template<class Vec>
+    num ln_prefactor_gamma_cdwl(const Vec& cdwl);
+    // compute sqrt(dtau) * cdwU * eta_{cdwl[i]} + \sum_j \ln \gamma_{cdwl[j]}
     template<class Vec>
     VecNum compute_d_for_cdwl(const Vec& cdwl);
-    num compute_d_for_cdwl_site(num cdwl);
+    // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
+    num compute_d_for_cdwl_site_no_prefactor(num cdwl);
 
 
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
