@@ -1059,7 +1059,8 @@ num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
 
 template<bool TD, CheckerboardMethod CB>
 MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
-    if (CB == CB_NONE) {
+    //if (CB == CB_NONE) {
+	{
         timing.start("computeBmatSDW_direct");
         using arma::eye; using arma::zeros; using arma::diagmat;
         if (k2 == k1) {
@@ -1153,17 +1154,17 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 
         return result;
     }
-    else {
-        // use the checkerboard routines to compute B by left-multiplying to unity
-        using arma::eye; using arma::zeros;
-        if (k2 == k1) {
-            return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
-        }
-        assert(k2 > k1);
-        assert(k2 <= m);
-        MatCpx unity(eye(4*N, 4*N), zeros(4*N, 4*N));
-        return checkerboardLeftMultiplyBmat(unity, k2, k1);
-    }
+//    else {
+//        // use the checkerboard routines to compute B by left-multiplying to unity
+//        using arma::eye; using arma::zeros;
+//        if (k2 == k1) {
+//            return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+//        }
+//        assert(k2 > k1);
+//        assert(k2 <= m);
+//        MatCpx unity(eye(4*N, 4*N), zeros(4*N, 4*N));
+//        return checkerboardLeftMultiplyBmat(unity, k2, k1);
+//    }
 }
 
 template<bool TD, CheckerboardMethod CB> inline
