@@ -1165,17 +1165,5 @@ MatNum computePropagator(num scalar, const MatNum& matrix);
 
 
 
-template <typename Matrix> inline
-void debugSaveMatrix(const Matrix& matrix, const std::string& basename) {
-    matrix.save(basename + ".csv", arma::csv_ascii);
-}
-
-template <typename Matrix> inline
-void debugSaveMatrixCpx(const Matrix& matrix, const std::string& basename) {
-    MatNum r = arma::real(matrix);
-    r.save(basename + "_real.csv", arma::csv_ascii);
-    MatNum i = arma::imag(matrix);
-    i.save(basename + "_imag.csv", arma::csv_ascii);
-}
 
 #endif /* DETMODEL_H_ */
