@@ -1025,7 +1025,7 @@ void DetSDW<TD,CB>::setupPropK() {
 
 template<bool TD, CheckerboardMethod CB>
 template<class Vec>
-num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec cdwl) {
+num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
 	uint32_t count_pm1 = 0;
 	uint32_t count_pm2 = 0;
 	for (uint32_t i = 0; i < N; ++i) {
@@ -1035,15 +1035,15 @@ num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec cdwl) {
 			++count_pm2;
 		}
 	}
-	num prefactor = std::pow((3. + std::sqrt(6.)) / 12., count_pm1) *
-					std::pow((3. - std::sqrt(6.)) / 12., count_pm2);
+	num prefactor = std::pow(3. + std::sqrt(6.), count_pm1) *
+					std::pow(3. - std::sqrt(6.), count_pm2);
 	return prefactor;
 }
 
 
 template<bool TD, CheckerboardMethod CB>
 template<class Vec>
-VecNum DetSDW<TD,CB>::compute_d_for_cdwl(Vec cdwl) {
+VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
 	VecNum kd(N);
 	for (uint32_t i = 0; i < N; ++ i) {
 		kd[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);	//TODO: check assembly -- operations removed
@@ -1200,12 +1200,14 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
 
     VecNum eigval;
     MatCpx eigvec;
-    arma::eig_sym(eigval, eigvec, dtau*V - D);
+    arma::eig_sym(eigval, eigvec, sign*dtau*V - sign*D);
 
     MatCpx result(4*N, 4*N);
-    result = eigvec * arma::diagmat(arma::exp(sign * eigval)) * arma::trans(eigvec);
+    result = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
-    result *= prefactor_gamma_cdwl(cdwl);
+    if (cdwU > 0) {
+    	result *= std::pow(prefactor_gamma_cdwl(cdwl), -sign);
+    }
 
     return result;
 }

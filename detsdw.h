@@ -211,10 +211,12 @@ protected:
     	switch (l) {
     	case +1:
     	case -1:
-    		return (3. + std::sqrt(6.)) / 12.;
+    		return (3. + std::sqrt(6.));
     	case +2:
     	case -2:
-    		return (3. - std::sqrt(6.)) / 12.;
+    		return (3. - std::sqrt(6.));
+    	default:
+    		return 0;
     	}
     }
     static inline num cdwl_eta(int32_t l) {
