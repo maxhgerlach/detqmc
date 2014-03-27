@@ -1046,13 +1046,13 @@ template<class Vec>
 VecNum DetSDW<TD,CB>::compute_d_for_cdwl(Vec cdwl) {
 	VecNum kd(N);
 	for (uint32_t i = 0; i < N; ++ i) {
-		kd[i] = std::sqrt(dtau) * cdwU * cdwl[i];	//TODO: check assembly -- operations removed
+		kd[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);	//TODO: check assembly -- operations removed
 	}
 	return kd;
 }
 template<bool TD, CheckerboardMethod CB> inline
 num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
-	return std::sqrt(dtau) * cdwU * cdwl;
+	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
 
 
