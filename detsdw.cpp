@@ -2351,18 +2351,18 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
             coshTerm(site, timeslice), sinhTerm(site, timeslice)
     );
 
-    //DEBUG
-    VecNum debug_phi0 = phi0.col(timeslice);
-    VecNum debug_phi1 = phi1.col(timeslice);
-    VecNum debug_phi2 = phi2.col(timeslice);
-    VecInt debug_cdwl = cdwl.col(timeslice);
-    MatCpx evOld_big = computePotentialExponential(
-        +1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
-    arma::uvec indices;
-    indices << site << site+N << site+2*N << site+3*N;
-    MatCpx::fixed<4,4> evOld_big_sub = evOld_big.submat(indices, indices);
-    print_matrix_diff(evOld, evOld_big_sub, "evOld diff");
-    //DEBUG -- OK
+    // //DEBUG
+    // VecNum debug_phi0 = phi0.col(timeslice);
+    // VecNum debug_phi1 = phi1.col(timeslice);
+    // VecNum debug_phi2 = phi2.col(timeslice);
+    // VecInt debug_cdwl = cdwl.col(timeslice);
+    // MatCpx evOld_big = computePotentialExponential(
+    //     +1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
+    // arma::uvec indices;
+    // indices << site << site+N << site+2*N << site+3*N;
+    // MatCpx::fixed<4,4> evOld_big_sub = evOld_big.submat(indices, indices);
+    // print_matrix_diff(evOld, evOld_big_sub, "evOld diff");
+    // //DEBUG -- OK
 
     num coshTerm_new, sinhTerm_new;
     std::tie(coshTerm_new, sinhTerm_new) = getCoshSinhTerm(newphi[0], newphi[1], newphi[2], new_cdwl);
@@ -2373,16 +2373,16 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
             coshTerm_new, sinhTerm_new
     );
 
-    //DEBUG
-    debug_phi0[site] = newphi[0];
-    debug_phi1[site] = newphi[1];
-    debug_phi2[site] = newphi[2];
-    debug_cdwl[site] = new_cdwl;
-    MatCpx emvNew_big = computePotentialExponential(
-        -1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
-    MatCpx::fixed<4,4> emvNew_big_sub = emvNew_big.submat(indices, indices);
-    print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
-    //DEBUG -- FOUND Discrepancy
+    // //DEBUG
+    // debug_phi0[site] = newphi[0];
+    // debug_phi1[site] = newphi[1];
+    // debug_phi2[site] = newphi[2];
+    // debug_cdwl[site] = new_cdwl;
+    // MatCpx emvNew_big = computePotentialExponential(
+    //     -1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
+    // MatCpx::fixed<4,4> emvNew_big_sub = emvNew_big.submat(indices, indices);
+    // print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
+    // //DEBUG -- OK now
     
     MatCpx::fixed<4,4> delta_forsite = emvNew * evOld;
     delta_forsite.diag() -= cpx(1.0, 0);
@@ -3230,57 +3230,56 @@ void DetSDW<TD,CB>::consistencyCheck() {
 //    	// debugsavematrixcpx(bk_ref_inv, "bk_ref_inv");
 //    	// exit(0);
 //    }
-    // Verify get_delta_forsite
-    for (uint32_t k = 1; k <= m; ++k) {
-    	for (auto stage : {1, 2}) {
-    		uint32_t site = rng.randInt(0, N-1);
-    		std::cout << k << " " << stage << " " << site << "\n";
-    		Phi new_phi;
-    		int32_t new_cdwl;
-    		Changed changed;
-    		switch (stage) {
-    		case 1:
-    			std::tie(changed, new_phi, new_cdwl) = proposeNewPhiBox(site, k);
-    			break;
-    		case 2:
-    		default:
-    			std::tie(changed, new_phi, new_cdwl) = proposeNewCDWl(site, k);
-    			break;
-    		}
-    		MatCpx::fixed<4,4> delta = get_delta_forsite(new_phi, new_cdwl, k, site);
-    		VecNum n_phi0 = phi0.col(k);
-    		n_phi0[site] = new_phi[0];
-    		VecNum n_phi1 = phi1.col(k);
-    		n_phi1[site] = new_phi[1];
-    		VecNum n_phi2 = phi2.col(k);
-    		n_phi2[site] = new_phi[2];
-    		VecInt n_cdwl = cdwl.col(k);
-    		n_cdwl[site] = new_cdwl;
-    		MatCpx big_delta =
-    				computePotentialExponential(-1, n_phi0, n_phi1, n_phi2, n_cdwl)
-    				*
-    				computePotentialExponential(+1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k))
-    				-
-    				arma::eye<MatCpx>(4*N, 4*N);
-    		arma::uvec indices;
-    		indices << site << site+N << site+2*N << site+3*N;
-    		MatCpx::fixed<4,4> big_delta_sub = big_delta.submat(indices, indices);
-    		std::cout << (new_phi[0] - phi0(site, k)) << " "
-    				  << (new_phi[1] - phi1(site, k)) << " "
-    				  << (new_phi[2] - phi2(site, k)) << std::endl;
-    		std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
-    				<< " -> " << cdwl_gamma(new_cdwl)
-    				<< std::endl;
-//    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
-//    				        arma::real(delta).eval(), "real(delta)");
-    		//python_matshow(arma::imag(big_delta).eval());
-    		print_matrix_diff(delta, big_delta_sub, "delta");
-//    		python_matshow(arma::real(delta - big_delta_sub).eval());
-//    		python_matshow(arma::imag(delta - big_delta_sub).eval());
-    	}
-    }
-
-
+    
+//     // Verify get_delta_forsite
+//     for (uint32_t k = 1; k <= m; ++k) {
+//     	for (auto stage : {1, 2}) {
+//     		uint32_t site = rng.randInt(0, N-1);
+//     		std::cout << k << " " << stage << " " << site << "\n";
+//     		Phi new_phi;
+//     		int32_t new_cdwl;
+//     		Changed changed;
+//     		switch (stage) {
+//     		case 1:
+//     			std::tie(changed, new_phi, new_cdwl) = proposeNewPhiBox(site, k);
+//     			break;
+//     		case 2:
+//     		default:
+//     			std::tie(changed, new_phi, new_cdwl) = proposeNewCDWl(site, k);
+//     			break;
+//     		}
+//     		MatCpx::fixed<4,4> delta = get_delta_forsite(new_phi, new_cdwl, k, site);
+//     		VecNum n_phi0 = phi0.col(k);
+//     		n_phi0[site] = new_phi[0];
+//     		VecNum n_phi1 = phi1.col(k);
+//     		n_phi1[site] = new_phi[1];
+//     		VecNum n_phi2 = phi2.col(k);
+//     		n_phi2[site] = new_phi[2];
+//     		VecInt n_cdwl = cdwl.col(k);
+//     		n_cdwl[site] = new_cdwl;
+//     		MatCpx big_delta =
+//     				computePotentialExponential(-1, n_phi0, n_phi1, n_phi2, n_cdwl)
+//     				*
+//     				computePotentialExponential(+1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k))
+//     				-
+//     				arma::eye<MatCpx>(4*N, 4*N);
+//     		arma::uvec indices;
+//     		indices << site << site+N << site+2*N << site+3*N;
+//     		MatCpx::fixed<4,4> big_delta_sub = big_delta.submat(indices, indices);
+//     		std::cout << (new_phi[0] - phi0(site, k)) << " "
+//     				  << (new_phi[1] - phi1(site, k)) << " "
+//     				  << (new_phi[2] - phi2(site, k)) << std::endl;
+//     		std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
+//     				<< " -> " << cdwl_gamma(new_cdwl)
+//     				<< std::endl;
+// //    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
+// //    				        arma::real(delta).eval(), "real(delta)");
+//     		//python_matshow(arma::imag(big_delta).eval());
+//     		print_matrix_diff(delta, big_delta_sub, "delta");
+// //    		python_matshow(arma::real(delta - big_delta_sub).eval());
+// //    		python_matshow(arma::imag(delta - big_delta_sub).eval());
+//     	}
+//     }
 
     // UdV storage -- unitarity
 //    for (uint32_t l = 0; l <= n; ++l) {
