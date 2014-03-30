@@ -109,27 +109,27 @@ private:
         //The template member functions saveContents(Archive&) cannot be virtual,
         //so we have to resort to RTTI to serialize the right object.
         //Unfortunately this is fugly.
-        if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
+        // if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
+        //     p->loadContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
+        //     p->loadContents(SerializeContentsKey(), ar);
+        // } else
         if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
         if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
+        // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
+        //     p->loadContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
+        //     p->loadContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
+        //     p->loadContents(SerializeContentsKey(), ar);
+        // } else
         if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
@@ -151,27 +151,27 @@ private:
         //The template member functions saveContents(Archive&) cannot be virtual,
         //so we have to resort to RTTI to serialize the right object.
         //Unfortunately this is fugly.
-        if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
+        // if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
+        //     p->saveContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
+        //     p->saveContents(SerializeContentsKey(), ar);
+        // } else
         if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
         if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
+        // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
+        //     p->saveContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
+        //     p->saveContents(SerializeContentsKey(), ar);
+        // } else
+        // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
+        //     p->saveContents(SerializeContentsKey(), ar);
+        // } else
         if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else

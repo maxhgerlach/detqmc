@@ -118,30 +118,43 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     }
 
     //since pars is not a constant expression, we need this stupid if:
-    if (pars.timedisplaced == true and cbm == CB_NONE) {
-        return std::unique_ptr<DetModel>(new DetSDW<true,CB_NONE>(rng, pars));
-    } else
-    if (pars.timedisplaced == true and cbm == CB_SANTOS) {
-        return std::unique_ptr<DetModel>(new DetSDW<true,CB_SANTOS>(rng, pars));
-    } else
-    if (pars.timedisplaced == true and cbm == CB_ASSAAD) {
-        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD>(rng, pars));
-    } else
-    if (pars.timedisplaced == true and cbm == CB_ASSAAD_BERG) {
-        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD_BERG>(rng, pars));
-    } else
-    if (pars.timedisplaced == false and cbm == CB_NONE) {
+//    if (pars.timedisplaced == true and cbm == CB_NONE) {
+//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_NONE>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == true and cbm == CB_SANTOS) {
+//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_SANTOS>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == true and cbm == CB_ASSAAD) {
+//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == true and cbm == CB_ASSAAD_BERG) {
+//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD_BERG>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == false and cbm == CB_NONE) {
+//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_NONE>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == false and cbm == CB_SANTOS) {
+//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_SANTOS>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == false and cbm == CB_ASSAAD) {
+//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD>(rng, pars));
+//    } else
+//    if (pars.timedisplaced == false and cbm == CB_ASSAAD_BERG) {
+//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
+//    }
+    if (cbm == CB_NONE) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_NONE>(rng, pars));
     } else
-    if (pars.timedisplaced == false and cbm == CB_SANTOS) {
+    if (cbm == CB_SANTOS) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_SANTOS>(rng, pars));
     } else
-    if (pars.timedisplaced == false and cbm == CB_ASSAAD) {
+    if (cbm == CB_ASSAAD) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD>(rng, pars));
     } else
-    if (pars.timedisplaced == false and cbm == CB_ASSAAD_BERG) {
+    if (cbm == CB_ASSAAD_BERG) {
         return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
     }
+
     else {
         //this can't be reached
         //return 0;
@@ -3452,12 +3465,12 @@ void DetSDW<TD,CB>::consistencyCheck() {
 
 
 //explicit template instantiations:
-template class DetSDW<true,CB_NONE>;
+//template class DetSDW<true,CB_NONE>;
 template class DetSDW<false,CB_NONE>;
-template class DetSDW<true,CB_SANTOS>;
+//template class DetSDW<true,CB_SANTOS>;
 template class DetSDW<false,CB_SANTOS>;
-template class DetSDW<true,CB_ASSAAD>;
+//template class DetSDW<true,CB_ASSAAD>;
 template class DetSDW<false,CB_ASSAAD>;
-template class DetSDW<true,CB_ASSAAD_BERG>;
+//template class DetSDW<true,CB_ASSAAD_BERG>;
 template class DetSDW<false,CB_ASSAAD_BERG>;
 

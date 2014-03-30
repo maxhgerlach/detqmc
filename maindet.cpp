@@ -44,7 +44,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
     po::options_description modelOptions("Model parameters, specify via command line or config file");
     modelOptions.add_options()
             ("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "model to be simulated: hubbard or sdw")
-            ("timedisplaced", po::value<bool>(&modelpar.timedisplaced)->default_value(false), "also evaluated imaginary time-displaced Green functions and related observables")
+//            ("timedisplaced", po::value<bool>(&modelpar.timedisplaced)->default_value(false), "also evaluated imaginary time-displaced Green functions and related observables")
             ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
             ("checkerboardMethod", po::value<std::string>(&modelpar.checkerboardMethod)->default_value("assaad_berg"), "method to use for the checkerboard decomposition: santos, assaad or assaad_berg")
             ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
@@ -169,10 +169,10 @@ int main(int argc, char **argv) {
     bool resumeSimulation;
     std::tie(runSimulation, resumeSimulation, parmodel, parmc) = configureSimulation(argc, argv);
 
-    if (parmodel.timedisplaced) {
-    	std::cerr << "timedisplaced routines not implemented currently \n";
-    	return 1;
-    }
+    // if (parmodel.timedisplaced) {
+    // 	std::cerr << "timedisplaced routines not implemented currently \n";
+    // 	return 1;
+    // }
 
     timing.start("total");
     if (runSimulation) {

@@ -57,18 +57,26 @@ std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
 #undef IF_NOT_POSITIVE
 
     //since pars is not a constant expression, we need this stupid if:
-    if (pars.timedisplaced == true and pars.checkerboard == true) {
-        return std::unique_ptr<DetModel>(new DetHubbard<true,true>(rng, pars));
-    } else
-    if (pars.timedisplaced == true and pars.checkerboard == false) {
-        return std::unique_ptr<DetModel>(new DetHubbard<true,false>(rng, pars));
-    } else
-    if (pars.timedisplaced == false and pars.checkerboard == true) {
+    // if (pars.timedisplaced == true and pars.checkerboard == true) {
+    //     return std::unique_ptr<DetModel>(new DetHubbard<true,true>(rng, pars));
+    // } else
+    // if (pars.timedisplaced == true and pars.checkerboard == false) {
+    //     return std::unique_ptr<DetModel>(new DetHubbard<true,false>(rng, pars));
+    // } else
+    // if (pars.timedisplaced == false and pars.checkerboard == true) {
+    //     return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
+    // } else
+    // if (pars.timedisplaced == false and pars.checkerboard == false) {
+    //     return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
+    //}
+    //since pars is not a constant expression, we need this stupid if:
+    if (pars.checkerboard == true) {
         return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
     } else
-    if (pars.timedisplaced == false and pars.checkerboard == false) {
+    if (pars.checkerboard == false) {
         return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
-    } else {
+    }    
+    else {
         //this can't be reached
         //return 0;
     	return std::unique_ptr<DetModel>();
@@ -153,7 +161,7 @@ MetadataMap DetHubbard<TD,CB>::prepareModelMetadataMap() const {
     MetadataMap meta;
     meta["model"] = "hubbard";
     meta["checkerboard"] = (checkerboard ? "true" : "false");
-    meta["timedisplaced"] = (timedisplaced ? "true" : "false");
+//    meta["timedisplaced"] = (timedisplaced ? "true" : "false");
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     META_INSERT(t);
     META_INSERT(U);

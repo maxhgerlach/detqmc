@@ -30,7 +30,7 @@ struct ModelParams {
     //TODO: split this up so that model specific parameters are in substructs
 
     std::string model;
-    bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
+//    bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
     std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
     std::string updateMethod;			//SDW: "iterative", "woodbury", or "delayed"
@@ -66,7 +66,7 @@ struct ModelParams {
     std::set<std::string> specified;
 
     ModelParams() :
-            model(), timedisplaced(), checkerboard(),
+            model(), /*timedisplaced(),*/ checkerboard(),
             checkerboardMethod(), updateMethod(), spinProposalMethod(), adaptScaleVariance(),
             delaySteps(),
             t(), U(), r(),
@@ -84,7 +84,7 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & timedisplaced & checkerboard & checkerboardMethod & updateMethod
+        ar & model /*& timedisplaced*/ & checkerboard & checkerboardMethod & updateMethod
            & spinProposalMethod & adaptScaleVariance & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
            & cdwU
