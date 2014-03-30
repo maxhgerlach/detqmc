@@ -32,7 +32,6 @@ struct ModelParams {
     std::string model;
 //    bool timedisplaced;     //also evaluate timedisplaced Green functions and derived quantities
     bool checkerboard;      //SDW: use a checkerboard decomposition for computing the propagator
-    std::string checkerboardMethod;		//SDW if checkerboard: "santos" or "assaad" or "assaad_berg"
     std::string updateMethod;			//SDW: "iterative", "woodbury", or "delayed"
     std::string spinProposalMethod;		//SDW: "box", "rotate_then_scale", or "rotate_and_scale"
     bool adaptScaleVariance;			//SDW: valid unless spinProposalMethod=="box" -- this controls if the variance of the spin updates should be adapted during thermalization
@@ -67,7 +66,7 @@ struct ModelParams {
 
     ModelParams() :
             model(), /*timedisplaced(),*/ checkerboard(),
-            checkerboardMethod(), updateMethod(), spinProposalMethod(), adaptScaleVariance(),
+            updateMethod(), spinProposalMethod(), adaptScaleVariance(),
             delaySteps(),
             t(), U(), r(),
             txhor(), txver(), tyhor(), tyver(),
@@ -84,7 +83,7 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model /*& timedisplaced*/ & checkerboard & checkerboardMethod & updateMethod
+        ar & model & checkerboard /*& timedisplaced*/& updateMethod
            & spinProposalMethod & adaptScaleVariance & delaySteps
            & t & U & r & txhor & txver & tyhor & tyver
            & cdwU

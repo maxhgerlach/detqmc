@@ -30,8 +30,6 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 
 enum CheckerboardMethod {
 	CB_NONE,				//regular, dense matrix products
-	CB_SANTOS,				//checkerboard, four break-ups in e^{K_*} as described in: R. R. dos Santos, Braz. J. Phys 33, 36 (2003).
-	CB_ASSAAD,				//checkerboard, two break-ups in e^{K_*} as described in: F. F. Assaad, in Quantum Simulations Complex Many-Body Syst. From Theory to Algorithms, edited by J. Grotendorst, D. Marx, and A. Muramatsu (FZ-J�lich, J�lich, Germany, 2002).
 	CB_ASSAAD_BERG,			//checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
 };
 std::string cbmToString(CheckerboardMethod cbm);
@@ -93,7 +91,6 @@ protected:
     static const uint32_t d = 2;
     static const uint32_t z = 2*d;
     const bool checkerboard;
-    const std::string checkerboardMethod;
     const uint32_t L;
     const uint32_t N;
     const num r;
@@ -373,18 +370,6 @@ protected:
     MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
     							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
-    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
-    template <class Matrix>
-    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_SANTOS>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
-    template <class Matrix>
-    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
-    template <class Matrix>
-    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
-    template <class Matrix>
     MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
     							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
@@ -395,10 +380,6 @@ protected:
     void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
     template<class Matrix>
     void cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
-    template<class Matrix>
-    void cb_santos_applyBondFactorsLeft(Matrix& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
-    template<class Matrix>
-    void cb_santos_applyBondFactorsRight(Matrix& result, NeighDir neigh, uint32_t subgroup, num ch, num sh);
 
     //the following take a 4Nx4N matrix A and effectively multiply B(k2,k1)
     //or its inverse to the left or right of it and return the result

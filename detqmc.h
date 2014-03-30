@@ -124,16 +124,10 @@ private:
         // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
         //     p->loadContents(SerializeContentsKey(), ar);
         // } else
-        // if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
-        //     p->loadContents(SerializeContentsKey(), ar);
-        // } else
         // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
         //     p->loadContents(SerializeContentsKey(), ar);
         // } else
         if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<false, CB_ASSAAD>* p = dynamic_cast<DetSDW<false, CB_ASSAAD>*>(replica.get())) {
             p->loadContents(SerializeContentsKey(), ar);
         } else
         if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
@@ -166,16 +160,10 @@ private:
         // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
         //     p->saveContents(SerializeContentsKey(), ar);
         // } else
-        // if (DetSDW<true, CB_ASSAAD>* p = dynamic_cast<DetSDW<true, CB_ASSAAD>*>(replica.get())) {
-        //     p->saveContents(SerializeContentsKey(), ar);
-        // } else
         // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
         //     p->saveContents(SerializeContentsKey(), ar);
         // } else
         if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<false, CB_ASSAAD>* p = dynamic_cast<DetSDW<false, CB_ASSAAD>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
         if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
