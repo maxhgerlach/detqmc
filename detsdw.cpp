@@ -17,6 +17,7 @@
 #include "exceptions.h"
 #include "timing.h"
 #include "checkarray.h"
+#include "pytools.h"
 
 #if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
 #include "dumapp.h"
@@ -351,7 +352,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     if (updateMethod == DELAYED) {
         META_INSERT(delaySteps);
     }
-    meta["timedisplaced"] = (TD ? "true" : "false");
+//    meta["timedisplaced"] = (TD ? "true" : "false");
     if (bc == PBC) {
           meta["bc"] = "pbc";
     } else if (bc == APBC_X) {
@@ -974,8 +975,8 @@ std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTerm(
     				+ std::pow(phi1, 2)
     				+ std::pow(phi2, 2);
     num arg = std::sqrt(
-    		dtau * pow(cdwU,2) * pow(cdwl_eta(cdwl),2) +
-    		pow(dtau,2) * phiSquared);
+    		dtau * std::pow(cdwU,2) * std::pow(cdwl_eta(cdwl),2) +
+    		std::pow(dtau,2) * phiSquared);
     return std::make_tuple(std::cosh(arg), std::sinh(arg) / arg);
 }
 
@@ -1036,11 +1037,9 @@ void DetSDW<TD,CB>::setupPropK() {
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-template<class Vec>
-num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
-	return 1.0;
-//
+//template<bool TD, CheckerboardMethod CB>
+//template<class Vec>
+//num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
 //	uint32_t count_pm1 = 0;
 //	uint32_t count_pm2 = 0;
 //	for (uint32_t i = 0; i < N; ++i) {
@@ -1050,27 +1049,27 @@ num DetSDW<TD,CB>::prefactor_gamma_cdwl(const Vec& cdwl) {
 //			++count_pm2;
 //		}
 //	}
-//	num prefactor = std::pow(3. + std::sqrt(6.), count_pm1) *
-//					std::pow(3. - std::sqrt(6.), count_pm2);
+//	num prefactor = std::pow(1. + std::sqrt(6.) / 3., count_pm1) *
+//					std::pow(1. - std::sqrt(6.) / 3., count_pm2);
 //	return prefactor;
-}
+//}
 
-template<bool TD, CheckerboardMethod CB>
-template<class Vec>
-num DetSDW<TD,CB>::ln_prefactor_gamma_cdwl(const Vec& cdwl) {
-	uint32_t count_pm1 = 0;
-	uint32_t count_pm2 = 0;
-	for (uint32_t i = 0; i < N; ++i) {
-		if (cdwl[i] == +1 or cdwl[i] == -1) {
-			++count_pm1;
-		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
-			++count_pm2;
-		}
-	}
-	num ln_prefactor = count_pm1 * std::log(3. + std::sqrt(6.)) +
-			count_pm2 * std::log(3. - std::sqrt(6.));
-	return ln_prefactor;
-}
+//template<bool TD, CheckerboardMethod CB>
+//template<class Vec>
+//num DetSDW<TD,CB>::ln_prefactor_gamma_cdwl(const Vec& cdwl) {
+//	uint32_t count_pm1 = 0;
+//	uint32_t count_pm2 = 0;
+//	for (uint32_t i = 0; i < N; ++i) {
+//		if (cdwl[i] == +1 or cdwl[i] == -1) {
+//			++count_pm1;
+//		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
+//			++count_pm2;
+//		}
+//	}
+//	num ln_prefactor = count_pm1 * std::log(1. + std::sqrt(6.)/3.) +
+//			count_pm2 * std::log(1. - std::sqrt(6.)/3.);
+//	return ln_prefactor;
+//}
 
 
 template<bool TD, CheckerboardMethod CB>
@@ -1078,13 +1077,12 @@ template<class Vec>
 VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
 	VecNum kd(N);
 	for (uint32_t i = 0; i < N; ++ i) {
-		kd[i] = compute_d_for_cdwl_site_no_prefactor(cdwl[i]);
+		kd[i] = compute_d_for_cdwl_site(cdwl[i]);
 	}
-	kd += ln_prefactor_gamma_cdwl(cdwl);
 	return kd;
 }
 template<bool TD, CheckerboardMethod CB> inline
-num DetSDW<TD,CB>::compute_d_for_cdwl_site_no_prefactor(num cdwl) {
+num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
 	//TODO: check assembly -- operations removed
 	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
@@ -1124,15 +1122,15 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             VecNum ksinhTerm = sinhTerm.col(k);
             VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
 
-            //prefactor for discrete field (product of gamma_l_i)
-            //this needs to cover all entries of the matrix, so in that case
-            //we change kcoshTerm and ksinhTerm
-            if (cdwU > 0) {
-            	num prefactor = this->prefactor_gamma_cdwl(cdwl.col(k));
-            	//std::cout << k << " prefactor = " << prefactor << "\n";
-            	kcoshTerm *= prefactor;
-            	ksinhTerm *= prefactor;
-            }
+//            //prefactor for discrete field (product of gamma_l_i)
+//            //this needs to cover all entries of the matrix, so in that case
+//            //we change kcoshTerm and ksinhTerm
+//            if (cdwU > 0) {
+//            	num prefactor = this->prefactor_gamma_cdwl(cdwl.col(k));
+//            	//std::cout << k << " prefactor = " << prefactor << "\n";
+//            	kcoshTerm *= prefactor;
+//            	ksinhTerm *= prefactor;
+//            }
 
             //is this the best way to set the real and imaginary parts of a complex submatrix?
             //TODO: below some multiplications are repeated, could be pulled out -- however, currently this routine is not called when the checkerboard approx is used anyway
@@ -1236,14 +1234,14 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
 
     VecNum eigval;
     MatCpx eigvec;
-    arma::eig_sym(eigval, eigvec, sign*dtau*V - sign*D);
+    arma::eig_sym(eigval, eigvec, num(sign)*dtau*V - num(sign)*D);
 
     MatCpx result(4*N, 4*N);
     result = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
-    if (cdwU > 0) {
-    	result *= std::pow(prefactor_gamma_cdwl(cdwl), -sign);
-    }
+//    if (cdwU > 0) {
+//    	result *= std::pow(prefactor_gamma_cdwl(cdwl), -sign);
+//    }
 
     return result;
 }
@@ -1603,13 +1601,15 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-	//overall factor for entire matrix
-	// includes chemical potential
-	// with cdwU includes discrete field prefactor
-    num ovFac = std::exp(dtau*mu);
-    if (cdwU > 0) {
-    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
-    }
+//
+//	// with cdwU includes discrete field prefactor
+//
+//    if (cdwU > 0) {
+//    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
+//    }
+
+	//overall factor for entire matrix for chemical potential
+	num ovFac = std::exp(dtau*mu);
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1679,13 +1679,12 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-  	//overall factor for entire matrix
-	// includes chemical potential
-	// with cdwU includes discrete field prefactor
+  	//overall factor for entire matrix for chemical potential
+//	//with cdwU includes discrete field prefactor
     num ovFac = std::exp(-dtau*mu);
-    if (cdwU > 0) {
-    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
-    }
+//    if (cdwU > 0) {
+//    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
+//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1759,13 +1758,12 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	//overall factor for entire matrix
-	// includes chemical potential
-	// with cdwU includes discrete field prefactor
+	//overall factor for entire matrix for chemical potential
+//	// with cdwU includes discrete field prefactor
     num ovFac = std::exp(dtau*mu);
-    if (cdwU > 0) {
-    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
-    }
+//    if (cdwU > 0) {
+//    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
+//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1833,13 +1831,12 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-  	//overall factor for entire matrix
-	// includes chemical potential
-	// with cdwU includes discrete field prefactor
+  	//overall factor for entire matrix for chemical potential
+//	// with cdwU includes discrete field prefactor
     num ovFac = std::exp(-dtau*mu);
-    if (cdwU > 0) {
-    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
-    }
+//    if (cdwU > 0) {
+//    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
+//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -2136,7 +2133,9 @@ num DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeL
         //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
 
 
-        num prob = probSPhi * probSFermion;
+        num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+
+        num prob = probSPhi * probSFermion * prob_cdwl;
 
         if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
@@ -2363,7 +2362,9 @@ num DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLo
 
         num probSFermion = arma::det(M).real();
 
-        num prob = probSPhi * probSFermion;
+        num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+
+        num prob = probSPhi * probSFermion * prob_cdwl;
 
         if (prob > 1.0 or rng.rand01() < prob) {
         	//count accepted update
@@ -2454,7 +2455,9 @@ num DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLoc
                 dud.Mj = eye4cpx - dud.Sj * delta_forsite + delta_forsite;
                 num probSFermion = arma::det(dud.Mj).real();
 
-                num prob = probSPhi * probSFermion;
+                num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+
+                num prob = probSPhi * probSFermion * prob_cdwl;
                 if (prob > 1.0 or rng.rand01() < prob) {
                 	//count accepted update
                 	accratio += 1.0;
@@ -2512,7 +2515,7 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
     auto evMatrix = [this](int sign, num kphi0, num kphi1,
             num kphi2, int32_t cdwl, num kcoshTerm, num ksinhTerm) -> MatCpx::fixed<4,4> {
         MatNum::fixed<4,4> ev_real;
-        num kd = this->compute_d_for_cdwl_site_no_prefactor(cdwl);
+        num kd = this->compute_d_for_cdwl_site(cdwl);
         num dtau = this->dtau;
         ev_real(0,0) = ev_real(1,1) = kcoshTerm - sign * kd * ksinhTerm;
         ev_real(2,2) = ev_real(3,3) = kcoshTerm + sign * kd * ksinhTerm;
@@ -3066,10 +3069,10 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewCDWl(
 	else if (r <= 0.5)	cdwl_new = -2;
 	else if (r <= 0.75)	cdwl_new = +1;
 	else				cdwl_new = -1;
-        Phi samephi;
-        samephi[0] = phi0(site,timeslice);
-        samephi[1] = phi1(site,timeslice);
-        samephi[2] = phi2(site,timeslice);
+	Phi samephi;
+	samephi[0] = phi0(site,timeslice);
+	samephi[1] = phi1(site,timeslice);
+	samephi[2] = phi2(site,timeslice);
 	return std::make_tuple(CDWL, samephi, cdwl_new);
 }
 
@@ -3394,56 +3397,108 @@ void DetSDW<TD,CB>::consistencyCheck() {
         	}
         }
     }
-    // Compare Bmat-evaluation
+//    // Compare Bmat-evaluation
+//    for (uint32_t k = 1; k <= m; ++k) {
+//    	MatCpx Bk = computeBmatSDW(k, k-1);
+//    	MatCpx Bk_inv = arma::inv(Bk);
+//    	MatCpx checkBk_left = checkerboardLeftMultiplyBmat(
+//    			arma::eye<MatCpx>(4*N,4*N),
+//    			k, k-1);
+//    	MatCpx checkBk_right = checkerboardRightMultiplyBmat(
+//    			arma::eye<MatCpx>(4*N,4*N),
+//    			k, k-1);
+//    	MatCpx checkBk_inv_left = checkerboardLeftMultiplyBmatInv(
+//    			arma::eye<MatCpx>(4*N,4*N),
+//    			k, k-1);
+//    	MatCpx checkBk_inv_right = checkerboardRightMultiplyBmatInv(
+//    			arma::eye<MatCpx>(4*N,4*N),
+//    			k, k-1);
+//    	std::cout << "CB:" << checkerboard << " " << k << "\n";
+//    	print_matrix_diff(Bk, checkBk_left, "Bk_left");
+//    	print_matrix_diff(Bk_inv, checkBk_inv_left, "Bk_inv_left");
+//    	print_matrix_diff(Bk, checkBk_right, "Bk_right");
+//    	print_matrix_diff(Bk_inv, checkBk_inv_right, "Bk_inv_right");
+//    	MatCpx emv = computePotentialExponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
+//    	MatNum propK_whole(4*N, 4*N);
+//    	propK_whole.zeros();
+//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+//    	block(propK_whole, 0, 0) = propKx;
+//    	block(propK_whole, 1, 1) = propKx;
+//    	block(propK_whole, 2, 2) = propKy;
+//    	block(propK_whole, 3, 3) = propKy;
+//    	MatCpx Bk_ref = emv * propK_whole;
+//    	print_matrix_diff(Bk, Bk_ref, "Bk_ref");
+//#undef block
+//    	MatCpx Bk_ref_inv = arma::inv(Bk_ref);
+//    	print_matrix_diff(Bk_inv, Bk_ref_inv, "Bk_ref_inv");
+//    	// spaceNeigh.save();
+//    	// debugSaveMatrix(phi0.col(k), "phi0");
+//    	// debugSaveMatrix(phi1.col(k), "phi1");
+//    	// debugSaveMatrix(phi2.col(k), "phi2");
+//    	// debugSaveMatrix(cdwl.col(k), "cdwl");
+//    	// debugSaveMatrix(propKx, "propkx");
+//    	// debugSaveMatrix(propKy, "propky");
+//    	// debugSaveMatrixCpx(emv, "emv");
+//    	// debugSaveMatrixCpx(Bk, "bk");
+//    	// debugSaveMatrixCpx(Bk_inv, "bk_inv");
+//    	// debugSaveMatrixCpx(checkBk_left, "check_bk_left");
+//    	// debugSaveMatrixCpx(checkBk_inv_left, "check_bk_inv_left");
+//    	// debugSaveMatrixCpx(Bk_ref, "bk_ref");
+//    	// debugSaveMatrixCpx(Bk_ref_inv, "bk_ref_inv");
+//    	// exit(0);
+//    }
+    // Verify get_delta_forsite
     for (uint32_t k = 1; k <= m; ++k) {
-    	MatCpx Bk = computeBmatSDW(k, k-1);
-    	MatCpx Bk_inv = arma::inv(Bk);
-    	MatCpx checkBk_left = checkerboardLeftMultiplyBmat(
-    			arma::eye<MatCpx>(4*N,4*N),
-    			k, k-1);
-    	MatCpx checkBk_right = checkerboardRightMultiplyBmat(
-    			arma::eye<MatCpx>(4*N,4*N),
-    			k, k-1);
-    	MatCpx checkBk_inv_left = checkerboardLeftMultiplyBmatInv(
-    			arma::eye<MatCpx>(4*N,4*N),
-    			k, k-1);
-    	MatCpx checkBk_inv_right = checkerboardRightMultiplyBmatInv(
-    			arma::eye<MatCpx>(4*N,4*N),
-    			k, k-1);
-    	std::cout << "CB:" << checkerboard << " " << k << "\n";
-    	print_matrix_diff(Bk, checkBk_left, "Bk_left");
-    	print_matrix_diff(Bk_inv, checkBk_inv_left, "Bk_inv_left");
-    	print_matrix_diff(Bk, checkBk_right, "Bk_right");
-    	print_matrix_diff(Bk_inv, checkBk_inv_right, "Bk_inv_right");
-    	MatCpx emv = computePotentialExponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
-    	MatNum propK_whole(4*N, 4*N);
-    	propK_whole.zeros();
-#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-    	block(propK_whole, 0, 0) = propKx;
-    	block(propK_whole, 1, 1) = propKx;
-    	block(propK_whole, 2, 2) = propKy;
-    	block(propK_whole, 3, 3) = propKy;
-    	MatCpx Bk_ref = emv * propK_whole;
-    	print_matrix_diff(Bk, Bk_ref, "Bk_ref");
-#undef block
-    	MatCpx Bk_ref_inv = arma::inv(Bk_ref);
-    	print_matrix_diff(Bk_inv, Bk_ref_inv, "Bk_ref_inv");
-    	// spaceNeigh.save();
-    	// debugSaveMatrix(phi0.col(k), "phi0");
-    	// debugSaveMatrix(phi1.col(k), "phi1");
-    	// debugSaveMatrix(phi2.col(k), "phi2");
-    	// debugSaveMatrix(cdwl.col(k), "cdwl");
-    	// debugSaveMatrix(propKx, "propkx");
-    	// debugSaveMatrix(propKy, "propky");
-    	// debugSaveMatrixCpx(emv, "emv");
-    	// debugSaveMatrixCpx(Bk, "bk");
-    	// debugSaveMatrixCpx(Bk_inv, "bk_inv");
-    	// debugSaveMatrixCpx(checkBk_left, "check_bk_left");
-    	// debugSaveMatrixCpx(checkBk_inv_left, "check_bk_inv_left");
-    	// debugSaveMatrixCpx(Bk_ref, "bk_ref");
-    	// debugSaveMatrixCpx(Bk_ref_inv, "bk_ref_inv");
-    	// exit(0);
+    	for (auto stage : {1, 2}) {
+    		uint32_t site = rng.randInt(0, N-1);
+    		std::cout << k << " " << stage << " " << site << "\n";
+    		Phi new_phi;
+    		int32_t new_cdwl;
+    		Changed changed;
+    		switch (stage) {
+    		case 1:
+    			std::tie(changed, new_phi, new_cdwl) = proposeNewPhiBox(site, k);
+    			break;
+    		case 2:
+    		default:
+    			std::tie(changed, new_phi, new_cdwl) = proposeNewCDWl(site, k);
+    			break;
+    		}
+    		MatCpx::fixed<4,4> delta = get_delta_forsite(new_phi, new_cdwl, k, site);
+    		VecNum n_phi0 = phi0.col(k);
+    		n_phi0[site] = new_phi[0];
+    		VecNum n_phi1 = phi1.col(k);
+    		n_phi1[site] = new_phi[1];
+    		VecNum n_phi2 = phi2.col(k);
+    		n_phi2[site] = new_phi[2];
+    		VecInt n_cdwl = cdwl.col(k);
+    		n_cdwl[site] = new_cdwl;
+    		MatCpx big_delta =
+    				computePotentialExponential(-1, n_phi0, n_phi1, n_phi2, n_cdwl)
+    				*
+    				computePotentialExponential(+1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k))
+    				-
+    				arma::eye<MatCpx>(4*N, 4*N);
+    		arma::uvec indices;
+    		indices << site << site+N << site+2*N << site+3*N;
+    		MatCpx::fixed<4,4> big_delta_sub = big_delta.submat(indices, indices);
+    		std::cout << (new_phi[0] - phi0(site, k)) << " "
+    				  << (new_phi[1] - phi1(site, k)) << " "
+    				  << (new_phi[2] - phi2(site, k)) << std::endl;
+    		std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
+    				<< " -> " << cdwl_gamma(new_cdwl)
+    				<< std::endl;
+    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
+    				        arma::real(delta).eval(), "real(delta)");
+    		//python_matshow(arma::imag(big_delta).eval());
+    		print_matrix_diff(delta, big_delta_sub, "delta");
+//    		python_matshow(arma::real(delta - big_delta_sub).eval());
+//    		python_matshow(arma::imag(delta - big_delta_sub).eval());
+    	}
     }
+
+
+
     // UdV storage -- unitarity
 //    for (uint32_t l = 0; l <= n; ++l) {
 //    	const MatCpx& U   = (*UdVStorage)[0][l].U;

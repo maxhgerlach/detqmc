@@ -418,18 +418,19 @@ protected:
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
 
 
-    //helpers for computeBmatSDW and the checkerboard variations
-    //for the cdwl-discrete field
-    //return the product of gamma_l_i for cdwl
-    template<class Vec>
-    num prefactor_gamma_cdwl(const Vec& cdwl);
-    template<class Vec>
-    num ln_prefactor_gamma_cdwl(const Vec& cdwl);
-    // compute sqrt(dtau) * cdwU * eta_{cdwl[i]} + \sum_j \ln \gamma_{cdwl[j]}
+//    //helpers for computeBmatSDW and the checkerboard variations
+//    //for the cdwl-discrete field
+//    //return the product of gamma_l_i for cdwl
+//    template<class Vec>
+//    num prefactor_gamma_cdwl(const Vec& cdwl);
+//    template<class Vec>
+//    num ln_prefactor_gamma_cdwl(const Vec& cdwl);
+
+    // compute sqrt(dtau) * cdwU * eta_{cdwl[i]}
     template<class Vec>
     VecNum compute_d_for_cdwl(const Vec& cdwl);
     // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
-    num compute_d_for_cdwl_site_no_prefactor(num cdwl);
+    num compute_d_for_cdwl_site(num cdwl);
 
 
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
