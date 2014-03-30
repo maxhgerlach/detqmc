@@ -122,8 +122,8 @@ protected:
 
 class PeriodicSquareLatticeNearestNeighbors : public PeriodicCubicLatticeNearestNeighbors {
 public:
-    PeriodicSquareLatticeNearestNeighbors(uint32_t L)
-        : PeriodicCubicLatticeNearestNeighbors(2, L)
+    PeriodicSquareLatticeNearestNeighbors(uint32_t L_)
+        : PeriodicCubicLatticeNearestNeighbors(2, L_)
     {
     }
     void save(const std::string& file = "neighbors.csv") {
@@ -140,8 +140,8 @@ enum class ChainDir : uint32_t {
 template <uint32_t startWith=0>     //start the indexing with 0 or maybe 1 or something else...
 class PeriodicChainNearestNeighbors : public PeriodicCubicLatticeNearestNeighbors {
 public:
-    PeriodicChainNearestNeighbors(uint32_t L)
-        : PeriodicCubicLatticeNearestNeighbors(1, L)
+    PeriodicChainNearestNeighbors(uint32_t L_)
+        : PeriodicCubicLatticeNearestNeighbors(1, L_)
     {
         //nearestNeighbors.save("timeneighbors.csv", arma::csv_ascii);
     }

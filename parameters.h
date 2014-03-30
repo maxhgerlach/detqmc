@@ -11,8 +11,12 @@
 #include <string>
 #include <set>
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/string.hpp"
 #include "boost/serialization/set.hpp"
+#pragma GCC diagnostic pop            
 
 // Collect various structs defining various parameters.
 // Passing around these reduces code duplication somewhat, and reduces errors caused by passing
@@ -23,7 +27,10 @@
 // at the appropriate point in the program if a parameter is missing.
 //TODO: Find a more elegant solution.
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
 typedef double num;     //possibility to switch to single precision if ever desired
+#pragma GCC diagnostic pop
 
 // Struct representing model specific parameters
 struct ModelParams {

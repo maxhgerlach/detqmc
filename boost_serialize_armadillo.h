@@ -12,7 +12,11 @@
 
 #include <armadillo>
 #include <sstream>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/split_free.hpp"
+#pragma GCC diagnostic pop
 
 namespace boost { namespace serialization {
 

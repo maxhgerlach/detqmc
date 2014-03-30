@@ -25,7 +25,11 @@
 #include "metadata.h"
 #include "timing.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/base_object.hpp"
+#pragma GCC diagnostic pop
 #include "boost_serialize_array.h"
 #include "boost_serialize_armadillo.h"
 
@@ -611,36 +615,36 @@ typename DetModelGC<GC,V,TimeDisplaced>::MatV4 DetModelGC<GC,V,TimeDisplaced>::g
     const VecNum& dr = UdV_r.d;
     const MatV&   Vr = UdV_r.V;
 
-    uint32_t sz = Ul.n_rows;
+    uint32_t sz_ = Ul.n_rows;
 
     //submatrix view helpers for 2*N x 2*N matrices
-    auto upleft = [sz](MatV& m) {
-        return m.submat(0,0, sz-1,sz-1);
+    auto upleft = [sz_](MatV& m) {
+        return m.submat(0,0, sz_-1,sz_-1);
     };
-    auto upright = [sz](MatV& m) {
-        return m.submat(0,sz, sz-1,2*sz-1);
+    auto upright = [sz_](MatV& m) {
+        return m.submat(0,sz_, sz_-1,2*sz_-1);
     };
-    auto downleft = [sz](MatV& m) {
-        return m.submat(sz,0, 2*sz-1,sz-1);
+    auto downleft = [sz_](MatV& m) {
+        return m.submat(sz_,0, 2*sz_-1,sz_-1);
     };
-    auto downright = [sz](MatV& m) {
-        return m.submat(sz,sz, 2*sz-1,2*sz-1);
+    auto downright = [sz_](MatV& m) {
+        return m.submat(sz_,sz_, 2*sz_-1,2*sz_-1);
     };
 
-    MatV temp(2*sz,2*sz);
+    MatV temp(2*sz_,2*sz_);
     upleft(temp)    = arma::inv(Vr * Vl);
     upright(temp)   = arma::diagmat(dl);
     downleft(temp)  = arma::diagmat(-dr);
     downright(temp) = arma::inv(Ul * Ur);
     UdVV tempUdV = udvDecompose<V>(temp);
 
-    MatV left(2*sz,2*sz);
+    MatV left(2*sz_,2*sz_);
     upleft(left) = arma::inv(Vr);
     upright(left).zeros();
     downleft(left).zeros();
     downright(left) = arma::inv(Ul);
 
-    MatV right(2*sz,2*sz);
+    MatV right(2*sz_,2*sz_);
     upleft(right) = arma::inv(Vl);
     upright(right).zeros();
     downleft(right).zeros();

@@ -11,7 +11,11 @@
 #include <array>
 #include <tuple>
 #include <cassert>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#pragma GCC diagnostic pop
 #include "observable.h"
 #include "detsdw.h"
 #include "exceptions.h"
@@ -64,7 +68,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         if (not pars.specified.count("delaySteps")) {
             throw ParameterMissing("delaySteps");
         }
-        uint32_t N = std::pow(pars.L, 2);
+        uint32_t N = static_cast<uint32_t>(std::pow(pars.L, 2));
         if (pars.delaySteps <= 0 or pars.delaySteps > N) {
             throw ParameterWrong("delaySteps", pars.delaySteps);
         }
@@ -1055,7 +1059,7 @@ VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
 	return kd;
 }
 template<bool TD, CheckerboardMethod CB> inline
-num DetSDW<TD,CB>::compute_d_for_cdwl_site(num cdwl) {
+num DetSDW<TD,CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
 	//TODO: check assembly -- operations removed
 	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
@@ -1210,6 +1214,7 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
     arma::eig_sym(eigval, eigvec, num(sign)*dtau*V - num(sign)*D);
 
     MatCpx result(4*N, 4*N);
+
     result = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
 //    if (cdwU > 0) {
@@ -2345,14 +2350,40 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
             cdwl(site, timeslice),
             coshTerm(site, timeslice), sinhTerm(site, timeslice)
     );
+
+    //DEBUG
+    VecNum debug_phi0 = phi0.col(timeslice);
+    VecNum debug_phi1 = phi1.col(timeslice);
+    VecNum debug_phi2 = phi2.col(timeslice);
+    VecInt debug_cdwl = cdwl.col(timeslice);
+    MatCpx evOld_big = computePotentialExponential(
+        +1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
+    arma::uvec indices;
+    indices << site << site+N << site+2*N << site+3*N;
+    MatCpx::fixed<4,4> evOld_big_sub = evOld_big.submat(indices, indices);
+    print_matrix_diff(evOld, evOld_big_sub, "evOld diff");
+    //DEBUG -- OK
+
     num coshTerm_new, sinhTerm_new;
     std::tie(coshTerm_new, sinhTerm_new) = getCoshSinhTerm(newphi[0], newphi[1], newphi[2], new_cdwl);
     MatCpx::fixed<4,4> emvNew = evMatrix(
             -1,
-            new_cdwl,
             newphi[0], newphi[1], newphi[2],
+            new_cdwl,
             coshTerm_new, sinhTerm_new
     );
+
+    //DEBUG
+    debug_phi0[site] = newphi[0];
+    debug_phi1[site] = newphi[1];
+    debug_phi2[site] = newphi[2];
+    debug_cdwl[site] = new_cdwl;
+    MatCpx emvNew_big = computePotentialExponential(
+        -1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
+    MatCpx::fixed<4,4> emvNew_big_sub = emvNew_big.submat(indices, indices);
+    print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
+    //DEBUG -- FOUND Discrepancy
+    
     MatCpx::fixed<4,4> delta_forsite = emvNew * evOld;
     delta_forsite.diag() -= cpx(1.0, 0);
     return delta_forsite;
@@ -3149,54 +3180,54 @@ void DetSDW<TD,CB>::consistencyCheck() {
         	}
         }
     }
-//    // Compare Bmat-evaluation
+//    // compare bmat-evaluation
 //    for (uint32_t k = 1; k <= m; ++k) {
-//    	MatCpx Bk = computeBmatSDW(k, k-1);
-//    	MatCpx Bk_inv = arma::inv(Bk);
-//    	MatCpx checkBk_left = checkerboardLeftMultiplyBmat(
-//    			arma::eye<MatCpx>(4*N,4*N),
+//    	matcpx bk = computebmatsdw(k, k-1);
+//    	matcpx bk_inv = arma::inv(bk);
+//    	matcpx checkbk_left = checkerboardleftmultiplybmat(
+//    			arma::eye<matcpx>(4*n,4*n),
 //    			k, k-1);
-//    	MatCpx checkBk_right = checkerboardRightMultiplyBmat(
-//    			arma::eye<MatCpx>(4*N,4*N),
+//    	matcpx checkbk_right = checkerboardrightmultiplybmat(
+//    			arma::eye<matcpx>(4*n,4*n),
 //    			k, k-1);
-//    	MatCpx checkBk_inv_left = checkerboardLeftMultiplyBmatInv(
-//    			arma::eye<MatCpx>(4*N,4*N),
+//    	matcpx checkbk_inv_left = checkerboardleftmultiplybmatinv(
+//    			arma::eye<matcpx>(4*n,4*n),
 //    			k, k-1);
-//    	MatCpx checkBk_inv_right = checkerboardRightMultiplyBmatInv(
-//    			arma::eye<MatCpx>(4*N,4*N),
+//    	matcpx checkbk_inv_right = checkerboardrightmultiplybmatinv(
+//    			arma::eye<matcpx>(4*n,4*n),
 //    			k, k-1);
-//    	std::cout << "CB:" << checkerboard << " " << k << "\n";
-//    	print_matrix_diff(Bk, checkBk_left, "Bk_left");
-//    	print_matrix_diff(Bk_inv, checkBk_inv_left, "Bk_inv_left");
-//    	print_matrix_diff(Bk, checkBk_right, "Bk_right");
-//    	print_matrix_diff(Bk_inv, checkBk_inv_right, "Bk_inv_right");
-//    	MatCpx emv = computePotentialExponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
-//    	MatNum propK_whole(4*N, 4*N);
-//    	propK_whole.zeros();
-//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-//    	block(propK_whole, 0, 0) = propKx;
-//    	block(propK_whole, 1, 1) = propKx;
-//    	block(propK_whole, 2, 2) = propKy;
-//    	block(propK_whole, 3, 3) = propKy;
-//    	MatCpx Bk_ref = emv * propK_whole;
-//    	print_matrix_diff(Bk, Bk_ref, "Bk_ref");
+//    	std::cout << "cb:" << checkerboard << " " << k << "\n";
+//    	print_matrix_diff(bk, checkbk_left, "bk_left");
+//    	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
+//    	print_matrix_diff(bk, checkbk_right, "bk_right");
+//    	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
+//    	matcpx emv = computepotentialexponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
+//    	matnum propk_whole(4*n, 4*n);
+//    	propk_whole.zeros();
+//#define block(matrix, row, col) matrix.submat((row) * n, (col) * n, ((row) + 1) * n - 1, ((col) + 1) * n - 1)
+//    	block(propk_whole, 0, 0) = propkx;
+//    	block(propk_whole, 1, 1) = propkx;
+//    	block(propk_whole, 2, 2) = propky;
+//    	block(propk_whole, 3, 3) = propky;
+//    	matcpx bk_ref = emv * propk_whole;
+//    	print_matrix_diff(bk, bk_ref, "bk_ref");
 //#undef block
-//    	MatCpx Bk_ref_inv = arma::inv(Bk_ref);
-//    	print_matrix_diff(Bk_inv, Bk_ref_inv, "Bk_ref_inv");
-//    	// spaceNeigh.save();
-//    	// debugSaveMatrix(phi0.col(k), "phi0");
-//    	// debugSaveMatrix(phi1.col(k), "phi1");
-//    	// debugSaveMatrix(phi2.col(k), "phi2");
-//    	// debugSaveMatrix(cdwl.col(k), "cdwl");
-//    	// debugSaveMatrix(propKx, "propkx");
-//    	// debugSaveMatrix(propKy, "propky");
-//    	// debugSaveMatrixCpx(emv, "emv");
-//    	// debugSaveMatrixCpx(Bk, "bk");
-//    	// debugSaveMatrixCpx(Bk_inv, "bk_inv");
-//    	// debugSaveMatrixCpx(checkBk_left, "check_bk_left");
-//    	// debugSaveMatrixCpx(checkBk_inv_left, "check_bk_inv_left");
-//    	// debugSaveMatrixCpx(Bk_ref, "bk_ref");
-//    	// debugSaveMatrixCpx(Bk_ref_inv, "bk_ref_inv");
+//    	matcpx bk_ref_inv = arma::inv(bk_ref);
+//    	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
+//    	// spaceneigh.save();
+//    	// debugsavematrix(phi0.col(k), "phi0");
+//    	// debugsavematrix(phi1.col(k), "phi1");
+//    	// debugsavematrix(phi2.col(k), "phi2");
+//    	// debugsavematrix(cdwl.col(k), "cdwl");
+//    	// debugsavematrix(propkx, "propkx");
+//    	// debugsavematrix(propky, "propky");
+//    	// debugsavematrixcpx(emv, "emv");
+//    	// debugsavematrixcpx(bk, "bk");
+//    	// debugsavematrixcpx(bk_inv, "bk_inv");
+//    	// debugsavematrixcpx(checkbk_left, "check_bk_left");
+//    	// debugsavematrixcpx(checkbk_inv_left, "check_bk_inv_left");
+//    	// debugsavematrixcpx(bk_ref, "bk_ref");
+//    	// debugsavematrixcpx(bk_ref_inv, "bk_ref_inv");
 //    	// exit(0);
 //    }
     // Verify get_delta_forsite
@@ -3240,8 +3271,8 @@ void DetSDW<TD,CB>::consistencyCheck() {
     		std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
     				<< " -> " << cdwl_gamma(new_cdwl)
     				<< std::endl;
-    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
-    				        arma::real(delta).eval(), "real(delta)");
+//    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
+//    				        arma::real(delta).eval(), "real(delta)");
     		//python_matshow(arma::imag(big_delta).eval());
     		print_matrix_diff(delta, big_delta_sub, "delta");
 //    		python_matshow(arma::real(delta - big_delta_sub).eval());

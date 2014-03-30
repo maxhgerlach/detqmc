@@ -14,8 +14,11 @@
 #include <string>
 #include <map>
 #include <iostream>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/timer/timer.hpp"
-
+#pragma GCC diagnostic pop
 
 class Timing {
 public:

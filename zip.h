@@ -8,9 +8,12 @@
 #ifndef ZIP_H_
 #define ZIP_H_
 
-
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include <boost/iterator/zip_iterator.hpp>
 #include <boost/range.hpp>
+#pragma GCC diagnostic pop
 
 //zip iterators over several sequences to allow iterating over all of them in one go;
 //will iterate over tuples of elements from the different sequences

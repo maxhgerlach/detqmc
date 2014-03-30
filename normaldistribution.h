@@ -26,8 +26,8 @@ public:
 	void reset();			//clear internal state (standard_normal_random_variables) -- no worrying about serialization
 };
 
-inline NormalDistribution::NormalDistribution(RngWrapper& rng)
-	: rng(rng) {
+inline NormalDistribution::NormalDistribution(RngWrapper& rng_)
+	: rng(rng_) {
 }
 
 inline void NormalDistribution::reset() {

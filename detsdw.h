@@ -411,7 +411,7 @@ protected:
     template<class Vec>
     VecNum compute_d_for_cdwl(const Vec& cdwl);
     // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
-    num compute_d_for_cdwl_site(num cdwl);
+    num compute_d_for_cdwl_site(uint32_t cdwl);
 
 
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
@@ -542,8 +542,8 @@ protected:
     //wrappers to use to instantiate template functions of the base class
     struct sdwComputeBmat {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
-            parent(parent)
+        sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+            parent(parent_)
         { }
         MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
             (void)gc;
@@ -554,8 +554,8 @@ protected:
 
     struct sdwLeftMultiplyBmat {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
-            parent(parent)
+        sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+            parent(parent_)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
@@ -570,8 +570,8 @@ protected:
 
     struct sdwRightMultiplyBmat {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent) :
-            parent(parent)
+        sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+            parent(parent_)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
@@ -586,8 +586,8 @@ protected:
 
     struct sdwLeftMultiplyBmatInv {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent) :
-            parent(parent)
+        sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+            parent(parent_)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;
@@ -602,8 +602,8 @@ protected:
 
     struct sdwRightMultiplyBmatInv {
         DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent) :
-            parent(parent)
+        sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+            parent(parent_)
         { }
         MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
             (void)gc;

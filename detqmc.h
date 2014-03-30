@@ -22,9 +22,13 @@
 #include "rngwrapper.h"
 #include "exceptions.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/preprocessor/comma.hpp"
 #include "boost/timer/timer.hpp"
 #include "boost/serialization/split_member.hpp"
+#pragma GCC diagnostic pop
 
 
 class SerializeContentsKey;
@@ -86,7 +90,7 @@ protected:
 
     boost::timer::cpu_timer elapsedTimer;           //during this simulation run
     uint32_t curWalltimeSecs() {
-        return elapsedTimer.elapsed().wall / 1000 / 1000 / 1000; // ns->mus->ms->s
+        return static_cast<uint32_t>(elapsedTimer.elapsed().wall / 1000 / 1000 / 1000); // ns->mus->ms->s
     }
     uint32_t totalWalltimeSecs;             //this is serialized and carries the elapsed walltime in seconds
                                                     //accumulated over all runs, updated on call of saveResults()
@@ -115,11 +119,11 @@ private:
         // if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
         //     p->loadContents(SerializeContentsKey(), ar);
         // } else
-        if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
+        if (DetHubbard<false, true>* p1 = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
+            p1->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
+        if (DetHubbard<false, false>* p2 = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
+            p2->loadContents(SerializeContentsKey(), ar);
         } else
         // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
         //     p->loadContents(SerializeContentsKey(), ar);
@@ -127,11 +131,11 @@ private:
         // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
         //     p->loadContents(SerializeContentsKey(), ar);
         // } else
-        if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
+        if (DetSDW<false, CB_NONE>* p3 = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
+            p3->loadContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
-            p->loadContents(SerializeContentsKey(), ar);
+        if (DetSDW<false, CB_ASSAAD_BERG>* p4 = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
+            p4->loadContents(SerializeContentsKey(), ar);
         }
         else {
             throw SerializationError("Tried to load contents of unsupported replica");
@@ -154,8 +158,8 @@ private:
         if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
             p->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetHubbard<false, false>* p = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
+        if (DetHubbard<false, false>* p2 = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
+            p2->saveContents(SerializeContentsKey(), ar);
         } else
         // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
         //     p->saveContents(SerializeContentsKey(), ar);
@@ -163,11 +167,11 @@ private:
         // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
         //     p->saveContents(SerializeContentsKey(), ar);
         // } else
-        if (DetSDW<false, CB_NONE>* p = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
+        if (DetSDW<false, CB_NONE>* p3 = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
+            p3->saveContents(SerializeContentsKey(), ar);
         } else
-        if (DetSDW<false, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
+        if (DetSDW<false, CB_ASSAAD_BERG>* p4 = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
+            p4->saveContents(SerializeContentsKey(), ar);
         }
         else {
             throw SerializationError("Tried to save contents of unsupported replica");

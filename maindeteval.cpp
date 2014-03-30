@@ -16,7 +16,11 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/program_options.hpp"
+#pragma GCC diagnostic pop
 #include "git-revision.h"
 #include "tools.h"                      //glob
 #include "dataseriesloader.h"
@@ -140,7 +144,7 @@ int main(int argc, char **argv) {
             tauints[obsName] = tauint(*data);
         }
 
-        evalSamples = data->size();
+        evalSamples = static_cast<uint32_t>(data->size());
 
         reader.deleteData();
 

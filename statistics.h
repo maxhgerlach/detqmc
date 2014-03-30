@@ -22,14 +22,15 @@
 
 template<typename T>
 T variance(const std::vector<T>& numbers, T meanValue, const T& zeroValue = T()) {
+    typedef typename std::vector<T>::size_type size_type;
     using std::pow;
     using arma::pow;
-    uint32_t N = numbers.size();
+    size_type N = numbers.size();
     T sum = zeroValue;
-    for (uint32_t i = 0; i < N; ++i) {
+    for (size_type i = 0; i < N; ++i) {
         sum += pow(numbers[i] - meanValue, 2);
     }
-    return sum / (N-1);
+    return sum / static_cast<T>(N-1);
 }
 
 
@@ -39,7 +40,7 @@ template<typename T>
 std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
         const std::vector<T>& data, uint32_t jkBlocks) {
     std::vector<T> blockEstimates(jkBlocks, T(0));
-    uint32_t jkBlockSize = data.size() / jkBlocks;
+    uint32_t jkBlockSize = static_cast<uint32_t>(data.size()) / jkBlocks;
     //if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
     uint32_t totalSamples = jkBlocks * jkBlockSize;
 
@@ -81,7 +82,7 @@ T jackknife(
     using std::sqrt;
     using arma::pow;
     using arma::sqrt;
-    uint32_t bc = blockValues.size();
+    uint32_t bc = static_cast<uint32_t>(blockValues.size());
     T squaredDeviation = zeroValue;
     for (uint32_t b = 0; b < bc; ++b) {
         squaredDeviation += pow(blockAverage - blockValues[b], 2);
@@ -121,7 +122,7 @@ T average(const std::function<T(T)>& func,
     for (std::size_t i = start; i < end; ++i) {
         avg += func(T(vec[i]));
     }
-    avg /= (end-start);
+    avg /= static_cast<T>(end-start);
     return avg;
 }
 
@@ -150,7 +151,7 @@ T tauint(const std::vector<T>& data, T selfConsCutOff = T(6)) {
         for (size_t k = 0; k < m - t; ++k){
             autoCorr += (data[k] - mean) * (data[k + t] - mean);
         }
-        autoCorr /= (m - t);
+        autoCorr /= static_cast<T>(m - t);
         if (t == 0) {
             var = autoCorr;
         } else {
@@ -202,7 +203,7 @@ T tauint_adaptive(const std::vector<T>& data) {
     for (size_t k = 0; k < m; ++k){
         var += (data[k] - mean) * (data[k] - mean);
     }
-    var /= m;
+    var /= static_cast<T>(m);
 
     //adaptive integration of autocorrelation function
     //high time resolution for small lag times, lower resolution for higher times in the
@@ -218,15 +219,15 @@ T tauint_adaptive(const std::vector<T>& data) {
         for (size_t k = 0; k < m - t_i; ++k){
             autoCorr += (data[k] - mean) * (data[k + t_i] - mean);
         }
-        autoCorr /= (m - t_i);
+        autoCorr /= static_cast<T>(m - t_i);
         autoCorr /= var;
 
         if (autoCorr <= 0) {
             break;
         } else {
             //weighted addition to estimate integrated autocorrelation time
-            T t_next = 1 + (i+1) * (i) / 2;
-            result += autoCorr * (t_next - t_i);
+            T t_next = 1 + static_cast<T>(i+1) * static_cast<T>(i) / 2;
+            result += autoCorr * (static_cast<T>(t_next) - static_cast<T>(t_i));
         }
         i = i + 1;
     }

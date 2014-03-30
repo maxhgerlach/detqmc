@@ -37,7 +37,7 @@ public:
 class ParameterMissing : public std::exception {
     std::string par;
 public:
-    ParameterMissing(const std::string& par) : par(par) {}
+    ParameterMissing(const std::string& par_) : par(par_) {}
     virtual ~ParameterMissing() throw () { }
     virtual const char* what() const throw () {
         return ("Parameter " + par + " not given.").c_str();
@@ -88,8 +88,8 @@ public:
 class ReadError : public std::exception {
     std::string filename;
 public:
-    ReadError(std::string filename) throw ():
-        filename(filename) {
+    ReadError(std::string filename_) throw ():
+        filename(filename_) {
     }
     ~ReadError() throw () { }
     virtual const char* what() const throw () {

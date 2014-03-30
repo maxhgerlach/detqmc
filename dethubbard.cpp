@@ -10,7 +10,11 @@
 #include <cmath>
 #include <complex>
 #include <cassert>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
+#pragma GCC diagnostic pop
 #include "tools.h"
 #include "exceptions.h"
 #include "rngwrapper.h"
@@ -561,9 +565,9 @@ void DetHubbard<TD,CB>::measure(uint32_t timeslice) {
 		sum_GiiUpDn += gUp(site, site) * gDn(site, site);
 		//use nearest neighbor elements of Green functions:
 		for (auto p = neigh.beginNeighbors(site); p != neigh.endNeighbors(site); ++p) {
-			uint32_t neigh = *p;
-			sum_GneighUp += gUp(site, neigh);
-			sum_GneighDn += gDn(site, neigh);
+			uint32_t site_neigh = *p;
+			sum_GneighUp += gUp(site, site_neigh);
+			sum_GneighDn += gDn(site, site_neigh);
 		}
 	}
 

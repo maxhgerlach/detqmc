@@ -28,10 +28,13 @@
 
 class SerializeContentsKey;
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/vector.hpp"
 #include "boost/serialization/export.hpp"
 #include "boost_serialize_uniqueptr.h"
-
+#pragma GCC diagnostic pop
 
 
 

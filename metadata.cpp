@@ -10,9 +10,13 @@
  */
 
 #include "metadata.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/property_tree/ptree.hpp"      //config file parsing
 #include "boost/property_tree/ini_parser.hpp"
 #include "boost/algorithm/string.hpp"   //trimming
+#pragma GCC diagnostic pop
 #include <sstream>
 #include <fstream>
 #include <iostream>

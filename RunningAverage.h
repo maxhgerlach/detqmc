@@ -6,7 +6,11 @@
 //#include <boost/serialization/deque.hpp>
 
 #include <list>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include <boost/serialization/list.hpp>
+#pragma GCC diagnostic pop
 
 namespace RA {
 

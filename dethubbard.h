@@ -249,8 +249,8 @@ protected:
     //wrappers to use to instantiate template functions of the base class
     struct hubbardComputeBmat {
         DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardComputeBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
-            parent(parent)
+        hubbardComputeBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+            parent(parent_)
         { }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type"
@@ -267,8 +267,8 @@ protected:
 
     struct hubbardLeftMultiplyBmat {
         DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
-            parent(parent)
+        hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+            parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
             return hubbardComputeBmat(parent)(gc, k2, k1) * mat;
@@ -277,8 +277,8 @@ protected:
 
     struct hubbardRightMultiplyBmat {
         DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
-            parent(parent)
+        hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+            parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
             return mat * hubbardComputeBmat(parent)(gc, k2, k1);
@@ -287,8 +287,8 @@ protected:
 
     struct hubbardLeftMultiplyBmatInv {
         DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
-            parent(parent)
+        hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+            parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
             return arma::inv(hubbardComputeBmat(parent)(gc, k2, k1)) * mat;
@@ -297,8 +297,8 @@ protected:
 
     struct hubbardRightMultiplyBmatInv {
         DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent) :
-            parent(parent)
+        hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+            parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
             return mat * arma::inv(hubbardComputeBmat(parent)(gc, k2, k1));

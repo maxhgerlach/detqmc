@@ -22,11 +22,15 @@ extern "C" {
 
 #include <tuple>
 #include <cmath>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/string.hpp"
 #include "boost/serialization/access.hpp"
 #include "boost/serialization/export.hpp"
 #include "boost/serialization/split_member.hpp"
-
+#pragma GCC diagnostic pop
 
 class RngWrapper {
     uint32_t seed;

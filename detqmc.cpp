@@ -12,11 +12,15 @@
 #include <functional>
 #include <fstream>
 #include <armadillo>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/assign/std/vector.hpp"
 #include "boost/filesystem.hpp"
-
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
+#pragma GCC diagnostic pop
 
 #include "tools.h"
 #include "detqmc.h"

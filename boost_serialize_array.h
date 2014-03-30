@@ -12,7 +12,11 @@
 
 #include <array>
 #include "checkarray.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/array.hpp"
+#pragma GCC diagnostic pop
 
 namespace boost { namespace serialization {
 

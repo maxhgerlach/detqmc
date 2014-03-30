@@ -19,7 +19,11 @@
 #include <cstdlib>
 #include "exceptions.h"
 #include "tools.h"
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/algorithm/string.hpp"   //trimming
+#pragma GCC diagnostic pop
 #include "metadata.h"
 
 // TODO: switch to smart (shared) pointers

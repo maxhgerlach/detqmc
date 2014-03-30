@@ -14,7 +14,11 @@
 #include "exceptions.h"
 #include "tools.h"
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
 #include "boost_serialize_armadillo.h"
+#pragma GCC diagnostic pop
 
 //matrices used in the computation of B-matrices decomposed into
 //(U,d,V) = (unitary matrix, real diagonal matrix elements >= 0, unitary matrix)
