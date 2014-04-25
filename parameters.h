@@ -46,6 +46,7 @@ struct ModelParams {
     num t;      //Hubbard
     num U;      //Hubbard
     num r;      //SDW
+    num lambda;	//SDW: fermion-boson coupling strength
     num txhor;  //SDW: hopping constants depending on direction and band
     num txver;  //SDW
     num tyhor;  //SDW
@@ -75,7 +76,7 @@ struct ModelParams {
             model(), /*timedisplaced(),*/ checkerboard(),
             updateMethod(), spinProposalMethod(), adaptScaleVariance(),
             delaySteps(),
-            t(), U(), r(),
+            t(), U(), r(), lambda(),
             txhor(), txver(), tyhor(), tyver(),
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
@@ -92,7 +93,7 @@ private:
         (void)version;
         ar & model & checkerboard /*& timedisplaced*/& updateMethod
            & spinProposalMethod & adaptScaleVariance & delaySteps
-           & t & U & r & txhor & txver & tyhor & tyver
+           & t & U & r & lambda & txhor & txver & tyhor & tyver
            & cdwU
            & mu & L & d & beta & m & dtau & s & accRatio & bc
            & globalUpdateInterval & globalShift & wolffClusterUpdate

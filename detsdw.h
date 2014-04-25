@@ -197,11 +197,10 @@ protected:
     //discrete field for cdwU: l_i(\tau_k) == cdwl(i,k)
     MatInt cdwl;
     //evaluation of element-wise functions of phi and cdwl:
-//    MatNum phiCosh;         // cosh(dtau * |phi|)
-//    MatNum phiSinh;         // sinh(dtau * |phi|) / |phi|
-    //with arg = sqrt(dtau cdwU^2 eta^2 + dtau^2 |phi|^2)
-    MatNum coshTerm;	// cosh(arg)
-    MatNum sinhTerm;	// sinh(arg) / arg
+    MatNum coshTermPhi;		// cosh(\lambda \dtau |\phi|)
+    MatNum sinhTermPhi; 	// sinh(\lambda \dtau |\phi|) / |\phi|
+    MatNum coshTermCDWl;	// cosh(\sqrt(\dtau) cdwU \eta)
+    MatNum sinhTermCDWl;	// sinh(\sqrt(\dtau) cdwU \eta)
 
     //lookup values for discrete field:
     static inline num cdwl_gamma(int32_t l) {
@@ -336,9 +335,18 @@ protected:
     }
 
     void setupRandomField();
-    std::tuple<num,num> getCoshSinhTerm(num phi0, num phi1, num phi2, int32_t cdwl);		// return (coshTerm, sinhTerm) for these field values
-    void updateCoshSinhTerms();	//compute new entries of coshTerm and sinhTerm from current phi0, phi1, phi2, cdwl
-    void updateCoshSinhTerms(uint32_t site, uint32_t timeslice);	//the same, for a single site
+    // return (coshTerm*, sinhTerm*) for these field values
+    std::tuple<num,num> getCoshSinhTermPhi(num phi0, num phi1, num phi2);
+    std::tuple<num,num> getCoshSinhTermCDWl(int32_t cdwl);
+
+    //compute new entries of coshTerm* and sinhTerm* from current phi0, phi1, phi2, cdwl
+    void updateCoshSinhTermsPhi();
+    void updateCoshSinhTermsCDWl();
+    void updateCoshSinhTerms();
+    //the same, for a single site
+    void updateCoshSinhTermsPhi(uint32_t site, uint32_t timeslice);
+    void updateCoshSinhTermsCDWl(uint32_t site, uint32_t timeslice);
+    void updateCoshSinhTerms(uint32_t site, uint32_t timeslice);
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
     void setupUdVStorage_and_calculateGreen();
 
@@ -648,7 +656,8 @@ public:
     	ar & addedWolffClusterSize;
         ar & phi0 & phi1 & phi2;
         ar & cdwl;
-        ar & coshTerm & sinhTerm;
+        ar & coshTermPhi & sinhTermPhi;
+        ar & coshTermCDWl & sinhTermCDWl;
         ar & phiDelta & angleDelta & scaleDelta;
         ar & targetAccRatioLocal_phi & lastAccRatioLocal_phi;
         ar & accRatioLocal_box_RA & accRatioLocal_rotate_RA & accRatioLocal_scale_RA;

@@ -39,7 +39,7 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "accRatio", "bc", "txhor", "txver", "tyhor",
+    neededModelPars += "mu", "L", "r", "lambda", "accRatio", "bc", "txhor", "txver", "tyhor",
             "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
             "globalShift", "wolffClusterUpdate";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
@@ -154,7 +154,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
         cdwU(pars.cdwU),
         mu(pars.mu),
-        c(1), u(1), lambda(1), //TODO: make these controllable by parameter
+        c(1), u(1), //TODO: make these controllable by parameter
+        lambda(pars.lambda),
         bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
         globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
         globalMoveInterval(pars.globalUpdateInterval),
@@ -169,7 +170,9 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
         propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
         g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-        phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1), coshTerm(N, m+1), sinhTerm(N, m+1),
+        phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1),
+        coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
+        coshTermCDWl(N, m+1), sinhTermCDWl(N, m+1),
         phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
         targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
         accRatioLocal_box_RA(AccRatioAdjustmentSamples),
@@ -191,7 +194,6 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         timeslices_included_in_measurement()
 {
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
-    assert(not pars.checkerboard or (pars.checkerboardMethod == cbmToString(CB)));
 
     if (pars.bc == "pbc") {
         bc = PBC;
@@ -341,6 +343,7 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     }
     META_INSERT(targetAccRatioLocal_phi);
     META_INSERT(r);
+    META_INSERT(lambda);
     META_INSERT(txhor);
     META_INSERT(txver);
     META_INSERT(tyhor);
@@ -946,21 +949,40 @@ void DetSDW<TD,CB>::setupRandomField() {
 
 
 template<bool TD, CheckerboardMethod CB>
-std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTerm(
-		num phi0, num phi1, num phi2, int32_t cdwl) {
-    num phiSquared = std::pow(phi0, 2)
-    				+ std::pow(phi1, 2)
-    				+ std::pow(phi2, 2);
-    num arg = std::sqrt(
-    		dtau * std::pow(cdwU,2) * std::pow(cdwl_eta(cdwl),2) +
-    		std::pow(dtau,2) * phiSquared);
-    return std::make_tuple(std::cosh(arg), std::sinh(arg) / arg);
+std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTermPhi(
+		num phi0, num phi1, num phi2) {
+    num phiNorm = std::sqrt( std::pow(phi0, 2)
+    					   + std::pow(phi1, 2)
+    					   + std::pow(phi2, 2) );
+    return std::make_tuple(std::cosh(lambda * dtau * phiNorm),
+    					   std::sinh(lambda * dtau * phiNorm) / phiNorm);
 }
 
 template<bool TD, CheckerboardMethod CB>
+std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTermCDWl(
+		int32_t cdwl) {
+	num arg = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
+    return std::make_tuple(std::cosh(arg), std::sinh(arg));
+}
+
+
+
+template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
-	std::tie(coshTerm(site,k), sinhTerm(site,k)) = getCoshSinhTerm(
-			phi0(site,k), phi1(site,k), phi2(site,k), cdwl(site,k));
+	updateCoshSinhTermsPhi(site, k);
+	updateCoshSinhTermsCDWl(site, k);
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateCoshSinhTermsPhi(uint32_t site, uint32_t k) {
+	std::tie(coshTermPhi(site,k), sinhTermPhi(site,k)) = getCoshSinhTermPhi(
+			phi0(site,k), phi1(site,k), phi2(site,k));
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateCoshSinhTermsCDWl(uint32_t site, uint32_t k) {
+	std::tie(coshTermCDWl(site,k), sinhTermCDWl(site,k)) = getCoshSinhTermCDWl(
+			cdwl(site, k));
 }
 
 template<bool TD, CheckerboardMethod CB>
@@ -971,6 +993,26 @@ void DetSDW<TD,CB>::updateCoshSinhTerms() {
         }
     }
 }
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateCoshSinhTermsPhi() {
+    for (uint32_t k = 1; k <= m; ++k) {
+        for (uint32_t site = 0; site < N; ++site) {
+        	updateCoshSinhTermsPhi(site,k);
+        }
+    }
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::updateCoshSinhTermsCDWl() {
+    for (uint32_t k = 1; k <= m; ++k) {
+        for (uint32_t site = 0; site < N; ++site) {
+        	updateCoshSinhTermsCDWl(site,k);
+        }
+    }
+}
+
+
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::setupPropK() {
@@ -3155,19 +3197,29 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::consistencyCheck() {
-	// phi*, coshTerm, sinhTerm
+	// phi*, coshTerm*, sinhTerm*
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
-        	num coshTermBefore = coshTerm(site, k);
-        	num sinhTermBefore = sinhTerm(site, k);
+        	num coshTermPhiBefore = coshTermPhi(site, k);
+        	num sinhTermPhiBefore = sinhTermPhi(site, k);
+        	num coshTermCDWlBefore = coshTermCDWl(site, k);
+        	num sinhTermCDWlBefore = sinhTermCDWl(site, k);
         	updateCoshSinhTerms(site, k);
-            num relDiffCosh = std::abs((coshTerm(site, k) - coshTermBefore) / coshTermBefore);
+            num relDiffCosh = std::abs((coshTermPhi(site, k) - coshTermPhiBefore) / coshTermPhiBefore);
             if (relDiffCosh > 1E-10) {
-                throw GeneralError("coshTerm is inconsistent");
+                throw GeneralError("coshTermPhi is inconsistent");
             }
-            num relDiffSinh = std::abs((sinhTerm(site, k) - sinhTermBefore) / sinhTermBefore);
+            num relDiffSinh = std::abs((sinhTermPhi(site, k) - sinhTermPhiBefore) / sinhTermPhiBefore);
             if (relDiffSinh > 1E-10) {
-                throw GeneralError("sinhTerm is inconsistent");
+                throw GeneralError("sinhTermPhi is inconsistent");
+            }
+            relDiffCosh = std::abs((coshTermCDWl(site, k) - coshTermCDWlBefore) / coshTermCDWlBefore);
+            if (relDiffCosh > 1E-10) {
+                throw GeneralError("coshTermCDWl is inconsistent");
+            }
+            relDiffSinh = std::abs((sinhTermCDWl(site, k) - sinhTermCDWlBefore) / sinhTermCDWlBefore);
+            if (relDiffSinh > 1E-10) {
+                throw GeneralError("sinhTermCDWl is inconsistent");
             }
         }
     }
