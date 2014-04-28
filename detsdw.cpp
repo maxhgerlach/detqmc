@@ -2359,33 +2359,34 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
     //
     //evMatrix(): yield a 4x4 matrix containing the entries for the
     //current lattice site and time slice of e^(sign*dtau*V)
-    auto evMatrix = [this](int sign, num kphi0, num kphi1,
-            num kphi2, int32_t cdwl, num kcoshTerm, num ksinhTerm) -> MatCpx::fixed<4,4> {
+    auto evMatrix = [this](
+    		int sign,
+    		num kphi0, num kphi1, num kphi2,
+            num kcoshTermPhi, num ksinhTermPhi,
+            num kcoshTermCDWl, num ksinhTermCDWl) -> MatCpx::fixed<4,4> {
         MatNum::fixed<4,4> ev_real;
-        num kd = this->compute_d_for_cdwl_site(cdwl);
-        num dtau = this->dtau;
-        ev_real(0,0) = ev_real(1,1) = kcoshTerm - sign * kd * ksinhTerm;
-        ev_real(2,2) = ev_real(3,3) = kcoshTerm + sign * kd * ksinhTerm;
+        ev_real(0,0) = ev_real(1,1) = kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl;
+        ev_real(2,2) = ev_real(3,3) = kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl;
         ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-        ev_real(2,0) = ev_real(0,2) =  sign * dtau * kphi2 * ksinhTerm;
-        ev_real(2,1) = ev_real(0,3) =  sign * dtau * kphi0 * ksinhTerm;
-        ev_real(3,0) = ev_real(1,2) =  sign * dtau * kphi0 * ksinhTerm;
-        ev_real(3,1) = ev_real(1,3) = -sign * dtau * kphi2 * ksinhTerm;
+        ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * ksinhTermPhi * kcoshTermCDWl;
+        ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * ksinhTermPhi * kcoshTermCDWl;
+        ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * ksinhTermPhi * kcoshTermCDWl;
+        ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * ksinhTermPhi * kcoshTermCDWl;
 
         MatNum::fixed<4,4> ev_imag;
         ev_imag.zeros();
-        ev_imag(0,3) = -sign * dtau * kphi1 * ksinhTerm;
-        ev_imag(1,2) =  sign * dtau * kphi1 * ksinhTerm;
-        ev_imag(2,1) = -sign * dtau * kphi1 * ksinhTerm;
-        ev_imag(3,0) =  sign * dtau * kphi1 * ksinhTerm;
+        ev_imag(0,3) = -sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
+        ev_imag(1,2) =  sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
+        ev_imag(2,1) = -sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
+        ev_imag(3,0) =  sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
 
         return MatCpx::fixed<4,4>(ev_real, ev_imag);
     };
     MatCpx::fixed<4,4> evOld = evMatrix(
             +1,
             phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
-            cdwl(site, timeslice),
-            coshTerm(site, timeslice), sinhTerm(site, timeslice)
+            coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
+            coshTermCDWl(site, timeslice), sinhTermCDWl(site, timeslice)
     );
 
     // //DEBUG
@@ -2401,13 +2402,14 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
     // print_matrix_diff(evOld, evOld_big_sub, "evOld diff");
     // //DEBUG -- OK
 
-    num coshTerm_new, sinhTerm_new;
-    std::tie(coshTerm_new, sinhTerm_new) = getCoshSinhTerm(newphi[0], newphi[1], newphi[2], new_cdwl);
+    num coshTermPhi_new, sinhTermPhi_new, coshTermCDWl_new, sinhTermCDWl_new;
+    std::tie(coshTermPhi_new, sinhTermPhi_new) = getCoshSinhTermPhi(newphi[0], newphi[1], newphi[2]);
+    std::tie(coshTermCDWl_new, sinhTermCDWl_new) = getCoshSinhTermCDWl(new_cdwl);
     MatCpx::fixed<4,4> emvNew = evMatrix(
             -1,
             newphi[0], newphi[1], newphi[2],
-            new_cdwl,
-            coshTerm_new, sinhTerm_new
+            coshTermPhi_new, sinhTermPhi_new,
+            coshTermCDWl_new, sinhTermCDWl_new
     );
 
     // //DEBUG
