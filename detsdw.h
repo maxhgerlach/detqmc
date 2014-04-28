@@ -513,8 +513,8 @@ protected:
     	MatNum phi0;
     	MatNum phi1;
     	MatNum phi2;
-    	MatNum coshTerm;
-    	MatNum sinhTerm;
+    	MatNum coshTermPhi;
+    	MatNum sinhTermPhi;
 
     	MatCpx g;
 
@@ -527,7 +527,8 @@ protected:
     	std::stack<SpaceTimeIndex> next_sites;
     	GlobalMoveData(uint32_t N, uint32_t m) :
     			phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
-    			coshTerm(N, m+1), sinhTerm(N, m+1), g(4*N, 4*N),
+    			coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
+    			g(4*N, 4*N),
     			UdVStorage(new checkarray<std::vector<UdVV>, 1>),
     			visited(N, m+1), next_sites()
     	{ }

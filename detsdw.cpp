@@ -1690,7 +1690,7 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
     const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
     VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
@@ -2549,8 +2549,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     gmd.phi0 = phi0;
     gmd.phi1 = phi1;
     gmd.phi2 = phi2;
-    gmd.coshTerm = coshTerm;
-    gmd.sinhTerm = sinhTerm;
+    gmd.coshTermPhi = coshTermPhi;
+    gmd.sinhTermPhi = sinhTermPhi;
     gmd.g.swap(g);
     gmd.UdVStorage.swap(UdVStorage);
 
@@ -2577,7 +2577,7 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
         phi0(site,timeslice) = phi[0];
         phi1(site,timeslice) = phi[1];
         phi2(site,timeslice) = phi[2];
-        this->updateCoshSinhTerms(site, timeslice);
+        this->updateCoshSinhTermsPhi(site, timeslice);
     };
     auto flipPhi = [&](uint32_t site, uint32_t timeslice) -> void {
         // phi -> phi - 2* (phi . rd) * rd
@@ -2662,8 +2662,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
         phi0.swap(gmd.phi0);
         phi1.swap(gmd.phi1);
         phi2.swap(gmd.phi2);
-        coshTerm.swap(gmd.coshTerm);
-        sinhTerm.swap(gmd.sinhTerm);
+        coshTermPhi.swap(gmd.coshTermPhi);
+        sinhTermPhi.swap(gmd.sinhTermPhi);
         g.swap(gmd.g);
         UdVStorage.swap(gmd.UdVStorage);
         std::cout << "reject cluster\n";
@@ -2699,8 +2699,8 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     gmd.phi0 = phi0;
     gmd.phi1 = phi1;
     gmd.phi2 = phi2;
-    gmd.coshTerm.swap(coshTerm);
-    gmd.sinhTerm.swap(sinhTerm);
+    gmd.coshTermPhi.swap(coshTermPhi);
+    gmd.sinhTermPhi.swap(sinhTermPhi);
     gmd.g.swap(g);
     gmd.UdVStorage.swap(UdVStorage);
 
@@ -2711,7 +2711,7 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     phi1 += r1;
     num r2 = rng.randRange(-phiDelta, +phiDelta);
     phi2 += r2;
-    updateCoshSinhTerms();
+    updateCoshSinhTermsPhi();
 
     //recompute Green's function
     setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
@@ -2745,8 +2745,8 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
         phi0.swap(gmd.phi0);
         phi1.swap(gmd.phi1);
         phi2.swap(gmd.phi2);
-        coshTerm.swap(gmd.coshTerm);
-        sinhTerm.swap(gmd.sinhTerm);
+        coshTermPhi.swap(gmd.coshTermPhi);
+        sinhTermPhi.swap(gmd.sinhTermPhi);
         g.swap(gmd.g);
         UdVStorage.swap(gmd.UdVStorage);
         std::cout << "reject globalShift\n";
