@@ -3178,19 +3178,19 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
     //multiply e^(dtau/2 K) from the right
     for (uint32_t row = 0; row < 4; ++row) {
         //block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
-        rightMultiply(block(tempG, row, 0), block(oldG, row, 0), XBAND);
-        rightMultiply(block(tempG, row, 1), block(oldG, row, 1), XBAND);
-        rightMultiply(block(tempG, row, 2), block(oldG, row, 2), YBAND);
-        rightMultiply(block(tempG, row, 3), block(oldG, row, 3), YBAND);
+        rightMultiply( block(tempG, row, 0), block(oldG, row, 0), XBAND );
+        rightMultiply( block(tempG, row, 1), block(oldG, row, 1), XBAND );
+        rightMultiply( block(tempG, row, 2), block(oldG, row, 2), YBAND );
+        rightMultiply( block(tempG, row, 3), block(oldG, row, 3), YBAND );
     }
     //multiply e^(-dtau/2 K) from the left
     MatCpx newG(4*N, 4*N);
     for (uint32_t col = 0; col < 4; ++col) {
         //block(newG, 0, col) = propKx_half * block(tempG, 0, col);
-        leftMultiply(block(newG, 0, col), block(tempG, 0, col), XBAND);
-        leftMultiply(block(newG, 1, col), block(tempG, 1, col), XBAND);
-        leftMultiply(block(newG, 2, col), block(tempG, 2, col), YBAND);
-        leftMultiply(block(newG, 3, col), block(tempG, 3, col), YBAND);
+        leftMultiply( block(newG, 0, col), block(tempG, 0, col), XBAND );
+        leftMultiply( block(newG, 1, col), block(tempG, 1, col), XBAND );
+        leftMultiply( block(newG, 2, col), block(tempG, 2, col), YBAND );
+        leftMultiply( block(newG, 3, col), block(tempG, 3, col), YBAND );
     }
 #undef block
     return newG;
