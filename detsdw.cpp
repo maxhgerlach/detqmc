@@ -1458,12 +1458,6 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-//
-//	// with cdwU includes discrete field prefactor
-//
-//    if (cdwU > 0) {
-//    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
-//    }
 
 	//overall factor for entire matrix for chemical potential
 	num ovFac = std::exp(dtau*mu);
@@ -1471,16 +1465,18 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
-    const auto& ksinhTerm = sinhTerm.col(k);
-    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
-    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
-    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
-    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
+    const auto& ksinhTermPhi = sinhTermPhi.col(k);
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
+    const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
+    const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+    VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx mbx  = ovFac * dtau * -b  % ksinhTerm;
-    VecCpx mbcx = ovFac * dtau * -bc % ksinhTerm;
+    VecCpx mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
+    VecCpx mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
 
     MatCpx result(4*N, 4*N);
 
@@ -1537,25 +1533,23 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
   	//overall factor for entire matrix for chemical potential
-//	//with cdwU includes discrete field prefactor
     num ovFac = std::exp(-dtau*mu);
-//    if (cdwU > 0) {
-//    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
-//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
-    const auto& ksinhTerm = sinhTerm.col(k);
-    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
-    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
-    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
-    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
+    const auto& ksinhTermPhi = sinhTermPhi.col(k);
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
+    const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
+    const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+    VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx bx  = ovFac * dtau * b  % ksinhTerm;
-    VecCpx bcx = ovFac * dtau * bc % ksinhTerm;
+    VecCpx bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
+    VecCpx bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
 
     MatCpx result(4*N, 4*N);
 
@@ -1616,25 +1610,23 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	//overall factor for entire matrix for chemical potential
-//	// with cdwU includes discrete field prefactor
     num ovFac = std::exp(dtau*mu);
-//    if (cdwU > 0) {
-//    	ovFac *= prefactor_gamma_cdwl(cdwl.col(k));
-//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
-    const auto& ksinhTerm = sinhTerm.col(k);
-    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
-    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
-    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
-    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
+    const auto& ksinhTermPhi = sinhTermPhi.col(k);
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
+    const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
+    const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+    VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx mbx  = ovFac * dtau * -b  % ksinhTerm;
-    VecCpx mbcx = ovFac * dtau * -bc % ksinhTerm;
+    VecCpx mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
+    VecCpx mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
 
     MatCpx result(4*N, 4*N);
 
@@ -1689,25 +1681,23 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
   	//overall factor for entire matrix for chemical potential
-//	// with cdwU includes discrete field prefactor
     num ovFac = std::exp(-dtau*mu);
-//    if (cdwU > 0) {
-//    	ovFac /= prefactor_gamma_cdwl(cdwl.col(k));
-//    }
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
     const auto& kphi2 = phi2.col(k);
-    const VecNum dvec = compute_d_for_cdwl(cdwl.col(k));
-    const auto& ksinhTerm = sinhTerm.col(k);
-    const VecNum cd  = ovFac * (coshTerm.col(k) + dvec % ksinhTerm);
-    const VecNum cmd = ovFac * (coshTerm.col(k) - dvec % ksinhTerm);
-    VecNum ax  =  ovFac * dtau * kphi2 % ksinhTerm;
-    VecNum max = -ovFac * dtau * kphi2 % ksinhTerm;
+    const auto& ksinhTermPhi = sinhTermPhi.col(k);
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
+    const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
+    const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+    VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecCpx b  {kphi0, -kphi1};
     VecCpx bc {kphi0, kphi1};
-    VecCpx bx  = ovFac * dtau * b  % ksinhTerm;
-    VecCpx bcx = ovFac * dtau * bc % ksinhTerm;
+    VecCpx bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
+    VecCpx bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
 
     MatCpx result(4*N, 4*N);
 
