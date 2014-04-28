@@ -1226,11 +1226,12 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
     const VecCpx b (phi0, -phi1);
     const VecCpx bc(phi0, +phi1);
 
-    VecCpx d(N);
-    for (uint32_t i = 0; i < N; ++i) {
-    	d[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);
-    }
-    d.set_imag(arma::zeros<VecNum>(N));
+//    VecCpx d(N);
+//    for (uint32_t i = 0; i < N; ++i) {
+//    	d[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);
+//    }
+//    d.set_imag(arma::zeros<VecNum>(N));
+    VecCpx d(compute_d_for_cdwl(cdwl), arma::zeros<VecNum>(N));
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     MatCpx V(4*N, 4*N);
     V.zeros(4*N, 4*N);
