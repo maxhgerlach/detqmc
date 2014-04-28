@@ -1131,15 +1131,17 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                         (row + 1) * N - 1, (col + 1) * N - 1);
             };
             //dtau included here:
-            VecNum kphi0 = this->dtau * phi0.col(k);
-            VecNum kphi1 = this->dtau * phi1.col(k);
-            VecNum kphi2 = this->dtau * phi2.col(k);
+            const VecNum& kphi0 = this->dtau * phi0.col(k);
+            const VecNum& kphi1 = this->dtau * phi1.col(k);
+            const VecNum& kphi2 = this->dtau * phi2.col(k);
             //      debugSaveMatrix(kphi0, "kphi0");
             //      debugSaveMatrix(kphi1, "kphi1");
             //      debugSaveMatrix(kphi2, "kphi2");
-            VecNum kcoshTerm = coshTerm.col(k);
-            VecNum ksinhTerm = sinhTerm.col(k);
-            VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
+            const VecNum& kcoshTermPhi = coshTermPhi.col(k);
+            const VecNum& ksinhTermPhi = sinhTermPhi.col(k);
+            const VecNum& kcoshTermCDWl = coshTermCDWl.col(k);
+            const VecNum& ksinhTermCDWl = sinhTermCDWl.col(k);
+            //VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
 
 //            //prefactor for discrete field (product of gamma_l_i)
 //            //this needs to cover all entries of the matrix, so in that case
@@ -1154,38 +1156,38 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             //is this the best way to set the real and imaginary parts of a complex submatrix?
             //TODO: below some multiplications are repeated, could be pulled out -- however, currently this routine is not called when the checkerboard approx is used anyway
             block(0, 0) = MatCpx(
-            		diagmat(kcoshTerm + kd % ksinhTerm) * propKx,
+            		diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
                     zeros(N,N));
             block(0, 1).zeros();
             block(0, 2) = MatCpx(
-            		diagmat(-kphi2 % ksinhTerm) * propKy,
+            		diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                     zeros(N,N));
             block(0, 3) = MatCpx(
-            		diagmat(-kphi0 % ksinhTerm) * propKy,
-                    diagmat(+kphi1 % ksinhTerm) * propKy);
+            		diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
             block(1, 0).zeros();
             block(1, 1) = block(0, 0);
             block(1, 2) = MatCpx(
-            		diagmat(-kphi0 % ksinhTerm) * propKy,
-                    diagmat(-kphi1 % ksinhTerm) * propKy);
+            		diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
             block(1, 3) = MatCpx(
-            		diagmat(+kphi2 % ksinhTerm) * propKy,
+            		diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                     zeros(N,N));
             block(2, 0) = MatCpx(
-            		diagmat(-kphi2 % ksinhTerm) * propKx,
+            		diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
                     zeros(N,N));
             block(2, 1) = MatCpx(
-            		diagmat(-kphi0 % ksinhTerm) * propKx,
-                    diagmat(+kphi1 % ksinhTerm) * propKx);
+            		diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
             block(2, 2) = MatCpx(
-            		diagmat(kcoshTerm - kd % ksinhTerm) * propKy,
+            		diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy,
                     zeros(N,N));
             block(2, 3).zeros();
             block(3, 0) = MatCpx(
-            		diagmat(-kphi0 % ksinhTerm) * propKx,
-                    diagmat(-kphi1 % ksinhTerm) * propKx);
+            		diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
             block(3, 1) = MatCpx(
-            		diagmat(+kphi2 % ksinhTerm) * propKx,
+            		diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
                     zeros(N,N));
             block(3, 2).zeros();
             block(3, 3) = block(2, 2);
