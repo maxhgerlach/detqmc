@@ -1254,15 +1254,17 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
 
     VecNum eigval;
     MatCpx eigvec;
-    arma::eig_sym(eigval, eigvec, num(sign)*dtau*V - num(sign)*D);
 
-    MatCpx result(4*N, 4*N);
+    arma::eig_sym(eigval, eigvec, num(sign)*0.5*dtau*V);
+    MatCpx exp_vphi_half(4*N, 4*N);
+    exp_vphi_half = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
-    result = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
-//    if (cdwU > 0) {
-//    	result *= std::pow(prefactor_gamma_cdwl(cdwl), -sign);
-//    }
+    arma::eig_sym(eigval, eigvec, -num(sign)*D);
+    MatCpx exp_D(4*N, 4*N);
+    exp_D = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
+
+    MatCpx result = exp_vphi_half * exp_D * exp_vphi_half;
 
     return result;
 }
