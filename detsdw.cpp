@@ -1130,17 +1130,16 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                 return result.submat(row * N, col * N,
                         (row + 1) * N - 1, (col + 1) * N - 1);
             };
-            //dtau included here:
-            const VecNum& kphi0 = this->dtau * phi0.col(k);
-            const VecNum& kphi1 = this->dtau * phi1.col(k);
-            const VecNum& kphi2 = this->dtau * phi2.col(k);
+            const auto& kphi0 = phi0.col(k);
+            const auto& kphi1 = phi1.col(k);
+            const auto& kphi2 = phi2.col(k);
             //      debugSaveMatrix(kphi0, "kphi0");
             //      debugSaveMatrix(kphi1, "kphi1");
             //      debugSaveMatrix(kphi2, "kphi2");
-            const VecNum& kcoshTermPhi = coshTermPhi.col(k);
-            const VecNum& ksinhTermPhi = sinhTermPhi.col(k);
-            const VecNum& kcoshTermCDWl = coshTermCDWl.col(k);
-            const VecNum& ksinhTermCDWl = sinhTermCDWl.col(k);
+            const auto& kcoshTermPhi = coshTermPhi.col(k);
+            const auto& ksinhTermPhi = sinhTermPhi.col(k);
+            const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+            const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
             //VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
 
 //            //prefactor for discrete field (product of gamma_l_i)
