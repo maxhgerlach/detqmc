@@ -317,7 +317,15 @@ protected:
     num fermionEcouple;         //coupling
 //    num fermionEcouple_imag;
 
-
+    // band occupation / charge correlations
+    //
+    // Real space for ab = xx, xy, yx, yy band combinations
+    // rows: site i, cols: site j
+    // <n_{a,i} n_{b,j}>
+    checkarray<MatNum, 2> occCorr; // symmat or similar
+    // charge-charge correlations
+    // <n_i n_j> = <n_{x,i}n_{x,i}> + <n_{x,i}n_{y,i}> + <n_{y,i}n_{x,i}> + <n_{y,i}n_{y,i}>
+    MatNum occCorr;
 
 /*
 
@@ -448,7 +456,8 @@ protected:
     Checkerboard or dense computation of B-matrix, some helpers for both cases
     
 */
-    MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
+    //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
+    MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            
 
     // compute sqrt(dtau) * cdwU * eta_{cdwl[i]}
     template<class Vec>
@@ -456,6 +465,8 @@ protected:
     // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
     num compute_d_for_cdwl_site(uint32_t cdwl);
 
+
+    
 /*
 
     Routines for consistency checks / debugging
@@ -483,7 +494,7 @@ protected:
 
     //measuring observables
     void initMeasurements();				//reset stored observable values (beginning of a sweep)
-    void measure(uint32_t timeslice);		//measure observables for one timeslice
+    void measure(uint32_t timeslice);                   //measure observables for one timeslice
     void finishMeasurements();				//finalize stored observable values (end of a sweep)
     std::set<uint32_t> timeslices_included_in_measurement; 	//for a consistency check -- sweep includes correct #timeslices
 
