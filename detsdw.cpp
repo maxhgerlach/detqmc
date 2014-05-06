@@ -159,10 +159,10 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
         globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
         globalMoveInterval(pars.globalUpdateInterval),
+        repeatUpdateInSlice(pars.repeatUpdateInSlice),
         acceptedGlobalShifts(0), attemptedGlobalShifts(0),
         acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
         addedWolffClusterSize(0.),
-        repeatUpdateInSlice(pars.repeatUpdateInSlice),
         hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
         sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
         spaceNeigh(L), timeNeigh(m),
@@ -190,8 +190,8 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
         pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
         pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
         fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
-        dud(N, delaySteps), gmd(N, m),
-        timeslices_included_in_measurement()
+        timeslices_included_in_measurement(),
+        dud(N, delaySteps), gmd(N, m)
 {
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
 

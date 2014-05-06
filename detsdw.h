@@ -58,6 +58,11 @@ public:
 	//This should be done before measurements.
     virtual MatCpx shiftGreenSymmetric();
 protected:
+/*
+
+    Things referenced from the base class
+
+*/
     typedef DetModelGC<1, cpx, TimeDisplaced> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
     // class member variables:
@@ -77,17 +82,31 @@ protected:
     using Base::beta;
     using Base::s;
     using Base::currentTimeslice;
-
     typedef typename Base::UdVV UdVV;
 
+/*
+
+    More type definitions
+
+*/
     typedef VecNum::fixed<3> Phi;       //value of the three-component field at a single site and timeslice
     
     //complex 4x4 identity matrix
     const MatCpx::fixed<4,4> eye4cpx;
 
+/*
+
+    Random numbers
+
+*/
     RngWrapper& rng;
     NormalDistribution normal_distribution;
 
+/*
+
+    Parameters and some necessary enums
+
+*/
     static const uint32_t d = 2;
     static const uint32_t z = 2*d;
     const bool checkerboard;
@@ -105,56 +124,41 @@ protected:
     const num lambda;
 
     enum Band {XBAND = 0, YBAND = 1};
-    static inline std::string bandstr(Band b) {
-    	return (b == XBAND) ? "x" : (b == YBAND ? "y" : "N");
-    }
     enum Spin {SPINUP = 0, SPINDOWN = 1};
-    static inline std::string spinstr(Spin s) {
-    	return (s == SPINUP) ? "up" : (s == SPINDOWN ? "dn" : "N");
-    }
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
     enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
-    static inline std::string updateMethodstr(UpdateMethod_Type um) {
-    	switch (um) {
-    	case ITERATIVE:
-    		return "iterative";
-    	case WOODBURY:
-    		return "woodbury";
-    	case DELAYED:
-    		return "delayed";
-    	default:
-    		return "invalid";
-    	}
-    }
     UpdateMethod_Type updateMethod;
     enum SpinProposalMethod_Type { BOX, ROTATE_THEN_SCALE, ROTATE_AND_SCALE };
-    static inline std::string spinProposalMethodstr(SpinProposalMethod_Type sp) {
-    	switch (sp) {
-    	case BOX:
-    		return "box";
-    	case ROTATE_THEN_SCALE:
-    		return "rotate_then_scale";
-    	case ROTATE_AND_SCALE:
-    		return "rotate_and_scale";
-    	default:
-    		return "invalid";
-    	}
-    }
     SpinProposalMethod_Type spinProposalMethod;
-    uint32_t delaySteps;					//for delayed updates
+    const uint32_t delaySteps;					//for delayed updates
 
     const bool globalShift;
     const bool wolffClusterUpdate;
     const uint32_t globalMoveInterval;
+
+    const uint32_t repeatUpdateInSlice;
+
+
+
+/*
+
+    Statistics about updates
+
+*/
     uint32_t acceptedGlobalShifts;
     uint32_t attemptedGlobalShifts;
     uint32_t acceptedWolffClusterUpdates;
     uint32_t attemptedWolffClusterUpdates;
     num addedWolffClusterSize;
 
-    const uint32_t repeatUpdateInSlice;
+    
 
+/*
+    
+    Hopping constant representations
+
+*/  
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
     checkarray<num,2> hopHor;
@@ -169,9 +173,24 @@ protected:
     checkarray<num,2> sinhHopVerHalf;
     checkarray<num,2> coshHopHorHalf;
     checkarray<num,2> coshHopVerHalf;
+
+
+
+/*    
+
+    Neighbor tables
+      
+*/
     PeriodicSquareLatticeNearestNeighbors spaceNeigh;
     PeriodicChainNearestNeighbors<1> timeNeigh;
 
+
+
+/*
+
+    propK and variations
+
+*/
     checkarray<MatNum, 2> propK;
     MatNum& propKx;
     MatNum& propKy;
@@ -185,10 +204,23 @@ protected:
     MatNum& propKx_half_inv;
     MatNum& propKy_half_inv;
 
+
+
+/*
+
+    Green's function
+
+*/    
     MatCpx& g;
     // MatCpx& gFwd;
     // MatCpx& gBwd;
 
+
+/*
+
+    Auxiliary / bosonic fields
+
+*/    
     //three component sdw-order parameter,
     //column indexes timeslice, row indexes site
     MatNum phi0;
@@ -202,35 +234,13 @@ protected:
     MatNum coshTermCDWl;	// cosh(\sqrt(\dtau) cdwU \eta)
     MatNum sinhTermCDWl;	// sinh(\sqrt(\dtau) cdwU \eta)
 
-    //lookup values for discrete field:
-    static inline num cdwl_gamma(int32_t l) {
-    	switch (l) {
-    	case +1:
-    	case -1:
-    		return (3. + std::sqrt(6.));
-    	case +2:
-    	case -2:
-    		return (3. - std::sqrt(6.));
-    	default:
-    		return 0;
-    	}
-    }
-    static inline num cdwl_eta(int32_t l) {
-    	switch (l) {
-    	case +1:
-    		return  std::sqrt(2. * (3. - std::sqrt(6.)));
-    	case -1:
-    		return -std::sqrt(2. * (3. - std::sqrt(6.)));
-    	case +2:
-    		return  std::sqrt(2. * (3. + std::sqrt(6.)));
-    	case -2:
-    		return -std::sqrt(2. * (3. + std::sqrt(6.)));
-    	default:
-    		return 0;
-    	}
-    }
 
+    
+/*
 
+    Adjustment of MC step size
+
+*/   
     num phiDelta;       //MC step size for field components (box update)
     num angleDelta;		//  for rotation update (this is the minimal cos\theta)
     num scaleDelta;		//  for scaling update (the standard deviation of the gaussian radius update)
@@ -257,9 +267,19 @@ protected:
     num curmaxScaleDelta;
     bool adaptScaleDelta;
 
-    uint32_t performedSweeps;		//internal counter of performed sweeps. This should be serialized
+/*
+    
+    internal counter of performed sweeps. This should be serialized
 
-    //Observables:
+*/
+    uint32_t performedSweeps;
+
+
+/*
+    
+    Observables:
+
+*/
     num normPhi;        //averaged norm of field			//not very sensible physically
     Phi meanPhi;		//averaged field
     num meanPhiSquared;	//square of averaged field
@@ -297,43 +317,57 @@ protected:
     num fermionEcouple;         //coupling
 //    num fermionEcouple_imag;
 
+
+
+/*
+
+    Static helper member functions, defined in header
+
+*/
+    static inline std::string bandstr(Band b);
+    static inline std::string spinstr(Spin s);
+    static inline std::string updateMethodstr(UpdateMethod_Type um);
+    static inline std::string spinProposalMethodstr(SpinProposalMethod_Type sp);
+
+
+    //lookup values for discrete field:
+    static inline num cdwl_gamma(int32_t l);
+    static inline num cdwl_eta(int32_t l);
+
+
+/*
+  
+    Helpers for functors, defined in header
+    
+*/
     //these for_each functions don't really work well with the class template
     template<typename Callable>
-    void for_each_band(Callable func) {
-        func(XBAND);
-        func(YBAND);
-    }
-    template<typename Callable>
-    void for_each_site(Callable func) {
-        for (uint32_t site = 0; site < N; ++site) {
-            func(site);
-        }
-    }
-    template<typename Callable>
-    void for_each_timeslice(Callable func) {
-        for (uint32_t k = 1; k <= m; ++k) {
-            func(k);
-        }
-    }
-    template<typename CallableSiteTimeslice, typename V>
-    V sumWholeSystem(CallableSiteTimeslice f, V init) {
-        for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-            for (uint32_t site = 0; site < N; ++site) {
-                init += f(site, timeslice);
-            }
-        }
-        return init;
-    }
-    template<typename CallableSiteTimeslice, typename V>
-    V averageWholeSystem(CallableSiteTimeslice f, V init) {
-        V sum = sumWholeSystem(f, init);
-        return sum / num(m * N);
-    }
+    void for_each_band(Callable func);
+    template<typename Callable> inline
+    void for_each_site(Callable func);
+    template<typename Callable> inline
+    void for_each_timeslice(Callable func);
+    template<typename CallableSiteTimeslice, typename V> inline
+    V sumWholeSystem(CallableSiteTimeslice f, V init);
+    template<typename CallableSiteTimeslice, typename V> inline
+    V averageWholeSystem(CallableSiteTimeslice f, V init);
 
+/*
+  
+    Helpers, defined in header
+    
+*/
     uint32_t coordsToSite(uint32_t x, uint32_t y) {
         return y*L + x;
     }
 
+
+/*
+  
+    Functions related to auxiliary / bosonic fields, setting up propK,
+    setting up the UdV storage and setting up the Green's function
+    
+*/
     void setupRandomField();
     // return (coshTerm*, sinhTerm*) for these field values
     std::tuple<num,num> getCoshSinhTermPhi(num phi0, num phi1, num phi2);
@@ -350,6 +384,13 @@ protected:
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
     void setupUdVStorage_and_calculateGreen();
 
+
+    
+/*
+  
+    Checkerboard multiplication routines
+    
+*/
     //the following are template functions to allow applying them
     //to submatrices as well
     //"cb" = "checkerboard"
@@ -402,18 +443,12 @@ protected:
     MatCpx leftMultiplyBk(const MatCpx& orig, uint32_t k);      //multiply B(k,k-1) from left to orig, return result
     MatCpx leftMultiplyBkInv(const MatCpx& orig, uint32_t k);   //multiply B(k,k-1)^-1 from left to orig, return result
 
-
-
+/*
+  
+    Checkerboard or dense computation of B-matrix, some helpers for both cases
+    
+*/
     MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
-
-
-//    //helpers for computeBmatSDW and the checkerboard variations
-//    //for the cdwl-discrete field
-//    //return the product of gamma_l_i for cdwl
-//    template<class Vec>
-//    num prefactor_gamma_cdwl(const Vec& cdwl);
-//    template<class Vec>
-//    num ln_prefactor_gamma_cdwl(const Vec& cdwl);
 
     // compute sqrt(dtau) * cdwU * eta_{cdwl[i]}
     template<class Vec>
@@ -421,19 +456,44 @@ protected:
     // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
     num compute_d_for_cdwl_site(uint32_t cdwl);
 
+/*
 
+    Routines for consistency checks / debugging
+    
+*/
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
     // for one timeslice. This may be useful for checks.
     MatCpx computePotentialExponential(int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl);
 
+    //several checks, many are normally commented out
+    virtual void consistencyCheck();
 
-    //the upper function calls the following helper with functors RightMultiply, LeftMultiply depending
-    //on the CheckerboardMethod
+
+
+/*
+  
+    Routines related to measurements
+    
+*/    
+    //the upper function shiftGreenSymmetric() calls the following
+    //helper with functors RightMultiply, LeftMultiply depending on
+    //the CheckerboardMethod
     template<class RightMultiply, class LeftMultiply>
     MatCpx shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
 
+    //measuring observables
+    void initMeasurements();				//reset stored observable values (beginning of a sweep)
+    void measure(uint32_t timeslice);		//measure observables for one timeslice
+    void finishMeasurements();				//finalize stored observable values (end of a sweep)
+    std::set<uint32_t> timeslices_included_in_measurement; 	//for a consistency check -- sweep includes correct #timeslices
 
 
+    
+/*
+
+    Monte Carlo updates, some related data structures
+    
+*/
     //update the auxiliary field and the green function in the single timeslice
     void updateInSlice(uint32_t timeslice);
     //this template member function calls the right one of those below
@@ -538,95 +598,24 @@ protected:
     num phiAction();
 
 
-    //measuring observables
-    void initMeasurements();				//reset stored observable values (beginning of a sweep)
-    void measure(uint32_t timeslice);		//measure observables for one timeslice
-    void finishMeasurements();				//finalize stored observable values (end of a sweep)
-    std::set<uint32_t> timeslices_included_in_measurement; 	//for a consistency check -- sweep includes correct #timeslices
 
+    
+/*    
 
-    // for now: check that phiCosh and phiSinh are set correctly
-    virtual void consistencyCheck();
+      wrappers to use to instantiate template functions of the base class
 
-    //wrappers to use to instantiate template functions of the base class
-    struct sdwComputeBmat {
-        DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
-            parent(parent_)
-        { }
-        MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
-            (void)gc;
-            assert(gc == 0);
-            return parent->computeBmatSDW(k2, k1);
-        }
-    };
-
-    struct sdwLeftMultiplyBmat {
-        DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
-            parent(parent_)
-        { }
-        MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
-            (void)gc;
-            assert(gc == 0);
-            if (Checkerboard != CB_NONE) {
-                return parent->checkerboardLeftMultiplyBmat(mat, k2, k1);
-            } else {
-                return parent->computeBmatSDW(k2, k1) * mat;
-            }
-        }
-    };
-
-    struct sdwRightMultiplyBmat {
-        DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
-            parent(parent_)
-        { }
-        MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
-            (void)gc;
-            assert(gc == 0);
-            if (Checkerboard != CB_NONE) {
-                return parent->checkerboardRightMultiplyBmat(mat, k2, k1);
-            } else {
-                return mat * parent->computeBmatSDW(k2, k1);
-            }
-        }
-    };
-
-    struct sdwLeftMultiplyBmatInv {
-        DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
-            parent(parent_)
-        { }
-        MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
-            (void)gc;
-            assert(gc == 0);
-            if (Checkerboard != CB_NONE) {
-                return parent->checkerboardLeftMultiplyBmatInv(mat, k2, k1);
-            } else {
-                return arma::inv(parent->computeBmatSDW(k2, k1)) * mat;
-            }
-        }
-    };
-
-    struct sdwRightMultiplyBmatInv {
-        DetSDW<TimeDisplaced,Checkerboard>* parent;
-        sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
-            parent(parent_)
-        { }
-        MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
-            (void)gc;
-            assert(gc == 0);
-            if (Checkerboard != CB_NONE) {
-                return parent->checkerboardRightMultiplyBmatInv(mat, k2, k1);
-            } else {
-                return mat * arma::inv(parent->computeBmatSDW(k2, k1));
-            }
-        }
-    };
-
-
+*/
+    struct sdwRightMultiplyBmatInv;
+    struct sdwLeftMultiplyBmatInv;
+    struct sdwRightMultiplyBmat;
+    struct sdwLeftMultiplyBmat;
+    struct sdwComputeBmat;
 public:
+/*
+
+    Serialization
+
+*/
     // only functions that can pass the key to these functions have access
     // -- in this way access is granted only to select DetQMC methods
     template<class Archive>
@@ -667,6 +656,216 @@ public:
         ar & performedSweeps;
     }
 };
+
+
+
+
+
+/*
+
+	Static helper member functions
+
+*/
+template <bool TD, CheckerboardMethod CBM>
+inline std::string DetSDW<TD,CBM>::bandstr(Band b) {
+	return (b == XBAND) ? "x" : (b == YBAND ? "y" : "N");
+}
+template <bool TD, CheckerboardMethod CBM>
+inline std::string DetSDW<TD,CBM>::spinstr(Spin s) {
+	return (s == SPINUP) ? "up" : (s == SPINDOWN ? "dn" : "N");
+}
+template <bool TD, CheckerboardMethod CBM>
+inline std::string DetSDW<TD,CBM>::updateMethodstr(UpdateMethod_Type um) {
+	switch (um) {
+	case ITERATIVE:
+		return "iterative";
+	case WOODBURY:
+		return "woodbury";
+	case DELAYED:
+		return "delayed";
+	default:
+		return "invalid";
+	}
+}
+template <bool TD, CheckerboardMethod CBM>
+inline std::string DetSDW<TD,CBM>::spinProposalMethodstr(SpinProposalMethod_Type sp) {
+	switch (sp) {
+	case BOX:
+		return "box";
+	case ROTATE_THEN_SCALE:
+		return "rotate_then_scale";
+	case ROTATE_AND_SCALE:
+		return "rotate_and_scale";
+	default:
+		return "invalid";
+	}
+}
+
+    
+
+//lookup values for discrete field:
+template <bool TD, CheckerboardMethod CBM>
+inline num DetSDW<TD,CBM>::cdwl_gamma(int32_t l) {
+    switch (l) {
+    case +1:
+    case -1:
+        return (3. + std::sqrt(6.));
+    case +2:
+    case -2:
+        return (3. - std::sqrt(6.));
+    default:
+        return 0;
+    }
+}
+template <bool TD, CheckerboardMethod CBM>
+inline num DetSDW<TD,CBM>::cdwl_eta(int32_t l) {
+    switch (l) {
+    case +1:
+        return  std::sqrt(2. * (3. - std::sqrt(6.)));
+    case -1:
+        return -std::sqrt(2. * (3. - std::sqrt(6.)));
+    case +2:
+        return  std::sqrt(2. * (3. + std::sqrt(6.)));
+    case -2:
+        return -std::sqrt(2. * (3. + std::sqrt(6.)));
+    default:
+        return 0;
+    }
+}
+
+
+/*
+
+    Helpers for functors
+
+*/
+template<bool TD, CheckerboardMethod CBM>
+template<typename Callable>
+void DetSDW<TD,CBM>::for_each_band(Callable func) {
+	func(XBAND);
+	func(YBAND);
+}
+template<bool TD, CheckerboardMethod CBM>
+template<typename Callable> inline
+void DetSDW<TD,CBM>::for_each_site(Callable func) {
+	for (uint32_t site = 0; site < N; ++site) {
+		func(site);
+	}
+}
+template<bool TD, CheckerboardMethod CBM>
+template<typename Callable> inline
+void DetSDW<TD,CBM>::for_each_timeslice(Callable func) {
+	for (uint32_t k = 1; k <= m; ++k) {
+		func(k);
+	}
+}
+template<bool TD, CheckerboardMethod CBM>
+template<typename CallableSiteTimeslice, typename V> inline
+V DetSDW<TD,CBM>::sumWholeSystem(CallableSiteTimeslice f, V init) {
+	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+		for (uint32_t site = 0; site < N; ++site) {
+			init += f(site, timeslice);
+		}
+	}
+	return init;
+}
+template<bool TD, CheckerboardMethod CBM>
+template<typename CallableSiteTimeslice, typename V> inline
+V DetSDW<TD,CBM>::averageWholeSystem(CallableSiteTimeslice f, V init) {
+	V sum = sumWholeSystem(f, init);
+	return sum / num(m * N);
+}
+
+
+
+
+/*    
+
+      wrappers to use to instantiate template functions of the base class
+
+*/
+template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
+struct DetSDW<TimeDisplaced,Checkerboard>::sdwComputeBmat {
+    DetSDW<TimeDisplaced,Checkerboard>* parent;
+    sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+        parent(parent_)
+        { }
+    MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
+        (void)gc;
+        assert(gc == 0);
+        return parent->computeBmatSDW(k2, k1);
+    }
+};
+
+template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
+struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmat {
+    DetSDW<TimeDisplaced,Checkerboard>* parent;
+    sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+        parent(parent_)
+        { }
+    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+        (void)gc;
+        assert(gc == 0);
+        if (Checkerboard != CB_NONE) {
+            return parent->checkerboardLeftMultiplyBmat(mat, k2, k1);
+        } else {
+            return parent->computeBmatSDW(k2, k1) * mat;
+        }
+    }
+};
+
+template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
+struct DetSDW<TimeDisplaced,Checkerboard>::sdwRightMultiplyBmat {
+    DetSDW<TimeDisplaced,Checkerboard>* parent;
+    sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+        parent(parent_)
+        { }
+    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+        (void)gc;
+        assert(gc == 0);
+        if (Checkerboard != CB_NONE) {
+            return parent->checkerboardRightMultiplyBmat(mat, k2, k1);
+        } else {
+            return mat * parent->computeBmatSDW(k2, k1);
+        }
+    }
+};
+
+template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
+struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmatInv {
+    DetSDW<TimeDisplaced,Checkerboard>* parent;
+    sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+        parent(parent_)
+        { }
+    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+        (void)gc;
+        assert(gc == 0);
+        if (Checkerboard != CB_NONE) {
+            return parent->checkerboardLeftMultiplyBmatInv(mat, k2, k1);
+        } else {
+            return arma::inv(parent->computeBmatSDW(k2, k1)) * mat;
+        }
+    }
+};
+
+template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
+struct DetSDW<TimeDisplaced,Checkerboard>::sdwRightMultiplyBmatInv {
+    DetSDW<TimeDisplaced,Checkerboard>* parent;
+    sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+        parent(parent_)
+        { }
+    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+        (void)gc;
+        assert(gc == 0);
+        if (Checkerboard != CB_NONE) {
+            return parent->checkerboardRightMultiplyBmatInv(mat, k2, k1);
+        } else {
+            return mat * arma::inv(parent->computeBmatSDW(k2, k1));
+        }
+    }
+};
+
+
 
 
 
