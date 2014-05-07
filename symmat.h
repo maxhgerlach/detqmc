@@ -5,6 +5,7 @@
  *      Author: max
  */
 
+// simple struct holding data that can be indexed via 2 dimensions --> GenMat
 
 // struct holding data that can be indexed via 2 dimensions, exchange of the two
 // indices should yield the same data --> SymMat
@@ -14,6 +15,24 @@
 #include "checkarray.h"
 #include <utility>
 #include <stdexcept>
+
+
+template<typename T, uint32_t size>
+struct GenMat {
+    static const uint32_t dataSize = size * size;
+
+    checkarray<T, dataSize> data;
+
+    T& operator()(uint32_t idx1, uint32_t idx2) {
+#ifdef _GLIBCXX_DEBUG
+        if (idx2 >= size or idx1 >= size) {
+            throw std::out_of_range("GenMat: access outside matrix");
+        }
+#endif //_GLIBCXX_DEBUG
+        return data[idx1 * size + idx2];
+    }
+};
+
 
 template<typename T, uint32_t size>
 struct SymMat {
