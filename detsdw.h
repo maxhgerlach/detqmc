@@ -17,6 +17,7 @@
 #include "RunningAverage.h"
 #include "checkarray.h"
 #include "normaldistribution.h"
+#include "symmat.h"
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
@@ -125,6 +126,7 @@ protected:
 
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
+    enum BandSpin {XUP = 0, XDOWN = 1, YUP = 2, YDOWN = 3};
     enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
     BC_Type bc;
     enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
@@ -322,10 +324,23 @@ protected:
     // Real space for ab = xx, xy, yx, yy band combinations
     // rows: site i, cols: site j
     // <n_{a,i} n_{b,j}>
-    checkarray<MatNum, 2> occCorr; // symmat or similar
+    // Here: Do not use symmat because of site resolution
+    GenMat<MatNum, 2> occCorr;  // index by [XBAND,YBAND] etc.
     // charge-charge correlations
     // <n_i n_j> = <n_{x,i}n_{x,i}> + <n_{x,i}n_{y,i}> + <n_{y,i}n_{x,i}> + <n_{y,i}n_{y,i}>
-    MatNum occCorr;
+    MatNum chargeCorr;
+    // Fourier transforms, index by wave-vector k = (kx,ky)
+    // represented as ksite (like kOcc)
+    //
+    // We only need to write out the measurements in the form of the
+    // fourier-transformed version
+    GenMat<VecNum, 2> occCorrFT;
+    VecNum chargeCorrFT;
+
+    // This measures the local occupation difference of the x and y
+    // orbitals: 1/N \sum_i <(n_{xi} - n_{yi})^2>
+    num occDiffSq;
+
 
 /*
 
@@ -334,6 +349,7 @@ protected:
 */
     static inline std::string bandstr(Band b);
     static inline std::string spinstr(Spin s);
+    static inline std::string bandspinstr(BandSpin bs);
     static inline std::string updateMethodstr(UpdateMethod_Type um);
     static inline std::string spinProposalMethodstr(SpinProposalMethod_Type sp);
 
@@ -684,6 +700,16 @@ inline std::string DetSDW<TD,CBM>::bandstr(Band b) {
 template <bool TD, CheckerboardMethod CBM>
 inline std::string DetSDW<TD,CBM>::spinstr(Spin s) {
 	return (s == SPINUP) ? "up" : (s == SPINDOWN ? "dn" : "N");
+}
+template <bool TD, CheckerboardMethod CBM>
+inline std::string DetSDW<TD,CBM>::bandspinstr(BandSpin bs) {
+    switch (bs) {
+    case XUP:   return "XUp";
+    case XDOWN: return "XDown";
+    case YUP:   return "YUp";
+    case YDOWN: return "YDown";
+    default:    return "N";
+    }
 }
 template <bool TD, CheckerboardMethod CBM>
 inline std::string DetSDW<TD,CBM>::updateMethodstr(UpdateMethod_Type um) {

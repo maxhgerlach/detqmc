@@ -32,6 +32,7 @@ const num PhiLow = -1;
 const num PhiHigh = 1;
 
 
+
 std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     //TODO: add checks
     pars = updateTemperatureParameters(pars);
@@ -146,52 +147,53 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
 
 template<bool TD, CheckerboardMethod CB>
 DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
-        DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
-        eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
-        rng(rng_), normal_distribution(rng),
-        checkerboard(pars.checkerboard),
-        L(pars.L), N(L*L), r(pars.r),
-        txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
-        cdwU(pars.cdwU),
-        mu(pars.mu),
-        c(1), u(1), //TODO: make these controllable by parameter
-        lambda(pars.lambda),
-        bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
-        globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
-        globalMoveInterval(pars.globalUpdateInterval),
-        repeatUpdateInSlice(pars.repeatUpdateInSlice),
-        acceptedGlobalShifts(0), attemptedGlobalShifts(0),
-        acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
-        addedWolffClusterSize(0.),
-        hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
-        sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
-        spaceNeigh(L), timeNeigh(m),
-        propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
-        propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
-        propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
-        g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-        phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1),
-        coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
-        coshTermCDWl(N, m+1), sinhTermCDWl(N, m+1),
-        phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
-        targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
-        accRatioLocal_box_RA(AccRatioAdjustmentSamples),
-        accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
-        accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
-        curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
-        curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
-        adaptScaleDelta(pars.adaptScaleVariance),
-        performedSweeps(0),
-        normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
-        kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
+    DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
+    eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
+    rng(rng_), normal_distribution(rng),
+    checkerboard(pars.checkerboard),
+    L(pars.L), N(L*L), r(pars.r),
+    txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
+    cdwU(pars.cdwU),
+    mu(pars.mu),
+    c(1), u(1), //TODO: make these controllable by parameter
+    lambda(pars.lambda),
+    bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
+    globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
+    globalMoveInterval(pars.globalUpdateInterval),
+    repeatUpdateInSlice(pars.repeatUpdateInSlice),
+    acceptedGlobalShifts(0), attemptedGlobalShifts(0),
+    acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
+    addedWolffClusterSize(0.),
+    hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
+    sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
+    spaceNeigh(L), timeNeigh(m),
+    propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
+    propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
+    propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
+    g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
+    phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1),
+    coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
+    coshTermCDWl(N, m+1), sinhTermCDWl(N, m+1),
+    phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
+    targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
+    accRatioLocal_box_RA(AccRatioAdjustmentSamples),
+    accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
+    accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
+    curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
+    curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
+    adaptScaleDelta(pars.adaptScaleVariance),
+    performedSweeps(0),
+    normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
+    kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
-        occ(), occX(occ[XBAND]), occY(occ[YBAND]),
+    occ(), occX(occ[XBAND]), occY(occ[YBAND]),
 //        occImag(), occXimag(occImag[XBAND]), occYimag(occImag[YBAND]),
-        pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
-        pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
-        fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
-        timeslices_included_in_measurement(),
-        dud(N, delaySteps), gmd(N, m)
+    pairPlusMax(0.0), pairMinusMax(0.0), //pairPlusMaximag(0.0), pairMinusMaximag(0.0),
+    pairPlus(), pairMinus(), //pairPlusimag(), pairMinusimag(),
+    fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
+    occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
+    timeslices_included_in_measurement(),
+    dud(N, delaySteps), gmd(N, m)
 {
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
 
@@ -298,8 +300,22 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
             VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
-//
 
+    const Band BandValues[2] = {XBAND, YBAND};
+    for (Band b1 : BandValues) {
+    	for (Band b2 : BandValues) {
+            VecNum& occCFT = occCorrFT(b1, b2);
+            occCFT.zeros(N);
+            obsVector += VectorObservable(cref(occCFT), N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
+    	}
+    }
+
+    chargeCorrFT.zeros(N);
+    obsVector += VectorObservable(cref(chargeCorrFT), N, "chargeCorrFT", "");
+
+    occDiffSq = 0.0;
+    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");   
+    
     consistencyCheck();
 }
 
