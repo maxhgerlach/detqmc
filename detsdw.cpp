@@ -304,12 +304,15 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     const Band BandValues[2] = {XBAND, YBAND};
     for (Band b1 : BandValues) {
     	for (Band b2 : BandValues) {
+            MatNum& occC = occCorr(b1, b2);
+            occC.zeros(N,N);
             VecNum& occCFT = occCorrFT(b1, b2);
             occCFT.zeros(N);
             obsVector += VectorObservable(cref(occCFT), N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
     	}
     }
 
+    chargeCorr.zeros(N,N);
     chargeCorrFT.zeros(N);
     obsVector += VectorObservable(cref(chargeCorrFT), N, "chargeCorrFT", "");
 
@@ -428,6 +431,16 @@ void DetSDW<TD,CB>::initMeasurements() {
     fermionEkinetic = 0;
     fermionEcouple = 0;
 
+    // band occupation / charge correlations
+    const Band BandValues[2] = {XBAND, YBAND};
+    for (Band b1 : BandValues) {
+    	for (Band b2 : BandValues) {
+            MatNum& occC = occCorr(b1, b2);
+            occC.zeros(N,N);
+        }
+    }
+    occDiffSq = 0.0;
+
     timing.stop("sdw-measure");
 }
 
@@ -509,7 +522,7 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     auto gl = [this, &gshifted](uint32_t site1, Band band1, Spin spin1,
                                 uint32_t site2, Band band2, Spin spin2) -> cpx {
         return gshifted(site1 + 2*N*band1 + N*spin1,
-                          site2 + 2*N*band2 + N*spin2);
+                        site2 + 2*N*band2 + N*spin2);
     };
 
     for (uint32_t i = 0; i < N; ++i) {
@@ -609,6 +622,115 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
         //fermionEcouple_imag += std::imag(e);
     }
 
+    // band occupation / charge correlations
+    // -------------------------------------
+    // code generated in Mathematica: sdw-cdw-corr-obs.nb
+    for (uint32_t i = 0; i < N; ++i) {
+        for (uint32_t j = 0; j < N; ++j) {
+            if (i != j) {
+                //unequal sites, slightly generic
+                const Band BandValues[2] = {XBAND, YBAND};
+                for (Band b1 : BandValues) {
+                    for (Band b2 : BandValues) {
+                         cpx contrib = 4.0 -
+                            gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
+                            gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
+                            gl(i, b1, SPINUP, j, b2, SPINDOWN)*
+                            gl(j, b2, SPINDOWN, i, b1, SPINUP) - 2.0*
+                            gl(j, b2, SPINDOWN, j, b2, SPINDOWN) -
+                            gl(i, b1, SPINDOWN, j, b2, SPINUP)*
+                            gl(j, b2, SPINUP, i, b1, SPINDOWN) -
+                            gl(i, b1, SPINUP, j, b2, SPINUP)*
+                            gl(j, b2, SPINUP, i, b1, SPINUP) - 2.0*
+                            gl(j, b2, SPINUP, j, b2, SPINUP) +
+                            gl(i, b1, SPINDOWN, i, b1, SPINDOWN)*
+                            (-2.0 +
+                             gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+                             gl(j, b2, SPINUP, j, b2, SPINUP)) +
+                            gl(i, b1, SPINUP, i, b1, SPINUP)*
+                            (-2.0 +
+                             gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+                             gl(j, b2, SPINUP, j, b2, SPINUP));
+                         occCorr(b1, b2)(i, j) += contrib.real();
+                    }
+                }
+            } else {
+                //equal site i, use band-specific code
+                cpx contribxx = 4.0 - 2.0*
+                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
+                    gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
+                    gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
+                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+                    (-3.0 + 2.0*
+                     gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
+                occCorr(XBAND,XBAND)(i, i) += contribxx.real();
+                
+                cpx contribxy = 4.0 -
+                    gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                    gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
+                    gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
+                    gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) - 2.0*
+                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) -
+                    gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
+                    gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) -
+                    gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
+                    gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+                    gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+                    (-2.0 +
+                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
+                    gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+                    (-2.0 +
+                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+                occCorr(XBAND,YBAND)(i,i) += contribxy.real;
+                occCorr(YBAND,XBAND)(i,i) += contribxy.real; // it's symmetric in xy
+
+                cpx conribyy = 4.0 - 2.0*
+                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
+                    gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
+                    gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                    (-3.0 + 2.0*
+                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+                occCorr(YBAND,YBAND)(i,i) += contribyy.real;
+            }
+        }
+    }
+
+    cpx occDiffSqContrib = 0.0;
+    for (uint32_t i = 0; i < N; ++i) {
+        occDiffSqContrib += -2.0*
+            gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
+            gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) +
+            gl(i, XBAND, SPINUP, i, XBAND, SPINUP) + 2.0*
+            gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+            gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) + 2.0*
+            gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
+            gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) +
+            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
+            gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) + 2.0*
+            gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
+            gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) + 2.0*
+            gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
+            gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+            gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
+            gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) +
+            gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+            (1.0 + 2.0*
+             gl(i, XBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+             gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
+             gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
+            gl(i, YBAND, SPINUP, i, YBAND, SPINUP) - 2.0*
+            gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+            gl(i, YBAND, SPINUP, i, YBAND, SPINUP) + 2.0*
+            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+            gl(i, YBAND, SPINUP, i, YBAND, SPINUP);
+    }
+    occDiffSq += (occDiffSqContrib.real()) / num(N);
+
     timing.stop("sdw-measure");
 }
 
@@ -681,6 +803,20 @@ void DetSDW<TD,CB>::finishMeasurements() {
     // -----------------------------
     fermionEkinetic /= num(m*N);
     fermionEcouple /= num(m*N);
+
+
+    // band occupation / charge correlations
+    // -------------------------------------
+    const Band BandValues[2] = {XBAND, YBAND};
+    for (Band b1 : BandValues) {
+    	for (Band b2 : BandValues) {
+            occCorr(b1,b2) /= num(m);
+        }
+    }
+    chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
+                 occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
+    
+    occDiffSq /= num(m);
 }
 
 
