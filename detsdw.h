@@ -1,4 +1,4 @@
-/*
+ /*
  * detsdw.h
  *
  *  Created on: Feb 21, 2013
@@ -513,7 +513,9 @@ protected:
     void measure(uint32_t timeslice);                   //measure observables for one timeslice
     void finishMeasurements();				//finalize stored observable values (end of a sweep)
     std::set<uint32_t> timeslices_included_in_measurement; 	//for a consistency check -- sweep includes correct #timeslices
-
+    // compute the structure factor from a matrix of real space correlations
+    void computeStructureFactor(VecNum& out_k, const MatNum& in_r);
+    
 
     
 /*

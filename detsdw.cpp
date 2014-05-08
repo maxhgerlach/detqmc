@@ -819,6 +819,39 @@ void DetSDW<TD,CB>::finishMeasurements() {
     occDiffSq /= num(m);
 }
 
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
+    static const num pi = M_PI;
+    //offset k-components for antiperiodic bc
+    num offset_x = 0.0;
+    num offset_y = 0.0;
+    if (bc == APBC_X or bc == APBC_XY) {
+        offset_x = 0.5;
+    }
+    if (bc == APBC_Y or bc == APBC_XY) {
+        offset_y = 0.5;
+    }
+    for (uint32_t ksite = 0; ksite < N; ++ksite) {
+        uint32_t ksitey = ksite / L;
+        uint32_t ksitex = ksite % L;
+        num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
+        num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
+        for (uint32_t i = 0; i < N; ++i) {
+            num iy = num(i / L);
+            num ix = num(i % L);
+            for (uint32_t j = 0; j  < N; ++j) {
+                num jy = num(j / L);
+                num jx = num(j % L);
+
+                num argument = kx * (ix - jx) + ky * (iy - jy);
+                cpx phase = std::exp(cpx(0, argument));
+
+                cpx contrib = in_r(i,j) * phase;
+                out_k(ksite) = contrib.real();
+            }
+        }
+     }
+}
 
 //template<bool TD, CheckerboardMethod CB>
 //void DetSDW<TD,CB>::measure() {
