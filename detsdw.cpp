@@ -487,7 +487,7 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
         uint32_t ksitex = ksite % L;
         num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
         num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
-
+ 
         for (uint32_t i = 0; i < N; ++i) {
             num iy = num(i / L);
             num ix = num(i % L);
@@ -684,17 +684,17 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
                     (-2.0 +
                      gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
                      gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(XBAND,YBAND)(i,i) += contribxy.real;
-                occCorr(YBAND,XBAND)(i,i) += contribxy.real; // it's symmetric in xy
+                occCorr(XBAND,YBAND)(i,i) += contribxy.real();
+                occCorr(YBAND,XBAND)(i,i) += contribxy.real(); // it's symmetric in xy
 
-                cpx conribyy = 4.0 - 2.0*
+                cpx contribyy = 4.0 - 2.0*
                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
                     gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
                     (-3.0 + 2.0*
                      gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(YBAND,YBAND)(i,i) += contribyy.real;
+                occCorr(YBAND,YBAND)(i,i) += contribyy.real();
             }
         }
     }
@@ -853,267 +853,6 @@ void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
      }
 }
 
-//template<bool TD, CheckerboardMethod CB>
-//void DetSDW<TD,CB>::measure() {
-//    timing.start("sdw-measure");
-//
-//    shiftGreenSymmetric();
-//
-//    Phi meanPhi;
-//    meanPhi[0] = averageWholeSystem(phi0, 0.0);
-//    meanPhi[1] = averageWholeSystem(phi1, 0.0);
-//    meanPhi[2] = averageWholeSystem(phi2, 0.0);
-//    normPhi = arma::norm(meanPhi, 2);
-//
-//
-//    //fermion occupation number -- real space
-//    //probably not very interesting data
-//    occX.zeros(N);
-//    occY.zeros(N);
-////    occXimag.zeros(N);
-////    occYimag.zeros(N);
-//    for (uint32_t l = 1; l <= m; ++l) {
-//        for (uint32_t i = 0; i < N; ++i) {
-//            occX[i] += std::real(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
-//            occY[i] += std::real(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
-////            occXimag[i] += std::imag(g.slice(l)(i, i) + g.slice(l)(i+N, i+N));
-////            occYimag[i] += std::imag(g.slice(l)(i+2*N, i+2*N) + g.slice(l)(i+3*N, i+3*N));
-//        }
-//    }
-//    //not working with icpc 13.1:
-////  using std::ref;
-////  for (VecNum& occ : {ref(occX), ref(occY), ref(occXimag), ref(occYimag)}) {
-////      occ /= num(m) * num(N);
-////  }
-//    occX /= num(m) * num(N);
-//    occY /= num(m) * num(N);
-////    occXimag /= num(m) * num(N);
-////    occYimag /= num(m) * num(N);
-//
-//
-//
-//    //fermion occupation number -- k-space
-//    static const num pi = M_PI;
-//    //offset k-components for antiperiodic bc
-//    num offset_x = 0.0;
-//    num offset_y = 0.0;
-//    if (bc == APBC_X or bc == APBC_XY) {
-//        offset_x = 0.5;
-//    }
-//    if (bc == APBC_Y or bc == APBC_XY) {
-//        offset_y = 0.5;
-//    }
-//    for (uint32_t ksite = 0; ksite < N; ++ksite) {
-//        //try a slightly alternative approach..
-//        uint32_t ksitey = ksite / L;
-//        uint32_t ksitex = ksite % L;
-//        num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
-//        num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
-//
-//        kOccX[ksite] = 0.0;
-//        kOccY[ksite] = 0.0;
-////        kOccXimag[ksite] = 0.0;
-////        kOccYimag[ksite] = 0.0;
-//
-//        for (uint32_t i = 0; i < N; ++i) {
-//            num iy = num(i / L);
-//            num ix = num(i % L);
-//            for (uint32_t j = 0; j  < N; ++j) {
-//                num jy = num(j / L);
-//                num jx = num(j % L);
-//
-//                num argument = kx * (ix - jx) + ky * (iy - jy);
-//                cpx phase = std::exp(cpx(0, argument));
-//
-//                for (uint32_t l = 1; l <= m; ++l) {
-//                    cpx green_x_up   = g.slice(l)(i, j);
-//                    cpx green_x_down = g.slice(l)(i + N, j + N);
-//                    cpx green_y_up   = g.slice(l)(i + 2*N, j + 2*N);
-//                    cpx green_y_down = g.slice(l)(i + 3*N, j + 3*N);
-//
-//                    cpx x_cpx = phase * (green_x_up + green_x_down);
-//                    cpx y_cpx = phase * (green_y_up + green_y_down);
-//
-//                    kOccX[ksite] += std::real(x_cpx);
-//                    kOccY[ksite] += std::real(y_cpx);
-////                    kOccXimag[ksite] += std::imag(x_cpx);
-////                    kOccYimag[ksite] += std::imag(y_cpx);
-//                }
-//            }
-//        }
-//
-//        // add 2.0 and not 1.0 because spin is included
-//        kOccX[ksite] = 2.0 - kOccX[ksite] / num(m * N);
-//        kOccY[ksite] = 2.0 - kOccY[ksite] / num(m * N);
-////        kOccXimag[ksite] =  -kOccXimag[ksite] / num(m * N);
-////        kOccYimag[ksite] =  -kOccYimag[ksite] / num(m * N);
-//    }
-//
-//    //sdw-susceptibility
-//    uint32_t mm = m;
-//    sdwSusc = dtau * sumWholeSystem( [this, mm](uint32_t site, uint32_t timeslice) {
-//                                            return phi0(site, timeslice) * phi0(0, mm)
-//                                                 + phi1(site, timeslice) * phi1(0, mm)
-//                                                 + phi2(site, timeslice) * phi2(0, mm);
-//                                        },
-//                                    0.0);
-//
-//    //equal-time pairing-correlations
-//    //-------------------------------
-//    pairPlus.zeros(N);
-//    pairMinus.zeros(N);
-////    pairPlusimag.zeros(N);
-////    pairMinusimag.zeros(N);
-//    for (uint32_t l = 1; l <= m; ++l) {
-//        //helper to access the green function
-//        // *1 is for the row index,
-//        // *2 is for the column index
-//        auto gl = [this, l](uint32_t site1, Band band1, Spin spin1,
-//                           uint32_t site2, Band band2, Spin spin2) -> cpx {
-//            return g.slice(l)(site1 + 2*N*band1 + N*spin1,
-//                              site2 + 2*N*band2 + N*spin2);
-//        };
-//
-//        for (uint32_t i = 0; i < N; ++i) {
-////            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
-////                    std::make_tuple(i, 0), std::make_tuple(0, i)
-////            };
-//            //compiler-compatibilty fix
-//            std::tuple<uint32_t,uint32_t> sitePairs[2] = {
-//                    std::tuple<uint32_t,uint32_t>(i, 0),
-//                    std::tuple<uint32_t,uint32_t>(0, i)
-//            };
-//
-//            cpx pairPlusCpx(0, 0);
-//            cpx pairMinusCpx(0, 0);
-//
-//            for (auto sites : sitePairs) {
-//                uint32_t siteA = std::get<0>(sites);
-//                uint32_t siteB = std::get<1>(sites);
-//
-//                // the following two unwieldy sums have been evaluated with the Mathematica
-//                // notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
-//                pairPlusCpx += cpx(-4.0, 0) * (
-//                        gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-//                        gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
-//                        gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-//                        gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
-//                        gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-//                        gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-//                        gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-//                        gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-//                );
-//
-//                pairMinusCpx += cpx(-4.0, 0) * (
-//                        gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-//                        gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
-//                        gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
-//                        gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
-//                        gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
-//                        gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-//                        gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-//                        gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-//                );
-//            }
-//
-//            pairPlus[i] += std::real(pairPlusCpx);
-////            pairPlusimag[i] += std::imag(pairPlusCpx);
-//            pairMinus[i] += std::real(pairMinusCpx);
-////            pairMinusimag[i] += std::imag(pairMinusCpx);
-//        }
-//    }
-//    pairPlus /= m;
-////    pairPlusimag /= m;
-//    pairMinus /= m;
-////    pairMinusimag /= m;
-//
-//    // sites around the maximum range L/2, L/2
-//    static const uint32_t numSitesFar = 9;
-//    uint32_t sitesfar[numSitesFar] = {
-//            coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
-//            coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
-//            coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
-//    };
-//    pairPlusMax = 0;
-////    pairPlusMaximag = 0;
-//    pairMinusMax = 0;
-////    pairMinusMaximag = 0;
-//    for (uint32_t i : sitesfar) {
-//        pairPlusMax += pairPlus[i];
-////        pairPlusMaximag += pairPlusimag[i];
-//        pairMinusMax += pairMinus[i];
-////        pairMinusMaximag += pairMinusimag[i];
-//    }
-//    pairPlusMax /= numSitesFar;
-////    pairPlusMaximag /= numSitesFar;
-//    pairMinusMax /= numSitesFar;
-////    pairMinusMaximag /= numSitesFar;
-//
-//
-//    // Fermionic energy contribution
-//    // -----------------------------
-//    fermionEkinetic = 0;
-////    fermionEkinetic_imag = 0;
-//    for (uint32_t l = 1; l <= m; ++l) {
-//        auto glij = [this, l](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
-//            return g.slice(l)(site1 + 2*N*band + N*spin,
-//                              site2 + 2*N*band + N*spin);
-//        };
-//        for (uint32_t i = 0; i < N; ++i) {
-//            //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
-//            Spin spins[] = {SPINUP, SPINDOWN};
-//            for (auto spin: spins) {
-//                cpx e = cpx(txhor,0) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
-//                      + cpx(txhor,0) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
-//                      + cpx(txver,0) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
-//                      + cpx(txver,0) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
-//                      + cpx(tyhor,0) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
-//                      + cpx(tyhor,0) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
-//                      + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
-//                      + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
-//                fermionEkinetic += std::real(e);
-////                fermionEkinetic_imag += std::imag(e);
-//            }
-//        }
-//    }
-//    fermionEkinetic /= num(m*N);
-////    fermionEkinetic_imag /= num(m*N);
-//
-//    fermionEcouple = 0;
-////    fermionEcouple_imag = 0;
-//    for (uint32_t l = 1; l <= m; ++l) {
-//        for (uint32_t i = 0; i < N; ++i) {
-//            auto glbs = [this, l,i](Band band1, Spin spin1,
-//                                    Band band2, Spin spin2) -> cpx {
-//                return g.slice(l)(i + 2*N*band1 + N*spin1,
-//                                  i + 2*N*band2 + N*spin2);
-//            };
-//
-//            //factors for different combinations of spins
-//            //overall factor of -1 included
-//            cpx up_up(-phi2(i,l), 0);
-//            cpx up_dn(-phi0(i,l), +phi1(i,l));
-//            cpx dn_up(-phi0(i,l), -phi1(i,l));
-//            cpx dn_dn(+phi2(i,l), 0);
-//
-//            cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
-//                             glbs(YBAND, SPINUP, XBAND, SPINUP))
-//                  + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
-//                             glbs(YBAND, SPINUP, XBAND, SPINDOWN))
-//                  + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
-//                             glbs(YBAND, SPINDOWN, XBAND, SPINUP))
-//                  + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
-//                             glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
-//            fermionEcouple += std::real(e);
-////            fermionEcouple_imag += std::imag(e);
-//        }
-//
-//    }
-//    fermionEcouple /= num(m*N);
-////    fermionEcouple_imag /= num(m*N);
-//
-//    timing.stop("sdw-measure");
-//}
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::setupRandomField() {
