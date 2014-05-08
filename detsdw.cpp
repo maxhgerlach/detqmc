@@ -1037,7 +1037,7 @@ VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
 }
 template<bool TD, CheckerboardMethod CB> inline
 num DetSDW<TD,CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
-	//TODO: check assembly -- operations removed
+	//TODO: check assembly -- operations removed?
 	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
 
