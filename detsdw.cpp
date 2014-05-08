@@ -873,10 +873,10 @@ void DetSDW<TD,CB>::setupRandomField() {
             phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
             phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
             num r = rng.rand01();
-            if 		(r <= 0.25) cdwl(site, k) = +2;
+            if      (r <= 0.25) cdwl(site, k) = +2;
             else if (r <= 0.5)	cdwl(site, k) = -2;
             else if (r <= 0.75)	cdwl(site, k) = +1;
-            else				cdwl(site, k) = -1;
+            else                cdwl(site, k) = -1;
             updateCoshSinhTerms(site, k);
         }
     }
