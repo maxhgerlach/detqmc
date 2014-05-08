@@ -815,6 +815,15 @@ void DetSDW<TD,CB>::finishMeasurements() {
     }
     chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
                  occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
+
+    // Fourier transforms
+    for (Band b1 : BandValues) {
+        for (Band b2 : BandValues) {
+            computeStructureFactor(occCorrFT(b1,b2), occCorr(b1,b2));
+        }
+    }
+    computeStructureFactor(chargeCorrFT, chargeCorr);
+
     
     occDiffSq /= num(m);
 }
