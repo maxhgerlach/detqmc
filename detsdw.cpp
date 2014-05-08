@@ -831,6 +831,7 @@ void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     if (bc == APBC_Y or bc == APBC_XY) {
         offset_y = 0.5;
     }
+    out_k.zeros(N);
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
         uint32_t ksitey = ksite / L;
         uint32_t ksitex = ksite % L;
@@ -847,9 +848,10 @@ void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
                 cpx phase = std::exp(cpx(0, argument));
 
                 cpx contrib = in_r(i,j) * phase;
-                out_k(ksite) = contrib.real();
+                out_k(ksite) += contrib.real();
             }
         }
+        out_k /= num(N);
      }
 }
 
