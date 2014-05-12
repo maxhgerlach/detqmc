@@ -984,6 +984,8 @@ void DetSDW<TD,CB>::setupPropK() {
                 k(site, neigh) -= hop;
             }
         }
+        //debugSaveMatrix(k, "k" + bandstr(band));
+        
         propK[band] = computePropagator(dtau, k);
 
         propK_half[band] = computePropagator(dtau / 2.0, k);
