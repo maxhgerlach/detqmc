@@ -137,6 +137,7 @@ protected:
 
     const bool globalShift;
     const bool wolffClusterUpdate;
+    const bool wolffClusterShiftUpdate;
     const uint32_t globalMoveInterval;
 
     const uint32_t repeatUpdateInSlice;
@@ -152,6 +153,8 @@ protected:
     uint32_t attemptedGlobalShifts;
     uint32_t acceptedWolffClusterUpdates;
     uint32_t attemptedWolffClusterUpdates;
+    uint32_t acceptedWolffClusterShiftUpdates;
+    uint32_t attemptedWolffClusterShiftUpdates;
     num addedWolffClusterSize;
 
     
@@ -598,6 +601,8 @@ protected:
     //Then it is accepted by a Metropolis rule according to the fermion
     //determinants.
     void attemptWolffClusterUpdate();
+    // attempt a combined update
+    void attemptWolffClusterShiftUpdate(); 
     struct GlobalMoveData {		//some helper data that should not be reallocated all the time
     	MatNum phi0;
     	MatNum phi1;
@@ -615,13 +620,19 @@ protected:
     	//for the cluster update: keep book about which sites to try to add next
     	std::stack<SpaceTimeIndex> next_sites;
     	GlobalMoveData(uint32_t N, uint32_t m) :
-    			phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
-    			coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
-    			g(4*N, 4*N),
-    			UdVStorage(new checkarray<std::vector<UdVV>, 1>),
-    			visited(N, m+1), next_sites()
-    	{ }
+            phi0(N, m+1), phi1(N, m+1), phi2(N, m+1),
+            coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
+            g(4*N, 4*N),
+            UdVStorage(new checkarray<std::vector<UdVV>, 1>),
+            visited(N, m+1), next_sites()
+        { }
     } gmd;
+    //helper functions for global updates:
+    void addGlobalRandomDisplacement(); // works directly on phi0,phi1,phi2
+    uint32_t buildAndFlipCluster(bool updateCoshSinh = true); // returns size of cluster
+    void globalMoveStoreBackups();
+    void globalMoveRestoreBackups();
+    
 
     //compute the total value of the action associated with the field phi
     num phiAction();
@@ -671,7 +682,9 @@ public:
     	ar & acceptedGlobalShifts;
     	ar & attemptedGlobalShifts;
     	ar & acceptedWolffClusterUpdates;
-    	ar & attemptedWolffClusterUpdates;
+    	ar & attemptedWolffClusterUpdates; 
+        ar & acceptedWolffClusterShiftUpdates;  
+        ar & attemptedWolffClusterShiftUpdates;         
     	ar & addedWolffClusterSize;
         ar & phi0 & phi1 & phi2;
         ar & cdwl;

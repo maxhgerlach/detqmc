@@ -41,8 +41,8 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
     neededModelPars += "mu", "L", "r", "lambda", "accRatio", "bc", "txhor", "txver", "tyhor",
-            "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
-            "globalShift", "wolffClusterUpdate";
+        "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
+        "globalShift", "wolffClusterUpdate", "wolffClusterShiftUpdate";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -83,10 +83,14 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
         throw ParameterWrong("spinProposalMethod", pars.spinProposalMethod);
     }
 
-    if ((pars.globalShift or pars.wolffClusterUpdate) and pars.globalUpdateInterval == 0) {
+    if ((pars.globalShift or pars.wolffClusterUpdate or pars.wolffClusterShiftUpdate)
+        and pars.globalUpdateInterval == 0) {
         throw ParameterWrong("globalUpdateInterval", pars.globalUpdateInterval);
     }
 
+    if (pars.wolffClusterShiftUpdate and (pars.globalShift or pars.wolffClusterUpdate)) {
+        throw ParameterWrong("Either use combined wolffClusterShiftUpdate or individual global updates");
+    }
 
     if (pars.checkerboard and pars.L % 2 != 0) {
         throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
@@ -159,10 +163,12 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     lambda(pars.lambda),
     bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
     globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
+    wolffClusterShiftUpdate(pars.wolffClusterShiftUpdate),
     globalMoveInterval(pars.globalUpdateInterval),
     repeatUpdateInSlice(pars.repeatUpdateInSlice),
     acceptedGlobalShifts(0), attemptedGlobalShifts(0),
     acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
+    acceptedWolffClusterShiftUpdates(0), attemptedWolffClusterShiftUpdates(0),
     addedWolffClusterSize(0.),
     hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
     sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
@@ -378,7 +384,8 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     META_INSERT(s);
     META_INSERT(globalShift);
     META_INSERT(wolffClusterUpdate);
-    if (globalShift or wolffClusterUpdate) {
+    META_INSERT(wolffClusterShiftUpdate);
+    if (globalShift or wolffClusterUpdate or wolffClusterShiftUpdate) {
         META_INSERT(globalMoveInterval);
     }
     if (globalShift) {
@@ -393,6 +400,15 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     	META_INSERT(wolffClusterUpdateAccRatio);
     	num averageAcceptedWolffClusterSize =
     			addedWolffClusterSize / num(acceptedWolffClusterUpdates);
+    	META_INSERT(averageAcceptedWolffClusterSize);
+    }
+    if (wolffClusterShiftUpdate) {
+    	num wolffClusterShiftUpdateAccRatio =
+            num(acceptedWolffClusterShiftUpdates) /
+            num(attemptedWolffClusterShiftUpdates);
+    	META_INSERT(wolffClusterShiftUpdateAccRatio);
+    	num averageAcceptedWolffClusterSize =
+            addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
     META_INSERT(repeatUpdateInSlice);
@@ -2460,6 +2476,9 @@ void DetSDW<TD,CB>::globalMove() {
         if (wolffClusterUpdate) {
             attemptWolffClusterUpdate();
         }
+        if (wolffClusterShiftUpdate) {
+            attemptWolffClusterShiftUpdate();
+        }
     }
 }
 
@@ -2481,98 +2500,13 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     // term by term with the SV's of the updated Green's function.
     VecNum old_green_sv = arma::svd(g);
 
-    // Backup phi*, Green's function and UdV-storage.
-    gmd.phi0 = phi0;
-    gmd.phi1 = phi1;
-    gmd.phi2 = phi2;
-    gmd.coshTermPhi = coshTermPhi;
-    gmd.sinhTermPhi = sinhTermPhi;
-    gmd.g.swap(g);
-    gmd.UdVStorage.swap(UdVStorage);
+    
+    globalMoveStoreBackups();
+    
+    
+    uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
 
-    // choose random direction
-    Phi rd;
-    std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
-
-    auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
-        Phi result;
-        result[0] = phi0(site,timeslice);
-		result[1] = phi1(site,timeslice);
-		result[2] = phi2(site,timeslice);
-        return result;
-    };
-    auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
-        // phi -> phi - 2* (phi . r) * r
-        Phi phi = getPhi(site, timeslice);
-        return phi - 2. * arma::dot(phi, rd) * rd;
-    };
-    auto projectedPhi = [&](uint32_t site, uint32_t timeslice) -> num {
-        return arma::dot(getPhi(site,timeslice), rd);
-    };
-    auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
-        phi0(site,timeslice) = phi[0];
-        phi1(site,timeslice) = phi[1];
-        phi2(site,timeslice) = phi[2];
-        this->updateCoshSinhTermsPhi(site, timeslice);
-    };
-    auto flipPhi = [&](uint32_t site, uint32_t timeslice) -> void {
-        // phi -> phi - 2* (phi . rd) * rd
-        setPhi(site, timeslice, flippedPhi(site, timeslice));
-    };
-
-    // construct cluster
-    gmd.visited.zeros(N, m+1);
-    typedef typename GlobalMoveData::SpaceTimeIndex STI;
-    //next_sites contains the sites for which we still need to check the neighbors
-    gmd.next_sites = std::stack<STI>();
-
-    // cluster seed:
-    uint32_t timeslice = rng.randInt(1, m);
-    uint32_t site = rng.randInt(0, N-1);
-    flipPhi(site, timeslice);
-    gmd.visited(site, timeslice) = 1;
-    gmd.next_sites.push( STI(site, timeslice) );
-    uint32_t cluster_size = 1;
-    do {
-        std::tie(site, timeslice) = gmd.next_sites.top();
-        gmd.next_sites.pop();
-        // std::cout << site << "," << timeslice << "  ";
-
-        // probability to add neighbors to cluster:
-        // p = 1. - exp( min[0, bond_arg] )
-
-        // neigboring in space, equal time
-        for (auto site_neigh_iter = spaceNeigh.beginNeighbors(site);
-                site_neigh_iter != spaceNeigh.endNeighbors(site);
-                ++site_neigh_iter) {
-            uint32_t neigh_site = *site_neigh_iter;
-            if (not gmd.visited(neigh_site, timeslice)) {
-                num bond_arg = 2.* dtau * projectedPhi(site, timeslice)
-                                        * projectedPhi(neigh_site, timeslice);
-                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
-                    flipPhi(neigh_site, timeslice);
-                    gmd.visited(neigh_site, timeslice) = 1;
-                    gmd.next_sites.push( STI(neigh_site, timeslice) );
-                    ++cluster_size;
-                }
-            }
-        }
-        //neighboring in time, equal space
-        uint32_t time_neighbors[] = { timeNeigh(ChainDir::PLUS, timeslice), timeNeigh(ChainDir::MINUS, timeslice) };
-        for (uint neigh_time : time_neighbors) {
-            if (not gmd.visited(site, neigh_time)) {
-                num bond_arg = (2. / dtau) * projectedPhi(site, timeslice)
-                                           * projectedPhi(site, neigh_time);
-                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
-                    flipPhi(site, neigh_time);
-                    gmd.visited(site, neigh_time) = 1;
-                    gmd.next_sites.push( STI(site, neigh_time) );
-                    ++cluster_size;
-                }
-            }
-        }
-    } while (not gmd.next_sites.empty());
-
+    
     //recompute Green's function
     setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
@@ -2595,19 +2529,12 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
         std::cout << "accept cluster\n";
     } else {
         //update rejected, restore previous state
-        phi0.swap(gmd.phi0);
-        phi1.swap(gmd.phi1);
-        phi2.swap(gmd.phi2);
-        coshTermPhi.swap(gmd.coshTermPhi);
-        sinhTermPhi.swap(gmd.sinhTermPhi);
-        g.swap(gmd.g);
-        UdVStorage.swap(gmd.UdVStorage);
+        globalMoveRestoreBackups();
         std::cout << "reject cluster\n";
     }
 
     timing.stop("sdw-attemptWolffClusterUpdate");
 }
-
 
 template<bool TD, CheckerboardMethod CB>
 void DetSDW<TD,CB>::attemptGlobalShiftMove() {
@@ -2629,24 +2556,11 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     // term by term with the SV's of the updated Green's function.
     VecNum old_green_sv = arma::svd(g);
 
-    // Backup phi*, Green's function and UdV-storage.
-    // We copy phi{0,1,2} because we add to these in the next step.
-    // Since the rest is recomputed entirely, we just swap the contents.
-    gmd.phi0 = phi0;
-    gmd.phi1 = phi1;
-    gmd.phi2 = phi2;
-    gmd.coshTermPhi.swap(coshTermPhi);
-    gmd.sinhTermPhi.swap(sinhTermPhi);
-    gmd.g.swap(g);
-    gmd.UdVStorage.swap(UdVStorage);
-
+    globalMoveStoreBackups();
+    
     // shift fields by a random, constant displacement
-    num r0 = rng.randRange(-phiDelta, +phiDelta);
-    phi0 += r0;
-    num r1 = rng.randRange(-phiDelta, +phiDelta);
-    phi1 += r1;
-    num r2 = rng.randRange(-phiDelta, +phiDelta);
-    phi2 += r2;
+    addGlobalRandomDisplacement();
+
     updateCoshSinhTermsPhi();
 
     //recompute Green's function
@@ -2678,21 +2592,207 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
         std::cout << "accept globalShift\n";
     } else {
         //update rejected, restore previous state
-        phi0.swap(gmd.phi0);
-        phi1.swap(gmd.phi1);
-        phi2.swap(gmd.phi2);
-        coshTermPhi.swap(gmd.coshTermPhi);
-        sinhTermPhi.swap(gmd.sinhTermPhi);
-        g.swap(gmd.g);
-        UdVStorage.swap(gmd.UdVStorage);
+        globalMoveRestoreBackups();
         std::cout << "reject globalShift\n";
     }
 
     timing.stop("sdw-attemptGlobalShiftMove");
 }
 
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::attemptWolffClusterShiftUpdate() {
+    timing.start("sdw-attemptWolffClusterShiftMove");
 
+    //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
+    //after sweepUp.
+    assert(currentTimeslice == m);
+    // The product of the singular values of g is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and
+    // very small numbers --> over/underflows!  Instead use the
+    // fact that the SV's are sorted by magnitude and compare them
+    // term by term with the SV's of the updated Green's function.
+    VecNum old_green_sv = arma::svd(g);
 
+    globalMoveStoreBackups();
+    
+    uint32_t cluster_size = buildAndFlipCluster(false);
+    
+    // compute current bosonic weight
+    num old_scalar_action = phiAction();
+
+    addGlobalRandomDisplacement();
+
+    updateCoshSinhTermsPhi();
+
+    //recompute Green's function
+    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+    //compute new weight
+    num new_scalar_action = phiAction();
+    //num new_green_det = Base::abs_det_green_from_storage();
+    //std::cout << new_green_det << "\n";
+    VecNum new_green_sv = arma::svd(g);
+
+    //compute transition probability
+    num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
+//    num prob_fermion = old_green_det / new_green_det;
+    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+    num prob_fermion = 1.0;
+    for (num sv_ratio : green_sv_ratios) {
+    	prob_fermion *= sv_ratio;
+    }
+
+    num prob = prob_scalar * prob_fermion;
+
+    std::cout << "Shift + Cluster: " << cluster_size << "\n";
+    std::cout << prob_scalar << "  " << prob_fermion << "\n";
+
+    attemptedWolffClusterShiftUpdates += 1;
+    if (prob >= 1. or rng.rand01() < prob) {
+        //update accepted
+        acceptedWolffClusterShiftUpdates += 1;
+        addedWolffClusterSize += num(cluster_size);
+        std::cout << "accept cluster and shift\n";
+    } else {
+        //update rejected, restore previous state
+        globalMoveRestoreBackups();
+        std::cout << "reject cluster and shift\n";
+    }
+    
+    timing.stop("sdw-attemptWolffClusterShiftMove");     
+}
+
+//helper functions for global updates:
+
+// works directly on phi0,phi1,phi2:
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::addGlobalRandomDisplacement() {
+    // shift fields by a random, constant displacement
+    num r0 = rng.randRange(-phiDelta, +phiDelta);
+    phi0 += r0;
+    num r1 = rng.randRange(-phiDelta, +phiDelta);
+    phi1 += r1;
+    num r2 = rng.randRange(-phiDelta, +phiDelta);
+    phi2 += r2;
+}
+
+template<bool TD, CheckerboardMethod CB>
+uint32_t DetSDW<TD,CB>::buildAndFlipCluster(bool updateCoshSinh) {
+    // choose random direction
+    Phi rd;
+    std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
+
+    
+    auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
+        Phi result;
+        result[0] = phi0(site,timeslice);
+        result[1] = phi1(site,timeslice);
+        result[2] = phi2(site,timeslice);
+        return result;
+    };
+    auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
+        // phi -> phi - 2* (phi . r) * r
+        Phi phi = getPhi(site, timeslice);
+        return phi - 2. * arma::dot(phi, rd) * rd;
+    };
+    auto projectedPhi = [&](uint32_t site, uint32_t timeslice) -> num {
+        return arma::dot(getPhi(site,timeslice), rd);
+    };
+    auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
+        phi0(site,timeslice) = phi[0];
+        phi1(site,timeslice) = phi[1];
+        phi2(site,timeslice) = phi[2];
+        if (updateCoshSinh) {
+            this->updateCoshSinhTermsPhi(site, timeslice);
+        }
+    };
+    auto flipPhi = [&](uint32_t site, uint32_t timeslice) -> void {
+        // phi -> phi - 2* (phi . rd) * rd
+        setPhi(site, timeslice, flippedPhi(site, timeslice));
+    };
+
+    
+    // construct cluster
+    gmd.visited.zeros(N, m+1);
+    typedef typename GlobalMoveData::SpaceTimeIndex STI;
+    //next_sites contains the sites for which we still need to check the neighbors
+    gmd.next_sites = std::stack<STI>();
+
+    // cluster seed:
+    uint32_t timeslice = rng.randInt(1, m);
+    uint32_t site = rng.randInt(0, N-1);
+    flipPhi(site, timeslice);
+    gmd.visited(site, timeslice) = 1;
+    gmd.next_sites.push( STI(site, timeslice) );
+    uint32_t cluster_size = 1;
+    do {
+        std::tie(site, timeslice) = gmd.next_sites.top();
+        gmd.next_sites.pop();
+        // std::cout << site << "," << timeslice << "  ";
+
+        // probability to add neighbors to cluster:
+        // p = 1. - exp( min[0, bond_arg] )
+
+        // neigboring in space, equal time
+        for (auto site_neigh_iter = spaceNeigh.beginNeighbors(site);
+             site_neigh_iter != spaceNeigh.endNeighbors(site);
+             ++site_neigh_iter) {
+            uint32_t neigh_site = *site_neigh_iter;
+            if (not gmd.visited(neigh_site, timeslice)) {
+                num bond_arg = 2.* dtau * projectedPhi(site, timeslice)
+                                        * projectedPhi(neigh_site, timeslice);
+                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
+                    flipPhi(neigh_site, timeslice);
+                    gmd.visited(neigh_site, timeslice) = 1;
+                    gmd.next_sites.push( STI(neigh_site, timeslice) );
+                    ++cluster_size;
+                }
+            }
+        }
+        //neighboring in time, equal space
+        uint32_t time_neighbors[] = { timeNeigh(ChainDir::PLUS, timeslice), timeNeigh(ChainDir::MINUS, timeslice) };
+        for (uint neigh_time : time_neighbors) {
+            if (not gmd.visited(site, neigh_time)) {
+                num bond_arg = (2. / dtau) * projectedPhi(site, timeslice)
+                                           * projectedPhi(site, neigh_time);
+                if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
+                    flipPhi(site, neigh_time);
+                    gmd.visited(site, neigh_time) = 1;
+                    gmd.next_sites.push( STI(site, neigh_time) );
+                    ++cluster_size;
+                }
+            }
+        }
+    } while (not gmd.next_sites.empty());
+
+    return cluster_size;
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::globalMoveStoreBackups() {
+    // Backup phi*, Green's function and UdV-storage.  For Quantities
+    // which are recomputed entirely in each global update, we just
+    // swap the contents.
+    gmd.phi0 = phi0;
+    gmd.phi1 = phi1;
+    gmd.phi2 = phi2;
+    gmd.coshTermPhi = coshTermPhi;
+    gmd.sinhTermPhi = sinhTermPhi;
+    gmd.g.swap(g);
+    gmd.UdVStorage.swap(UdVStorage);
+}
+
+template<bool TD, CheckerboardMethod CB>
+void DetSDW<TD,CB>::globalMoveRestoreBackups() {
+    phi0.swap(gmd.phi0);
+    phi1.swap(gmd.phi1);
+    phi2.swap(gmd.phi2);
+    coshTermPhi.swap(gmd.coshTermPhi);
+    sinhTermPhi.swap(gmd.sinhTermPhi);
+    g.swap(gmd.g);
+    UdVStorage.swap(gmd.UdVStorage);
+}
 
 
 template<bool TD, CheckerboardMethod CB>
@@ -2997,6 +3097,14 @@ void DetSDW<TD,CB>::thermalizationOver() {
                 num(attemptedWolffClusterUpdates);
         num avgsize = addedWolffClusterSize / num(acceptedWolffClusterUpdates);
         std::cout << "wolffClusterUpdate acceptance ratio = " << ratio
+                  << ", average accepted size = " << avgsize << "\n"
+                  << std::endl;
+    }
+    if (wolffClusterShiftUpdate) {
+        num ratio = num(acceptedWolffClusterShiftUpdates) /
+            num(attemptedWolffClusterShiftUpdates);
+        num avgsize = addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
+        std::cout << "wolffClusterShiftUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }

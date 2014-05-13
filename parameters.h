@@ -64,9 +64,10 @@ struct ModelParams {
 
     std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
-    uint32_t globalUpdateInterval;	//attempt global move every # sweeps
-    bool globalShift;				//perform a global constant shift move?
-    bool wolffClusterUpdate;		//perform a Wolff single cluster update?
+    uint32_t globalUpdateInterval; //attempt global move every # sweeps
+    bool globalShift;         //perform a global constant shift move?
+    bool wolffClusterUpdate;  //perform a Wolff single cluster update?
+    bool wolffClusterShiftUpdate; // perform a combined global constant shift and Wolff single cluster update
 
     uint32_t repeatUpdateInSlice;	//how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
@@ -81,6 +82,7 @@ struct ModelParams {
             mu(), L(), d(),
             beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
             globalUpdateInterval(), globalShift(), wolffClusterUpdate(),
+            wolffClusterShiftUpdate(),
             repeatUpdateInSlice(),
             specified() {
     }
@@ -91,14 +93,15 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & model & checkerboard /*& timedisplaced*/& updateMethod
-           & spinProposalMethod & adaptScaleVariance & delaySteps
-           & t & U & r & lambda & txhor & txver & tyhor & tyver
-           & cdwU
-           & mu & L & d & beta & m & dtau & s & accRatio & bc
-           & globalUpdateInterval & globalShift & wolffClusterUpdate
-           & repeatUpdateInSlice
-           & specified;
+        ar  & model & checkerboard /*& timedisplaced*/& updateMethod
+            & spinProposalMethod & adaptScaleVariance & delaySteps
+            & t & U & r & lambda & txhor & txver & tyhor & tyver
+            & cdwU
+            & mu & L & d & beta & m & dtau & s & accRatio & bc
+            & globalUpdateInterval & globalShift & wolffClusterUpdate
+            & wolffClusterShiftUpdate
+            & repeatUpdateInSlice
+            & specified;
     }
 };
 
