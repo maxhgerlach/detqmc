@@ -149,9 +149,9 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
-    DetModelGC<1,cpx,TD>(pars, 4 * pars.L*pars.L),
+template<CheckerboardMethod CB>
+DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
+    DetModelGC<1,cpx,false>(pars, 4 * pars.L*pars.L),
     eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
     rng(rng_), normal_distribution(rng),
     checkerboard(pars.checkerboard),
@@ -328,22 +328,22 @@ DetSDW<TD,CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     consistencyCheck();
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::setupUdVStorage_and_calculateGreen() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::setupUdVStorage_and_calculateGreen() {
     setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
 }
 
-template<bool TD, CheckerboardMethod CB>
-DetSDW<TD,CB>::~DetSDW() {
+template<CheckerboardMethod CB>
+DetSDW<CB>::~DetSDW() {
 }
 
-template<bool TD, CheckerboardMethod CB>
-uint32_t DetSDW<TD,CB>::getSystemN() const {
+template<CheckerboardMethod CB>
+uint32_t DetSDW<CB>::getSystemN() const {
     return N;
 }
 
-template<bool TD, CheckerboardMethod CB>
-MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
+template<CheckerboardMethod CB>
+MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
     MetadataMap meta;
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     meta["model"] = "sdw";
@@ -416,8 +416,8 @@ MetadataMap DetSDW<TD,CB>::prepareModelMetadataMap() const {
     return meta;
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::initMeasurements() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::initMeasurements() {
     timing.start("sdw-measure");
 
     timeslices_included_in_measurement.clear();
@@ -460,8 +460,8 @@ void DetSDW<TD,CB>::initMeasurements() {
     timing.stop("sdw-measure");
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::measure(uint32_t timeslice) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::measure(uint32_t timeslice) {
     timing.start("sdw-measure");
 
     timeslices_included_in_measurement.insert(timeslice);
@@ -750,8 +750,8 @@ void DetSDW<TD,CB>::measure(uint32_t timeslice) {
     timing.stop("sdw-measure");
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::finishMeasurements() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::finishMeasurements() {
 	assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
@@ -844,8 +844,8 @@ void DetSDW<TD,CB>::finishMeasurements() {
     occDiffSq /= num(m);
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
@@ -881,8 +881,8 @@ void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::setupRandomField() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::setupRandomField() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
             phi0(site, k) = rng.randRange(PhiLow, PhiHigh);
@@ -899,45 +899,45 @@ void DetSDW<TD,CB>::setupRandomField() {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTermPhi(
-		num phi0, num phi1, num phi2) {
+template<CheckerboardMethod CB>
+std::tuple<num,num> DetSDW<CB>::getCoshSinhTermPhi(
+        num phi0, num phi1, num phi2) {
     num phiNorm = std::sqrt( std::pow(phi0, 2)
-    					   + std::pow(phi1, 2)
-    					   + std::pow(phi2, 2) );
+                             + std::pow(phi1, 2)
+                             + std::pow(phi2, 2) );
     return std::make_tuple(std::cosh(lambda * dtau * phiNorm),
-    					   std::sinh(lambda * dtau * phiNorm) / phiNorm);
+                           std::sinh(lambda * dtau * phiNorm) / phiNorm);
 }
 
-template<bool TD, CheckerboardMethod CB>
-std::tuple<num,num> DetSDW<TD,CB>::getCoshSinhTermCDWl(
-		int32_t cdwl) {
-	num arg = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
+template<CheckerboardMethod CB>
+std::tuple<num,num> DetSDW<CB>::getCoshSinhTermCDWl(
+        int32_t cdwl) {
+    num arg = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
     return std::make_tuple(std::cosh(arg), std::sinh(arg));
 }
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
-	updateCoshSinhTermsPhi(site, k);
-	updateCoshSinhTermsCDWl(site, k);
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
+    updateCoshSinhTermsPhi(site, k);
+    updateCoshSinhTermsCDWl(site, k);
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTermsPhi(uint32_t site, uint32_t k) {
-	std::tie(coshTermPhi(site,k), sinhTermPhi(site,k)) = getCoshSinhTermPhi(
-			phi0(site,k), phi1(site,k), phi2(site,k));
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTermsPhi(uint32_t site, uint32_t k) {
+    std::tie(coshTermPhi(site,k), sinhTermPhi(site,k)) = getCoshSinhTermPhi(
+        phi0(site,k), phi1(site,k), phi2(site,k));
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTermsCDWl(uint32_t site, uint32_t k) {
-	std::tie(coshTermCDWl(site,k), sinhTermCDWl(site,k)) = getCoshSinhTermCDWl(
-			cdwl(site, k));
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTermsCDWl(uint32_t site, uint32_t k) {
+    std::tie(coshTermCDWl(site,k), sinhTermCDWl(site,k)) = getCoshSinhTermCDWl(
+        cdwl(site, k));
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTerms() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTerms() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
         	updateCoshSinhTerms(site,k);
@@ -945,8 +945,8 @@ void DetSDW<TD,CB>::updateCoshSinhTerms() {
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTermsPhi() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTermsPhi() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
         	updateCoshSinhTermsPhi(site,k);
@@ -954,8 +954,8 @@ void DetSDW<TD,CB>::updateCoshSinhTermsPhi() {
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateCoshSinhTermsCDWl() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateCoshSinhTermsCDWl() {
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
         	updateCoshSinhTermsCDWl(site,k);
@@ -965,8 +965,8 @@ void DetSDW<TD,CB>::updateCoshSinhTermsCDWl() {
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::setupPropK() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::setupPropK() {
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
     t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
@@ -1044,25 +1044,25 @@ void DetSDW<TD,CB>::setupPropK() {
 //}
 
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Vec>
-VecNum DetSDW<TD,CB>::compute_d_for_cdwl(const Vec& cdwl) {
-	VecNum kd(N);
-	for (uint32_t i = 0; i < N; ++ i) {
-		kd[i] = compute_d_for_cdwl_site(cdwl[i]);
-	}
-	return kd;
+VecNum DetSDW<CB>::compute_d_for_cdwl(const Vec& cdwl) {
+    VecNum kd(N);
+    for (uint32_t i = 0; i < N; ++ i) {
+        kd[i] = compute_d_for_cdwl_site(cdwl[i]);
+    }
+    return kd;
 }
-template<bool TD, CheckerboardMethod CB> inline
-num DetSDW<TD,CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
-	//TODO: check assembly -- operations removed?
-	return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
+template<CheckerboardMethod CB> inline
+num DetSDW<CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
+    //TODO: check assembly -- operations removed?
+    return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
 }
 
 
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
     //if (CB == CB_NONE) {
 	{
         timing.start("computeBmatSDW_direct");
@@ -1173,8 +1173,8 @@ MatCpx DetSDW<TD,CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 //    }
 }
 
-template<bool TD, CheckerboardMethod CB> inline
-MatCpx DetSDW<TD,CB>::computePotentialExponential(
+template<CheckerboardMethod CB> inline
+MatCpx DetSDW<CB>::computePotentialExponential(
         int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl) {
     const VecCpx a (phi2, arma::zeros<VecNum>(N));
     const VecCpx b (phi0, -phi1);
@@ -1225,9 +1225,9 @@ MatCpx DetSDW<TD,CB>::computePotentialExponential(
 
 
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+MatCpx DetSDW<CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                              const Matrix&, Band, int, bool) {
     throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
     //TODO change things so this codepath is not needed
@@ -1248,9 +1248,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 //   j = i + XPLUS
 //   k = i + YPLUS
 //   l = k + XPLUS
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix>
-void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+void DetSDW<CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
     assert(subgroup == 0 or subgroup == 1);
     arma::Row<cpx> new_row_i(N);
     arma::Row<cpx> new_row_j(N);
@@ -1289,9 +1289,9 @@ void DetSDW<TD,CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subg
 
 // with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
 // using the symmetric checkerboard break up
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+MatCpx DetSDW<CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                              const Matrix& A, Band band, int sign, bool) {
     MatCpx result = A;      //can't avoid this copy
 
@@ -1305,9 +1305,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp_impl(std::integral_constant<Checkerboard
 }
 
 // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template <class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+MatCpx DetSDW<CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     return cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
                                   A, band, sign, invertedCbOrder);
 }
@@ -1315,9 +1315,9 @@ MatCpx DetSDW<TD,CB>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bo
 
 
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+MatCpx DetSDW<CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                              const Matrix&, Band, int, bool) {
     throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
     return MatCpx();
@@ -1334,9 +1334,9 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 //   j = i + XPLUS
 //   k = i + YPLUS
 //   l = k + XPLUS
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix>
-void DetSDW<TD,CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+void DetSDW<CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
     assert(subgroup == 0 or subgroup == 1);
     arma::Col<cpx> new_col_i(N);
     arma::Col<cpx> new_col_j(N);
@@ -1373,9 +1373,9 @@ void DetSDW<TD,CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t sub
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+MatCpx DetSDW<CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                              const Matrix& A, Band band, int sign, bool) {
     MatCpx result = A;      //can't avoid this copy
 
@@ -1391,9 +1391,9 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp_impl(std::integral_constant<Checkerboard
 }
 
 // with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template <class Matrix> inline
-MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+MatCpx DetSDW<CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     return cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
                                   A, band, sign, invertedCbOrder);
 }
@@ -1402,8 +1402,8 @@ MatCpx DetSDW<TD,CB>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bo
 
 
 
-template<bool TD, CheckerboardMethod CB> inline
-MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
+template<CheckerboardMethod CB> inline
+MatCpx DetSDW<CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
     //helper: submatrix block for a matrix
 //  auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 //      return mat.submat( row * N, col * N,
@@ -1457,8 +1457,8 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 
 
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= m);
 
@@ -1475,8 +1475,8 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2,
 }
 
 
-template<bool TD, CheckerboardMethod CB> inline
-MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
+template<CheckerboardMethod CB> inline
+MatCpx DetSDW<CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
     //helper: submatrix block for a matrix
 //  auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 //      return mat.submat( row * N, col * N,
@@ -1529,8 +1529,8 @@ MatCpx DetSDW<TD,CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= m);
 
@@ -1552,8 +1552,8 @@ MatCpx DetSDW<TD,CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t 
     return result;
 }
 
-template<bool TD, CheckerboardMethod CB> inline
-MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
+template<CheckerboardMethod CB> inline
+MatCpx DetSDW<CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
     //helper: submatrix block for a matrix
 //  auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 //      return mat.submat( row * N, col * N,
@@ -1606,8 +1606,8 @@ MatCpx DetSDW<TD,CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
     return result;
 }
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= m);
 
@@ -1623,8 +1623,8 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2
     return result;
 }
 
-template<bool TD, CheckerboardMethod CB> inline
-MatCpx DetSDW<TD,CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
+template<CheckerboardMethod CB> inline
+MatCpx DetSDW<CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
     //helper: submatrix block for a matrix
 //  auto block = [this](const MatCpx& mat, uint32_t row, uint32_t col) {
 //      return mat.submat( row * N, col * N,
@@ -1676,8 +1676,8 @@ const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
 #undef block
 }
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= m);
 
@@ -1704,8 +1704,8 @@ MatCpx DetSDW<TD,CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
     //reset normal_distribution -- this way we do not need to worry about its internal
@@ -1758,9 +1758,9 @@ void DetSDW<TD,CB>::updateInSlice(uint32_t timeslice) {
     timing.stop("sdw-updateInSlice");
 }
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Callable>
-num DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLocalUpdate) {
+num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLocalUpdate) {
     num accratio = 0.;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi;
@@ -2122,9 +2122,9 @@ num DetSDW<TD,CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeL
 }
 
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Callable>
-num DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocalUpdate) {
+num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocalUpdate) {
 	num accratio = 0.;
     for (uint32_t site = 0; site < N; ++site) {
         Phi newphi;
@@ -2198,9 +2198,9 @@ num DetSDW<TD,CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLo
     return accratio;
 }
 
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class Callable>
-num DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
+num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
     num accratio = 0.;
 
     auto getX = [this](uint32_t step) {
@@ -2301,8 +2301,8 @@ num DetSDW<TD,CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLoc
     return accratio;
 }
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
+template<CheckerboardMethod CB>
+MatCpx::fixed<4,4> DetSDW<CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
 		uint32_t timeslice, uint32_t site) {
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
@@ -2382,8 +2382,8 @@ MatCpx::fixed<4,4> DetSDW<TD,CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
     enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
@@ -2466,8 +2466,8 @@ void DetSDW<TD,CB>::updateInSliceThermalization(uint32_t timeslice) {
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::globalMove() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::globalMove() {
     if ((performedSweeps + 1) % globalMoveInterval == 0) {
         //the current sweep count is a multiple of globalMoveInterval
         if (globalShift) {
@@ -2482,8 +2482,8 @@ void DetSDW<TD,CB>::globalMove() {
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::attemptWolffClusterUpdate() {
     using std::exp; using std::cout;
     timing.start("sdw-attemptWolffClusterUpdate");
 
@@ -2536,8 +2536,8 @@ void DetSDW<TD,CB>::attemptWolffClusterUpdate() {
     timing.stop("sdw-attemptWolffClusterUpdate");
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::attemptGlobalShiftMove() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::attemptGlobalShiftMove() {
     timing.start("sdw-attemptGlobalShiftMove");
 
     // compute current weight
@@ -2599,8 +2599,8 @@ void DetSDW<TD,CB>::attemptGlobalShiftMove() {
     timing.stop("sdw-attemptGlobalShiftMove");
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::attemptWolffClusterShiftUpdate() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
     timing.start("sdw-attemptWolffClusterShiftMove");
 
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
@@ -2666,8 +2666,8 @@ void DetSDW<TD,CB>::attemptWolffClusterShiftUpdate() {
 //helper functions for global updates:
 
 // works directly on phi0,phi1,phi2:
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::addGlobalRandomDisplacement() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::addGlobalRandomDisplacement() {
     // shift fields by a random, constant displacement
     num r0 = rng.randRange(-phiDelta, +phiDelta);
     phi0 += r0;
@@ -2677,8 +2677,8 @@ void DetSDW<TD,CB>::addGlobalRandomDisplacement() {
     phi2 += r2;
 }
 
-template<bool TD, CheckerboardMethod CB>
-uint32_t DetSDW<TD,CB>::buildAndFlipCluster(bool updateCoshSinh) {
+template<CheckerboardMethod CB>
+uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
     // choose random direction
     Phi rd;
     std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
@@ -2769,8 +2769,8 @@ uint32_t DetSDW<TD,CB>::buildAndFlipCluster(bool updateCoshSinh) {
     return cluster_size;
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::globalMoveStoreBackups() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::globalMoveStoreBackups() {
     // Backup phi*, Green's function and UdV-storage.  For Quantities
     // which are recomputed entirely in each global update, we just
     // swap the contents.
@@ -2783,8 +2783,8 @@ void DetSDW<TD,CB>::globalMoveStoreBackups() {
     gmd.UdVStorage.swap(UdVStorage);
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::globalMoveRestoreBackups() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::globalMoveRestoreBackups() {
     phi0.swap(gmd.phi0);
     phi1.swap(gmd.phi1);
     phi2.swap(gmd.phi2);
@@ -2795,8 +2795,8 @@ void DetSDW<TD,CB>::globalMoveRestoreBackups() {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
+template<CheckerboardMethod CB>
+typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
     Phi phi;
     phi[0] = phi0(site, timeslice);
     phi[1] = phi1(site, timeslice);
@@ -2810,8 +2810,8 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewPhiBox(uint32_t s
     return std::make_tuple(PHI, phi, cdwl(site,timeslice));
 }
 
-template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
+template<CheckerboardMethod CB>
+typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
     //old orientation
     num x = phi0(site, timeslice);
     num y = phi1(site, timeslice);
@@ -2857,8 +2857,8 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedPhi(uint32_t 
     return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
 }
 
-template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
+template<CheckerboardMethod CB>
+typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
     using std::pow; using std::abs;
     //old orientation
     num x = phi0(site, timeslice);
@@ -2902,8 +2902,8 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeScaledPhi(uint32_t s
     return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
 }
 
-template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
+template<CheckerboardMethod CB>
+typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
     //old orientation
     num x = phi0(site, timeslice);
     num y = phi1(site, timeslice);
@@ -2971,8 +2971,8 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeRotatedScaledPhi(uin
     }
 }
 
-template<bool TD, CheckerboardMethod CB>
-typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewCDWl(
+template<CheckerboardMethod CB>
+typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeNewCDWl(
 		uint32_t site, uint32_t timeslice) {
 	int32_t cdwl_new;
 	num r = rng.rand01();
@@ -2988,8 +2988,8 @@ typename DetSDW<TD,CB>::changedPhiInt DetSDW<TD,CB>::proposeNewCDWl(
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
+template<CheckerboardMethod CB>
+num DetSDW<CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
     //switched to asymmetric numerical derivative
     using arma::dot;
 
@@ -3045,8 +3045,8 @@ num DetSDW<TD,CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-num DetSDW<TD,CB>::phiAction() {
+template<CheckerboardMethod CB>
+num DetSDW<CB>::phiAction() {
     //switched to asymmetric numerical derivative
     arma::field<Phi> phi(N, m+1);
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
@@ -3082,8 +3082,8 @@ num DetSDW<TD,CB>::phiAction() {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::thermalizationOver() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
               << "recent local accRatio = " << accRatioLocal_box_RA.get()
               << std::endl;
@@ -3112,8 +3112,8 @@ void DetSDW<TD,CB>::thermalizationOver() {
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::sweepSimple(bool takeMeasurements) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::sweepSimple(bool takeMeasurements) {
     sweepSimple_skeleton(takeMeasurements,
                          sdwComputeBmat(this),
                          [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
@@ -3123,8 +3123,8 @@ void DetSDW<TD,CB>::sweepSimple(bool takeMeasurements) {
     ++performedSweeps;
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::sweepSimpleThermalization() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::sweepSimpleThermalization() {
     sweepSimpleThermalization_skeleton(
             sdwComputeBmat(this),
             [this](uint32_t timeslice) {
@@ -3133,8 +3133,8 @@ void DetSDW<TD,CB>::sweepSimpleThermalization() {
     ++performedSweeps;
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::sweep(bool takeMeasurements) {
     sweep_skeleton(takeMeasurements,
                    sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                    sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
@@ -3146,8 +3146,8 @@ void DetSDW<TD,CB>::sweep(bool takeMeasurements) {
     ++performedSweeps;
 }
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::sweepThermalization() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::sweepThermalization() {
     sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                  sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
                                  [this](uint32_t timeslice) {
@@ -3158,8 +3158,8 @@ void DetSDW<TD,CB>::sweepThermalization() {
 }
 
 
-template<bool TD, CheckerboardMethod CB>
-MatCpx DetSDW<TD,CB>::shiftGreenSymmetric() {
+template<CheckerboardMethod CB>
+MatCpx DetSDW<CB>::shiftGreenSymmetric() {
     typedef arma::subview<cpx> SubMatCpx;            //don't do references or const-references of this type
     if (CB == CB_NONE) {
         //non-checkerboard
@@ -3206,9 +3206,9 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric() {
 //that take parameters (output, input, [BAND]).  Armadillo submatrix views apparently do not have
 //any const correctness, and passing them by reference makes no sense (they are rich
 //references in a sense)
-template<bool TD, CheckerboardMethod CB>
+template<CheckerboardMethod CB>
 template<class RightMultiply, class LeftMultiply>
-MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+MatCpx DetSDW<CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     //submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     MatCpx tempG(4*N, 4*N);
@@ -3236,8 +3236,8 @@ MatCpx DetSDW<TD,CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, Left
 
 
 
-template<bool TD, CheckerboardMethod CB>
-void DetSDW<TD,CB>::consistencyCheck() {
+template<CheckerboardMethod CB>
+void DetSDW<CB>::consistencyCheck() {
 	// phi*, coshTerm*, sinhTerm*
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {

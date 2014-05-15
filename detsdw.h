@@ -30,16 +30,16 @@ class SerializeContentsKey;
 std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
 
 enum CheckerboardMethod {
-	CB_NONE,				//regular, dense matrix products
-	CB_ASSAAD_BERG,			//checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
+	CB_NONE,                //regular, dense matrix products
+	CB_ASSAAD_BERG, //checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
 };
 std::string cbmToString(CheckerboardMethod cbm);
 
 
-// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition of
+// template parameters: do a checker-board decomposition of
 // which kind?
-template <bool TimeDisplaced, CheckerboardMethod Checkerboard>
-class DetSDW: public DetModelGC<1, cpx, TimeDisplaced> {
+template <CheckerboardMethod Checkerboard>
+class DetSDW: public DetModelGC<1, cpx> {
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
     friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
@@ -64,7 +64,7 @@ protected:
     Things referenced from the base class
 
 */
-    typedef DetModelGC<1, cpx, TimeDisplaced> Base;
+    typedef DetModelGC<1, cpx> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
     // class member variables:
     // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
@@ -708,16 +708,16 @@ public:
 	Static helper member functions
 
 */
-template <bool TD, CheckerboardMethod CBM>
-inline std::string DetSDW<TD,CBM>::bandstr(Band b) {
+template <CheckerboardMethod CBM>
+inline std::string DetSDW<CBM>::bandstr(Band b) {
 	return (b == XBAND) ? "x" : (b == YBAND ? "y" : "N");
 }
-template <bool TD, CheckerboardMethod CBM>
-inline std::string DetSDW<TD,CBM>::spinstr(Spin s) {
+template <CheckerboardMethod CBM>
+inline std::string DetSDW<CBM>::spinstr(Spin s) {
 	return (s == SPINUP) ? "up" : (s == SPINDOWN ? "dn" : "N");
 }
-template <bool TD, CheckerboardMethod CBM>
-inline std::string DetSDW<TD,CBM>::bandspinstr(BandSpin bs) {
+template <CheckerboardMethod CBM>
+inline std::string DetSDW<CBM>::bandspinstr(BandSpin bs) {
     switch (bs) {
     case XUP:   return "XUp";
     case XDOWN: return "XDown";
@@ -726,8 +726,8 @@ inline std::string DetSDW<TD,CBM>::bandspinstr(BandSpin bs) {
     default:    return "N";
     }
 }
-template <bool TD, CheckerboardMethod CBM>
-inline std::string DetSDW<TD,CBM>::updateMethodstr(UpdateMethod_Type um) {
+template <CheckerboardMethod CBM>
+inline std::string DetSDW<CBM>::updateMethodstr(UpdateMethod_Type um) {
 	switch (um) {
 	case ITERATIVE:
 		return "iterative";
@@ -739,8 +739,8 @@ inline std::string DetSDW<TD,CBM>::updateMethodstr(UpdateMethod_Type um) {
 		return "invalid";
 	}
 }
-template <bool TD, CheckerboardMethod CBM>
-inline std::string DetSDW<TD,CBM>::spinProposalMethodstr(SpinProposalMethod_Type sp) {
+template <CheckerboardMethod CBM>
+inline std::string DetSDW<CBM>::spinProposalMethodstr(SpinProposalMethod_Type sp) {
 	switch (sp) {
 	case BOX:
 		return "box";
@@ -756,8 +756,8 @@ inline std::string DetSDW<TD,CBM>::spinProposalMethodstr(SpinProposalMethod_Type
     
 
 //lookup values for discrete field:
-template <bool TD, CheckerboardMethod CBM>
-inline num DetSDW<TD,CBM>::cdwl_gamma(int32_t l) {
+template <CheckerboardMethod CBM>
+inline num DetSDW<CBM>::cdwl_gamma(int32_t l) {
     switch (l) {
     case +1:
     case -1:
@@ -769,8 +769,8 @@ inline num DetSDW<TD,CBM>::cdwl_gamma(int32_t l) {
         return 0;
     }
 }
-template <bool TD, CheckerboardMethod CBM>
-inline num DetSDW<TD,CBM>::cdwl_eta(int32_t l) {
+template <CheckerboardMethod CBM>
+inline num DetSDW<CBM>::cdwl_eta(int32_t l) {
     switch (l) {
     case +1:
         return  std::sqrt(2. * (3. - std::sqrt(6.)));
@@ -791,41 +791,41 @@ inline num DetSDW<TD,CBM>::cdwl_eta(int32_t l) {
     Helpers for functors
 
 */
-template<bool TD, CheckerboardMethod CBM>
+template<CheckerboardMethod CBM>
 template<typename Callable>
-void DetSDW<TD,CBM>::for_each_band(Callable func) {
-	func(XBAND);
-	func(YBAND);
+void DetSDW<CBM>::for_each_band(Callable func) {
+    func(XBAND);
+    func(YBAND);
 }
-template<bool TD, CheckerboardMethod CBM>
+template<CheckerboardMethod CBM>
 template<typename Callable> inline
-void DetSDW<TD,CBM>::for_each_site(Callable func) {
-	for (uint32_t site = 0; site < N; ++site) {
-		func(site);
-	}
+void DetSDW<CBM>::for_each_site(Callable func) {
+    for (uint32_t site = 0; site < N; ++site) {
+        func(site);
+    }
 }
-template<bool TD, CheckerboardMethod CBM>
+template<CheckerboardMethod CBM>
 template<typename Callable> inline
-void DetSDW<TD,CBM>::for_each_timeslice(Callable func) {
-	for (uint32_t k = 1; k <= m; ++k) {
-		func(k);
-	}
+void DetSDW<CBM>::for_each_timeslice(Callable func) {
+    for (uint32_t k = 1; k <= m; ++k) {
+        func(k);
+    }
 }
-template<bool TD, CheckerboardMethod CBM>
+template<CheckerboardMethod CBM>
 template<typename CallableSiteTimeslice, typename V> inline
-V DetSDW<TD,CBM>::sumWholeSystem(CallableSiteTimeslice f, V init) {
-	for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-		for (uint32_t site = 0; site < N; ++site) {
-			init += f(site, timeslice);
-		}
-	}
-	return init;
+V DetSDW<CBM>::sumWholeSystem(CallableSiteTimeslice f, V init) {
+    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+        for (uint32_t site = 0; site < N; ++site) {
+            init += f(site, timeslice);
+        }
+    }
+    return init;
 }
-template<bool TD, CheckerboardMethod CBM>
+template<CheckerboardMethod CBM>
 template<typename CallableSiteTimeslice, typename V> inline
-V DetSDW<TD,CBM>::averageWholeSystem(CallableSiteTimeslice f, V init) {
-	V sum = sumWholeSystem(f, init);
-	return sum / num(m * N);
+V DetSDW<CBM>::averageWholeSystem(CallableSiteTimeslice f, V init) {
+    V sum = sumWholeSystem(f, init);
+    return sum / num(m * N);
 }
 
 
@@ -836,10 +836,10 @@ V DetSDW<TD,CBM>::averageWholeSystem(CallableSiteTimeslice f, V init) {
       wrappers to use to instantiate template functions of the base class
 
 */
-template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
-struct DetSDW<TimeDisplaced,Checkerboard>::sdwComputeBmat {
-    DetSDW<TimeDisplaced,Checkerboard>* parent;
-    sdwComputeBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+template<CheckerboardMethod Checkerboard>
+struct DetSDW<Checkerboard>::sdwComputeBmat {
+    DetSDW<Checkerboard>* parent;
+    sdwComputeBmat(DetSDW<Checkerboard>* parent_) :
         parent(parent_)
         { }
     MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
@@ -849,12 +849,12 @@ struct DetSDW<TimeDisplaced,Checkerboard>::sdwComputeBmat {
     }
 };
 
-template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
-struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmat {
-    DetSDW<TimeDisplaced,Checkerboard>* parent;
-    sdwLeftMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+template<CheckerboardMethod Checkerboard>
+struct DetSDW<Checkerboard>::sdwLeftMultiplyBmat {
+    DetSDW<Checkerboard>* parent;
+    sdwLeftMultiplyBmat(DetSDW<Checkerboard>* parent_) :
         parent(parent_)
-        { }
+    { }
     MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
@@ -866,10 +866,10 @@ struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmat {
     }
 };
 
-template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
-struct DetSDW<TimeDisplaced,Checkerboard>::sdwRightMultiplyBmat {
-    DetSDW<TimeDisplaced,Checkerboard>* parent;
-    sdwRightMultiplyBmat(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+template<CheckerboardMethod Checkerboard>
+struct DetSDW<Checkerboard>::sdwRightMultiplyBmat {
+    DetSDW<Checkerboard>* parent;
+    sdwRightMultiplyBmat(DetSDW<Checkerboard>* parent_) :
         parent(parent_)
         { }
     MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
@@ -883,10 +883,10 @@ struct DetSDW<TimeDisplaced,Checkerboard>::sdwRightMultiplyBmat {
     }
 };
 
-template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
-struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmatInv {
-    DetSDW<TimeDisplaced,Checkerboard>* parent;
-    sdwLeftMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+template<CheckerboardMethod Checkerboard>
+struct DetSDW<Checkerboard>::sdwLeftMultiplyBmatInv {
+    DetSDW<Checkerboard>* parent;
+    sdwLeftMultiplyBmatInv(DetSDW<Checkerboard>* parent_) :
         parent(parent_)
         { }
     MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
@@ -900,10 +900,10 @@ struct DetSDW<TimeDisplaced,Checkerboard>::sdwLeftMultiplyBmatInv {
     }
 };
 
-template<bool TimeDisplaced, CheckerboardMethod Checkerboard>
-struct DetSDW<TimeDisplaced,Checkerboard>::sdwRightMultiplyBmatInv {
-    DetSDW<TimeDisplaced,Checkerboard>* parent;
-    sdwRightMultiplyBmatInv(DetSDW<TimeDisplaced,Checkerboard>* parent_) :
+template<CheckerboardMethod Checkerboard>
+struct DetSDW<Checkerboard>::sdwRightMultiplyBmatInv {
+    DetSDW<Checkerboard>* parent;
+    sdwRightMultiplyBmatInv(DetSDW<Checkerboard>* parent_) :
         parent(parent_)
         { }
     MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
