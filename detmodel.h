@@ -18,6 +18,7 @@
 #include <cassert>
 
 #include "tools.h"
+#include "rngwrapper.h"
 #include "checkarray.h"
 #include "parameters.h"
 #include "observable.h"
@@ -50,6 +51,14 @@ typedef UdV<num> UdVnum;
 
 class SerializeContentsKey;
 
+
+// This template should probably not be used.  Provide explicit specializations
+// for each implementation of a model
+template<class Model, class ModelParams>
+std::unique_ptr<Model> createReplica(RngWrapper& rng, ModelParams pars) {
+    pars.check();
+    return std::unique_ptr<Model>(new Model(rng, pars));
+}
 
 
 //base class for a model to be simulated by determinantal quantum Monte Carlo
@@ -124,6 +133,7 @@ public:
 template<uint32_t GreenComponents, typename ValueType = num, bool TimeDisplaced = false>
 class DetModelGC: public DetModel {
 protected:
+    template<class ModelParams>
     DetModelGC(const ModelParams& pars, uint32_t greenComponentSize);
 public:
     virtual ~DetModelGC()
@@ -150,10 +160,10 @@ public:
     		 class Callable_init, class Callable_measure_k,
     		 class Callable_finish >
     void sweepSimple_skeleton(bool takeMeasurements,
-    						  Callable_GC_k2_k1 computeBmat,
-    						  Callable_UpdateInSlice_k updateInSlice,
-    		                  Callable_init initMeasurement,
-    		                  Callable_measure_k measure, Callable_finish finishMeasurement);
+                              Callable_GC_k2_k1 computeBmat,
+                              Callable_UpdateInSlice_k updateInSlice,
+                              Callable_init initMeasurement,
+                              Callable_measure_k measure, Callable_finish finishMeasurement);
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters, but does not take any measurements ever
     template<class Callable_GC_k2_k1, class Callable_UpdateInSlice_k>
@@ -394,6 +404,7 @@ public:
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
+template<class ModelParams>
 DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
     sz(greenComponentSize),
     timedisplaced(TimeDisplaced),
@@ -1161,7 +1172,58 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 //Special handling to allow passing either 'm' or 'beta', but not both.
 //'dtau' must always be given.
 //Also check that 's' is set matching.
-ModelParams updateTemperatureParameters(ModelParams pars);
+template<class ModelParams>
+ModelParams updateTemperatureParameters(ModelParams pars) {
+    //check parameters: passed all that are necessary
+    using namespace boost::assign;
+    std::vector<std::string> neededModelPars;
+    neededModelPars += "dtau", "s";
+    for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
+        if (pars.specified.count(*p) == 0) {
+            throw ParameterMissing(*p);
+        }
+    }
+
+//check that only positive values are passed for certain parameters
+#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
+#define CHECK_POSITIVE(x)   {                   \
+        IF_NOT_POSITIVE(x) {                    \
+            throw ParameterWrong(#x, pars.x);   \
+        }                                       \
+    }
+    CHECK_POSITIVE(beta);
+    CHECK_POSITIVE(m);
+    CHECK_POSITIVE(s);
+    CHECK_POSITIVE(dtau);
+#undef CHECK_POSITIVE
+#undef IF_NOT_POSITIVE
+
+    //we need exactly one of the parameters 'm' and 'beta'
+    if (pars.specified.count("beta") != 0 and pars.specified.count("m") != 0) {
+    	throw ParameterWrong("Only specify one of the parameters beta and dtau");
+    }
+    if (pars.specified.count("m") == 0 and pars.specified.count("beta") == 0) {
+    	throw ParameterWrong("Specify either parameter m or beta");
+    }
+
+
+    if (pars.specified.count("m")) {
+    	pars.beta = pars.m * pars.dtau;
+    } else if (pars.specified.count("beta")) {
+    	//this may result in a slightly lower inverse temperature beta
+    	//if dtau is not chosen to match well
+    	pars.m = uint32_t(pars.beta / pars.dtau);
+    	pars.beta = pars.m * pars.dtau;
+    }
+
+    // m needs to be larger than s
+    if (pars.m <= pars.s) {
+    	throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
+                             + " do not agree. m must be larger than s.");
+    }
+
+    return pars;
+}
 
 
 //compute e^{-scalar matrix}, matrix must be symmetric
