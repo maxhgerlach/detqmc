@@ -13,23 +13,34 @@
 #include <vector>
 #include <functional>
 #include <memory>
-#include "metadata.h"
-#include "detqmcparams.h"
-#include "detmodelparams.h"
-#include "detmodel.h"
-#include "dethubbard.h"
-#include "detsdw.h"
-#include "observablehandler.h"
-#include "rngwrapper.h"
-#include "exceptions.h"
-
+#include <cstdlib>
+#include <limits>
+#include <ctime>
+#include <functional>
+#include <fstream>
+#include <armadillo>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/preprocessor/comma.hpp"
 #include "boost/timer/timer.hpp"
 #include "boost/serialization/split_member.hpp"
+#include "boost/assign/std/vector.hpp"
+#include "boost/filesystem.hpp"
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
 #pragma GCC diagnostic pop
+#include "metadata.h"
+#include "detqmcparams.h"
+#include "detmodelparams.h"
+#include "detmodel.h"
+#include "observablehandler.h"
+#include "rngwrapper.h"
+#include "exceptions.h"
+#include "tools.h"
+#include "git-revision.h"
+#include "timing.h"
+
 
 
 class SerializeContentsKey;
@@ -63,6 +74,7 @@ public:
 
     virtual ~DetQMC();
 protected:
+    typedef ModelParams<Model> ModelParams;
     //helper for constructors -- set all parameters and initialize contained objects
     void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc);
 
@@ -70,16 +82,10 @@ protected:
     DetQMCParams parsmc;
     typedef DetQMCParams::GreenUpdateType GreenUpdateType;
     
-//  std::function<void()> sweepFunc;    //the replica member function that will be called
-//                                      //to perform a sweep (depending on greenUpdate).
-//                                      //adds a function pointer layer
-//  std::function<void()> sweepThermalizationFunc;      //during thermalization this may
-//                                                      //be a different one
-
     MetadataMap modelMeta;
     MetadataMap mcMeta;
     RngWrapper rng;
-    std::unique_ptr<DetModel> replica;
+    std::unique_ptr<Model> replica;
     typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
     typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
     std::vector<ObsPtr> obsHandlers;
@@ -87,7 +93,7 @@ protected:
     uint32_t sweepsDone;                        //Measurement sweeps done
     uint32_t sweepsDoneThermalization;          //thermalization sweeps done
 
-    uint32_t swCounter;         //helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
+    uint32_t swCounter; //helper counter in run() -- e.g. sweeps between measurements -- should also be serialized
 
     boost::timer::cpu_timer elapsedTimer;           //during this simulation run
     uint32_t curWalltimeSecs() {
@@ -108,72 +114,14 @@ private:
     void loadContents(Archive& ar) {
         serializeContentsCommon(ar);
 
-        //The template member functions saveContents(Archive&) cannot be virtual,
-        //so we have to resort to RTTI to serialize the right object.
-        //Unfortunately this is fugly.
-        // if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
-        //     p->loadContents(SerializeContentsKey(), ar);
-        // } else
-        // if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
-        //     p->loadContents(SerializeContentsKey(), ar);
-        // } else
-        if (DetHubbard<false, true>* p1 = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
-            p1->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetHubbard<false, false>* p2 = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
-            p2->loadContents(SerializeContentsKey(), ar);
-        } else
-        // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
-        //     p->loadContents(SerializeContentsKey(), ar);
-        // } else
-        // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
-        //     p->loadContents(SerializeContentsKey(), ar);
-        // } else
-        if (DetSDW<false, CB_NONE>* p3 = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p3->loadContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<false, CB_ASSAAD_BERG>* p4 = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
-            p4->loadContents(SerializeContentsKey(), ar);
-        }
-        else {
-            throw SerializationError("Tried to load contents of unsupported replica");
-        }
+        replica->loadContents(SerializeContentsKey(), ar);
     }
 
     template<class Archive>
     void saveContents(Archive& ar) {
         serializeContentsCommon(ar);
 
-        //The template member functions saveContents(Archive&) cannot be virtual,
-        //so we have to resort to RTTI to serialize the right object.
-        //Unfortunately this is fugly.
-        // if (DetHubbard<true, true>* p = dynamic_cast<DetHubbard<true, true>*>(replica.get())) {
-        //     p->saveContents(SerializeContentsKey(), ar);
-        // } else
-        // if (DetHubbard<true, false>* p = dynamic_cast<DetHubbard<true, false>*>(replica.get())) {
-        //     p->saveContents(SerializeContentsKey(), ar);
-        // } else
-        if (DetHubbard<false, true>* p = dynamic_cast<DetHubbard<false, true>*>(replica.get())) {
-            p->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetHubbard<false, false>* p2 = dynamic_cast<DetHubbard<false, false>*>(replica.get())) {
-            p2->saveContents(SerializeContentsKey(), ar);
-        } else
-        // if (DetSDW<true, CB_NONE>* p = dynamic_cast<DetSDW<true, CB_NONE>*>(replica.get())) {
-        //     p->saveContents(SerializeContentsKey(), ar);
-        // } else
-        // if (DetSDW<true, CB_ASSAAD_BERG>* p = dynamic_cast<DetSDW<true, CB_ASSAAD_BERG>*>(replica.get())) {
-        //     p->saveContents(SerializeContentsKey(), ar);
-        // } else
-        if (DetSDW<false, CB_NONE>* p3 = dynamic_cast<DetSDW<false, CB_NONE>*>(replica.get())) {
-            p3->saveContents(SerializeContentsKey(), ar);
-        } else
-        if (DetSDW<false, CB_ASSAAD_BERG>* p4 = dynamic_cast<DetSDW<false, CB_ASSAAD_BERG>*>(replica.get())) {
-            p4->saveContents(SerializeContentsKey(), ar);
-        }
-        else {
-            throw SerializationError("Tried to save contents of unsupported replica");
-        }
+        replica->saveContents(SerializeContentsKey(), ar);
     }
 
 
@@ -197,10 +145,11 @@ private:
 };
 
 
-//Only few member functions of DetQMC are allowed to make instances of this class.
-//In this way access to the member function serializeContents() of other classes
-//is restricted.
-// compare to http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend
+//Only few member functions of DetQMC are allowed to make instances of
+//this class.  In this way access to the member functions
+//serializeContents(), saveContents(), loadContents() of other classes
+//is restricted.  Compare to
+//http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend
 class SerializeContentsKey {
   SerializeContentsKey() {} // default ctor private
   SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
@@ -213,6 +162,338 @@ class SerializeContentsKey {
   template<class Archive>
   friend void DetQMC::serializeContentsCommon(Archive& ar);
 };
+
+
+
+
+
+template<class Model>
+void DetQMC<Model>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
+    parsmodel = parsmodel_;
+    parsmc = parsmc_;
+
+    parsmc.check();
+
+    if (parsmc.specified.count("rngSeed") == 0) {
+        cout << "No rng seed specified, will use std::time(0)" << endl;
+        parsmc.rngSeed = (uint32_t) std::time(0);
+    }
+    rng = RngWrapper(parsmc.rngSeed);
+
+    replica = createReplica<Model>(rng, parsmodel);    
+
+    //prepare metadata
+    modelMeta = replica->prepareModelMetadataMap();
+    mcMeta = parsmc.prepareMetadataMap();
+
+    //prepare observable handlers
+    auto scalarObs = replica->getScalarObservables();
+    for (auto obsP = scalarObs.cbegin(); obsP != scalarObs.cend(); ++obsP) {
+        obsHandlers.push_back(
+            ObsPtr(new ScalarObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+        );
+    }
+    auto vectorObs = replica->getVectorObservables();
+    for (auto obsP = vectorObs.cbegin(); obsP != vectorObs.cend(); ++obsP) {
+        vecObsHandlers.push_back(
+            VecObsPtr(new VectorObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+        );
+    }
+    auto keyValueObs = replica->getKeyValueObservables();
+    for (auto obsP = keyValueObs.cbegin(); obsP != keyValueObs.cend(); ++obsP) {
+        vecObsHandlers.push_back(
+            VecObsPtr(new KeyValueObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+        );
+    }
+
+    //query allowed walltime
+    const char* pbs_walltime = std::getenv("PBS_WALLTIME");
+    if (pbs_walltime) {
+        grantedWalltimeSecs = fromString<decltype(grantedWalltimeSecs)>(pbs_walltime);
+    } else {
+        grantedWalltimeSecs = std::numeric_limits<decltype(grantedWalltimeSecs)>::max();
+    }
+    cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
+
+    //query SLURM Jobid
+    const char* jobid_env = std::getenv("SLURM_JOBID");
+    if (jobid_env) {
+    	jobid = jobid_env;
+    } else {
+    	jobid = "nojobid";
+    }
+    cout << "Job ID: " << jobid << "\n";
+
+    cout << "\nSimulation initialized, parameters: " << endl;
+    cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
+}
+
+
+
+template<class Model>
+DetQMC<Model>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) :
+    parsmodel(), parsmc(),
+    //proper initialization of default initialized members done in initFromParameters
+    modelMeta(), mcMeta(), rng(), replica(),
+    obsHandlers(), vecObsHandlers(),
+    sweepsDone(0), sweepsDoneThermalization(),
+    swCounter(0),
+    elapsedTimer(),     // start timing
+    totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
+    grantedWalltimeSecs(0)
+{
+    initFromParameters(parsmodel_, parsmc_);
+}
+
+template<class Model>
+DetQMC<Model>::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
+    parsmodel(), parsmc(),
+    //proper initialization of default initialized members done by loading from archive
+    modelMeta(), mcMeta(), rng(), replica(),
+    obsHandlers(), vecObsHandlers(),
+    sweepsDone(), sweepsDoneThermalization(),
+    swCounter(0),
+    elapsedTimer(),     // start timing
+    totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
+    grantedWalltimeSecs(0), jobid("")
+{
+    std::ifstream ifs;
+    ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+    ifs.open(stateFileName.c_str(), std::ios::binary);
+    boost::archive::binary_iarchive ia(ifs);
+    ModelParams parsmodel_;
+    MCParams parsmc_;
+    ia >> parsmodel_ >> parsmc_;
+
+    if (newParsmc.sweeps > parsmc_.sweeps) {
+        std::cout << "Target sweeps will be changed from " << parsmc_.sweeps
+                  << " to " << newParsmc.sweeps << std::endl;
+        parsmc_.sweeps = newParsmc.sweeps;
+        parsmc_.sweepsHasChanged = true;
+    }
+    if (newParsmc.saveInterval > 0 and newParsmc.saveInterval != parsmc_.saveInterval) {
+        std::cout << "saveInterval will be changed from " << parsmc_.saveInterval
+                  << " to " << newParsmc.saveInterval << std::endl;
+        parsmc_.saveInterval = newParsmc.saveInterval;
+    }
+    parsmc_.stateFileName = stateFileName;
+
+    //make sure mcparams are set correctly as "specified"
+#define SPECIFIED_INSERT_VAL(x) if (parsmc_.x) { parsmc_.specified.insert(#x); }
+#define SPECIFIED_INSERT_STR(x) if (not parsmc_.x.empty()) { parsmc_.specified.insert(#x); }
+    SPECIFIED_INSERT_VAL(sweeps);
+    SPECIFIED_INSERT_VAL(thermalization);
+    SPECIFIED_INSERT_VAL(jkBlocks);
+    SPECIFIED_INSERT_VAL(measureInterval);
+    SPECIFIED_INSERT_VAL(saveInterval);
+    SPECIFIED_INSERT_STR(stateFileName);
+#undef SPECIFIED_INSERT_VAL
+#undef SPECIFIED_INSERT_STR
+    if (not parsmc_.greenUpdate_string.empty()) {
+        parsmc_.specified.insert("greenUpdateType");
+    }
+    
+    initFromParameters(parsmodel_, parsmc_);
+    loadContents(ia);
+
+    std::cout << "\n"
+              << "State of previous simulation has been loaded.\n"
+              << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
+              << "  sweepsDone: " << sweepsDone << std::endl;
+}
+
+template<class Model>
+void DetQMC<Model>::saveState() {
+    timing.start("saveState");
+
+    //serialize state to file
+    std::ofstream ofs;
+    ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
+    ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
+    boost::archive::binary_oarchive oa(ofs);
+    oa << parsmodel << parsmc;
+    saveContents(oa);
+
+    //write out info about state of simulation to "info.dat"
+    std::string commonInfoFilename = "info.dat";
+    writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
+                      "Collected information about this determinantal quantum Monte Carlo simulation",
+                      false);
+    writeOnlyMetaData(commonInfoFilename, modelMeta,
+                      "Model parameters:",
+                      true);
+    writeOnlyMetaData(commonInfoFilename, mcMeta,
+                      "Monte Carlo parameters:",
+                      true);
+
+    MetadataMap currentState;
+    currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
+    currentState["sweepsDone"] = numToString(sweepsDone);
+
+    uint32_t cwts = curWalltimeSecs();
+    totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
+    walltimeSecsLastSaveResults = cwts;
+
+    currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
+    writeOnlyMetaData(commonInfoFilename, currentState,
+                      "Current state of simulation:",
+                      true);
+
+    std::cout << "State has been saved." << std::endl;
+
+    timing.stop("saveState");
+}
+
+template<class Model>
+DetQMC<Model>::~DetQMC() {
+}
+
+
+template<class Model>
+void DetQMC<Model>::run() {
+    enum Stage { T, M, F };     //Thermalization, Measurement, Finished
+    Stage stage = T;
+
+    //local helper functions to initialize a "stage" of the big loop
+    auto thermalizationStage = [&stage, this]() {
+        stage = T;
+        cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
+    };
+    auto measurementsStage = [&stage, this]() {
+        stage = M;
+        cout << "Measurements for " << parsmc.sweeps << " sweeps..." << endl;
+    };
+    auto finishedStage = [&stage]() {
+        stage = F;
+        cout << "Measurements finished\n" << endl;
+    };
+
+    if (sweepsDoneThermalization < parsmc.thermalization) {
+        thermalizationStage();
+    } else if (sweepsDone < parsmc.sweeps) {
+        measurementsStage();
+    } else {
+        finishedStage();
+    }
+
+    const uint32_t SavetyMinutes = 35;
+
+    const std::string abortFilename1 = "ABORT." + jobid;
+    const std::string abortFilename2 = "../" + abortFilename1;
+
+    while (stage != F) {                //big loop
+    	if (swCounter % 2 == 0) {
+            bool stop_now = false;
+            if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
+                cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
+                stop_now = true;
+            } else if (boost::filesystem::exists(abortFilename1) or
+                       boost::filesystem::exists(abortFilename2)) {
+                cout << "Found file " << abortFilename1 << ".\n";
+                stop_now = true;
+            }
+            if (stop_now) {
+                //close to exceeded walltime or we find that a file has been placed,
+                //which signals us to abort this run for some other reason.
+                //but only save state and exit if we have done an even
+                //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
+                cout << "Save state / results and exit gracefully." << endl;
+                if (stage == Stage::M) {
+                    saveResults();
+                }
+                saveState();
+                break;  //while
+            }
+    	}
+
+        //thermalization & measurement stages
+        switch (stage) {
+
+        case T:
+            switch(parsmc.greenUpdateType) {
+            case GreenUpdateType::GreenUpdateTypeSimple:
+                replica->sweepSimpleThermalization();
+                break;
+            case GreenUpdateType::GreenUpdateTypeStabilized:
+                replica->sweepThermalization();
+                break;
+            }
+            ++sweepsDoneThermalization;
+            ++swCounter;
+            if (swCounter == parsmc.saveInterval) {
+                cout  << "  " << sweepsDoneThermalization << " ... saving state...";
+                swCounter = 0;
+                saveState();
+                cout << endl;
+            }
+            if (sweepsDoneThermalization == parsmc.thermalization) {
+                cout << "Thermalization finished\n" << endl;
+                replica->thermalizationOver();
+                swCounter = 0;
+                measurementsStage();
+            }
+            break;  //case
+
+        case M: {
+            ++swCounter;
+            bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
+            
+            switch(parsmc.greenUpdateType) {
+            case GreenUpdateTypeSimple:
+                replica->sweepSimple(takeMeasurementNow);
+                break;
+            case GreenUpdateTypeStabilized:
+                replica->sweep(takeMeasurementNow);
+                break;
+            }
+
+            if (takeMeasurementNow) {
+                for (auto ph = obsHandlers.begin(); ph != obsHandlers.end(); ++ph) {
+                    (*ph)->insertValue(sweepsDone);
+                }
+                for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
+                    (*ph)->insertValue(sweepsDone);
+                }
+            }
+            ++sweepsDone;
+            if (swCounter == parsmc.saveInterval) {
+                cout << "  " << sweepsDone << " ... saving results and state ...";
+                swCounter = 0;
+                saveResults();
+                saveState();
+                cout << endl;
+            }
+            if (sweepsDone == parsmc.sweeps) {
+                swCounter = 0;
+                finishedStage();
+            }
+            break;  //case
+        }
+
+        case F:
+            break;  //case
+
+        }  //switch
+    }
+}
+
+
+
+
+
+
+template<class Model>
+void DetQMC<Model>::saveResults() {
+    timing.start("saveResults");
+
+    outputResults(obsHandlers);
+    for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
+        (*p)->outputTimeseries();
+    }
+    outputResults(vecObsHandlers);
+
+    timing.stop("saveResults");
+}
 
 
 
