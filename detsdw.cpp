@@ -34,76 +34,9 @@ const num PhiHigh = 1;
 
 
 std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
-    //TODO: add checks
     pars = updateTemperatureParameters(pars);
 
-    //check parameters: passed all that are necessary
-    using namespace boost::assign;
-    std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "lambda", "accRatio", "bc", "txhor", "txver", "tyhor",
-        "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
-        "globalShift", "wolffClusterUpdate", "wolffClusterShiftUpdate";
-    for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
-        if (pars.specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
-        }
-    }
-
-    std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
-    bool bc_is_one_of_the_possible = false;
-    for (const std::string& bc : possibleBC) {
-        if (pars.bc == bc) bc_is_one_of_the_possible = true;
-    }
-    if (not bc_is_one_of_the_possible) {
-        throw ParameterWrong("bc", pars.bc);
-    }
-    std::string possibleUpdateMethods[] = {"iterative", "woodbury", "delayed"};
-    bool updateMethod_is_one_of_the_possible = false;
-    for (const std::string& updateMethod : possibleUpdateMethods) {
-        if (pars.updateMethod == updateMethod) updateMethod_is_one_of_the_possible = true;
-    }
-    if (not updateMethod_is_one_of_the_possible) {
-        throw ParameterWrong("updateMethod", pars.updateMethod);
-    }
-    if (pars.specified.count("updateMethod") and pars.updateMethod == "delayed") {
-        if (not pars.specified.count("delaySteps")) {
-            throw ParameterMissing("delaySteps");
-        }
-        uint32_t N = static_cast<uint32_t>(std::pow(pars.L, 2));
-        if (pars.delaySteps <= 0 or pars.delaySteps > N) {
-            throw ParameterWrong("delaySteps", pars.delaySteps);
-        }
-    }
-    std::string possibleSpinProposalMethods[] = {"box", "rotate_then_scale", "rotate_and_scale"};
-    bool spinProposalMethod_is_one_of_the_possible = false;
-    for (const std::string& spinProposalMethod: possibleSpinProposalMethods) {
-        if (pars.spinProposalMethod == spinProposalMethod) spinProposalMethod_is_one_of_the_possible = true;
-    }
-    if (not spinProposalMethod_is_one_of_the_possible) {
-        throw ParameterWrong("spinProposalMethod", pars.spinProposalMethod);
-    }
-
-    if ((pars.globalShift or pars.wolffClusterUpdate or pars.wolffClusterShiftUpdate)
-        and pars.globalUpdateInterval == 0) {
-        throw ParameterWrong("globalUpdateInterval", pars.globalUpdateInterval);
-    }
-
-    if (pars.wolffClusterShiftUpdate and (pars.globalShift or pars.wolffClusterUpdate)) {
-        throw ParameterWrong("Either use combined wolffClusterShiftUpdate or individual global updates");
-    }
-
-    if (pars.checkerboard and pars.L % 2 != 0) {
-        throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
-    }
-#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
-#define CHECK_POSITIVE(x)   {                                           \
-                                IF_NOT_POSITIVE(x) {                    \
-                                    throw ParameterWrong(#x, pars.x);   \
-                                }                                       \
-                            }
-    CHECK_POSITIVE(L);
-#undef CHECK_POSITIVE
-#undef IF_NOT_POSITIVE
+    pars.check();
 
     CheckerboardMethod cbm = CB_NONE;
     if (pars.checkerboard) {
@@ -150,22 +83,11 @@ std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
 }
 
 template<CheckerboardMethod CB>
-DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
-    DetModelGC<1,cpx,false>(pars, 4 * pars.L*pars.L),
+DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams<DetSDW<CB>>& pars_) :
+    DetModelGC<1,cpx,false>(pars_, 4 * pars_.L*pars_.L),
     eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
     rng(rng_), normal_distribution(rng),
-    checkerboard(pars.checkerboard),
-    L(pars.L), N(L*L), r(pars.r),
-    txhor(pars.txhor), txver(pars.txver), tyhor(pars.tyhor), tyver(pars.tyver),
-    cdwU(pars.cdwU),
-    mu(pars.mu),
-    c(1), u(1), //TODO: make these controllable by parameter
-    lambda(pars.lambda),
-    bc(PBC), updateMethod(ITERATIVE), spinProposalMethod(BOX), delaySteps(pars.delaySteps),
-    globalShift(pars.globalShift), wolffClusterUpdate(pars.wolffClusterUpdate),
-    wolffClusterShiftUpdate(pars.wolffClusterShiftUpdate),
-    globalMoveInterval(pars.globalUpdateInterval),
-    repeatUpdateInSlice(pars.repeatUpdateInSlice),
+    pars(pars_),
     acceptedGlobalShifts(0), attemptedGlobalShifts(0),
     acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
     acceptedWolffClusterShiftUpdates(0), attemptedWolffClusterShiftUpdates(0),
@@ -201,53 +123,26 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     timeslices_included_in_measurement(),
     dud(N, delaySteps), gmd(N, m)
 {
+    //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
-
-    if (pars.bc == "pbc") {
-        bc = PBC;
-    } else if (pars.bc == "apbc-x") {
-        bc = APBC_X;
-    } else if (pars.bc == "apbc-y") {
-        bc = APBC_Y;
-    } else if (pars.bc == "apbc-xy") {
-        bc = APBC_XY;
-    } else {
-        // "safe default"
-        bc = PBC;
-    }
-    if (pars.updateMethod == "iterative") {
-        updateMethod = ITERATIVE;
-    } else if (pars.updateMethod == "woodbury") {
-        updateMethod = WOODBURY;
-    } else if (pars.updateMethod == "delayed") {
-        updateMethod = DELAYED;
-    } else {
-        // "safe default"
-        updateMethod = ITERATIVE;
-    }
-    if (pars.spinProposalMethod == "box") {
-        spinProposalMethod = BOX;
-    } else if (pars.spinProposalMethod == "rotate_then_scale") {
-        spinProposalMethod = ROTATE_THEN_SCALE;
-    } else if (pars.spinProposalMethod == "rotate_and_scale") {
-        spinProposalMethod = ROTATE_AND_SCALE;
-    } else {
-        // "safe default"
-        spinProposalMethod = BOX;
-    }
+    assert(pars.c == 1.0);
+    assert(pars.u == 1.0);
+    assert(pars.N == pars.L*pars.L);
+    assert(pars.d == 2);
+    
     setupRandomField();
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
     //So for actual calculations an additional minus-sign needs to be included.
     //In the case of anti-periodic boundaries between i and j, another extra minus-sign
     //must be added.
-    hopHor[XBAND] = txhor;
-    hopVer[XBAND] = txver;
-    hopHor[YBAND] = tyhor;
-    hopVer[YBAND] = tyver;
+    hopHor[XBAND] = pars.txhor;
+    hopVer[XBAND] = pars.txver;
+    hopHor[YBAND] = pars.tyhor;
+    hopVer[YBAND] = pars.tyver;
     //precalculate hyperbolic functions, used in checkerboard decomposition
     using std::sinh; using std::cosh;
-    num dtauHere = dtau;                // to fix capture issues
+    num dtauHere = pars.dtau;                // to fix capture issues
     for_each_band( [this, dtauHere](Band band) {
         sinhHopHor[band] = sinh(-dtauHere * hopHor[band]);
         coshHopHor[band] = cosh(-dtauHere * hopHor[band]);
@@ -278,19 +173,19 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
             ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
             //ScalarObservable(cref(fermionEcouple_imag), "fermionEcoupleimag", "fEcoupleimag");
 
-    kOccX.zeros(N);
-    kOccY.zeros(N);
-    obsVector += VectorObservable(cref(kOccX), N, "kOccX", "nkx"),
-            VectorObservable(cref(kOccY), N, "kOccY", "nky");
+    kOccX.zeros(pars.N);
+    kOccY.zeros(pars.N);
+    obsVector += VectorObservable(cref(kOccX), pars.N, "kOccX", "nkx"),
+            VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
 //    kOccXimag.zeros(N);
 //    kOccYimag.zeros(N);
 //    obsVector += VectorObservable(cref(kOccXimag), N, "kOccXimag", "nkximag"),
 //            VectorObservable(cref(kOccYimag), N, "kOccYimag", "nkyimag");
 
-    occX.zeros(N);
-    occY.zeros(N);
-    obsVector += VectorObservable(cref(occX), N, "occX", "nx"),
-            VectorObservable(cref(occY), N, "occY", "ny");
+    occX.zeros(pars.N);
+    occY.zeros(pars.N);
+    obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
+            VectorObservable(cref(occY), pars.N, "occY", "ny");
 //    occXimag.zeros(N);
 //    occYimag.zeros(N);
 //    obsVector += VectorObservable(cref(occXimag), N, "occXimag", "nximag"),
@@ -298,12 +193,12 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
 
     //attention:
     // these do not have valid entries for site 0
-    pairPlus.zeros(N);
-    pairMinus.zeros(N);
+    pairPlus.zeros(pars.N);
+    pairMinus.zeros(pars.N);
 //    pairPlusimag.zeros(N);
 //    pairMinusimag.zeros(N);
-    obsVector += VectorObservable(cref(pairPlus), N, "pairPlus", "pp"),
-            VectorObservable(cref(pairMinus), N, "pairMinus", "pm");
+    obsVector += VectorObservable(cref(pairPlus), pars.N, "pairPlus", "pp"),
+            VectorObservable(cref(pairMinus), pars.N, "pairMinus", "pm");
 //            VectorObservable(cref(pairPlusimag), N, "pairPlusimag", "ppimag"),
 //            VectorObservable(cref(pairMinusimag), N, "pairMinusimag", "pmimag");
 
@@ -311,16 +206,16 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars) :
     for (Band b1 : BandValues) {
     	for (Band b2 : BandValues) {
             MatNum& occC = occCorr(b1, b2);
-            occC.zeros(N,N);
+            occC.zeros(pars.N,pars.N);
             VecNum& occCFT = occCorrFT(b1, b2);
-            occCFT.zeros(N);
-            obsVector += VectorObservable(cref(occCFT), N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
+            occCFT.zeros(pars.N);
+            obsVector += VectorObservable(cref(occCFT), pars.N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
     	}
     }
 
-    chargeCorr.zeros(N,N);
-    chargeCorrFT.zeros(N);
-    obsVector += VectorObservable(cref(chargeCorrFT), N, "chargeCorrFT", "");
+    chargeCorr.zeros(pars.N,pars.N);
+    chargeCorrFT.zeros(pars.N);
+    obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
 
     occDiffSq = 0.0;
     obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");   
@@ -339,61 +234,19 @@ DetSDW<CB>::~DetSDW() {
 
 template<CheckerboardMethod CB>
 uint32_t DetSDW<CB>::getSystemN() const {
-    return N;
+    return pars.N;
 }
 
 template<CheckerboardMethod CB>
 MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
-    MetadataMap meta;
-#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
-    meta["model"] = "sdw";
-    meta["checkerboard"] = (CB ? "true" : "false");
-    meta["updateMethod"] = updateMethodstr(updateMethod);
-    meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
-    if (spinProposalMethod != BOX) {
-        META_INSERT(adaptScaleDelta);
-    }
-    if (updateMethod == DELAYED) {
-        META_INSERT(delaySteps);
-    }
-//    meta["timedisplaced"] = (TD ? "true" : "false");
-    if (bc == PBC) {
-          meta["bc"] = "pbc";
-    } else if (bc == APBC_X) {
-          meta["bc"] = "apbc-x";
-    } else if (bc == APBC_Y) {
-          meta["bc"] = "apbc-y";
-    } else if (bc == APBC_XY) {
-          meta["bc"] = "apbc-xy";
-    }
-    META_INSERT(targetAccRatioLocal_phi);
-    META_INSERT(r);
-    META_INSERT(lambda);
-    META_INSERT(txhor);
-    META_INSERT(txver);
-    META_INSERT(tyhor);
-    META_INSERT(tyver);
-    META_INSERT(cdwU);
-    META_INSERT(mu);
-    META_INSERT(L);
-    META_INSERT(d);
-    META_INSERT(N);
-    META_INSERT(beta);
-    META_INSERT(m);
-    META_INSERT(dtau);
-    META_INSERT(s);
-    META_INSERT(globalShift);
-    META_INSERT(wolffClusterUpdate);
-    META_INSERT(wolffClusterShiftUpdate);
-    if (globalShift or wolffClusterUpdate or wolffClusterShiftUpdate) {
-        META_INSERT(globalMoveInterval);
-    }
-    if (globalShift) {
+    MetadataMap meta = pars.prepareMetadataMap();
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}    
+    if (pars.globalShift) {
     	num globalShiftAccRatio =
     			num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
     	META_INSERT(globalShiftAccRatio);
     }
-    if (wolffClusterUpdate) {
+    if (pars.wolffClusterUpdate) {
     	num wolffClusterUpdateAccRatio =
     			num(acceptedWolffClusterUpdates) /
     			num(attemptedWolffClusterUpdates);
@@ -402,7 +255,7 @@ MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
     			addedWolffClusterSize / num(acceptedWolffClusterUpdates);
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
-    if (wolffClusterShiftUpdate) {
+    if (pars.wolffClusterShiftUpdate) {
     	num wolffClusterShiftUpdateAccRatio =
             num(acceptedWolffClusterShiftUpdates) /
             num(attemptedWolffClusterShiftUpdates);
@@ -411,7 +264,6 @@ MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
             addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
-    META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
     return meta;
 }
@@ -432,16 +284,16 @@ void DetSDW<CB>::initMeasurements() {
     sdwSusc = 0;
 
     //fermion occupation number -- real space
-    occX.zeros(N);
-    occY.zeros(N);
+    occX.zeros(pars.N);
+    occY.zeros(pars.N);
 
     //fermion occupation number -- k-space
-    kOccX.zeros(N);
-    kOccY.zeros(N);
+    kOccX.zeros(pars.N);
+    kOccY.zeros(pars.N);
 
     //equal-time pairing-correlations
-    pairPlus.zeros(N);
-    pairMinus.zeros(N);
+    pairPlus.zeros(pars.N);
+    pairMinus.zeros(pars.N);
 
     // Fermionic energy contribution
     fermionEkinetic = 0;
@@ -452,7 +304,7 @@ void DetSDW<CB>::initMeasurements() {
     for (Band b1 : BandValues) {
     	for (Band b2 : BandValues) {
             MatNum& occC = occCorr(b1, b2);
-            occC.zeros(N,N);
+            occC.zeros(pars.N,pars.N);
         }
     }
     occDiffSq = 0.0;
@@ -464,12 +316,16 @@ template<CheckerboardMethod CB>
 void DetSDW<CB>::measure(uint32_t timeslice) {
     timing.start("sdw-measure");
 
+    // to ease notation in here
+    const auto L = pars.L;
+    const auto N = pars.N;
+
     timeslices_included_in_measurement.insert(timeslice);
 
     MatCpx gshifted = shiftGreenSymmetric();
 
     //normphi, meanPhi, sdw-susceptibility
-    for (uint32_t site = 0; site < N; ++site) {
+    for (uint32_t site = 0; site < pars.N; ++site) {
         Phi phi_site;
         phi_site[0] = phi0(site, timeslice);
         phi_site[1] = phi1(site, timeslice);
@@ -492,10 +348,10 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
     num offset_y = 0.0;
-    if (bc == APBC_X or bc == APBC_XY) {
+    if (pars.bc == APBC_X or pars.bc == APBC_XY) {
         offset_x = 0.5;
     }
-    if (bc == APBC_Y or bc == APBC_XY) {
+    if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
         offset_y = 0.5;
     }
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
@@ -535,8 +391,8 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
     //(which used to be "l")
     // *1 is for the row index,
     // *2 is for the column index
-    auto gl = [this, &gshifted](uint32_t site1, Band band1, Spin spin1,
-                                uint32_t site2, Band band2, Spin spin2) -> cpx {
+    auto gl = [this, N, &gshifted](uint32_t site1, Band band1, Spin spin1,
+                                   uint32_t site2, Band band2, Spin spin2) -> cpx {
         return gshifted(site1 + 2*N*band1 + N*spin1,
                         site2 + 2*N*band2 + N*spin2);
     };
@@ -591,9 +447,9 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
 
     // Fermionic energy contribution
     // -----------------------------
-    auto glij = [this, &gshifted](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
+    auto glij = [this, N, &gshifted](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
         return gshifted(site1 + 2*N*band + N*spin,
-                          site2 + 2*N*band + N*spin);
+                        site2 + 2*N*band + N*spin);
     };
     for (uint32_t i = 0; i < N; ++i) {
         //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
@@ -752,7 +608,13 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::finishMeasurements() {
-	assert(timeslices_included_in_measurement.size() == m);
+    //to ease notation:
+    const auto L = pars.L;        
+    const auto N = pars.N;
+    const auto m = pars.m;
+    const auto dtau = pars.dtau;    
+    
+    assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
     normPhi /= num(N * m);
@@ -839,7 +701,6 @@ void DetSDW<CB>::finishMeasurements() {
         }
     }
     computeStructureFactor(chargeCorrFT, chargeCorr);
-
     
     occDiffSq /= num(m);
 }
@@ -847,13 +708,15 @@ void DetSDW<CB>::finishMeasurements() {
 template<CheckerboardMethod CB>
 void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
+    const auto L = L;
+    const auto N = N;    
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
     num offset_y = 0.0;
-    if (bc == APBC_X or bc == APBC_XY) {
+    if (pars.bc == APBC_X or pars.bc == APBC_XY) {
         offset_x = 0.5;
     }
-    if (bc == APBC_Y or bc == APBC_XY) {
+    if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
         offset_y = 0.5;
     }
     out_k.zeros(N);
@@ -883,8 +746,8 @@ void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::setupRandomField() {
-    for (uint32_t k = 1; k <= m; ++k) {
-        for (uint32_t site = 0; site < N; ++site) {
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
             phi0(site, k) = rng.randRange(PhiLow, PhiHigh);
             phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
             phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
@@ -903,16 +766,16 @@ template<CheckerboardMethod CB>
 std::tuple<num,num> DetSDW<CB>::getCoshSinhTermPhi(
         num phi0, num phi1, num phi2) {
     num phiNorm = std::sqrt( std::pow(phi0, 2)
-                             + std::pow(phi1, 2)
-                             + std::pow(phi2, 2) );
-    return std::make_tuple(std::cosh(lambda * dtau * phiNorm),
-                           std::sinh(lambda * dtau * phiNorm) / phiNorm);
+                           + std::pow(phi1, 2)
+                           + std::pow(phi2, 2) );
+    return std::make_tuple(std::cosh(pars.lambda * pars.dtau * phiNorm),
+                           std::sinh(pars.lambda * pars.dtau * phiNorm) / phiNorm);
 }
 
 template<CheckerboardMethod CB>
 std::tuple<num,num> DetSDW<CB>::getCoshSinhTermCDWl(
         int32_t cdwl) {
-    num arg = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
+    num arg = std::sqrt(pars.dtau) * pars.cdwU * cdwl_eta(cdwl);
     return std::make_tuple(std::cosh(arg), std::sinh(arg));
 }
 
@@ -938,27 +801,27 @@ void DetSDW<CB>::updateCoshSinhTermsCDWl(uint32_t site, uint32_t k) {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::updateCoshSinhTerms() {
-    for (uint32_t k = 1; k <= m; ++k) {
-        for (uint32_t site = 0; site < N; ++site) {
-        	updateCoshSinhTerms(site,k);
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
+            updateCoshSinhTerms(site,k);
         }
     }
 }
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::updateCoshSinhTermsPhi() {
-    for (uint32_t k = 1; k <= m; ++k) {
-        for (uint32_t site = 0; site < N; ++site) {
-        	updateCoshSinhTermsPhi(site,k);
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
+            updateCoshSinhTermsPhi(site,k);
         }
     }
 }
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::updateCoshSinhTermsCDWl() {
-    for (uint32_t k = 1; k <= m; ++k) {
-        for (uint32_t site = 0; site < N; ++site) {
-        	updateCoshSinhTermsCDWl(site,k);
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
+            updateCoshSinhTermsCDWl(site,k);
         }
     }
 }
@@ -967,6 +830,8 @@ void DetSDW<CB>::updateCoshSinhTermsCDWl() {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::setupPropK() {
+    const uint32_t z = 2*pars.d;
+    
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
     t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
@@ -976,22 +841,22 @@ void DetSDW<CB>::setupPropK() {
 //  for (auto band : {XBAND, YBAND}) {
     Band bands[2] = {XBAND, YBAND};
     for (Band band : bands) {
-        MatNum k = -mu * arma::eye(N,N);
-        for (uint32_t site = 0; site < N; ++site) {
+        MatNum k = -pars.mu * arma::eye(pars.N,pars.N);
+        for (uint32_t site = 0; site < pars.N; ++site) {
             for (uint32_t dir = 0; dir < z; ++dir) {
                 uint32_t neigh = spaceNeigh(dir, site);
                 num hop = t[band][dir];
 
-                uint32_t siteY = site / L;
-                uint32_t siteX = site % L;
-                if (bc == APBC_X or bc == APBC_XY) {
-                    if ((siteX == 0 and dir == XMINUS) or (siteX == L-1 and dir == XPLUS)) {
+                uint32_t siteY = site / pars.L;
+                uint32_t siteX = site % pars.L;
+                if (pars.bc == APBC_X or pars.bc == APBC_XY) {
+                    if ((siteX == 0 and dir == XMINUS) or (siteX == pars.L-1 and dir == XPLUS)) {
                         //crossing x-boundary
                         hop *= -1;
                     }
                 }
-                if (bc == APBC_Y or bc == APBC_XY) {
-                    if ((siteY == 0 and dir == YMINUS) or (siteY == L-1 and dir == YPLUS)) {
+                if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
+                    if ((siteY == 0 and dir == YMINUS) or (siteY == pars.L-1 and dir == YPLUS)) {
                         //crossing y-boundary
                         hop *= -1;
                     }
@@ -1002,10 +867,10 @@ void DetSDW<CB>::setupPropK() {
         }
         //debugSaveMatrix(k, "k" + bandstr(band));
         
-        propK[band] = computePropagator(dtau, k);
+        propK[band] = computePropagator(pars.dtau, k);
 
-        propK_half[band] = computePropagator(dtau / 2.0, k);
-        propK_half_inv[band] = computePropagator(-dtau / 2.0, k);
+        propK_half[band] = computePropagator(pars.dtau / 2.0, k);
+        propK_half_inv[band] = computePropagator(-pars.dtau / 2.0, k);
     }
 }
 
@@ -1048,7 +913,7 @@ template<CheckerboardMethod CB>
 template<class Vec>
 VecNum DetSDW<CB>::compute_d_for_cdwl(const Vec& cdwl) {
     VecNum kd(N);
-    for (uint32_t i = 0; i < N; ++ i) {
+    for (uint32_t i = 0; i < pars.N; ++ i) {
         kd[i] = compute_d_for_cdwl_site(cdwl[i]);
     }
     return kd;
@@ -1056,7 +921,7 @@ VecNum DetSDW<CB>::compute_d_for_cdwl(const Vec& cdwl) {
 template<CheckerboardMethod CB> inline
 num DetSDW<CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
     //TODO: check assembly -- operations removed?
-    return std::sqrt(dtau) * cdwU * cdwl_eta(cdwl);
+    return std::sqrt(pars.dtau) * pars.cdwU * cdwl_eta(cdwl);
 }
 
 
@@ -1064,7 +929,9 @@ num DetSDW<CB>::compute_d_for_cdwl_site(uint32_t cdwl) {
 template<CheckerboardMethod CB>
 MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
     //if (CB == CB_NONE) {
-	{
+    {
+        const auto N = pars.N;
+        const auto m = pars.m;        
         timing.start("computeBmatSDW_direct");
         using arma::eye; using arma::zeros; using arma::diagmat;
         if (k2 == k1) {
@@ -1079,7 +946,7 @@ MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             MatCpx result(4*N, 4*N);
 
             //submatrix view helper for a 4N*4N matrix
-            auto block = [&result, this](uint32_t row, uint32_t col) {
+            auto block = [&result, N](uint32_t row, uint32_t col) {
                 return result.submat(row * N, col * N,
                         (row + 1) * N - 1, (col + 1) * N - 1);
             };
@@ -1176,6 +1043,7 @@ MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 template<CheckerboardMethod CB> inline
 MatCpx DetSDW<CB>::computePotentialExponential(
         int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl) {
+    const auto N = pars.N;
     const VecCpx a (phi2, arma::zeros<VecNum>(N));
     const VecCpx b (phi0, -phi1);
     const VecCpx bc(phi0, +phi1);
@@ -1209,10 +1077,9 @@ MatCpx DetSDW<CB>::computePotentialExponential(
     VecNum eigval;
     MatCpx eigvec;
 
-    arma::eig_sym(eigval, eigvec, num(sign)*0.5*dtau*V);
+    arma::eig_sym(eigval, eigvec, num(sign)*0.5*pars.dtau*V);
     MatCpx exp_vphi_half(4*N, 4*N);
     exp_vphi_half = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
-
 
     arma::eig_sym(eigval, eigvec, -num(sign)*D);
     MatCpx exp_D(4*N, 4*N);
@@ -1251,6 +1118,8 @@ MatCpx DetSDW<CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMet
 template<CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+    const auto N = pars.N;
+    const auto L = pars.L;
     assert(subgroup == 0 or subgroup == 1);
     arma::Row<cpx> new_row_i(N);
     arma::Row<cpx> new_row_j(N);
@@ -1268,11 +1137,11 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgrou
             const arma::Row<cpx>& rl = result.row(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
-            if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+            if ((pars.bc == APBC_X or pars.bc == APBC_XY) and i1 == L-1) {
                 //this plaquette has horizontal boundary crossing bonds and APBC
                 b_sh_hor *= -1;
             }
-            if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+            if ((pars.bc == APBC_Y or pars.bc == APBC_XY) and i2 == L-1) {
                 //this plaquette has vertical boundary crossing bonds and APBC
                 b_sh_ver *= -1;
             }
@@ -1292,13 +1161,14 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgrou
 template<CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<CB>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-                                             const Matrix& A, Band band, int sign, bool) {
+                                          const Matrix& A, Band band, int sign, bool) {
     MatCpx result = A;      //can't avoid this copy
 
     // perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
     cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-    cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+    cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band],
+                                   coshHopVer[band], sign * sinhHopVer[band]);
     cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
     return result;
@@ -1337,6 +1207,8 @@ MatCpx DetSDW<CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMet
 template<CheckerboardMethod CB>
 template<class Matrix>
 void DetSDW<CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+    const auto N = pars.N;
+    const auto L = pars.L;
     assert(subgroup == 0 or subgroup == 1);
     arma::Col<cpx> new_col_i(N);
     arma::Col<cpx> new_col_j(N);
@@ -1354,11 +1226,11 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgro
             const arma::Col<cpx>& cl = result.col(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
-            if ((bc == APBC_X or bc == APBC_XY) and i1 == L-1) {
+            if ((pars.bc == APBC_X or pars.bc == APBC_XY) and i1 == L-1) {
                 //this plaquette has horizontal boundary crossing bonds and APBC
                 b_sh_hor *= -1;
             }
-            if ((bc == APBC_Y or bc == APBC_XY) and i2 == L-1) {
+            if ((pars.bc == APBC_Y or pars.bc == APBC_XY) and i2 == L-1) {
                 //this plaquette has vertical boundary crossing bonds and APBC
                 b_sh_ver *= -1;
             }
@@ -1376,14 +1248,15 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgro
 template<CheckerboardMethod CB>
 template<class Matrix> inline
 MatCpx DetSDW<CB>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-                                             const Matrix& A, Band band, int sign, bool) {
+                                          const Matrix& A, Band band, int sign, bool) {
     MatCpx result = A;      //can't avoid this copy
 
     //order of matrix multiplications symmetric
     //perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
     cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-                                      coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-    cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band], coshHopVer[band], sign * sinhHopVer[band]);
+                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band],
+                                    coshHopVer[band], sign * sinhHopVer[band]);
     cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
                                     coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
 
@@ -1409,10 +1282,11 @@ MatCpx DetSDW<CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
+    const auto N = pars.N;
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-	//overall factor for entire matrix for chemical potential
-	num ovFac = std::exp(dtau*mu);
+    //overall factor for entire matrix for chemical potential
+    num ovFac = std::exp(pars.dtau*pars.mu);
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1460,7 +1334,7 @@ MatCpx DetSDW<CB>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 template<CheckerboardMethod CB>
 MatCpx DetSDW<CB>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
-    assert(k2 <= m);
+    assert(k2 <= pars.m);
 
     MatCpx result = leftMultiplyBk(A, k1 + 1);
 
@@ -1482,10 +1356,11 @@ MatCpx DetSDW<CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
+    const auto N = pars.N;
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
   	//overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(-dtau*mu);
+    num ovFac = std::exp(-pars.dtau*pars.mu);
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1532,7 +1407,7 @@ MatCpx DetSDW<CB>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 template<CheckerboardMethod CB>
 MatCpx DetSDW<CB>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
-    assert(k2 <= m);
+    assert(k2 <= pars.m);
 
 //    MatCpx result = leftMultiplyBkInv(A, k1 + 1);
 //
@@ -1559,10 +1434,11 @@ MatCpx DetSDW<CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
+    const auto N = pars.N;
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
 	//overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(dtau*mu);
+    num ovFac = std::exp(pars.dtau*pars.mu);
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1583,23 +1459,23 @@ MatCpx DetSDW<CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
     MatCpx result(4*N, 4*N);
 
     for (uint32_t row = 0; row < 4; ++row) {
-            using arma::diagmat;
-            //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(max),  XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbcx), XBAND, -1, false);
-
-            block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(cd),   XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbx),  XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(ax),   XBAND, -1, false);
-
-            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cmd),  YBAND, -1, false);
-
-            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
+        using arma::diagmat;
+        //only three terms each time because of zero blocks in the E^(-dtau*V) matrix
+        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 2) * diagmat(max),  XBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbcx), XBAND, -1, false);
+                  
+        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(cd),   XBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbx),  XBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 3) * diagmat(ax),   XBAND, -1, false);
+                  
+        block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cmd),  YBAND, -1, false);
+                  
+        block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
     }
 
 #undef block
@@ -1609,7 +1485,7 @@ MatCpx DetSDW<CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 template<CheckerboardMethod CB>
 MatCpx DetSDW<CB>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
-    assert(k2 <= m);
+    assert(k2 <= pars.m);
 
     MatCpx result = rightMultiplyBk(A, k2);
 
@@ -1630,10 +1506,11 @@ MatCpx DetSDW<CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 //      return mat.submat( row * N, col * N,
 //                        (row + 1) * N - 1, (col + 1) * N - 1);
 //  };
+    const auto N = pars.N;
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
   	//overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(-dtau*mu);
+    num ovFac = std::exp(-pars.dtau*pars.mu);
 
     const auto& kphi0 = phi0.col(k);
     const auto& kphi1 = phi1.col(k);
@@ -1642,7 +1519,7 @@ MatCpx DetSDW<CB>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
+    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
     const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
     VecNum ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     VecNum max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
@@ -1679,7 +1556,7 @@ const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
 template<CheckerboardMethod CB>
 MatCpx DetSDW<CB>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
-    assert(k2 <= m);
+    assert(k2 <= pars.m);
 
 //    MatCpx result = rightMultiplyBkInv(A, k2);
 //
@@ -1713,8 +1590,8 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
     normal_distribution.reset();
 
     // update phi-fields according to chosen method
-    for (uint32_t rep = 0; rep < repeatUpdateInSlice; ++rep) {
-        switch (spinProposalMethod) {
+    for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
+        switch (pars.spinProposalMethod) {
         case BOX:
             lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
@@ -1750,10 +1627,12 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
 
     //Update discrete cdwl fields
     //currently just discard this accratio
-    callUpdateInSlice_for_updateMethod(timeslice,
-    		[this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-    	return this->proposeNewCDWl(site, timeslice);
-    } );
+    callUpdateInSlice_for_updateMethod(
+        timeslice,
+        [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+            return this->proposeNewCDWl(site, timeslice);
+        }
+    );
 
     timing.stop("sdw-updateInSlice");
 }
@@ -1762,7 +1641,7 @@ template<CheckerboardMethod CB>
 template<class Callable>
 num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLocalUpdate) {
     num accratio = 0.;
-    for (uint32_t site = 0; site < N; ++site) {
+    for (uint32_t site = 0; site < pars.N; ++site) {
         Phi newphi;
         int32_t new_cdwl;
         Changed changed;
@@ -1799,7 +1678,7 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
         MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(
-        		newphi, new_cdwl, timeslice, site);
+            newphi, new_cdwl, timeslice, site);
 
         //****
         //Compute the determinant and inverse of I + Delta*(I - G)
@@ -1813,16 +1692,16 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
         for (uint32_t r = 0; r < 4; ++r) {
             //TODO: Here are some unnecessary operations: delta_forsite contains many repeated
             //elements, and even some zeros
-            rows[r] = VecCpx(4*N);
-            for (uint32_t col = 0; col < 4*N; ++col) {
+            rows[r] = VecCpx(4*pars.N);
+            for (uint32_t col = 0; col < 4*pars.N; ++col) {
                 rows[r][col] = -delta_forsite(r,0) * g.col(col)[site];
             }
             rows[r][site] += delta_forsite(r,0);
             for (uint32_t dc = 1; dc < 4; ++dc) {
-                for (uint32_t col = 0; col < 4*N; ++col) {
-                    rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*N];
+                for (uint32_t col = 0; col < 4*pars.N; ++col) {
+                    rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*pars.N];
                 }
-                rows[r][site + dc*N] += delta_forsite(r,dc);
+                rows[r][site + dc*pars.N] += delta_forsite(r,dc);
             }
         }
 
@@ -1839,16 +1718,16 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
         for (uint32_t l = 0; l < 4; ++l) {
             VecCpx row = rows[l];
             for (int k = l-1; k >= 0; --k) {
-                row[site + k*N] = 0;
+                row[site + k*pars.N] = 0;
             }
             for (int k = l-1; k >= 0; --k) {
-                row += rows[l][site + k*N] * rows[k];
+                row += rows[l][site + k*pars.N] * rows[k];
             }
-            cpx divisor = cpx(1.0, 0) + row[site + l*N];
+            cpx divisor = cpx(1.0, 0) + row[site + l*pars.N];
             rows[l] = (-1.0/divisor) * row;
-            rows[l][site + l*N] += 1;
+            rows[l][site + l*pars.N] += 1;
             for (int k = l - 1; k >= 0; --k) {
-                rows[k] -= (rows[k][site + l*N] / divisor) * row;
+                rows[k] -= (rows[k][site + l*pars.N] / divisor) * row;
             }
             det *= divisor;
         }
@@ -2064,19 +1943,19 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
 
             //compensate for already included diagonal entries of I in invRows
             rows[0][site] -= 1;
-            rows[1][site + N] -= 1;
-            rows[2][site + 2*N] -= 1;
-            rows[3][site + 3*N] -= 1;
+            rows[1][site + pars.N] -= 1;
+            rows[2][site + 2*pars.N] -= 1;
+            rows[3][site + 3*pars.N] -= 1;
             //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
             // [O(N^2)]
-            MatCpx gTimesInvRows(4*N, 4*N);
+            MatCpx gTimesInvRows(4*pars.N, 4*pars.N);
             const auto& G = g;
-            for (uint32_t col = 0; col < 4*N; ++col) {
-                for (uint32_t row = 0; row < 4*N; ++row) {
-                    gTimesInvRows(row, col) = G(row, site) * rows[0][col]
-                                            + G(row, site + N) * rows[1][col]
-                                            + G(row, site + 2*N) * rows[2][col]
-                                            + G(row, site + 3*N) * rows[3][col]
+            for (uint32_t col = 0; col < 4*pars.N; ++col) {
+                for (uint32_t row = 0; row < 4*pars.N; ++row) {
+                    gTimesInvRows(row, col) = G(row, site)            * rows[0][col]
+                                            + G(row, site + pars.N)   * rows[1][col]
+                                            + G(row, site + 2*pars.N) * rows[2][col]
+                                            + G(row, site + 3*pars.N) * rows[3][col]
                                             ;
                 }
             }
@@ -2117,7 +1996,7 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
             //****
         }
     }
-    accratio /= num(N);
+    accratio /= num(pars.N);
     return accratio;
 }
 
@@ -2125,8 +2004,8 @@ num DetSDW<CB>::updateInSlice_iterative(uint32_t timeslice, Callable proposeLoca
 template<CheckerboardMethod CB>
 template<class Callable>
 num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocalUpdate) {
-	num accratio = 0.;
-    for (uint32_t site = 0; site < N; ++site) {
+    num accratio = 0.;
+    for (uint32_t site = 0; site < pars.N; ++site) {
         Phi newphi;
         int32_t new_cdwl;
         Changed changed;
@@ -2138,8 +2017,8 @@ num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocal
 
         num probSPhi = 1.;
         if (changed == PHI) {
-        	num dsphi = deltaSPhi(site, timeslice, newphi);
-        	probSPhi = std::exp(-dsphi);
+            num dsphi = deltaSPhi(site, timeslice, newphi);
+            probSPhi = std::exp(-dsphi);
         }
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
@@ -2151,7 +2030,7 @@ num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocal
         MatCpx::fixed<4,4> g_sub;
         for (uint32_t a = 0; a < 4; ++a) {
             for (uint32_t b = 0; b < 4; ++b) {
-                g_sub(a,b) = g(site + a*N, site + b*N);
+                g_sub(a,b) = g(site + a*pars.N, site + b*pars.N);
             }
         }
 
@@ -2166,8 +2045,8 @@ num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocal
         num prob = probSPhi * probSFermion * prob_cdwl;
 
         if (prob > 1.0 or rng.rand01() < prob) {
-        	//count accepted update
-        	accratio += 1.0;
+            //count accepted update
+            accratio += 1.0;
 
             phi0(site, timeslice) = newphi[0];
             phi1(site, timeslice) = newphi[1];
@@ -2177,30 +2056,31 @@ num DetSDW<CB>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocal
 
             //update g
 
-            MatCpx mat_V(4, 4*N);
+            MatCpx mat_V(4, 4*pars.N);
             for (uint32_t r = 0; r < 4; ++r) {
-                mat_V.row(r) = g.row(site + r*N);
-                mat_V(r, site + r*N) -= 1.0;
+                mat_V.row(r) = g.row(site + r*pars.N);
+                mat_V(r, site + r*pars.N) -= 1.0;
             }
 
             //TODO: is it a good idea to do this copy? or would it be better to
             //compute the product directly with a non-contiguous subview?
-            MatCpx g_times_mat_U(4*N, 4);
+            MatCpx g_times_mat_U(4*pars.N, 4);
             for (uint32_t c = 0; c < 4; ++c) {
-                g_times_mat_U.col(c) = g.col(site + c*N);
+                g_times_mat_U.col(c) = g.col(site + c*pars.N);
             }
             g_times_mat_U = g_times_mat_U * delta_forsite;
 
             g += (g_times_mat_U) * (arma::inv(M) * mat_V);
         }
     }
-    accratio /= num(N);
+    accratio /= num(pars.N);
     return accratio;
 }
 
 template<CheckerboardMethod CB>
 template<class Callable>
 num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
+    const auto N = pars.N;
     num accratio = 0.;
 
     auto getX = [this](uint32_t step) {
@@ -2210,12 +2090,12 @@ num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalU
         return dud.Y.rows(4*step, 4*step + 3);
     };
 
-    auto take4rows = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+    auto take4rows = [this, N](MatCpx& target, const MatCpx& source, uint32_t for_site) {
         for (uint32_t r = 0; r < 4; ++r) {
             target.row(r) = source.row(for_site + r*N);
         }
     };
-    auto take4cols = [this](MatCpx& target, const MatCpx& source, uint32_t for_site) {
+    auto take4cols = [this, N](MatCpx& target, const MatCpx& source, uint32_t for_site) {
         for (uint32_t c = 0; c < 4; ++c) {
             target.col(c) = source.col(for_site + c*N);
         }
@@ -2258,8 +2138,8 @@ num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalU
 
                 num prob = probSPhi * probSFermion * prob_cdwl;
                 if (prob > 1.0 or rng.rand01() < prob) {
-                	//count accepted update
-                	accratio += 1.0;
+                    //count accepted update
+                    accratio += 1.0;
 
                     phi0(site, timeslice) = newphi[0];
                     phi1(site, timeslice) = newphi[1];
@@ -2312,8 +2192,8 @@ MatCpx::fixed<4,4> DetSDW<CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
     //evMatrix(): yield a 4x4 matrix containing the entries for the
     //current lattice site and time slice of e^(sign*dtau*V)
     auto evMatrix = [this](
-    		int sign,
-    		num kphi0, num kphi1, num kphi2,
+            int sign,
+            num kphi0, num kphi1, num kphi2,
             num kcoshTermPhi, num ksinhTermPhi,
             num kcoshTermCDWl, num ksinhTermCDWl) -> MatCpx::fixed<4,4> {
         MatNum::fixed<4,4> ev_real;
@@ -2387,9 +2267,9 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
     enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
-    if (spinProposalMethod == BOX) {
+    if (pars.spinProposalMethod == BOX) {
         adapting_what = ADAPT_BOX;
-    } else if (spinProposalMethod == ROTATE_THEN_SCALE) {
+    } else if (pars.spinProposalMethod == ROTATE_THEN_SCALE) {
         // the following needs to match the order of moves as
         // used in updateInSlice()
         if (performedSweeps % 2 == 0) {
@@ -2399,7 +2279,7 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
             // we did scale moves last
             adapting_what = ADAPT_SCALE;
         }
-    } else if (spinProposalMethod == ROTATE_AND_SCALE) {
+    } else if (pars.spinProposalMethod == ROTATE_AND_SCALE) {
         // after every interval of AccRatioAdjustmentSamples we alternate between
         // adjusting the parameter for the rotate and scale moves
         if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
@@ -2449,7 +2329,8 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
             }
             // scaleDelta <=> width of gaussian distribution to select new radius
             // reducing scaleDelta <=> increasing acceptance ratio
-            if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta < MaxScaleDelta) { //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
+            if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta < MaxScaleDelta) {
+                //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
                 curminScaleDelta = scaleDelta;
                 scaleDelta += (curmaxScaleDelta - scaleDelta) / 2;
             }
@@ -2470,13 +2351,13 @@ template<CheckerboardMethod CB>
 void DetSDW<CB>::globalMove() {
     if ((performedSweeps + 1) % globalMoveInterval == 0) {
         //the current sweep count is a multiple of globalMoveInterval
-        if (globalShift) {
+        if (pars.globalShift) {
             attemptGlobalShiftMove();
         }
-        if (wolffClusterUpdate) {
+        if (pars.wolffClusterUpdate) {
             attemptWolffClusterUpdate();
         }
-        if (wolffClusterShiftUpdate) {
+        if (pars.wolffClusterShiftUpdate) {
             attemptWolffClusterShiftUpdate();
         }
     }
@@ -2491,7 +2372,7 @@ void DetSDW<CB>::attemptWolffClusterUpdate() {
 
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == m);
+    assert(currentTimeslice == pars.m);
     // The product of the singular values of g is equal to the
     // absolute value of its determinant.  Don't compute the whole
     // product explicitly because it contains both very large and
@@ -2544,7 +2425,7 @@ void DetSDW<CB>::attemptGlobalShiftMove() {
     num old_scalar_action = phiAction();
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == m);
+    assert(currentTimeslice == pars.m);
     //num old_green_det = arma::det(g).real();
 //    num old_green_det = Base::abs_det_green_from_storage();
 //    std::cout << old_green_det << "\n";
@@ -2605,7 +2486,7 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
 
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == m);
+    assert(currentTimeslice == pars.m);
     // The product of the singular values of g is equal to the
     // absolute value of its determinant.  Don't compute the whole
     // product explicitly because it contains both very large and
@@ -2714,14 +2595,14 @@ uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
 
     
     // construct cluster
-    gmd.visited.zeros(N, m+1);
+    gmd.visited.zeros(pars.N, pars.m+1);
     typedef typename GlobalMoveData::SpaceTimeIndex STI;
     //next_sites contains the sites for which we still need to check the neighbors
     gmd.next_sites = std::stack<STI>();
 
     // cluster seed:
-    uint32_t timeslice = rng.randInt(1, m);
-    uint32_t site = rng.randInt(0, N-1);
+    uint32_t timeslice = rng.randInt(1, pars.m);
+    uint32_t site = rng.randInt(0, pars.N-1);
     flipPhi(site, timeslice);
     gmd.visited(site, timeslice) = 1;
     gmd.next_sites.push( STI(site, timeslice) );
@@ -2740,8 +2621,8 @@ uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
              ++site_neigh_iter) {
             uint32_t neigh_site = *site_neigh_iter;
             if (not gmd.visited(neigh_site, timeslice)) {
-                num bond_arg = 2.* dtau * projectedPhi(site, timeslice)
-                                        * projectedPhi(neigh_site, timeslice);
+                num bond_arg = 2.* pars.dtau * projectedPhi(site, timeslice)
+                                             * projectedPhi(neigh_site, timeslice);
                 if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
                     flipPhi(neigh_site, timeslice);
                     gmd.visited(neigh_site, timeslice) = 1;
@@ -2754,8 +2635,8 @@ uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
         uint32_t time_neighbors[] = { timeNeigh(ChainDir::PLUS, timeslice), timeNeigh(ChainDir::MINUS, timeslice) };
         for (uint neigh_time : time_neighbors) {
             if (not gmd.visited(site, neigh_time)) {
-                num bond_arg = (2. / dtau) * projectedPhi(site, timeslice)
-                                           * projectedPhi(site, neigh_time);
+                num bond_arg = (2. / pars.dtau) * projectedPhi(site, timeslice)
+                                                * projectedPhi(site, neigh_time);
                 if (bond_arg < 0 and rng.rand01() <= (1. - exp(bond_arg))) {
                     flipPhi(site, neigh_time);
                     gmd.visited(site, neigh_time) = 1;
@@ -2877,7 +2758,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeScaledPhi(uint32_t site, u
     //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
     //want to bias against long lengths
     num new_r3 = normal_distribution.get(scaleDelta, r3);
-    num scale = 1.0;
+    num scale  = 1.0;
     bool valid = true;
     // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
     // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
@@ -2976,10 +2857,10 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeNewCDWl(
 		uint32_t site, uint32_t timeslice) {
 	int32_t cdwl_new;
 	num r = rng.rand01();
-	if 		(r <= 0.25) cdwl_new = +2;
-	else if (r <= 0.5)	cdwl_new = -2;
-	else if (r <= 0.75)	cdwl_new = +1;
-	else				cdwl_new = -1;
+	if      (r <= 0.25) cdwl_new = +2;
+	else if (r <= 0.5)  cdwl_new = -2;
+	else if (r <= 0.75) cdwl_new = +1;
+	else                cdwl_new = -1;
 	Phi samephi;
 	samephi[0] = phi0(site,timeslice);
 	samephi[1] = phi1(site,timeslice);
@@ -3034,7 +2915,12 @@ num DetSDW<CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
             }
     );
 
-
+    const auto dtau = pars.dtau;
+    const auto r = pars.r;
+    const auto u = pars.u;
+    const auto c = pars.c;
+    const auto z = pars.d * 2;
+    
     num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
 
     num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiSpaceNeigh, phiDiff));
@@ -3047,6 +2933,12 @@ num DetSDW<CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
 
 template<CheckerboardMethod CB>
 num DetSDW<CB>::phiAction() {
+    const auto dtau = pars.dtau;
+    const auto r = pars.r;
+    const auto u = pars.u;
+    const auto c = pars.c;
+    const auto N = pars.N;
+    const auto m = pars.m;
     //switched to asymmetric numerical derivative
     arma::field<Phi> phi(N, m+1);
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
@@ -3066,10 +2958,10 @@ num DetSDW<CB>::phiAction() {
 
             //count only neighbors in PLUS-directions: no global overcounting of bonds
             Phi xneighDiff = phi(site, timeslice) -
-                    phi(spaceNeigh(XPLUS, site), timeslice);
+                             phi(spaceNeigh(XPLUS, site), timeslice);
             action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
             Phi yneighDiff = phi(site, timeslice) -
-                    phi(spaceNeigh(YPLUS, site), timeslice);
+                             phi(spaceNeigh(YPLUS, site), timeslice);
             action += 0.5 * dtau * arma::dot(yneighDiff, yneighDiff);
 
             num phisq = arma::dot(phi(site, timeslice), phi(site, timeslice));
@@ -3087,12 +2979,12 @@ void DetSDW<CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
               << "recent local accRatio = " << accRatioLocal_box_RA.get()
               << std::endl;
-    if (globalShift) {
+    if (pars.globalShift) {
         num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
         std::cout << "globalShiftMove acceptance ratio = " << ratio
                   << std::endl;
     }
-    if (wolffClusterUpdate) {
+    if (pars.wolffClusterUpdate) {
         num ratio = num(acceptedWolffClusterUpdates) /
                 num(attemptedWolffClusterUpdates);
         num avgsize = addedWolffClusterSize / num(acceptedWolffClusterUpdates);
@@ -3100,7 +2992,7 @@ void DetSDW<CB>::thermalizationOver() {
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }
-    if (wolffClusterShiftUpdate) {
+    if (pars.wolffClusterShiftUpdate) {
         num ratio = num(acceptedWolffClusterShiftUpdates) /
             num(attemptedWolffClusterShiftUpdates);
         num avgsize = addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
@@ -3185,7 +3077,7 @@ MatCpx DetSDW<CB>::shiftGreenSymmetric() {
                 this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
                                                                  coshHopVerHalf[band], +sinhHopVerHalf[band]);
                 this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-                                                                       coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                                                                 coshHopVerHalf[band], +sinhHopVerHalf[band]);
             },
             //leftMultiply
             // output and input are NxN blocks of a complex matrix
@@ -3194,7 +3086,7 @@ MatCpx DetSDW<CB>::shiftGreenSymmetric() {
             [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
                 output = input;      //copy
                 this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
-                                                                       coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                                                                coshHopVerHalf[band], -sinhHopVerHalf[band]);
                 this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
                                                                 coshHopVerHalf[band], -sinhHopVerHalf[band]);
             }
@@ -3209,6 +3101,7 @@ MatCpx DetSDW<CB>::shiftGreenSymmetric() {
 template<CheckerboardMethod CB>
 template<class RightMultiply, class LeftMultiply>
 MatCpx DetSDW<CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+    const auto N = pars.N;
     //submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     MatCpx tempG(4*N, 4*N);
@@ -3238,7 +3131,9 @@ MatCpx DetSDW<CB>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMul
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::consistencyCheck() {
-	// phi*, coshTerm*, sinhTerm*
+    const auto N = pars.N;
+    const auto m = pars.m;
+    // phi*, coshTerm*, sinhTerm*
     for (uint32_t k = 1; k <= m; ++k) {
         for (uint32_t site = 0; site < N; ++site) {
         	num coshTermPhiBefore = coshTermPhi(site, k);
@@ -3269,7 +3164,7 @@ void DetSDW<CB>::consistencyCheck() {
         for (uint32_t site = 0; site < N; ++site) {
         	int32_t l = cdwl(site, k);
         	if (l != +2 and l != -2 and l != +1 and l != -1) {
-        		throw GeneralError("cdwl is inconsistent");
+                    throw GeneralError("cdwl is inconsistent");
         	}
         }
     }

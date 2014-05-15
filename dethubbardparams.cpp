@@ -15,26 +15,26 @@ void ModelParams<DetHubbard>::check() {
     std::vector<std::string> neededModelPars;
     neededModelPars += "t", "U", "mu", "L", "d", "checkerboard";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
-        if (pars.specified.count(*p) == 0) {
+        if (specified.count(*p) == 0) {
             throw ParameterMissing(*p);
         }
     }
 
-    if (pars.checkerboard and pars.L % 2 != 0) {
+    if (checkerboard and L % 2 != 0) {
         throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
     }
-    if (pars.checkerboard and pars.d != 2) {
+    if (checkerboard and d != 2) {
         throw ParameterWrong("Checker board decomposition only supported for 2d lattices");
     }
-    if (pars.bc != "pbc") {
-        throw ParameterWrong("Boundary conditions " + pars.bc + " not supported for Hubbard model (only pbc)");
+    if (bc != "pbc") {
+        throw ParameterWrong("Boundary conditions " + bc + " not supported for Hubbard model (only pbc)");
     }
 
     //check that only positive values are passed for certain parameters
-#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
+#define IF_NOT_POSITIVE(x) if (specified.count(#x) > 0 and x <= 0)
 #define CHECK_POSITIVE(x)   {                   \
         IF_NOT_POSITIVE(x) {                    \
-            throw ParameterWrong(#x, pars.x);   \
+            throw ParameterWrong(#x, x);        \
         }                                       \
     }
     CHECK_POSITIVE(L);

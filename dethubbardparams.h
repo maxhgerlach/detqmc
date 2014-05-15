@@ -39,7 +39,7 @@ struct ModelParams<DetHubbard>> {
     { }
     
     void check();
-    MetadataMap prepareMetaDataMap() const;
+    MetadataMap prepareMetadataMap() const;
 private:
     friend class boost::serialization::access;
 

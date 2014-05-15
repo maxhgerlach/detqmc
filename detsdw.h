@@ -13,6 +13,7 @@
 #include <complex>
 #include "rngwrapper.h"
 #include "detmodel.h"
+#include "detsdwparams.h"
 #include "neighbortable.h"
 #include "RunningAverage.h"
 #include "checkarray.h"
@@ -27,7 +28,7 @@ typedef arma::Cube<cpx> CubeCpx;
 
 class SerializeContentsKey;
 
-std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
+std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams<DetSDW<Checkerboard> > pars);
 
 enum CheckerboardMethod {
 	CB_NONE,                //regular, dense matrix products
@@ -38,8 +39,11 @@ std::string cbmToString(CheckerboardMethod cbm);
 
 // template parameters: do a checker-board decomposition of
 // which kind?
-template <CheckerboardMethod Checkerboard>
+template<CheckerboardMethod Checkerboard>
 class DetSDW: public DetModelGC<1, cpx> {
+public:
+    typedef ModelParams<DetSDW<Checkerboard> > ModelParams;
+private:
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
     friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
@@ -108,41 +112,17 @@ protected:
     Parameters and some necessary enums
 
 */
-    static const uint32_t d = 2;
-    static const uint32_t z = 2*d;
-    const bool checkerboard;
-    const uint32_t L;
-    const uint32_t N;
-    const num r;
-    const num txhor;
-    const num txver;
-    const num tyhor;
-    const num tyver;
-    const num cdwU;
-    const num mu;
-    const num c;
-    const num u;
-    const num lambda;
-
+    // this contains the simulation parameters relevant to our model.
+    // There is some duplication: the base class also has "free
+    // standing" member variables dtau, m, beta, s
+    const ModelParams pars; 
+    
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
     enum BandSpin {XUP = 0, XDOWN = 1, YUP = 2, YDOWN = 3};
-    enum BC_Type { PBC, APBC_X, APBC_Y, APBC_XY };
-    BC_Type bc;
-    enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
-    UpdateMethod_Type updateMethod;
-    enum SpinProposalMethod_Type { BOX, ROTATE_THEN_SCALE, ROTATE_AND_SCALE };
-    SpinProposalMethod_Type spinProposalMethod;
-    const uint32_t delaySteps;					//for delayed updates
-
-    const bool globalShift;
-    const bool wolffClusterUpdate;
-    const bool wolffClusterShiftUpdate;
-    const uint32_t globalMoveInterval;
-
-    const uint32_t repeatUpdateInSlice;
-
-
+    typedef ModelParams<DetSDW<Checkerboard>>::BC_Type BC_Type;
+    typedef ModelParams<DetSDW<Checkerboard>>::UpdateMethod_Type UpdateMethod_Type;
+    typedef ModelParams<DetSDW<Checkerboard>>::SpinProposal_Type SpinProposal_Type;
 
 /*
 
