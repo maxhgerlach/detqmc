@@ -32,54 +32,17 @@ const num PhiLow = -1;
 const num PhiHigh = 1;
 
 
-
-std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars) {
+template<CheckerboardMethod CBM>
+std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParams<DetSDW<CBM>> pars) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
 
-    CheckerboardMethod cbm = CB_NONE;
-    if (pars.checkerboard) {
-    	cbm = CB_ASSAAD_BERG;
-    }
+    assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
+           (not pars.checkerboard and (CBM == CB_NONE))
+    );
 
-    //since pars is not a constant expression, we need this stupid if:
-//    if (pars.timedisplaced == true and cbm == CB_NONE) {
-//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_NONE>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == true and cbm == CB_SANTOS) {
-//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_SANTOS>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == true and cbm == CB_ASSAAD) {
-//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == true and cbm == CB_ASSAAD_BERG) {
-//        return std::unique_ptr<DetModel>(new DetSDW<true,CB_ASSAAD_BERG>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == false and cbm == CB_NONE) {
-//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_NONE>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == false and cbm == CB_SANTOS) {
-//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_SANTOS>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == false and cbm == CB_ASSAAD) {
-//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD>(rng, pars));
-//    } else
-//    if (pars.timedisplaced == false and cbm == CB_ASSAAD_BERG) {
-//        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
-//    }
-    if (cbm == CB_NONE) {
-        return std::unique_ptr<DetModel>(new DetSDW<false,CB_NONE>(rng, pars));
-    } else
-    if (cbm == CB_ASSAAD_BERG) {
-        return std::unique_ptr<DetModel>(new DetSDW<false,CB_ASSAAD_BERG>(rng, pars));
-    }
-
-    else {
-        //this can't be reached
-        //return 0;
-        return std::unique_ptr<DetModel>();
-    }
+    return std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
 }
 
 template<CheckerboardMethod CB>

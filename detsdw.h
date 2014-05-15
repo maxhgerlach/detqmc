@@ -28,13 +28,18 @@ typedef arma::Cube<cpx> CubeCpx;
 
 class SerializeContentsKey;
 
-std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams<DetSDW<Checkerboard> > pars);
-
 enum CheckerboardMethod {
 	CB_NONE,                //regular, dense matrix products
 	CB_ASSAAD_BERG, //checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
 };
 std::string cbmToString(CheckerboardMethod cbm);
+
+
+template<CheckerboardMethod CBM> class DetSDW;
+
+template<CheckerboardMethod CBM>
+std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParams<DetSDW<CBM>> pars);
+
 
 
 // template parameters: do a checker-board decomposition of

@@ -31,7 +31,7 @@
 #include "detmodel.h"
 #include "neighbortable.h"
 #include "rngwrapper.h"
-#include "parameters.h"
+#include "dethubbardparams.h"
 #include "metadata.h"
 #include "observable.h"
 #include "udv.h"
@@ -41,10 +41,8 @@ class SerializeContentsKey;
 // factory function to init DetHubbard from parameter struct
 //
 // will do parameter checking etc
-//
-// either create a DetHubbard<TimeDisplaced, CheckerBoard>
-// return a polymorphic unique_ptr
-std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
+std::unique_ptr<DetHubbard> createReplica(RngWrapper& rng, ModelParams<DetHubbard> pars);
+
 
 
 class DetHubbard : public DetModelGC<2, num, false> {

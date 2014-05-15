@@ -25,37 +25,12 @@
 
 
 //TODO: fix
-std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams<> pars) {
+std::unique_ptr<DetHubbard> createReplica(RngWrapper& rng, ModelParams<DetHubbard> pars) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
 
-    //since pars is not a constant expression, we need this stupid if:
-    // if (pars.timedisplaced == true and pars.checkerboard == true) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<true,true>(rng, pars));
-    // } else
-    // if (pars.timedisplaced == true and pars.checkerboard == false) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<true,false>(rng, pars));
-    // } else
-    // if (pars.timedisplaced == false and pars.checkerboard == true) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
-    // } else
-    // if (pars.timedisplaced == false and pars.checkerboard == false) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
-    //}
-    //since pars is not a constant expression, we need this stupid if:
-    // if (pars.checkerboard == true) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<false,true>(rng, pars));
-    // } else
-    // if (pars.checkerboard == false) {
-    //     return std::unique_ptr<DetModel>(new DetHubbard<false,false>(rng, pars));
-    // }    
-    // else {
-    //     //this can't be reached
-    //     //return 0;
-    // 	return std::unique_ptr<DetModel>();
-    // }
-    return std::unique_ptr<DetModel>(new DetHubbard(rng, pars));
+    return std::unique_ptr<DetHubbardl>(new DetHubbard(rng, pars));
 }
 
 
