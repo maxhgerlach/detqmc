@@ -28,29 +28,17 @@ typedef arma::Cube<cpx> CubeCpx;
 
 class SerializeContentsKey;
 
-enum CheckerboardMethod {
-	CB_NONE,                //regular, dense matrix products
-	CB_ASSAAD_BERG, //checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
-};
 std::string cbmToString(CheckerboardMethod cbm);
 
 
 template<CheckerboardMethod CBM> class DetSDW;
 
-template<CheckerboardMethod CBM>
 template<>
-std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParamsDetSDW pars) {
-    pars = updateTemperatureParameters(pars);
-
-    pars.check();
-
-    assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
-           (not pars.checkerboard and (CBM == CB_NONE))
-        );
-
-    return std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
-}
-    
+std::unique_ptr<DetSDW<CB_NONE>>
+createReplica<DetSDW<CB_NONE>,ModelParamsDetSDW>(RngWrapper& rng, ModelParamsDetSDW pars);
+template<>
+std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>
+createReplica<DetSDW<CB_ASSAAD_BERG>,ModelParamsDetSDW>(RngWrapper& rng, ModelParamsDetSDW pars);
 
 
 
@@ -63,7 +51,9 @@ public:
 private:
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
-    friend std::unique_ptr<DetModel> createDetSDW(RngWrapper& rng, ModelParams pars);
+    friend std::unique_ptr<DetSDW<Checkerboard>>
+    createReplica<DetSDW<Checkerboard>,ModelParamsDetSDW>(RngWrapper& rng, ModelParams pars);
+
     virtual ~DetSDW();
     virtual uint32_t getSystemN() const;
     virtual MetadataMap prepareModelMetadataMap() const;
@@ -138,9 +128,9 @@ protected:
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
     enum BandSpin {XUP = 0, XDOWN = 1, YUP = 2, YDOWN = 3};
-    typedef ModelParams<DetSDW<Checkerboard>>::BC_Type BC_Type;
-    typedef ModelParams<DetSDW<Checkerboard>>::UpdateMethod_Type UpdateMethod_Type;
-    typedef ModelParams<DetSDW<Checkerboard>>::SpinProposal_Type SpinProposal_Type;
+    typedef ModelParamsDetSDW::BC_Type BC_Type;
+    typedef ModelParamsDetSDW::UpdateMethod_Type UpdateMethod_Type;
+    typedef ModelParamsDetSDW::SpinProposalMethod_Type SpinProposalMethod_Type;
 
 /*
 
@@ -268,7 +258,7 @@ protected:
     num curmaxAngleDelta;
     num curminScaleDelta;
     num curmaxScaleDelta;
-    bool adaptScaleDelta;
+
 
 /*
     
@@ -383,7 +373,7 @@ protected:
     
 */
     uint32_t coordsToSite(uint32_t x, uint32_t y) {
-        return y*L + x;
+        return y*pars.L + x;
     }
 
 
@@ -530,12 +520,12 @@ protected:
     //return acceptance ratio for that sweepm
     template<class CallableProposeSpin>
     num callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
-    	switch(updateMethod) {
-    	case ITERATIVE:
+    	switch(pars.updateMethod) {
+    	case UpdateMethod_Type::ITERATIVE:
     		return updateInSlice_iterative(timeslice, proposeSpin);
-    	case WOODBURY:
+    	case UpdateMethod_Type::WOODBURY:
     		return updateInSlice_woodbury(timeslice, proposeSpin);
-    	case DELAYED:
+    	case UpdateMethod_Type::DELAYED:
     		return updateInSlice_delayed(timeslice, proposeSpin);
     	default:
     		return 0;
@@ -727,11 +717,11 @@ inline std::string DetSDW<CBM>::bandspinstr(BandSpin bs) {
 template <CheckerboardMethod CBM>
 inline std::string DetSDW<CBM>::updateMethodstr(UpdateMethod_Type um) {
 	switch (um) {
-	case ITERATIVE:
+	case UpdateMethod_Type::ITERATIVE:
 		return "iterative";
-	case WOODBURY:
+	case UpdateMethod_Type::WOODBURY:
 		return "woodbury";
-	case DELAYED:
+	case UpdateMethod_Type::DELAYED:
 		return "delayed";
 	default:
 		return "invalid";
@@ -740,11 +730,11 @@ inline std::string DetSDW<CBM>::updateMethodstr(UpdateMethod_Type um) {
 template <CheckerboardMethod CBM>
 inline std::string DetSDW<CBM>::spinProposalMethodstr(SpinProposalMethod_Type sp) {
 	switch (sp) {
-	case BOX:
+	case SpinProposalMethod_Type::BOX:
 		return "box";
-	case ROTATE_THEN_SCALE:
+	case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
 		return "rotate_then_scale";
-	case ROTATE_AND_SCALE:
+	case SpinProposalMethod_Type::ROTATE_AND_SCALE:
 		return "rotate_and_scale";
 	default:
 		return "invalid";
@@ -798,7 +788,7 @@ void DetSDW<CBM>::for_each_band(Callable func) {
 template<CheckerboardMethod CBM>
 template<typename Callable> inline
 void DetSDW<CBM>::for_each_site(Callable func) {
-    for (uint32_t site = 0; site < N; ++site) {
+    for (uint32_t site = 0; site < pars.N; ++site) {
         func(site);
     }
 }
@@ -809,11 +799,14 @@ void DetSDW<CBM>::for_each_timeslice(Callable func) {
         func(k);
     }
 }
+// template<typename CallableSiteTimeslice, typename V> inline
+// V sumWholeSystem(CallableSiteTimeslice f, V init);
+
 template<CheckerboardMethod CBM>
 template<typename CallableSiteTimeslice, typename V> inline
 V DetSDW<CBM>::sumWholeSystem(CallableSiteTimeslice f, V init) {
-    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-        for (uint32_t site = 0; site < N; ++site) {
+    for (uint32_t timeslice = 1; timeslice <= pars.m; ++timeslice) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
             init += f(site, timeslice);
         }
     }
@@ -823,7 +816,7 @@ template<CheckerboardMethod CBM>
 template<typename CallableSiteTimeslice, typename V> inline
 V DetSDW<CBM>::averageWholeSystem(CallableSiteTimeslice f, V init) {
     V sum = sumWholeSystem(f, init);
-    return sum / num(m * N);
+    return sum / num(pars.m * pars.N);
 }
 
 

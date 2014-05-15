@@ -50,9 +50,9 @@ class DetHubbard : public DetModelGC<2, num, false> {
 private:
     //only initialize with the "factory" function ::createDetHubbard() declared above.
     //Give a reference to the RNG instance to be used
-    DetHubbard(RngWrapper& rng, const ModelParams& pars);
+    DetHubbard(RngWrapper& rng, const ModelParams<DetHubbard>& pars);
 public:
-    friend std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
+    friend std::unique_ptr<DetHubbard> createReplica<DetHubbard>(RngWrapper& rng, ModelParams<DetHubbard> pars);
     virtual ~DetHubbard();
 
     virtual uint32_t getSystemN() const;
@@ -69,7 +69,7 @@ public:
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 protected:
-    typedef DetModelGC<2, num, TimeDisplaced> Base;
+    typedef DetModelGC<2, num, false> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base
     // class member variables:
     // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )

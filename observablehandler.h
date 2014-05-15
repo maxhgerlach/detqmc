@@ -19,7 +19,7 @@
 #include <vector>
 #include <tuple>
 #include <armadillo>
-#include "parameters.h"
+#include "detqmcparams.h"
 #include "observable.h"
 #include "metadata.h"
 #include "dataserieswritersucc.h"
@@ -43,7 +43,7 @@ template <typename ObsType>
 class ObservableHandlerCommon {
 public:
     ObservableHandlerCommon(const Observable<ObsType>& observable,
-            const MCParams& simulationParameters,
+            const DetQMCParams& simulationParameters, // potentially generalize via template for other kins of DetQMC-like class
             const MetadataMap& metadataToStoreModel,
             const MetadataMap& metadataToStoreMC,
             ObsType zeroValue = ObsType())
@@ -109,7 +109,7 @@ protected:
                                 //for addition -- this is not totally trivial for vector
                                 //valued observables
 
-    MCParams mcparams;
+    DetQMCParams mcparams;
     MetadataMap metaModel, metaMC;
     uint32_t jkBlockCount;
     uint32_t jkBlockSizeSweeps;
@@ -145,7 +145,7 @@ public:
 class ScalarObservableHandler : public ObservableHandlerCommon<num> {
 public:
     ScalarObservableHandler(const ScalarObservable& observable,
-            const MCParams& simulationParameters,
+            const DetQMCParams& simulationParameters,
             const MetadataMap& metadataToStoreModel,
             const MetadataMap& metadataToStoreMC)
         : ObservableHandlerCommon<num>(observable, simulationParameters,
@@ -243,7 +243,7 @@ public:
 class VectorObservableHandler : public ObservableHandlerCommon<arma::Col<num>> {
 public:
     VectorObservableHandler(const VectorObservable& observable,
-            const MCParams& simulationParameters,
+            const DetQMCParams& simulationParameters,
             const MetadataMap& metadataToStoreModel,
             const MetadataMap& metadataToStoreMC)
         : ObservableHandlerCommon<arma::Col<num>>(observable,
@@ -272,7 +272,7 @@ protected:
 class KeyValueObservableHandler : public VectorObservableHandler {
 public:
     KeyValueObservableHandler(const KeyValueObservable& observable,
-            const MCParams& simulationParameters,
+            const DetQMCParams& simulationParameters,
             const MetadataMap& metadataToStoreModel,
             const MetadataMap& metadataToStoreMC) :
                 VectorObservableHandler(observable, simulationParameters,

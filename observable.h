@@ -9,9 +9,10 @@
 #define OBSERVABLE_H_
 
 #include <string>
-#include <functional>
+#include <functional>           // reference_wrapper
 #include <armadillo>
-#include "parameters.h"
+
+typedef double num;
 
 //share
 

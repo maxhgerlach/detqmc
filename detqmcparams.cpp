@@ -7,11 +7,12 @@
 #pragma GCC diagnostic pop
 
 #include "tools.h"
-#include "parameters.h"
+#include "detqmcparams.h"
+#include "exceptions.h"
 
 void DetQMCParams::check() {
     //check parameters
-    if (parsmodel.specified.count("model") == 0) {
+    if (specified.count("model") == 0) {
         throw ParameterMissing("model");
     }
     using namespace boost::assign;
@@ -45,23 +46,23 @@ void DetQMCParams::check() {
     }
 
     //some parameter consistency checking:
-    if (parsmc.sweeps % parsmc.jkBlocks != 0) {
-        throw ParameterWrong("Number of jackknife blocks " + numToString(parsmc.jkBlocks)
-                             + " does not match number of sweeps " + numToString(parsmc.sweeps));
+    if (sweeps % jkBlocks != 0) {
+        throw ParameterWrong("Number of jackknife blocks " + numToString(jkBlocks)
+                             + " does not match number of sweeps " + numToString(sweeps));
     }
-    if ((parsmc.measureInterval > parsmc.sweeps) or
-        (parsmc.sweeps % parsmc.measureInterval != 0)) {
-        throw ParameterWrong("Measurement interval " + numToString(parsmc.measureInterval)
-                             + " ill-chosen for number of sweeps " + numToString(parsmc.sweeps));
+    if ((measureInterval > sweeps) or
+        (sweeps % measureInterval != 0)) {
+        throw ParameterWrong("Measurement interval " + numToString(measureInterval)
+                             + " ill-chosen for number of sweeps " + numToString(sweeps));
     }
-    if (parsmc.sweeps % parsmc.saveInterval != 0) {
-        throw ParameterWrong("saveInterval (" + numToString(parsmc.saveInterval) +
-                             ") needs to be a divisor of sweeps (" + numToString(parsmc.sweeps) + ")");
+    if (sweeps % saveInterval != 0) {
+        throw ParameterWrong("saveInterval (" + numToString(saveInterval) +
+                             ") needs to be a divisor of sweeps (" + numToString(sweeps) + ")");
     }
 
 }
 
-MetadataMap prepareMetaDataMap() const {
+MetadataMap DetQMCParams::prepareMetadataMap() const {
     MetadataMap meta;
 #define META_INSERT(VAR) meta[#VAR] = numToString(VAR)
     META_INSERT(greenUpdateType_string);

@@ -61,7 +61,7 @@ struct DetQMCParams {
     void check();
 
     // to export human readable form of parameters
-    MetadataMap prepareMetaDataMap() const;
+    MetadataMap prepareMetadataMap() const;
 private:
     friend class boost::serialization::access;
 

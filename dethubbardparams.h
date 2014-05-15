@@ -12,7 +12,7 @@ class DetHubbard;
 
 
 template<>
-struct ModelParams<DetHubbard>> {
+struct ModelParams<DetHubbard> {
     std::string model;          // should be hubbard
 
     bool checkerboard;
@@ -47,7 +47,7 @@ private:
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
         ar  & model & checkerboard
-            t & U & mu & L & d & beta & m
+            & t & U & mu & L & d & beta & m
             & dtau & s & bc
             & specified;            
     }    

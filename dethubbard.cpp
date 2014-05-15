@@ -19,26 +19,26 @@
 #include "exceptions.h"
 #include "rngwrapper.h"
 #include "dethubbard.h"
-#include "parameters.h"
+#include "dethubbardparams.h"
 
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
-//TODO: fix
+template<>
 std::unique_ptr<DetHubbard> createReplica(RngWrapper& rng, ModelParams<DetHubbard> pars) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
 
-    return std::unique_ptr<DetHubbardl>(new DetHubbard(rng, pars));
+    return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
 }
 
 
-DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams& pars) :
+DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams<DetHubbard>& pars) :
         DetModelGC<2,num,false>(pars, static_cast<uint32_t>(uint_pow(pars.L,pars.d))),
         rng(rng_),
-        checkerboard(pars.checkerbaord),
-        timedisplaced(TD),
+        checkerboard(pars.checkerboard),
+        timedisplaced(false),
         t(pars.t), U(pars.U), mu(pars.mu), L(pars.L), d(pars.d),
         z(2*d), //coordination number: 2*d
         N(static_cast<uint32_t>(uint_pow(L,d))),

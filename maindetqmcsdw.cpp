@@ -15,7 +15,7 @@
 #include "timing.h"
 #include "detqmc.h"
 #include "detsdw.h"
-#include "paramsdetsdw.h"
+#include "detsdwparams.h"
 
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
@@ -43,9 +43,9 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "model to be simulated: hubbard or sdw")
         ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
-        ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
+        ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod_string)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
-        ("updateMethod", po::value<std::string>(&modelpar.updateMethod)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
+        ("updateMethod", po::value<std::string>(&modelpar.updateMethod_string)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
         ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "parameter to use with delayedUpdates")
         ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
         ("lambda", po::value<num>(&modelpar.lambda)->default_value(1.0), "fermion-boson coupling")
@@ -58,7 +58,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
         ("m", po::value<uint32_t>(&modelpar.m), "number of imaginary time discretization levels (beta = m*dtau). Pass either this or dtau.")
         ("s", po::value<uint32_t>(&modelpar.s)->default_value(1), "separation of timeslices where the Green-function is calculated from scratch with stabilized updates.")
         ("accRatio", po::value<num>(&modelpar.accRatio)->default_value(0.5), "target acceptance ratio for tuning spin update box size")
-        ("bc", po::value<string>(&modelpar.bc)->default_value("pbc"), "boundary conditions to use: pbc (periodic), apbc-x, apbc-y or apbc-xy (anti-periodic in x- and/or y-direction)")
+        ("bc", po::value<string>(&modelpar.bc_string)->default_value("pbc"), "boundary conditions to use: pbc (periodic), apbc-x, apbc-y or apbc-xy (anti-periodic in x- and/or y-direction)")
         ("txhor", po::value<num>(&modelpar.txhor)->default_value(-1.0), "hopping x left-right")
         ("txver", po::value<num>(&modelpar.txver)->default_value(-0.5), "hopping x up-down")
         ("tyhor", po::value<num>(&modelpar.tyhor)->default_value(0.5), "hopping y left-right")
@@ -74,7 +74,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
     mcpar.saveInterval = 0;
     mcOptions.add_options()
-        ("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
+        ("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType_string)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
         ("sweeps", po::value<uint32_t>(&mcpar.sweeps), "number of sweeps used for measurements, must be even for serialization consistency")
         ("thermalization", po::value<uint32_t>(&mcpar.thermalization), "number of warm-up sweeps, must be even for serialization consistency")
         ("jkBlocks", po::value<uint32_t>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
@@ -176,20 +176,20 @@ int main(int argc, char **argv) {
     if (runSimulation) {
         if (parmodel.checkerboard) { // As long as CheckerboardMethod remains a template parameter we need this branching here
             if (not resumeSimulation) {
-                DetQMC<DetSDW<CB_ASSAAD_BERG>> simulation(parmodel, parmc);
+                DetQMC<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmodel, parmc);
                 simulation.run();
             } else if (resumeSimulation) {
-                DetQMC<DetSDW<CB_ASSAAD_BERG>> simulation(parmc.stateFileName, parmc);
+                DetQMC<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc);
                 //only very select parameters given in parmc are updated for the resumed simulation
                 simulation.run();
             }
         }
         else {
             if (not resumeSimulation) {
-                DetQMC<DetSDW<CB_NONE>> simulation(parmodel, parmc);
+                DetQMC<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmodel, parmc);
                 simulation.run();
             } else if (resumeSimulation) {
-                DetQMC<DetSDW<CB_NONE>> simulation(parmc.stateFileName, parmc);
+                DetQMC<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc);
                 //only very select parameters given in parmc are updated for the resumed simulation
                 simulation.run();
             }

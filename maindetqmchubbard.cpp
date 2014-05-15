@@ -15,18 +15,17 @@
 #include "timing.h"
 #include "detqmc.h"
 #include "dethubbard.h"
-
-typedef ModelParams<DetHubbard> ModelParams;
-typedef DetQMCParams<DetHubbard> MCParams;
+#include "detqmcparams.h"
+#include "dethubbardparams.h"
 
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
 //return a tuple (runSimulation = true or false, simulationParameterStructs)
-std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **argv) {
+std::tuple<bool,bool,ModelParams<DetHubbard>,DetQMCParams> configureSimulation(int argc, char **argv) {
     bool runSimulation = true;
     bool resumeSimulation = false;
-    ModelParams modelpar;
-    MCParams mcpar;
+    ModelParams<DetHubbard> modelpar;
+    DetQMCParams mcpar;
 
     //parse options
     namespace po = boost::program_options;
@@ -59,7 +58,7 @@ std::tuple<bool,bool,ModelParams,MCParams> configureSimulation(int argc, char **
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
     mcpar.saveInterval = 0;
     mcOptions.add_options()
-        ("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
+        ("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType_string)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
         ("sweeps", po::value<uint32_t>(&mcpar.sweeps), "number of sweeps used for measurements, must be even for serialization consistency")
         ("thermalization", po::value<uint32_t>(&mcpar.thermalization), "number of warm-up sweeps, must be even for serialization consistency")
         ("jkBlocks", po::value<uint32_t>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
@@ -144,8 +143,8 @@ int main(int argc, char **argv) {
               << metadataToString(collectVersionInfo())
               << "\n";
 
-    ModelParams parmodel;
-    MCParams parmc;
+    ModelParams<DetHubbard> parmodel;
+    DetQMCParams parmc;
     bool runSimulation;
     bool resumeSimulation;
     std::tie(runSimulation, resumeSimulation, parmodel, parmc) = configureSimulation(argc, argv);

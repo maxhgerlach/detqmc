@@ -20,7 +20,7 @@
 #include "tools.h"
 #include "rngwrapper.h"
 #include "checkarray.h"
-#include "parameters.h"
+#include "detmodelparams.h"
 #include "observable.h"
 #include "udv.h"
 #include "metadata.h"
@@ -30,10 +30,12 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/serialization/base_object.hpp"
+#include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
 #pragma GCC diagnostic pop
 #include "boost_serialize_array.h"
 #include "boost_serialize_armadillo.h"
 
+typedef double num;
 typedef std::complex<double> cpx;
 
 typedef arma::Col<num> VecNum;
@@ -218,7 +220,6 @@ public:
                         Callable_UpdateInSlice_k updateInSlice,
                         Callable_GlobalUpdate globalUpdate = VoidNoOp());
 protected:
-    typedef ValueType V;
     typedef arma::Mat<ValueType> MatV;
     typedef arma::Col<ValueType> VecV;
     typedef arma::Cube<ValueType> CubeV;

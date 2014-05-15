@@ -1,4 +1,5 @@
 #include "detsdwparams.h"
+
 #include <vector>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -6,10 +7,9 @@
 #include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
 #pragma GCC diagnostic pop
 
+#include "exceptions.h"
 
-template<CheckerboardMethod CBM>
-template<>
-void ModelParams<DetSDW<CBM>>::check() {
+void ModelParamsDetSDW::check() {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
@@ -119,21 +119,19 @@ void ModelParams<DetSDW<CBM>>::check() {
     }
 
     // computed parameters
-    n = L*L;
+    N = L*L;
 }
 
 
-template<CheckerboardMethod CBM>
-template<>
-MetadataMap ModelParams<DetSDW<CBM>>::prepareMetadataMap() {
+MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     MetadataMap meta;
     #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     meta["model"] = "sdw";
-    meta["checkerboard"] = (CB ? "true" : "false");
+    meta["checkerboard"] = (checkerboard ? "true" : "false");
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (spinProposalMethod != BOX) {
-        META_INSERT(adaptScaleDelta);
+        META_INSERT(adaptScaleVariance);
     }
     if (updateMethod == DELAYED) {
         META_INSERT(delaySteps);
@@ -167,7 +165,7 @@ MetadataMap ModelParams<DetSDW<CBM>>::prepareMetadataMap() {
     META_INSERT(wolffClusterUpdate);
     META_INSERT(wolffClusterShiftUpdate);
     if (globalShift or wolffClusterUpdate or wolffClusterShiftUpdate) {
-        META_INSERT(globalMoveInterval);
+        META_INSERT(globalUpdateInterval);
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT

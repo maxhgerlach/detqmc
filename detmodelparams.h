@@ -11,6 +11,9 @@
 #include "boost/serialization/set.hpp"
 #pragma GCC diagnostic pop            
 
+#include "metadata.h"
+
+
 // Collect various structs defining various parameters.
 
 // The set specified included in each struct contains string representations

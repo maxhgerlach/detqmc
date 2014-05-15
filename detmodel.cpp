@@ -6,12 +6,7 @@
  */
 
 #include "detmodel.h"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
-#pragma GCC diagnostic ignored "-Wshadow"
-#include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
-#pragma GCC diagnostic pop
-#include "exceptions.h"
+
 
 
 MatNum computePropagator(num scalar, const MatNum& matrix) {

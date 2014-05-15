@@ -27,6 +27,39 @@
 #include "dumapp.h"
 #endif
 
+
+//unfortunately need to repeat code here -- partial function template
+//specializations are not allowed
+template<>
+std::unique_ptr<DetSDW<CB_NONE>> createReplica<DetSDW<CB_NONE>,ModelParamsDetSDW>(
+    RngWrapper& rng, ModelParamsDetSDW pars) {
+    pars = updateTemperatureParameters(pars);
+
+    pars.check();
+
+    assert((pars.checkerboard and (CB_NONE == CB_ASSAAD_BERG)) or
+           (not pars.checkerboard and (CB_NONE == CB_NONE))
+        );
+
+    return std::unique_ptr<DetSDW<CB_NONE>>(new DetSDW<CB_NONE>(rng, pars));
+}
+template<>
+std::unique_ptr<DetSDW<CB_ASSAAD_BERG>> createReplica<DetSDW<CB_ASSAAD_BERG>,ModelParamsDetSDW>(
+    RngWrapper& rng, ModelParamsDetSDW pars) {
+    pars = updateTemperatureParameters(pars);
+
+    pars.check();
+
+    assert((pars.checkerboard and (CB_ASSAAD_BERG == CB_ASSAAD_BERG)) or
+           (not pars.checkerboard and (CB_ASSAAD_BERG == CB_ASSAAD_BERG))
+        );
+
+    return std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>(new DetSDW<CB_ASSAAD_BERG>(rng, pars));
+}    
+
+
+
+
 //initial values for field components chosen from this range:
 const num PhiLow = -1;
 const num PhiHigh = 1;
@@ -44,14 +77,14 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     addedWolffClusterSize(0.),
     hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
     sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
-    spaceNeigh(L), timeNeigh(m),
+    spaceNeigh(pars.L), timeNeigh(pars.m),
     propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
     propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
     propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
     g(green[0]), //gFwd(greenFwd[0]), gBwd(greenBwd[0]),
-    phi0(N, m+1), phi1(N, m+1), phi2(N, m+1), cdwl(N, m+1),
-    coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
-    coshTermCDWl(N, m+1), sinhTermCDWl(N, m+1),
+    phi0(pars.N, pars.m+1), phi1(pars.N, pars.m+1), phi2(pars.N, pars.m+1), cdwl(pars.N, pars.m+1),
+    coshTermPhi(pars.N, pars.m+1), sinhTermPhi(pars.N, pars.m+1),
+    coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
     phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
     targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
     accRatioLocal_box_RA(AccRatioAdjustmentSamples),
@@ -59,7 +92,6 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
     curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
     curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
-    adaptScaleDelta(pars.adaptScaleVariance),
     performedSweeps(0),
     normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
@@ -71,7 +103,7 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     fermionEkinetic(0), fermionEcouple(0),// fermionEkinetic_imag(0), fermionEcouple_imag(0),
     occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
-    dud(N, delaySteps), gmd(N, m)
+    dud(pars.N, pars.delaySteps), gmd(pars.N, m)
 {
     //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
@@ -296,10 +328,10 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
     num offset_y = 0.0;
-    if (pars.bc == APBC_X or pars.bc == APBC_XY) {
+    if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
         offset_x = 0.5;
     }
-    if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
+    if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
         offset_y = 0.5;
     }
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
@@ -399,6 +431,10 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
         return gshifted(site1 + 2*N*band + N*spin,
                         site2 + 2*N*band + N*spin);
     };
+    const auto txhor = pars.txhor;
+    const auto txver = pars.txver;    
+    const auto tyhor = pars.tyhor;
+    const auto tyver = pars.tyver;    
     for (uint32_t i = 0; i < N; ++i) {
         //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
         Spin spins[] = {SPINUP, SPINDOWN};
@@ -416,8 +452,8 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
         }
     }
     for (uint32_t i = 0; i < N; ++i) {
-        auto glbs = [this, i, gshifted](Band band1, Spin spin1,
-                                        Band band2, Spin spin2) -> cpx {
+        auto glbs = [this, i, gshifted, N](Band band1, Spin spin1,
+                                           Band band2, Spin spin2) -> cpx {
             return gshifted(i + 2*N*band1 + N*spin1,
                             i + 2*N*band2 + N*spin2);
         };
@@ -656,15 +692,15 @@ void DetSDW<CB>::finishMeasurements() {
 template<CheckerboardMethod CB>
 void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
-    const auto L = L;
-    const auto N = N;    
+    const auto L = pars.L;
+    const auto N = pars.N;    
     //offset k-components for antiperiodic bc
     num offset_x = 0.0;
     num offset_y = 0.0;
-    if (pars.bc == APBC_X or pars.bc == APBC_XY) {
+    if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
         offset_x = 0.5;
     }
-    if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
+    if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
         offset_y = 0.5;
     }
     out_k.zeros(N);
@@ -778,7 +814,8 @@ void DetSDW<CB>::updateCoshSinhTermsCDWl() {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::setupPropK() {
-    const uint32_t z = 2*pars.d;
+    const uint32_t dim = 2;
+    const uint32_t z = 2*dim;
     
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
@@ -797,13 +834,13 @@ void DetSDW<CB>::setupPropK() {
 
                 uint32_t siteY = site / pars.L;
                 uint32_t siteX = site % pars.L;
-                if (pars.bc == APBC_X or pars.bc == APBC_XY) {
+                if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
                     if ((siteX == 0 and dir == XMINUS) or (siteX == pars.L-1 and dir == XPLUS)) {
                         //crossing x-boundary
                         hop *= -1;
                     }
                 }
-                if (pars.bc == APBC_Y or pars.bc == APBC_XY) {
+                if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
                     if ((siteY == 0 and dir == YMINUS) or (siteY == pars.L-1 and dir == YPLUS)) {
                         //crossing y-boundary
                         hop *= -1;
@@ -860,7 +897,7 @@ void DetSDW<CB>::setupPropK() {
 template<CheckerboardMethod CB>
 template<class Vec>
 VecNum DetSDW<CB>::compute_d_for_cdwl(const Vec& cdwl) {
-    VecNum kd(N);
+    VecNum kd(pars.N);
     for (uint32_t i = 0; i < pars.N; ++ i) {
         kd[i] = compute_d_for_cdwl_site(cdwl[i]);
     }
@@ -879,7 +916,6 @@ MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
     //if (CB == CB_NONE) {
     {
         const auto N = pars.N;
-        const auto m = pars.m;        
         timing.start("computeBmatSDW_direct");
         using arma::eye; using arma::zeros; using arma::diagmat;
         if (k2 == k1) {
@@ -889,7 +925,7 @@ MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
         assert(k2 <= m);
 
         //compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-        auto singleTimesliceProp = [this](uint32_t k) -> MatCpx {
+        auto singleTimesliceProp = [this,N](uint32_t k) -> MatCpx {
             timing.start("singleTimesliceProp_direct");
             MatCpx result(4*N, 4*N);
 
@@ -1085,11 +1121,11 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgrou
             const arma::Row<cpx>& rl = result.row(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
-            if ((pars.bc == APBC_X or pars.bc == APBC_XY) and i1 == L-1) {
+            if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
                 //this plaquette has horizontal boundary crossing bonds and APBC
                 b_sh_hor *= -1;
             }
-            if ((pars.bc == APBC_Y or pars.bc == APBC_XY) and i2 == L-1) {
+            if ((pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) and i2 == L-1) {
                 //this plaquette has vertical boundary crossing bonds and APBC
                 b_sh_ver *= -1;
             }
@@ -1174,11 +1210,11 @@ void DetSDW<CB>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgro
             const arma::Col<cpx>& cl = result.col(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
-            if ((pars.bc == APBC_X or pars.bc == APBC_XY) and i1 == L-1) {
+            if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
                 //this plaquette has horizontal boundary crossing bonds and APBC
                 b_sh_hor *= -1;
             }
-            if ((pars.bc == APBC_Y or pars.bc == APBC_XY) and i2 == L-1) {
+            if ((pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) and i2 == L-1) {
                 //this plaquette has vertical boundary crossing bonds and APBC
                 b_sh_ver *= -1;
             }
@@ -1540,14 +1576,14 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
     // update phi-fields according to chosen method
     for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
         switch (pars.spinProposalMethod) {
-        case BOX:
+        case SpinProposalMethod_Type::BOX:
             lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                     return this->proposeNewPhiBox(site, timeslice);
                 }
             );
             break;
-        case ROTATE_THEN_SCALE:
+        case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
             //each sweep, alternate between rotating and scaling
             if (performedSweeps % 2 == 0) {
                 lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
@@ -1563,7 +1599,7 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
                 );
             }
             break;
-        case ROTATE_AND_SCALE:
+        case SpinProposalMethod_Type::ROTATE_AND_SCALE:
             lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                     return this->proposeRotatedScaledPhi(site, timeslice);
@@ -2051,7 +2087,7 @@ num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalU
 
     uint32_t site = 0;
     while (site < N) {
-        uint32_t delayStepsNow = std::min(delaySteps, N - site);
+        uint32_t delayStepsNow = std::min(pars.delaySteps, N - site);
         dud.X.set_size(4*N, 4*delayStepsNow);
         dud.Y.set_size(4*delayStepsNow, 4*N);
         uint32_t j = 0;
@@ -2215,9 +2251,9 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
     enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
-    if (pars.spinProposalMethod == BOX) {
+    if (pars.spinProposalMethod == SpinProposalMethod_Type::BOX) {
         adapting_what = ADAPT_BOX;
-    } else if (pars.spinProposalMethod == ROTATE_THEN_SCALE) {
+    } else if (pars.spinProposalMethod == SpinProposalMethod_Type::ROTATE_THEN_SCALE) {
         // the following needs to match the order of moves as
         // used in updateInSlice()
         if (performedSweeps % 2 == 0) {
@@ -2227,7 +2263,7 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
             // we did scale moves last
             adapting_what = ADAPT_SCALE;
         }
-    } else if (pars.spinProposalMethod == ROTATE_AND_SCALE) {
+    } else if (pars.spinProposalMethod == SpinProposalMethod_Type::ROTATE_AND_SCALE) {
         // after every interval of AccRatioAdjustmentSamples we alternate between
         // adjusting the parameter for the rotate and scale moves
         if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
@@ -2271,7 +2307,7 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
 //            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
             break;
         case ADAPT_SCALE:
-            if (not adaptScaleDelta) {
+            if (not pars.adaptScaleVariance) {
                 //do not change scaleDelta at all
                 break;
             }
@@ -2297,7 +2333,7 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::globalMove() {
-    if ((performedSweeps + 1) % globalMoveInterval == 0) {
+    if ((performedSweeps + 1) % pars.globalUpdateInterval == 0) {
         //the current sweep count is a multiple of globalMoveInterval
         if (pars.globalShift) {
             attemptGlobalShiftMove();
@@ -3236,7 +3272,7 @@ void DetSDW<CB>::consistencyCheck() {
 
 
 
-template class DetSDW<false,CB_NONE>;
-template class DetSDW<false,CB_ASSAAD_BERG>;
+template class DetSDW<CB_NONE>;
+template class DetSDW<CB_ASSAAD_BERG>;
 
 

@@ -144,6 +144,7 @@ private:
 };
 
 
+
 //Only few member functions of DetQMC are allowed to make instances of
 //this class.  In this way access to the member functions
 //serializeContents(), saveContents(), loadContents() of other classes
@@ -154,12 +155,15 @@ class SerializeContentsKey {
   SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
 
   // grant access to few methods
+  template<class Model, class ModelParams>  
   template<class Archive>
-  friend void DetQMC::saveContents(Archive& ar);
+  friend void DetQMC<Model,ModelParams>::saveContents(Archive& ar);
+  template<class Model, class ModelParams>  
   template<class Archive>
-  friend void DetQMC::loadContents(Archive& ar);
+  friend void DetQMC<Model,ModelParams>::loadContents(Archive& ar);
+  template<class Model, class ModelParams>  
   template<class Archive>
-  friend void DetQMC::serializeContentsCommon(Archive& ar);
+  friend void DetQMC<Model,ModelParams>::serializeContentsCommon(Archive& ar);
 };
 
 
@@ -174,7 +178,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     parsmc.check();
 
     if (parsmc.specified.count("rngSeed") == 0) {
-        cout << "No rng seed specified, will use std::time(0)" << endl;
+        std::cout << "No rng seed specified, will use std::time(0)" << std::endl;
         parsmc.rngSeed = (uint32_t) std::time(0);
     }
     rng = RngWrapper(parsmc.rngSeed);
@@ -212,7 +216,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     } else {
         grantedWalltimeSecs = std::numeric_limits<decltype(grantedWalltimeSecs)>::max();
     }
-    cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
+    std::cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
 
     //query SLURM Jobid
     const char* jobid_env = std::getenv("SLURM_JOBID");
@@ -221,10 +225,10 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     } else {
     	jobid = "nojobid";
     }
-    cout << "Job ID: " << jobid << "\n";
+    std::cout << "Job ID: " << jobid << "\n";
 
-    cout << "\nSimulation initialized, parameters: " << endl;
-    cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
+    std::cout << "\nSimulation initialized, parameters: " << std::endl;
+    std::cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << std::endl;
 }
 
 
@@ -245,7 +249,7 @@ DetQMC<Model, ModelParams>::DetQMC(const ModelParams& parsmodel_, const DetQMCPa
 }
 
 template<class Model, class ModelParams>
-DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
+DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const DetQMCParams& newParsmc) :
     parsmodel(), parsmc(),
     //proper initialization of default initialized members done by loading from archive
     modelMeta(), mcMeta(), rng(), replica(),
@@ -261,7 +265,7 @@ DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const MCPar
     ifs.open(stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_iarchive ia(ifs);
     ModelParams parsmodel_;
-    MCParams parsmc_;
+    DetQMCParams parsmc_;
     ia >> parsmodel_ >> parsmc_;
 
     if (newParsmc.sweeps > parsmc_.sweeps) {
@@ -288,7 +292,7 @@ DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const MCPar
     SPECIFIED_INSERT_STR(stateFileName);
 #undef SPECIFIED_INSERT_VAL
 #undef SPECIFIED_INSERT_STR
-    if (not parsmc_.greenUpdate_string.empty()) {
+    if (not parsmc_.greenUpdateType_string.empty()) {
         parsmc_.specified.insert("greenUpdateType");
     }
     
@@ -356,15 +360,15 @@ void DetQMC<Model, ModelParams>::run() {
     //local helper functions to initialize a "stage" of the big loop
     auto thermalizationStage = [&stage, this]() {
         stage = T;
-        cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << endl;
+        std::cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << std::endl;
     };
     auto measurementsStage = [&stage, this]() {
         stage = M;
-        cout << "Measurements for " << parsmc.sweeps << " sweeps..." << endl;
+        std::cout << "Measurements for " << parsmc.sweeps << " sweeps..." << std::endl;
     };
     auto finishedStage = [&stage]() {
         stage = F;
-        cout << "Measurements finished\n" << endl;
+        std::cout << "Measurements finished\n" << std::endl;
     };
 
     if (sweepsDoneThermalization < parsmc.thermalization) {
@@ -384,11 +388,11 @@ void DetQMC<Model, ModelParams>::run() {
     	if (swCounter % 2 == 0) {
             bool stop_now = false;
             if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
-                cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
+                std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
                 stop_now = true;
             } else if (boost::filesystem::exists(abortFilename1) or
                        boost::filesystem::exists(abortFilename2)) {
-                cout << "Found file " << abortFilename1 << ".\n";
+                std::cout << "Found file " << abortFilename1 << ".\n";
                 stop_now = true;
             }
             if (stop_now) {
@@ -396,7 +400,7 @@ void DetQMC<Model, ModelParams>::run() {
                 //which signals us to abort this run for some other reason.
                 //but only save state and exit if we have done an even
                 //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
-                cout << "Save state / results and exit gracefully." << endl;
+                std::cout << "Save state / results and exit gracefully." << std::endl;
                 if (stage == Stage::M) {
                     saveResults();
                 }
@@ -420,13 +424,13 @@ void DetQMC<Model, ModelParams>::run() {
             ++sweepsDoneThermalization;
             ++swCounter;
             if (swCounter == parsmc.saveInterval) {
-                cout  << "  " << sweepsDoneThermalization << " ... saving state...";
+                std::cout  << "  " << sweepsDoneThermalization << " ... saving state...";
                 swCounter = 0;
                 saveState();
-                cout << endl;
+                std::cout << std::endl;
             }
             if (sweepsDoneThermalization == parsmc.thermalization) {
-                cout << "Thermalization finished\n" << endl;
+                std::cout << "Thermalization finished\n" << std::endl;
                 replica->thermalizationOver();
                 swCounter = 0;
                 measurementsStage();
@@ -438,10 +442,10 @@ void DetQMC<Model, ModelParams>::run() {
             bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
             
             switch(parsmc.greenUpdateType) {
-            case GreenUpdateTypeSimple:
+            case GreenUpdateType::GreenUpdateTypeSimple:
                 replica->sweepSimple(takeMeasurementNow);
                 break;
-            case GreenUpdateTypeStabilized:
+            case GreenUpdateType::GreenUpdateTypeStabilized:
                 replica->sweep(takeMeasurementNow);
                 break;
             }
@@ -456,11 +460,11 @@ void DetQMC<Model, ModelParams>::run() {
             }
             ++sweepsDone;
             if (swCounter == parsmc.saveInterval) {
-                cout << "  " << sweepsDone << " ... saving results and state ...";
+                std::cout << "  " << sweepsDone << " ... saving results and state ...";
                 swCounter = 0;
                 saveResults();
                 saveState();
-                cout << endl;
+                std::cout << std::endl;
             }
             if (sweepsDone == parsmc.sweeps) {
                 swCounter = 0;

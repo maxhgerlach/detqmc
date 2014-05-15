@@ -8,7 +8,6 @@
 #pragma GCC diagnostic pop
 
 
-template<>
 void ModelParams<DetHubbard>::check() {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
@@ -47,7 +46,7 @@ void ModelParams<DetHubbard>::check() {
 #undef IF_NOT_POSITIVE
 }
 
-template<>
+
 MetadataMap ModelParams<DetHubbard>::prepareMetadataMap() const {
     MetadataMap meta;
     meta["model"] = "hubbard";

@@ -59,7 +59,7 @@ struct ModelParamsDetSDW {
 
     std::set<std::string> specified;
 
-    ModelParams() :
+    ModelParamsDetSDW() :
         model("sdw"), checkerboard(),
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
@@ -84,13 +84,38 @@ private:
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
             & r & c & u & lambda & txhor & txver & tyhor & tyver
-            & cdwU & mu & L & & N d & beta & m & dtau & s & accRatio
+            & cdwU & mu & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate
             & wolffClusterShiftUpdate
             & repeatUpdateInSlice
             & specified;
-    }    
+    }
+    inline std::string updateMethodstr(UpdateMethod_Type um) const {
+        switch (um) {
+        case UpdateMethod_Type::ITERATIVE:
+            return "iterative";
+        case UpdateMethod_Type::WOODBURY:
+            return "woodbury";
+        case UpdateMethod_Type::DELAYED:
+            return "delayed";
+        default:
+            return "invalid";
+        }
+    }
+    inline std::string spinProposalMethodstr(SpinProposalMethod_Type sp) const {
+	switch (sp) {
+	case SpinProposalMethod_Type::BOX:
+            return "box";
+	case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
+            return "rotate_then_scale";
+	case SpinProposalMethod_Type::ROTATE_AND_SCALE:
+            return "rotate_and_scale";
+	default:
+            return "invalid";
+	}
+    }
+    
 };
 
 
