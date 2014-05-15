@@ -14,7 +14,8 @@
 #include <functional>
 #include <memory>
 #include "metadata.h"
-#include "parameters.h"
+#include "detqmcparams.h"
+#include "detmodelparams.h"
 #include "detmodel.h"
 #include "dethubbard.h"
 #include "detsdw.h"
@@ -34,16 +35,17 @@
 class SerializeContentsKey;
 
 // Class handling the simulation
+template<class Model>
 class DetQMC {
 public:
     //constructor to init a new simulation:
-    DetQMC(const ModelParams& parsmodel, const MCParams& parsmc);
+    DetQMC(const ModelParams<Model>& parsmodel, const DetQMCParams& parsmc);
 
     //constructor to resume a simulation from a dumped state file:
     //we allow to change some MC parameters at this point:
     //  sweeps & saveInterval
     //if values > than the old values are specified, change them
-    DetQMC(const std::string& stateFileName, const MCParams& newParsmc);
+    DetQMC(const std::string& stateFileName, const DetQMCParams& newParsmc);
 
 
     //carry out simulation determined by parsmc given in construction,
@@ -62,13 +64,12 @@ public:
     virtual ~DetQMC();
 protected:
     //helper for constructors -- set all parameters and initialize contained objects
-    void initFromParameters(const ModelParams& parsmodel, const MCParams& parsmc);
+    void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc);
 
     ModelParams parsmodel;
-    MCParams parsmc;
-
-    enum GreenUpdateType {GreenUpdateTypeSimple, GreenUpdateTypeStabilized};
-    GreenUpdateType greenUpdateType;
+    DetQMCParams parsmc;
+    typedef DetQMCParams::GreenUpdateType GreenUpdateType;
+    
 //  std::function<void()> sweepFunc;    //the replica member function that will be called
 //                                      //to perform a sweep (depending on greenUpdate).
 //                                      //adds a function pointer layer
@@ -97,9 +98,6 @@ protected:
     uint32_t walltimeSecsLastSaveResults;       //timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
     uint32_t grantedWalltimeSecs;               //walltime the simulation is allowed to run
     std::string jobid;							//id string from the job scheduling system, or "nojobid"
-
-
-    MetadataMap prepareMCMetadataMap() const;
 
 private:
     //Serialize only the content data that has changed after construction.
@@ -199,7 +197,7 @@ private:
 };
 
 
-//Only one member function of DetQMC is allowed to make instances of this class.
+//Only few member functions of DetQMC are allowed to make instances of this class.
 //In this way access to the member function serializeContents() of other classes
 //is restricted.
 // compare to http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend

@@ -34,34 +34,12 @@
 using std::cout;
 using std::endl;
 
-void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& parsmc_) {
+void DetQMC::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
     parsmodel = parsmodel_;
     parsmc = parsmc_;
-    //check parameters
-    if (parsmodel.specified.count("model") == 0) {
-        throw ParameterMissing("model");
-    }
-    using namespace boost::assign;
-    std::vector<std::string> neededMCPars;
-    neededMCPars += "sweeps", "thermalization", "jkBlocks", "timeseries", "measureInterval";
-    for (auto p = neededMCPars.cbegin(); p != neededMCPars.cend(); ++p) {
-        if (parsmc.specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
-        }
-    }
-    if (parsmc.specified.count("saveInterval") == 0) {
-        parsmc.saveInterval = parsmc.sweeps;        //only save at end
-    }
 
-    if (parsmc.sweeps % 2 != 0) {
-        throw ParameterWrong("Parameter sweeps must be even [else serialization consistency cannot be guaranteed]");
-    }
-    if (parsmc.thermalization % 2 != 0) {
-        throw ParameterWrong("Parameter thermalization must be even [else serialization consistency cannot be guaranteed]");
-    }
-    if (parsmc.saveInterval % 2 != 0) {
-        throw ParameterWrong("Parameter saveInterval must be even [else serialization consistency cannot be guaranteed]");
-    }
+    parsmc.check();
+
 
     if (parsmc.specified.count("rngSeed") == 0) {
         cout << "No rng seed specified, will use std::time(0)" << endl;
@@ -77,42 +55,9 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
         throw ParameterWrong("model", parsmodel.model);
     }
 
-    if (parsmc.greenUpdateType == "simple") {
-        greenUpdateType = GreenUpdateTypeSimple;
-    } else if (parsmc.greenUpdateType == "stabilized") {
-        greenUpdateType = GreenUpdateTypeStabilized;
-    } else {
-        throw ParameterWrong("greenUpdateType", parsmc.greenUpdateType);
-    }
-
-//  if (greenUpdateType == GreenUpdateType::Simple) {
-//      sweepFunc = [this]() {replica->sweepSimple();};
-//      sweepThermalizationFunc= [this]() {replica->sweepSimpleThermalization();};
-//  } else if (greenUpdateType == GreenUpdateType::Stabilized) {
-//      sweepFunc = [this]() {replica->sweep();};
-//      sweepThermalizationFunc = [this]() {replica->sweepThermalization();};
-//  } else {
-//      throw GeneralError("greenUpdateType not defined!");
-//  }
-
-    //some parameter consistency checking:
-    if (parsmc.sweeps % parsmc.jkBlocks != 0) {
-        throw ParameterWrong("Number of jackknife blocks " + numToString(parsmc.jkBlocks)
-                + " does not match number of sweeps " + numToString(parsmc.sweeps));
-    }
-    if ((parsmc.measureInterval > parsmc.sweeps) or
-        (parsmc.sweeps % parsmc.measureInterval != 0)) {
-        throw ParameterWrong("Measurement interval " + numToString(parsmc.measureInterval)
-                + " ill-chosen for number of sweeps " + numToString(parsmc.sweeps));
-    }
-    if (parsmc.sweeps % parsmc.saveInterval != 0) {
-        throw ParameterWrong("saveInterval (" + numToString(parsmc.saveInterval) +
-                ") needs to be a divisor of sweeps (" + numToString(parsmc.sweeps) + ")");
-    }
-
     //prepare metadata
     modelMeta = replica->prepareModelMetadataMap();
-    mcMeta = prepareMCMetadataMap();
+    mcMeta = parsmc.prepareMetadataMap();
 
     //prepare observable handlers
     auto scalarObs = replica->getScalarObservables();
@@ -153,10 +98,9 @@ void DetQMC::initFromParameters(const ModelParams& parsmodel_, const MCParams& p
     cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << endl;
 }
 
-DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
+DetQMC::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) :
         parsmodel(), parsmc(),
         //proper initialization of default initialized members done in initFromParameters
-        greenUpdateType(), //sweepFunc(), sweepThermalizationFunc(),
         modelMeta(), mcMeta(), rng(), replica(),
         obsHandlers(), vecObsHandlers(),
         sweepsDone(0), sweepsDoneThermalization(),
@@ -171,7 +115,6 @@ DetQMC::DetQMC(const ModelParams& parsmodel_, const MCParams& parsmc_) :
 DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
         parsmodel(), parsmc(),
         //proper initialization of default initialized members done by loading from archive
-        greenUpdateType(), //sweepFunc(), sweepThermalizationFunc(),
         modelMeta(), mcMeta(), rng(), replica(),
         obsHandlers(), vecObsHandlers(),
         sweepsDone(), sweepsDoneThermalization(),
@@ -209,18 +152,20 @@ DetQMC::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
     SPECIFIED_INSERT_VAL(jkBlocks);
     SPECIFIED_INSERT_VAL(measureInterval);
     SPECIFIED_INSERT_VAL(saveInterval);
-    SPECIFIED_INSERT_STR(greenUpdateType);
     SPECIFIED_INSERT_STR(stateFileName);
 #undef SPECIFIED_INSERT_VAL
 #undef SPECIFIED_INSERT_STR
-
+    if (not parsmc_.greenUpdate_string.empty()) {
+        parsmc_.specified.insert("greenUpdateType");
+    }
+    
     initFromParameters(parsmodel_, parsmc_);
     loadContents(ia);
 
     std::cout << "\n"
-    		  << "State of previous simulation has been loaded.\n"
-    		  << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
-    		  << "  sweepsDone: " << sweepsDone << std::endl;
+              << "State of previous simulation has been loaded.\n"
+              << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
+              << "  sweepsDone: " << sweepsDone << std::endl;
 }
 
 void DetQMC::saveState() {
@@ -328,7 +273,7 @@ void DetQMC::run() {
         switch (stage) {
 
         case T:
-            switch(greenUpdateType) {
+            switch(parsmc.greenUpdateType) {
             case GreenUpdateType::GreenUpdateTypeSimple:
                 replica->sweepSimpleThermalization();
                 break;
@@ -356,7 +301,7 @@ void DetQMC::run() {
             ++swCounter;
             bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
             
-            switch(greenUpdateType) {
+            switch(parsmc.greenUpdateType) {
             case GreenUpdateTypeSimple:
                 replica->sweepSimple(takeMeasurementNow);
                 break;
@@ -396,20 +341,7 @@ void DetQMC::run() {
 }
 
 
-MetadataMap DetQMC::prepareMCMetadataMap() const {
-    MetadataMap meta;
-#define META_INSERT(VAR) meta[#VAR] = numToString(parsmc.VAR)
-    META_INSERT(greenUpdateType);
-    META_INSERT(sweeps);
-    META_INSERT(thermalization);
-    META_INSERT(jkBlocks);
-    META_INSERT(measureInterval);
-    META_INSERT(saveInterval);
-    META_INSERT(rngSeed);
-#undef META_INSERT
-    meta["timeseries"] = (parsmc.timeseries ? "true" : "false");
-    return meta;
-}
+
 
 
 void DetQMC::saveResults() {

@@ -24,41 +24,11 @@
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
-
-std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars) {
+//TODO: fix
+std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams<> pars) {
     pars = updateTemperatureParameters(pars);
 
-    //check parameters: passed all that are necessary
-    using namespace boost::assign;
-    std::vector<std::string> neededModelPars;
-    neededModelPars += "t", "U", "mu", "L", "d", "checkerboard";
-    for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
-        if (pars.specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
-        }
-    }
-
-    if (pars.checkerboard and pars.L % 2 != 0) {
-        throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
-    }
-    if (pars.checkerboard and pars.d != 2) {
-        throw ParameterWrong("Checker board decomposition only supported for 2d lattices");
-    }
-    if (pars.bc != "pbc") {
-        throw ParameterWrong("Boundary conditions " + pars.bc + " not supported for Hubbard model (only pbc)");
-    }
-
-    //check that only positive values are passed for certain parameters
-#define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
-#define CHECK_POSITIVE(x)   {                                           \
-                                IF_NOT_POSITIVE(x) {                    \
-                                    throw ParameterWrong(#x, pars.x);   \
-                                }                                       \
-                            }
-    CHECK_POSITIVE(L);
-    CHECK_POSITIVE(d);
-#undef CHECK_POSITIVE
-#undef IF_NOT_POSITIVE
+    pars.check();
 
     //since pars is not a constant expression, we need this stupid if:
     // if (pars.timedisplaced == true and pars.checkerboard == true) {
@@ -162,6 +132,8 @@ DetHubbard<TD,CB>::~DetHubbard() {
 
 template <bool TD, bool CB>
 MetadataMap DetHubbard<TD,CB>::prepareModelMetadataMap() const {
+    // apart from 'N', 'alpha' these could all be retreived from the
+    // original ModelParams<DetHubbard> struct
     MetadataMap meta;
     meta["model"] = "hubbard";
     meta["checkerboard"] = (checkerboard ? "true" : "false");

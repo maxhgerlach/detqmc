@@ -1,12 +1,5 @@
-/*
- * parameters.h
- *
- *  Created on: Dec 13, 2012
- *      Author: gerlach
- */
-
-#ifndef PARAMETERS_H_
-#define PARAMETERS_H_
+#ifndef DETMODELPARAMS_H
+#define DETMODELPARAMS_H
 
 #include <string>
 #include <set>
@@ -19,20 +12,37 @@
 #pragma GCC diagnostic pop            
 
 // Collect various structs defining various parameters.
-// Passing around these reduces code duplication somewhat, and reduces errors caused by passing
-// values to the wrong (positional) constructor argument.
 
 // The set specified included in each struct contains string representations
 // of all parameters actually specified.  This allows throwing an exception
 // at the appropriate point in the program if a parameter is missing.
-//TODO: Find a more elegant solution.
+
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 typedef double num;     //possibility to switch to single precision if ever desired
 #pragma GCC diagnostic pop
 
-// Struct representing model specific parameters
+
+// Template for struct representing model specific parameters
+// -- needs to have a proper specialization for each model considered, which actually
+//    implements the functions and provides data members
+template<class Model>
+struct ModelParams {
+    void check() { }
+    MetadataMap prepareMetadataMap() { return MetadataMap(); }
+private:
+    friend class boost::serialization::access;
+
+    template<class Archive>
+    void serialize(Archive& ar, const uint32_t version) {
+        (void)version; (void)ar;
+    }    
+};
+
+
+// specializations in separate header files: DetHubbardParams, DetSDWParams
+
 struct ModelParams {
     //TODO: split this up so that model specific parameters are in substructs
 
@@ -64,27 +74,29 @@ struct ModelParams {
 
     std::string bc; //boundary conditions: For SDW: "pbc", "apbc-x", "apbc-y" or "apbc-xy"
 
+    //SDW:
     uint32_t globalUpdateInterval; //attempt global move every # sweeps
     bool globalShift;         //perform a global constant shift move?
     bool wolffClusterUpdate;  //perform a Wolff single cluster update?
     bool wolffClusterShiftUpdate; // perform a combined global constant shift and Wolff single cluster update
 
+    //SDW:
     uint32_t repeatUpdateInSlice;	//how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
     std::set<std::string> specified;
 
     ModelParams() :
-            model(), /*timedisplaced(),*/ checkerboard(),
-            updateMethod(), spinProposalMethod(), adaptScaleVariance(),
-            delaySteps(),
-            t(), U(), r(), lambda(),
-            txhor(), txver(), tyhor(), tyver(),
-            mu(), L(), d(),
-            beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
-            globalUpdateInterval(), globalShift(), wolffClusterUpdate(),
-            wolffClusterShiftUpdate(),
-            repeatUpdateInSlice(),
-            specified() {
+        model(), /*timedisplaced(),*/ checkerboard(),
+        updateMethod(), spinProposalMethod(), adaptScaleVariance(),
+        delaySteps(),
+        t(), U(), r(), lambda(),
+        txhor(), txver(), tyhor(), tyver(),
+        mu(), L(), d(),
+        beta(), m(), dtau(), s(), accRatio(), bc("pbc"),
+        globalUpdateInterval(), globalShift(), wolffClusterUpdate(),
+        wolffClusterShiftUpdate(),
+        repeatUpdateInSlice(),
+        specified() {
     }
 
 private:
@@ -106,41 +118,5 @@ private:
 };
 
 
-// Struct representing Monte Carlo simulation parameters
-struct MCParams {
-    uint32_t sweeps;            // number of sweeps used for measurements
-    uint32_t thermalization;    // number of warm-up sweeps allowed before equilibrium is assumed
-    uint32_t jkBlocks;          // number of jackknife blocks for error estimation
-    bool timeseries;            // if true, write time series of individual measurements to disk
-    uint32_t measureInterval;   // take measurements every measureInterval sweeps
-    uint32_t saveInterval;      // write measurements to disk every saveInterval sweeps
-    uint32_t rngSeed;       // seed for random number generator
+#endif /* DETMODELPARAMS_H */
 
-    std::string greenUpdateType;    //"simple" or "stabilized"
-
-    std::string stateFileName;      //for serialization dumps
-    bool sweepsHasChanged;          //true, if the number of target sweeps has changed after resuming
-
-    std::set<std::string> specified;
-
-    MCParams() : sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-            rngSeed(), greenUpdateType(), stateFileName(), sweepsHasChanged(false), specified()
-    { }
-
-private:
-    friend class boost::serialization::access;
-
-    template<class Archive>
-    void serialize(Archive& ar, const uint32_t version) {
-        (void)version;
-        ar & sweeps & thermalization & jkBlocks & timeseries
-           & measureInterval & saveInterval & rngSeed & greenUpdateType
-           & stateFileName
-           & sweepsHasChanged
-           & specified;
-    }
-};
-
-
-
-#endif /* PARAMETERS_H_ */
