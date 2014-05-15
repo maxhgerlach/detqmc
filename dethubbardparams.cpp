@@ -20,6 +20,10 @@ void ModelParams<DetHubbard>::check() {
         }
     }
 
+    if (model != "hubbard") {
+        throw ParameterWrong("Parameters specify model: " + model + " instead of hubbard");
+    }
+
     if (checkerboard and L % 2 != 0) {
         throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
     }

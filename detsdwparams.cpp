@@ -22,6 +22,9 @@ void ModelParams<DetSDW<CBM>>::check() {
         }
     }
     //Check parameters chosen correctly
+    if (model != "sdw") {
+        throw ParameterWrong("Parameters specify model: " + model + " instead of sdw");
+    }
     if (d != 2) {
         throw ParameterWrong("d", d);
     }
