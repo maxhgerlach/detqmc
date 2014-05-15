@@ -25,12 +25,6 @@ void ModelParams<DetSDW<CBM>>::check() {
     if (d != 2) {
         throw ParameterWrong("d", d);
     }
-    if (c != 1.0) {
-        throw ParameterWrong("c != 1.0 not supported");
-    }
-    if (u != 1.0) {
-        throw ParameterWrong("u != 1.0 not supported");
-    }
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
     for (const std::string& test_bc : possibleBC) {

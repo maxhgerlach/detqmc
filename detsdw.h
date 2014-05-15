@@ -58,9 +58,10 @@ public:
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 
-	//Perform the correction of the Green's function to ensure an
-	//effectively symmetric Trotter decomposition.  This returns the shifted matrix for the current timeslice.
-	//This should be done before measurements.
+    //Perform the correction of the Green's function to ensure an
+    //effectively symmetric Trotter decomposition.  This returns the
+    //shifted matrix for the current timeslice.  This should be done
+    //before measurements.
     virtual MatCpx shiftGreenSymmetric();
 protected:
 /*

@@ -125,8 +125,6 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams<DetSDW<CB>>& pars_) :
 {
     //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
-    assert(pars.c == 1.0);
-    assert(pars.u == 1.0);
     assert(pars.N == pars.L*pars.L);
     assert(pars.d == 2);
     
