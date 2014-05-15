@@ -9,9 +9,12 @@ enum CheckerboardMethod {
 };
 template<CheckerboardMethod Checkerboard> class DetSDW;
 
-template<CheckerboardMethod CBM>
-template<>
-struct ModelParams<DetSDW<CBM>> {
+
+//use this in place of
+//  ModelParams<DetSDW<CB_NONE>> and ModelParams<DetSDW<CB_ASSAAD_BERG>> 
+
+
+struct ModelParamsDetSDW {
     std::string model;               // should be "sdw"
     bool checkerboard;               //use a checkerboard decomposition for computing the propagator
     std::string updateMethod_string; //"iterative", "woodbury", or "delayed"

@@ -38,7 +38,19 @@ std::string cbmToString(CheckerboardMethod cbm);
 template<CheckerboardMethod CBM> class DetSDW;
 
 template<CheckerboardMethod CBM>
-std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParams<DetSDW<CBM>> pars);
+template<>
+std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParamsDetSDW pars) {
+    pars = updateTemperatureParameters(pars);
+
+    pars.check();
+
+    assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
+           (not pars.checkerboard and (CBM == CB_NONE))
+        );
+
+    return std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
+}
+    
 
 
 
@@ -47,7 +59,7 @@ std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParams<DetSDW<C
 template<CheckerboardMethod Checkerboard>
 class DetSDW: public DetModelGC<1, cpx> {
 public:
-    typedef ModelParams<DetSDW<Checkerboard> > ModelParams;
+    typedef ModelParamsDetSDW ModelParams;
 private:
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:

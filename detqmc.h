@@ -46,11 +46,11 @@
 class SerializeContentsKey;
 
 // Class handling the simulation
-template<class Model>
+template<class Model, class ModelParams = ModelParams<Model> >
 class DetQMC {
 public:
     //constructor to init a new simulation:
-    DetQMC(const ModelParams<Model>& parsmodel, const DetQMCParams& parsmc);
+    DetQMC(const ModelParams& parsmodel, const DetQMCParams& parsmc);
 
     //constructor to resume a simulation from a dumped state file:
     //we allow to change some MC parameters at this point:
@@ -74,7 +74,6 @@ public:
 
     virtual ~DetQMC();
 protected:
-    typedef ModelParams<Model> ModelParams;
     //helper for constructors -- set all parameters and initialize contained objects
     void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc);
 
@@ -167,8 +166,8 @@ class SerializeContentsKey {
 
 
 
-template<class Model>
-void DetQMC<Model>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
+template<class Model, class ModelParams>
+void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
     parsmodel = parsmodel_;
     parsmc = parsmc_;
 
@@ -230,8 +229,8 @@ void DetQMC<Model>::initFromParameters(const ModelParams& parsmodel_, const DetQ
 
 
 
-template<class Model>
-DetQMC<Model>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) :
+template<class Model, class ModelParams>
+DetQMC<Model, ModelParams>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) :
     parsmodel(), parsmc(),
     //proper initialization of default initialized members done in initFromParameters
     modelMeta(), mcMeta(), rng(), replica(),
@@ -245,8 +244,8 @@ DetQMC<Model>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_
     initFromParameters(parsmodel_, parsmc_);
 }
 
-template<class Model>
-DetQMC<Model>::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
+template<class Model, class ModelParams>
+DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const MCParams& newParsmc) :
     parsmodel(), parsmc(),
     //proper initialization of default initialized members done by loading from archive
     modelMeta(), mcMeta(), rng(), replica(),
@@ -302,8 +301,8 @@ DetQMC<Model>::DetQMC(const std::string& stateFileName, const MCParams& newParsm
               << "  sweepsDone: " << sweepsDone << std::endl;
 }
 
-template<class Model>
-void DetQMC<Model>::saveState() {
+template<class Model, class ModelParams>
+void DetQMC<Model, ModelParams>::saveState() {
     timing.start("saveState");
 
     //serialize state to file
@@ -344,13 +343,13 @@ void DetQMC<Model>::saveState() {
     timing.stop("saveState");
 }
 
-template<class Model>
-DetQMC<Model>::~DetQMC() {
+template<class Model, class ModelParams>
+DetQMC<Model, ModelParams>::~DetQMC() {
 }
 
 
-template<class Model>
-void DetQMC<Model>::run() {
+template<class Model, class ModelParams>
+void DetQMC<Model, ModelParams>::run() {
     enum Stage { T, M, F };     //Thermalization, Measurement, Finished
     Stage stage = T;
 
@@ -482,8 +481,8 @@ void DetQMC<Model>::run() {
 
 
 
-template<class Model>
-void DetQMC<Model>::saveResults() {
+template<class Model, class ModelParams>
+void DetQMC<Model, ModelParams>::saveResults() {
     timing.start("saveResults");
 
     outputResults(obsHandlers);

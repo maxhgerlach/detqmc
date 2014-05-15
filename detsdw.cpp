@@ -32,21 +32,8 @@ const num PhiLow = -1;
 const num PhiHigh = 1;
 
 
-template<CheckerboardMethod CBM>
-std::unique_ptr<DetSDW<CBM>> createReplica(RngWrapper& rng, ModelParams<DetSDW<CBM>> pars) {
-    pars = updateTemperatureParameters(pars);
-
-    pars.check();
-
-    assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
-           (not pars.checkerboard and (CBM == CB_NONE))
-    );
-
-    return std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
-}
-
 template<CheckerboardMethod CB>
-DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams<DetSDW<CB>>& pars_) :
+DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     DetModelGC<1,cpx,false>(pars_, 4 * pars_.L*pars_.L),
     eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
     rng(rng_), normal_distribution(rng),

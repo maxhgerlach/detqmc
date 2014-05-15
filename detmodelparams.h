@@ -27,6 +27,7 @@ typedef double num;     //possibility to switch to single precision if ever desi
 // Template for struct representing model specific parameters
 // -- needs to have a proper specialization for each model considered, which actually
 //    implements the functions and provides data members
+// for a class derived of DetModelGC this should at least be beta, m, s, dtau
 template<class Model>
 struct ModelParams {
     void check() { }

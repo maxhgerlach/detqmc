@@ -41,7 +41,8 @@ class SerializeContentsKey;
 // factory function to init DetHubbard from parameter struct
 //
 // will do parameter checking etc
-std::unique_ptr<DetHubbard> createReplica(RngWrapper& rng, ModelParams<DetHubbard> pars);
+template<>
+std::unique_ptr<DetHubbard> createReplica<DetHubbard>(RngWrapper& rng, ModelParams<DetHubbard> pars);
 
 
 
