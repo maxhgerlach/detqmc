@@ -47,9 +47,7 @@ class SerializeContentsKey;
 std::unique_ptr<DetModel> createDetHubbard(RngWrapper& rng, ModelParams pars);
 
 
-// template parameters: evaluate time-displaced Green functions? do a checker-board decomposition?
-template <bool TimeDisplaced, bool CheckerBoard>
-class DetHubbard : public DetModelGC<2, num, TimeDisplaced> {
+class DetHubbard : public DetModelGC<2, num, false> {
 private:
     //only initialize with the "factory" function ::createDetHubbard() declared above.
     //Give a reference to the RNG instance to be used
@@ -248,8 +246,8 @@ protected:
 
     //wrappers to use to instantiate template functions of the base class
     struct hubbardComputeBmat {
-        DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardComputeBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+        DetHubbard* parent;
+        hubbardComputeBmat(DetHubbard* parent_) :
             parent(parent_)
         { }
 #pragma GCC diagnostic push
@@ -266,8 +264,8 @@ protected:
     };
 
     struct hubbardLeftMultiplyBmat {
-        DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardLeftMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+        DetHubbard* parent;
+        hubbardLeftMultiplyBmat(DetHubbard* parent_) :
             parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
@@ -276,8 +274,8 @@ protected:
     };
 
     struct hubbardRightMultiplyBmat {
-        DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardRightMultiplyBmat(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+        DetHubbard* parent;
+        hubbardRightMultiplyBmat(DetHubbard* parent_) :
             parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
@@ -286,8 +284,8 @@ protected:
     };
 
     struct hubbardLeftMultiplyBmatInv {
-        DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardLeftMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+        DetHubbard* parent;
+        hubbardLeftMultiplyBmatInv(DetHubbard* parent_) :
             parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
@@ -296,8 +294,8 @@ protected:
     };
 
     struct hubbardRightMultiplyBmatInv {
-        DetHubbard<TimeDisplaced,CheckerBoard>* parent;
-        hubbardRightMultiplyBmatInv(DetHubbard<TimeDisplaced,CheckerBoard>* parent_) :
+        DetHubbard* parent;
+        hubbardRightMultiplyBmatInv(DetHubbard* parent_) :
             parent(parent_)
         { }
         MatNum operator()(uint32_t gc, const MatNum& mat, uint32_t k2, uint32_t k1) {
