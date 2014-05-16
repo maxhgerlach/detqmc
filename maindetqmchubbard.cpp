@@ -42,6 +42,7 @@ std::tuple<bool,bool,ModelParams<DetHubbard>,DetQMCParams> configureSimulation(i
 
     po::options_description modelOptions("Hubbard model parameters, specify via command line or config file");
     modelOptions.add_options()
+        ("model", po::value<string>(&modelpar.model)->default_value("hubbard"), "only the Hubbard model is supported")
         ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
         ("t", po::value<num>(&modelpar.t), "Hubbard: hopping energy scale")
         ("U", po::value<num>(&modelpar.U), "Hubbard-U: potential energy scale")
