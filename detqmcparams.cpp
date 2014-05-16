@@ -12,9 +12,6 @@
 
 void DetQMCParams::check() {
     //check parameters
-    if (specified.count("model") == 0) {
-        throw ParameterMissing("model");
-    }
     using namespace boost::assign;
     std::vector<std::string> neededMCPars;
     neededMCPars += "sweeps", "thermalization", "jkBlocks", "timeseries", "measureInterval";
