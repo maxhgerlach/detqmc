@@ -876,8 +876,8 @@ void DetSDW<TD,CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
                 out_k(ksite) += contrib.real();
             }
         }
-        out_k /= num(N);
-     }
+    }
+    out_k /= num(N);
 }
 
 
