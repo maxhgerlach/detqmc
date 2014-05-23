@@ -689,26 +689,35 @@ void DetSDW<CB>::finishMeasurements() {
     occDiffSq /= num(m);
 }
 
+
+// This assumes that in_r is for translationally invariant data, i.e.
+// obeys periodic boundary conditions.  Note: Even if we have
+// anti-periodic boundary conditions for the fermion operators,
+// e.g. c_x = -c_{x+L} [1d for ease of notation], the real space density
+// is periodic: n_x = c^+_x c_x = c^_{x+L} c_{x+L} and likewise for the spin
+// --> no offsetting of k-space vectors!
 template<CheckerboardMethod CB>
 void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
     const auto L = pars.L;
     const auto N = pars.N;    
-    //offset k-components for antiperiodic bc
-    num offset_x = 0.0;
-    num offset_y = 0.0;
-    if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
-        offset_x = 0.5;
-    }
-    if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
-        offset_y = 0.5;
-    }
+    // //offset k-components for antiperiodic bc
+    // num offset_x = 0.0;
+    // num offset_y = 0.0;
+    // if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
+    //     offset_x = 0.5;
+    // }
+    // if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
+    //     offset_y = 0.5;
+    // }
     out_k.zeros(N);
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
         uint32_t ksitey = ksite / L;
         uint32_t ksitex = ksite % L;
-        num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
-        num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
+        // num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
+        // num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
+        num ky = -pi + num(ksitey) * 2*pi / num(L);
+        num kx = -pi + num(ksitex) * 2*pi / num(L);
         for (uint32_t i = 0; i < N; ++i) {
             num iy = num(i / L);
             num ix = num(i % L);
