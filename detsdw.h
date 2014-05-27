@@ -372,8 +372,19 @@ protected:
     Helpers, defined in header
     
 */
-    uint32_t coordsToSite(uint32_t x, uint32_t y) {
+    uint32_t coordsToSite(uint32_t x, uint32_t y) const {
         return y*pars.L + x;
+    }
+    Phi getPhi(uint32_t site, uint32_t timeslice) const {
+//      assert(site >= 0);    //fulfilled always for uint
+        assert(site <  pars.N);
+        assert(timeslice >= 1);
+        assert(timeslice <= pars.m);
+        Phi result;
+        result[0] = phi0(site,timeslice);
+        result[1] = phi1(site,timeslice);
+        result[2] = phi2(site,timeslice);
+        return result;
     }
 
 

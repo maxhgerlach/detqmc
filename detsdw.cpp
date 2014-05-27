@@ -306,10 +306,7 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
 
     //normphi, meanPhi, sdw-susceptibility
     for (uint32_t site = 0; site < pars.N; ++site) {
-        Phi phi_site;
-        phi_site[0] = phi0(site, timeslice);
-        phi_site[1] = phi1(site, timeslice);
-        phi_site[2] = phi2(site, timeslice);
+        Phi phi_site = getPhi(site, timeslice);
 
         meanPhi += phi_site;
         normPhi += arma::norm(phi_site, 2);
@@ -2557,21 +2554,13 @@ uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
     Phi rd;
     std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
 
-    
-    auto getPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
-        Phi result;
-        result[0] = phi0(site,timeslice);
-        result[1] = phi1(site,timeslice);
-        result[2] = phi2(site,timeslice);
-        return result;
-    };
     auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
         // phi -> phi - 2* (phi . r) * r
-        Phi phi = getPhi(site, timeslice);
+        Phi phi = this->getPhi(site, timeslice);
         return phi - 2. * arma::dot(phi, rd) * rd;
     };
     auto projectedPhi = [&](uint32_t site, uint32_t timeslice) -> num {
-        return arma::dot(getPhi(site,timeslice), rd);
+        return arma::dot(this->getPhi(site,timeslice), rd);
     };
     auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
         phi0(site,timeslice) = phi[0];
