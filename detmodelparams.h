@@ -35,6 +35,11 @@ template<class Model>
 struct ModelParams {
     void check() { }
     MetadataMap prepareMetadataMap() { return MetadataMap(); }
+
+    //If the model supports replica exchange these functions should
+    //be implemented for its control parameter
+    //void set_exchange_parameter_value(num val) { ... }
+    //num  get_exchange_parameter_value() { return ... }    
 private:
     friend class boost::serialization::access;
 

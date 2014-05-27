@@ -20,6 +20,12 @@
 #include <algorithm>
 #include <cstdlib>
 #include <armadillo>
+#include "boost/mpl/assert.hpp" // for not_defined, as introduced below
+
+//instantiate this to get a nice compile-time error message stating that
+//something is undefined via BOOST_MPL_ASSERT(( not_defined<T> ));
+template<typename T> struct not_defined : boost::mpl::false_ { }; 
+
 
 //only use with small numbers!
 inline uint32_t uint_pow(uint32_t base, uint32_t exponent) {

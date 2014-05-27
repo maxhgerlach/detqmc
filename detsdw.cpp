@@ -3270,6 +3270,83 @@ void DetSDW<CB>::consistencyCheck() {
 
 
 
+
+//Methods to implement a replica-exchange / parallel tempering scheme
+
+template<CheckerboardMethod CB>
+num  DetSDW<CB>::get_exchange_parameter_value() const {
+    return pars.r;
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::set_exchange_parameter_value(num r) {
+    pars.r = r;
+}
+
+template<CheckerboardMethod CB>
+constexpr std::string DetSDW<CB>::get_exchange_parameter_name() const {
+    return "r";
+}
+
+template<CheckerboardMethod CB>
+num DetSDW<CB>::get_exchange_action_contribution() const {
+    num contrib = 0.0;
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t i = 0; i < pars.N; ++i) {
+            Phi phi = getPhi(i, k);
+            num phiSquared = arma::dot(phi, phi);
+            contrib += phiSquared;
+        }
+    }
+    contrib *= 0.5 * pars.dtau;
+    return contrib;
+}
+
+
+
+// Related free-standing function
+
+//unfortunately need to pull out code here to avoid duplication --
+//partial function template specializations are not allowed
+static inline num get_replica_exchange_probability_implementation_detsdw(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    // defined as in Hukushima, Nemoto (1996)
+    num delta = (parameter_1 - parameter_2) *
+        (action_contribution_2 - action_contribution_1);
+
+    if (delta <= 0.0) {
+        return 1.0;
+    } else {
+        return std::exp(-delta);
+    }
+}
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+
+
+
+
 template class DetSDW<CB_NONE>;
 template class DetSDW<CB_ASSAAD_BERG>;
 

@@ -58,9 +58,30 @@ class SerializeContentsKey;
 // for each implementation of a model
 template<class Model, class ModelParams>
 std::unique_ptr<Model> createReplica(RngWrapper& rng, ModelParams pars) {
+    BOOST_MPL_ASSERT(( not_defined<Model> ));
     pars.check();
     return std::unique_ptr<Model>(new Model(rng, pars));
 }
+
+
+// Compute min{1, exp(-Delta), the acceptance probability for a
+// replica exchange in parallel tempering
+// --
+// currently only specialized for DetSDW -- it may be that this will
+// have to be generalized and redefined for other models where the
+// relevant terms in the action are not simply
+//   parameter * action_contributio
+template<class Model>
+num get_replica_exchange_probability(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    BOOST_MPL_ASSERT(( not_defined<Model> ));
+    return 0.0;
+}
+
+
+
 
 
 //base class for a model to be simulated by determinantal quantum Monte Carlo

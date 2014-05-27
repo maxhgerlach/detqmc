@@ -41,6 +41,16 @@ std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>
 createReplica<DetSDW<CB_ASSAAD_BERG>,ModelParamsDetSDW>(RngWrapper& rng, ModelParamsDetSDW pars);
 
 
+// return min{1, e^{-\Delta}}
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+
 
 // template parameters: do a checker-board decomposition of
 // which kind?
@@ -64,6 +74,15 @@ public:
     virtual void sweepThermalization();
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
+
+    //Methods to implement a replica-exchange / parallel tempering scheme
+    //-------------------------------------------------------------------
+    // get / set pars.r
+    num  get_exchange_parameter_value() const;
+    void set_exchange_parameter_value(num r);
+    constexpr std::string get_exchange_parameter_name() const;
+    // return 1/2 \int_0^\beta d\tau \sum_i [\vec{\phi}_i(\tau)]^2
+    num get_exchange_action_contribution() const;
 
     //Perform the correction of the Green's function to ensure an
     //effectively symmetric Trotter decomposition.  This returns the
@@ -123,7 +142,7 @@ protected:
     // this contains the simulation parameters relevant to our model.
     // There is some duplication: the base class also has "free
     // standing" member variables dtau, m, beta, s
-    const ModelParams pars; 
+    ModelParams pars; 
     
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
