@@ -55,7 +55,7 @@ public:
           jkBlockCount(mcparams.jkBlocks),
           jkBlockSizeSweeps(mcparams.sweeps / jkBlockCount),
           lastSweepLogged(0), countValues(0),
-          jkBlockValues(jkBlockCount, zero),
+x          jkBlockValues(jkBlockCount, zero),
           total(zero) {
     }
 

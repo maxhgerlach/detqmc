@@ -1,12 +1,5 @@
-/*
- * parameters.h
- *
- *  Created on: Dec 13, 2012
- *      Author: gerlach
- */
-
-#ifndef PARAMETERS_H_
-#define PARAMETERS_H_
+#ifndef DETQMCPARAMS_H_
+#define DETQMCPARAMS_H_
 
 #include <string>
 #include <set>
@@ -20,7 +13,8 @@
 
 #include "metadata.h"
 
-// Collect various structs defining various parameters.
+// Collect various structs defining various parameters. [more structs
+// in the other ...params.h headers]
 
 // The set specified included in each struct contains string representations
 // of all parameters actually specified.  This allows throwing an exception
@@ -79,4 +73,4 @@ private:
 
 
 
-#endif /* PARAMETERS_H_ */
+#endif /* DETQMCPARAMS_H_ */
