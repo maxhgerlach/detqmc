@@ -49,13 +49,13 @@ public:
             ObsType zeroValue = ObsType())
         : obs(observable),
           name(obs.name),
-          zero(zeroValue),          //ObsType() may not be a valid choice!
+          zero(zeroValue),      //ObsType() may not be a valid choice!
           mcparams(simulationParameters),
           metaModel(metadataToStoreModel), metaMC(metadataToStoreMC),
           jkBlockCount(mcparams.jkBlocks),
           jkBlockSizeSweeps(mcparams.sweeps / jkBlockCount),
           lastSweepLogged(0), countValues(0),
-x          jkBlockValues(jkBlockCount, zero),
+          jkBlockValues(jkBlockCount, zero),
           total(zero) {
     }
 
