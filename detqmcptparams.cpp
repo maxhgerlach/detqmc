@@ -10,11 +10,11 @@
 #include "detqmcptparams.h"
 #include "exceptions.h"
 
-void DetQMCParams::check() {
+void DetQMCPTParams::check() {
     //check parameters
     using namespace boost::assign;
     std::vector<std::string> neededPars;
-    neededPars += "exchangeInterval", "controlParameterValues";
+    neededPars += "exchangeInterval", "controlParameterValues", "controlParameterName";
     for (auto p = neededPars.cbegin(); p != neededPars.cend(); ++p) {
         if (specified.count(*p) == 0) {
             throw ParameterMissing(*p);
@@ -26,10 +26,11 @@ void DetQMCParams::check() {
     }
 }
 
-MetadataMap DetQMCParams::prepareMetadataMap() const {
+MetadataMap DetQMCPTParams::prepareMetadataMap() const {
     MetadataMap meta;
 #define META_INSERT(VAR) meta[#VAR] = numToString(VAR)
     META_INSERT(exchangeInterval);
+    META_INSERT(controlParameterName);
 #undef META_INSERT
     //controlParameterValues
     return meta;

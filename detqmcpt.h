@@ -6,6 +6,7 @@
 #include <mpi.h>
 #include <vector>
 #include <functional>
+#include <numeric>              // std::iota
 #include <memory>
 #include <cstdlib>
 #include <limits>
@@ -107,6 +108,11 @@ protected:
     uint32_t numProcesses;      //total number of parallel processes
     uint32_t processIndex;      //MPI-rank of the current process
 
+    // specific to the root process
+    std::vector<uint32_t> current_process_par; // indexed by process rank number, giving control parameter index
+                                               // currently associated to the replica at that process
+    std::vector<uint32_t> current_par_process; // the reverse association
+    std::vector<double> exchange_action;          // for each replica: its locally measured exchange action
 private:
     //Serialize only the content data that has changed after construction.
     //Only call for deserialization after DetQMCPT has already been constructed and initialized!
@@ -143,6 +149,10 @@ private:
         ar & swCounter;
 
         ar & totalWalltimeSecs;
+
+        ar & current_process_par;
+
+        ar & current_par_process;
     }
 };
 
@@ -183,7 +193,6 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     parsmc.check();
     parspt.check();
 
-
     // Set up MPI
     MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
     MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
@@ -205,6 +214,17 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
     // set up control parameters for current process replica parameters
     parsmodel.set_exchange_parameter_value(parspt.controlParameterValues[processIndex]);
+
+    // at rank 0 keep track of which process has which control parameter currently
+    // and track exchange action contributions
+    if (processIndex == 0) {
+        // fill with 0, 1, 2, ... numProcesses-1
+        current_process_par.resize(numProcesses);
+        std::iota(current_process_par.begin(), current_process_par.end(), 0);
+        current_par_process.resize(numProcesses);
+        std::iota(current_par_process.begin(), current_par_process.end(), 0);
+        exchange_action.resize(numProcesses, 0);
+    }
     
     replica = createReplica<Model>(rng, parsmodel);
 
@@ -217,20 +237,20 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     auto scalarObs = replica->getScalarObservables();
     for (auto obsP = scalarObs.cbegin(); obsP != scalarObs.cend(); ++obsP) {
         obsHandlers.push_back(
-            ObsPtr(new ScalarObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+            ObsPtr(new ScalarObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
 
     auto vectorObs = replica->getVectorObservables();
     for (auto obsP = vectorObs.cbegin(); obsP != vectorObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new VectorObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+            VecObsPtr(new VectorObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
     auto keyValueObs = replica->getKeyValueObservables();
     for (auto obsP = keyValueObs.cbegin(); obsP != keyValueObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new KeyValueObservableHandler(*obsP, parsmc, modelMeta, mcMeta))
+            VecObsPtr(new KeyValueObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
 
@@ -270,7 +290,10 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     elapsedTimer(),     // start timing
     totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
     grantedWalltimeSecs(0), jobid(""),
-    numProcesses(1), processIndex(0)
+    numProcesses(1), processIndex(0),
+    current_process_par(1, 0),
+    current_par_process(1, 0),
+    exchange_action(1, 0)
 {
     initFromParameters(parsmodel_, parsmc_, parspt_);
 }
@@ -287,7 +310,10 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     elapsedTimer(),     // start timing
     totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
     grantedWalltimeSecs(0), jobid(""),
-    numProcesses(1), processIndex(0)
+    numProcesses(1), processIndex(0),
+    current_process_par(1, 0),
+    current_par_process(1, 0),
+    exchange_action(1, 0)
 {
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -415,6 +441,7 @@ void DetQMCPT<Model, ModelParams>::run() {
     const std::string abortFilename2 = "../" + abortFilename1;
 
     while (stage != F) {                //big loop
+        // do we need to quit?
     	if (swCounter % 2 == 0) {
             bool stop_now = false;
             if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
@@ -439,7 +466,7 @@ void DetQMCPT<Model, ModelParams>::run() {
             }
     	}
 
-        //thermalization & measurement stages
+        //thermalization & measurement stages | main work
         switch (stage) {
 
         case T:
@@ -507,7 +534,62 @@ void DetQMCPT<Model, ModelParams>::run() {
             break;  //case
 
         }  //switch
-    }
+
+        //replica exchange
+        if (stage == T or stage == M) {
+            if (swCounter % parspt.exchangeInterval == 0) {
+                // Gather exchange action contribution from replicas
+                double localAction = replica->get_exchange_action_contribution();
+                MPI_Gather( &localAction,           // send buf
+                            1,
+                            MPI_DOUBLE,
+                            exchange_action.data(), // recv buf
+                            1,
+                            MPI_DOUBLE,
+                            0,                      // root process
+                            MPI_COMM_WORLD
+                    );
+                // serially walk through control parameters and propose exchange
+                if (processIndex == 0) {
+                    for (uint32_t cpi1 = 0; cpi1 < numReplicas - 1; ++cpi1) {
+                        uint32_t cpi2 = cpi1 + 1;
+                        double par1 = parspt.controlParameterValues[cpi1];
+                        double par2 = parspt.controlParameterValues[cpi2];
+                        uint32_t indexProc1 = current_par_process[par1];
+                        uint32_t indexProc2 = current_par_process[par2];
+                        double action1 = exchange_action[indexProc1];                    
+                        double action2 = exchange_action[indexProc2];
+
+                        num exchange_prob = get_replica_exchange_probability<Model>(par1, action1,
+                                                                                    par2, action2);
+                        if (exchange_prob >= 1 or rng.rand01() <= exchange_prob) {
+                            // swap control parameters
+                            current_process_par[indexProc1] = cpi2;
+                            current_process_par[indexProc2] = cpi1;
+                            current_par_process[cpi1] = indexProc2;
+                            current_par_process[cpi2] = indexProc1;
+                        }                    
+                    }
+                } // if (processIndex == 0)
+                // distribute and update control parameter
+                uint32_t new_param_index = 0;
+                MPI_Scatter( current_process_par.data(), // send buf
+                             1,
+                             MPI_UINT32_T,
+                             &new_param_index,           // recv buf
+                             1
+                             MPI_UINT32_T,
+                             0,                          // root process
+                             MPI_COMM_WORLD
+                    );
+                replica->set_exchange_parameter_value(
+                    parspt.controlParameterValues[new_param_index]
+                    );
+                
+            }
+        } //replica exchange
+        
+    } // while (stage != F)
 }
 
 

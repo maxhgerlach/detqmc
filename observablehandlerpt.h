@@ -32,10 +32,11 @@ class SerializeContentsKey;
 template <typename ObsType>
 class ObservableHandlerPTCommon {
 public:
-    ObservableHandlerCommonPT(
+    ObservableHandlerPTCommon(
         const Observable<ObsType>& localObservable,
         const std::vector<uint32_t>& current_process_par;
         const DetQMCParams& simulationParameters,
+        const DetQMCPTParams& ptParams,
         const MetadataMap& metadataToStoreModel,
         const MetadataMap& metadataToStoreMC,
         ObsType zeroValue = ObsType());
@@ -62,7 +63,9 @@ protected:
                                 //valued observables
 
     DetQMCParams mcparams;
-    MetadataMap metaModel, metaMC;
+    DetQMCPTParams ptparams;
+    MetadataMap metaModel;
+    MetadataMap metaMC;
     uint32_t jkBlockCount;
     uint32_t jkBlockSizeSweeps;
 
@@ -89,6 +92,9 @@ protected:
     // they are indexed by the control parameter index.
     std::vector<std::vector<ObsType>> par_jkBlockValues; // running counts of jackknife block values
     std::vector<ObsType> par_total; // running accumulation regardless of jackknife block
+    // for each control parameter value [sorted by index]: store a
+    // separate MetadataMap with just that entry replaced
+    std::vector<MetadataMap> par_metaModel;
 public:
     // only functions that can pass the key to this function have access
     // -- in this way access is granted only to DetQMC::serializeContents
@@ -102,16 +108,18 @@ public:
 };
 
 template <typename ObsType>
-ObservableHandlerCommonPT<ObsType>::ObservableHandlerCommonPT(
+ObservableHandlerPTCommon<ObsType>::ObservableHandlerPTCommon(
     const Observable<ObsType>& localObservable,
     const std::vector<uint32_t>& current_process_par;
     const DetQMCParams& simulationParameters,
+    const DetQMCPTParams& ptParams,
     const MetadataMap& metadataToStoreModel,
     const MetadataMap& metadataToStoreMC,
     ObsType zeroValue = ObsType())
     : localObs(localObservable), name(localObs.name),
       zero(zeroValue),          //ObsType() may not be a valid choice!
       mcparams(simulationParameters),
+      ptparams(ptParams),
       metaModel(metadataToStoreModel),
       metaMC(metadataToStoreMC),
       jkBlockCount(mcparams.jkBlocks),
@@ -123,20 +131,27 @@ ObservableHandlerCommonPT<ObsType>::ObservableHandlerCommonPT(
       process_par(current_process_par),
       process_cur_value(),
       par_jkBlockValues(),
-      par_total()
+      par_total(),
+      par_metaModel(),
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
     MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
+    assert(ptparams.controlParameterValues.size() == numProcesses);
     if (processIndex == 0) {
         process_cur_value.resize(numProcesses, zero);
         par_jkBlockValues.resize(numProcesses, std::vector<ObsType>(jkBlockCount, zero));
         par_total.resize(numProcesses, zero);
+        par_metaModel.resize(numProcesses, metaModel);
+        for (uint32_t cpi = 0; cpi < numProcesses; ++cpi) {
+            par_metaModel[cpi][ptparams.controlParameterName] =
+                numToString(ptparams.controlParameterValues[cpi]);
+        }
     }
 }
 
 
 template <typename ObsType>
-void ObservableHandlerCommonPT<ObsType>::handleValues(uint32_t curSweep) {
+void ObservableHandlerPTCommon<ObsType>::handleValues(uint32_t curSweep) {
     if (processIndex == 0) {
         uint32_t curJkBlock = curSweep / jkBlockSizeSweeps;
         for (uint32_t p_i = 0; p_i < numProcesses; ++p_i) {
@@ -154,7 +169,7 @@ void ObservableHandlerCommonPT<ObsType>::handleValues(uint32_t curSweep) {
 }
 
 template <typename ObsType>
-std::tuple<ObsType,ObsType> ObservableHandlerCommonPT<ObsType>::evaluateJackknife(
+std::tuple<ObsType,ObsType> ObservableHandlerPTCommon<ObsType>::evaluateJackknife(
     uint32_t cpi
     ) const {
     if (processIndex != 0) {
@@ -181,16 +196,21 @@ std::tuple<ObsType,ObsType> ObservableHandlerCommonPT<ObsType>::evaluateJackknif
 }
 
 
+// Below here we explicitly use `double` instead of `num` because the
+// MPI calls explicitly use MPI_DOUBLE.  This can easily be extended
+// if some other floating precision type is ever to be used for num.
+
 
 
 //specialized ObservableHandlerPT that uses num as a value type
 // -- can store time series, can be output into common files "results*.values"
-//    for all scalar observables
+//    for all scalar observables [in subdirectories]
 class ScalarObservableHandlerPT : public ObservableHandlerPTCommon<double> {
 public:
     ScalarObservableHandlerPT(const ScalarObservable& localObservable,
                               const std::vector<uint32_t>& current_process_par;
                               const DetQMCParams& simulationParameters,
+                              const DetQMCPTParams& ptParams,
                               const MetadataMap& metadataToStoreModel,
                               const MetadataMap& metadataToStoreMC);
 
@@ -239,10 +259,11 @@ ScalarObservableHandlerPT::ScalarObservableHandlerPT(
     const ScalarObservable& localObservable,
     const std::vector<uint32_t>& current_process_par;
     const DetQMCParams& simulationParameters,
+    const DetQMCPTParams& ptParams,
     const MetadataMap& metadataToStoreModel,
     const MetadataMap& metadataToStoreMC)
     : ObservableHandlerCommon<double>(localObservable, current_process_par,
-                                      simulationParameters,
+                                      simulationParameters, ptParams,
                                       metadataToStoreModel, metadataToStoreMC),
       par_timeseriesBuffer(),       
       par_storage(),    
@@ -254,7 +275,7 @@ ScalarObservableHandlerPT::ScalarObservableHandlerPT(
         par_timeseriesBuffer.resize(numProcesses, std::vector<double>());
         //initialize to a vector of something like a nullptr
         par_storage.resize(numProcesses);
-        //
+        //boolean false stored as char
         par_storageFileStarted.resize(numProcesses, false);
     }
 }
@@ -314,9 +335,13 @@ void ScalarObservableHandlerPT::outputTimeseries() {
     if (processIndex == 0 and mcparams.timeseries) {
         for (uint32_t p_i = 0; p_i < numProcesses; ++p_i) {
             uint32_t cpi = process_par[p_i];
+
+            std::string subdirectory = "p" + numToString(cpi) + "_" +
+                mcparams.controlParameterName +
+                numToString(mcparams.controlParameterValues[cpi]);
         
             if (not par_storage[cpi]) {
-                std::string filename = name + ".series"; // TODO: Pick Name!
+                std::string filename = subdirectory + "/" + name + ".series";
                 if (par_storageFileStarted[cpi]) {
                     par_storage[cpi] =
                         std::unique_ptr<DoubleVectorWriterSuccessive>(
@@ -324,7 +349,7 @@ void ScalarObservableHandlerPT::outputTimeseries() {
                                                              false // create a new file
                                 ));
                     par_storage->addHeaderText("Timeseries for observable " + name);
-                    par_storage->addMetadataMap(metaModel);
+                    par_storage->addMetadataMap(par_metaModel[cpi]);
                     par_storage->addMetadataMap(metaMC);
                     par_storage->addMeta("observable", name);
                     par_storage->writeHeader();
@@ -349,11 +374,12 @@ void ScalarObservableHandlerPT::outputTimeseries() {
 //A fixed vector size must be specified at initialization. This indexes the vector from 0 to
 //the vector size.
 
-class VectorObservableHandlerPT : public ObservableHandlerPTCommon<arma::Col<num>> {
+class VectorObservableHandlerPT : public ObservableHandlerPTCommon<arma::Col<double>> {
 public:
     VectorObservableHandlerPT(const VectorObservable& localObservable,
                               const std::vector<uint32_t>& current_process_par;
                               const DetQMCParams& simulationParameters,
+                              const DetQMCPTParams& ptParams,
                               const MetadataMap& metadataToStoreModel,
                               const MetadataMap& metadataToStoreMC);
     void insertValue(uint32_t curSweep);    //compare to ScalarObservableHandlerPT function    
@@ -361,26 +387,35 @@ public:
         return vsize;
     }
     friend void outputResults(
-        const std::vector<std::unique_ptr<VectorObservableHandler>>& obsHandlers);
+        const std::vector<std::unique_ptr<VectorObservableHandlerPT>>& obsHandlers);
 protected:
     uint32_t vsize;
-    arma::Col<num> indexes;
+    arma::Col<double> indexes;
     std::string indexName;
+    // at rank 0 this holds contiguous memory where the vector data
+    // gathered from all replicas is stored
+    std::vector<double> mpi_gather_buffer; 
 };
 
 VectorObservableHandlerPT::VectorObservableHandlerPT(const VectorObservable& localObservable,
                                                      const std::vector<uint32_t>& current_process_par;
                                                      const DetQMCParams& simulationParameters,
+                                                     const DetQMCPTParams& ptParams,
                                                      const MetadataMap& metadataToStoreModel,
                                                      const MetadataMap& metadataToStoreMC)
-    : ObservableHandlerCommonPT<arma::Col<num>>(
-        localObservable, current_process_par, simulationParameters,
+    : ObservableHandlerPTCommon<arma::Col<double>>(
+        localObservable, current_process_par,
+        simulationParameters, ptParams,
         metadataToStoreModel, metadataToStoreMC,
-        arma::zeros<arma::Col<num>>(observable.vectorSize)),
-      vsize(observable.vectorSize), indexes(vsize), indexName("site")
+        arma::zeros<arma::Col<double>>(observable.vectorSize)),
+    vsize(observable.vectorSize), indexes(vsize), indexName("site"),
+    mpi_gather_buffer()
 {
     for (uint32_t counter = 0; counter < vsize; ++counter) {
         indexes[counter] = counter;
+    }
+    if (processIndex == 0) {
+        mpi_gather_buffer.resize(numProcesses * vsize, 0.0);
     }
 }
 
@@ -388,18 +423,65 @@ void VectorObservableHandlerPT::insertValue(uint32_t curSweep) {
     //MPI: gather the value of localObs from each replica in the
     //buffer at the root process: process_cur_value
     assert(vsize == localObs.valRef.n_elem);
-    MPI_Gather( localObs.valRef.memptr()), // sendbuf
+    MPI_Gather( localObs.valRef.memptr(),  // sendbuf
                                            // pass arma vector data behind localObs reference
                 vsize,                     // sendcount
                 MPI_DOUBLE,                // sendtype
-                //process_cur_value.data(),  // recvbuf: pointer to internal memory of vector [at root process]
+                mpi_gather_buffer.data(),  // recvbuf: pointer to internal memory of vector [at root process]
                 vsize,                     // recvcount
                 MPI_DOUBLE,                // recvtype
                 MPI_COMM_WORLD             // comm
         );
+
+    // use the contiguous memory of mpi_gather_buffer to hold the data
+    // for the Armadillo vectors used for the individual replica measurements
+    // at the root process
+    if (processIndex == 0) {
+        assert(mpi_gather_buffer.size() == numProcesses * vsize);
+        for (uint32_t p_i = 0; p_i < numProcesses; ++p_i) {
+            assert(process_cur_value[p_i].n_elem == vsize);
+            process_cur_value[p_i] = arma::Col<double>(
+                    mpi_gather_buffer.data() + p_i * vsize, // aux_mem*  [typed pointer: we do not need a sizeof(double) factor]
+                    vsize,          // number_of_elements
+                    false,          // copy_aux_mem [will continue to use the mpi_gather_buffer memory]
+                    true            // strict [vector will remain bound to this memory for its lifetime]
+                );
+        }
+    }
                 
     this->handleValues(curSweep);
 }
+
+
+
+
+//Vector indexed by arbitrary key
+class KeyValueObservableHandlerPT : public VectorObservableHandlerPT {
+public:
+    KeyValueObservableHandlerPT(const KeyValueObservable& observable,
+                                const std::vector<uint32_t>& current_process_par,                              
+                                const DetQMCParams& simulationParameters,
+                                const DetQMCPTParams& ptParams,
+                                const MetadataMap& metadataToStoreModel,
+                                const MetadataMap& metadataToStoreMC) :
+        VectorObservableHandlerPT(observable, current_process_par,
+                                  simulationParameters, ptParams,
+                                  metadataToStoreModel, metadataToStoreMC) {
+        //this code is convenient but sets the vector indexes twice upon construction
+        indexes = observable.keys;
+        indexName = observable.keyName;
+    }
+};
+
+
+//Write expectation values and error bars for all observables to a file
+//take metadata to store from the first entry in obsHandlers
+//This is to be called by rank 0
+void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>& obsHandlers);
+
+//write the results for each vector observable into a seperate file
+void outputResults(const std::vector<std::unique_ptr<VectorObservableHandlerPT>>& obsHandlers);
+
 
 
     

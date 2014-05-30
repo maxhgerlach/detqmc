@@ -27,11 +27,12 @@
 struct DetQMCPTParams {
     uint32_t exchangeInterval;
     std::vector<num> controlParameterValues;
+    std::string controlParameterName;
     
     std::set<std::string> specified; // used to record names of specified parameters
 
     DetQMCPTParams() :
-        exchangeInterval(0), controlParameterValues(), specified()
+        exchangeInterval(0), controlParameterValues(), controlParameterName(""), specified()
     { }
 
     // check consistency
@@ -45,7 +46,8 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar & exchangeInterval & controlParameterValues & specified;
+        ar & exchangeInterval & controlParameterValues & controlParameterName
+           & specified;
     }
 };
 
