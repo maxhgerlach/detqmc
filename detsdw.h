@@ -1,4 +1,4 @@
- /*
+/*
  * detsdw.h
  *
  *  Created on: Feb 21, 2013
@@ -253,9 +253,9 @@ protected:
     Adjustment of MC step size
 
 */   
-    num phiDelta;       //MC step size for field components (box update)
-    num angleDelta;		//  for rotation update (this is the minimal cos\theta)
-    num scaleDelta;		//  for scaling update (the standard deviation of the gaussian radius update)
+    num phiDelta;   //MC step size for field components (box update)
+    num angleDelta; //  for rotation update (this is the minimal cos\theta)
+    num scaleDelta; //  for scaling update (the standard deviation of the gaussian radius update)
     //used to adjust phiDelta/angleDelta/scaleDelta; acceptance ratios for local field updates
     num targetAccRatioLocal_phi;
     num lastAccRatioLocal_phi;

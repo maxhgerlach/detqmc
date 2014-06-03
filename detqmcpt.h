@@ -537,7 +537,7 @@ void DetQMCPT<Model, ModelParams>::run() {
 
         //replica exchange
         if (stage == T or stage == M) {
-            if (swCounter % parspt.exchangeInterval == 0) {
+            if (parspt.exchangeInterval != 0 and (swCounter % parspt.exchangeInterval == 0)) {
                 // Gather exchange action contribution from replicas
                 double localAction = replica->get_exchange_action_contribution();
                 MPI_Gather( &localAction,           // send buf
