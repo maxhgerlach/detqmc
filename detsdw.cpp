@@ -85,13 +85,7 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     phi0(pars.N, pars.m+1), phi1(pars.N, pars.m+1), phi2(pars.N, pars.m+1), cdwl(pars.N, pars.m+1),
     coshTermPhi(pars.N, pars.m+1), sinhTermPhi(pars.N, pars.m+1),
     coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
-    phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta), scaleDelta(InitialScaleDelta),
-    targetAccRatioLocal_phi(pars.accRatio), lastAccRatioLocal_phi(0),
-    accRatioLocal_box_RA(AccRatioAdjustmentSamples),
-    accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
-    accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
-    curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
-    curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta),
+    ad(pars),                   // AdjustmentData
     performedSweeps(0),
     normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
@@ -1583,7 +1577,7 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
     for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
         switch (pars.spinProposalMethod) {
         case SpinProposalMethod_Type::BOX:
-            lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                     return this->proposeNewPhiBox(site, timeslice);
                 }
@@ -1592,13 +1586,13 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
         case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
             //each sweep, alternate between rotating and scaling
             if (performedSweeps % 2 == 0) {
-                lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                     [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                         return this->proposeRotatedPhi(site, timeslice);
                     }
                 );
             } else {
-                lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                     [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                         return this->proposeScaledPhi(site, timeslice);
                     }
@@ -1606,7 +1600,7 @@ void DetSDW<CB>::updateInSlice(uint32_t timeslice) {
             }
             break;
         case SpinProposalMethod_Type::ROTATE_AND_SCALE:
-            lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
+            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                     return this->proposeRotatedScaledPhi(site, timeslice);
                 }
@@ -2272,7 +2266,7 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
     } else if (pars.spinProposalMethod == SpinProposalMethod_Type::ROTATE_AND_SCALE) {
         // after every interval of AccRatioAdjustmentSamples we alternate between
         // adjusting the parameter for the rotate and scale moves
-        if (performedSweeps % (2 * AccRatioAdjustmentSamples) < AccRatioAdjustmentSamples) {
+        if (performedSweeps % (2 * ad.AccRatioAdjustmentSamples) < ad.AccRatioAdjustmentSamples) {
             adapting_what = ADAPT_ROTATE;
         } else {
             adapting_what = ADAPT_SCALE;
@@ -2286,31 +2280,31 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
     case ADAPT_SCALE: ra = accRatioLocal_scale_RA; break;
     }
 
-    ra.get().addValue(lastAccRatioLocal_phi);
+    ra.get().addValue(ad.lastAccRatioLocal_phi);
     using std::cout;
-    if (ra.get().getSamplesAdded() % AccRatioAdjustmentSamples == 0) {
+    if (ra.get().getSamplesAdded() % ad.AccRatioAdjustmentSamples == 0) {
         num avgAccRatio = ra.get().get();
         switch (adapting_what) {
         case ADAPT_BOX:
-            if (avgAccRatio < targetAccRatioLocal_phi) {
-                phiDelta *= phiDeltaShrinkFactor;
-            } else if (avgAccRatio > targetAccRatioLocal_phi) {
-                phiDelta *= phiDeltaGrowFactor;
+            if (avgAccRatio < ad.targetAccRatioLocal_phi) {
+                ad.phiDelta *= ad.phiDeltaShrinkFactor;
+            } else if (avgAccRatio > ad.targetAccRatioLocal_phi) {
+                ad.phiDelta *= ad.phiDeltaGrowFactor;
             }
-//            cout << "box, acc: " << avgAccRatio << ", phiDelta = " << phiDelta << '\n';
+//            cout << "box, acc: " << avgAccRatio << ", ad.phiDelta = " << ad.phiDelta << '\n';
             break;
         case ADAPT_ROTATE:
             // angleDelta <=> cosine of spherical angle theta
             // reducing angleDelta <=> opening up the angle <=> reducing acceptance ratio
-            if (avgAccRatio < targetAccRatioLocal_phi and angleDelta < MaxAngleDelta) {
-                curminAngleDelta = angleDelta;
-                angleDelta += (curmaxAngleDelta - angleDelta) / 2;
+            if (avgAccRatio < ad.targetAccRatioLocal_phi and ad.angleDelta < ad.MaxAngleDelta) {
+                ad.curminAngleDelta = ad.angleDelta;
+                ad.angleDelta += (ad.curmaxAngleDelta - ad.angleDelta) / 2;
             }
-            else if (avgAccRatio > targetAccRatioLocal_phi and angleDelta > MinAngleDelta) {
-                curmaxAngleDelta = angleDelta;
-                angleDelta -= (angleDelta - curminAngleDelta) / 2;
+            else if (avgAccRatio > ad.targetAccRatioLocal_phi and ad.angleDelta > ad.MinAngleDelta) {
+                ad.curmaxAngleDelta = ad.angleDelta;
+                ad.angleDelta -= (ad.angleDelta - ad.curminAngleDelta) / 2;
             }
-//            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << angleDelta << '\n';
+//            cout << "rotate, acc: " << avgAccRatio << ", angleDelta = " << ad.angleDelta << '\n';
             break;
         case ADAPT_SCALE:
             if (not pars.adaptScaleVariance) {
@@ -2319,16 +2313,16 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
             }
             // scaleDelta <=> width of gaussian distribution to select new radius
             // reducing scaleDelta <=> increasing acceptance ratio
-            if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta < MaxScaleDelta) {
+            if (avgAccRatio > ad.targetAccRatioLocal_phi and ad.scaleDelta < ad.MaxScaleDelta) {
                 //I'd say it's unlikely to get such big acceptance ratios with such a wide gaussian
-                curminScaleDelta = scaleDelta;
-                scaleDelta += (curmaxScaleDelta - scaleDelta) / 2;
+                ad.curminScaleDelta = ad.scaleDelta;
+                ad.scaleDelta += (ad.curmaxScaleDelta - ad.scaleDelta) / 2;
             }
-            else if (avgAccRatio > targetAccRatioLocal_phi and scaleDelta > MinScaleDelta) {
-                curmaxScaleDelta = scaleDelta;
-                scaleDelta -= (scaleDelta - curminScaleDelta) / 2;
+            else if (avgAccRatio > ad.targetAccRatioLocal_phi and ad.scaleDelta > ad.MinScaleDelta) {
+                ad.curmaxScaleDelta = ad.scaleDelta;
+                ad.scaleDelta -= (ad.scaleDelta - ad.curminScaleDelta) / 2;
             }
-//            cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << scaleDelta << '\n';
+//            cout << "scale, acc: " << avgAccRatio << ", scaleDelta = " << ad.scaleDelta << '\n';
             break;
         }
     }
@@ -2540,11 +2534,11 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
 template<CheckerboardMethod CB>
 void DetSDW<CB>::addGlobalRandomDisplacement() {
     // shift fields by a random, constant displacement
-    num r0 = rng.randRange(-phiDelta, +phiDelta);
+    num r0 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
     phi0 += r0;
-    num r1 = rng.randRange(-phiDelta, +phiDelta);
+    num r1 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
     phi1 += r1;
-    num r2 = rng.randRange(-phiDelta, +phiDelta);
+    num r2 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
     phi2 += r2;
 }
 
@@ -2666,7 +2660,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeNewPhiBox(uint32_t site, u
     phi[2] = phi2(site, timeslice);
 
     for (auto& phi_comp: phi) {
-        num r = rng.randRange(-phiDelta, +phiDelta);
+        num r = rng.randRange(-ad.phiDelta, +ad.phiDelta);
         phi_comp += r;
     }
 
@@ -2689,7 +2683,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeRotatedPhi(uint32_t site, 
     num r = sqrt(r2);
 
     //new angular coordinates:
-    num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+    num cosTheta = rng.rand01() * (1.0 - ad.angleDelta) + ad.angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
     num phi = rng.rand01() * 2.0 * M_PI;
     num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
     num cosPhi = cos(phi);
@@ -2739,7 +2733,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeScaledPhi(uint32_t site, u
     //It is nececssary to consider the cubed length, as we have in spherical coordinates for
     //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
     //want to bias against long lengths
-    num new_r3 = normal_distribution.get(scaleDelta, r3);
+    num new_r3 = normal_distribution.get(ad.scaleDelta, r3);
     num scale  = 1.0;
     bool valid = true;
     // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
@@ -2788,7 +2782,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeRotatedScaledPhi(uint32_t 
     //It is nececssary to consider the cubed length, as we have in spherical coordinates for
     //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
     //want to bias against long lengths
-    num new_r3 = normal_distribution.get(scaleDelta, r3);
+    num new_r3 = normal_distribution.get(ad.scaleDelta, r3);
     if (new_r3 <= 0) {
         // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
         // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
@@ -2802,7 +2796,7 @@ typename DetSDW<CB>::changedPhiInt DetSDW<CB>::proposeRotatedScaledPhi(uint32_t 
         // otherwise we scale the spin appropriately and also change its orientation
 
         //new angular coordinates:
-        num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+        num cosTheta = rng.rand01() * (1.0 - ad.angleDelta) + ad.angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
         num phi = rng.rand01() * 2.0 * M_PI;
         num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
         num cosPhi = cos(phi);
@@ -2958,7 +2952,7 @@ num DetSDW<CB>::phiAction() {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::thermalizationOver() {
-    std::cout << "After thermalization: phiDelta = " << phiDelta << '\n'
+    std::cout << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
               << "recent local accRatio = " << accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
@@ -3342,6 +3336,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
         parameter_1, action_contribution_1,
         parameter_2, action_contribution_2);         
 }
+
 
 
 

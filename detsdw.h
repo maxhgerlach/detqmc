@@ -83,6 +83,21 @@ public:
     constexpr std::string get_exchange_parameter_name() const;
     // return 1/2 \int_0^\beta d\tau \sum_i [\vec{\phi}_i(\tau)]^2
     num get_exchange_action_contribution() const;
+    // get/set control parameter [r] specific data -- here:
+    // MC stepsize adjustment done during thermalization.  This is for
+    // MPI and therefore uses this plain pointer to a buffer for
+    // simplicity
+    constexpr uint32_t get_control_data_buffer_size() const {
+        return ad.bufsize;
+    }
+    void get_control_data(double* buffer) const {
+        ad.set_buffer_to_data(buffer);
+    }
+    void set_control_data(const double* buffer) {
+        ad.get_data_from_buffer(buffer):
+    }
+
+
 
     //Perform the correction of the Green's function to ensure an
     //effectively symmetric Trotter decomposition.  This returns the
@@ -252,31 +267,77 @@ protected:
 
     Adjustment of MC step size
 
-*/   
-    num phiDelta;   //MC step size for field components (box update)
-    num angleDelta; //  for rotation update (this is the minimal cos\theta)
-    num scaleDelta; //  for scaling update (the standard deviation of the gaussian radius update)
-    //used to adjust phiDelta/angleDelta/scaleDelta; acceptance ratios for local field updates
-    num targetAccRatioLocal_phi;
-    num lastAccRatioLocal_phi;
-    RunningAverage accRatioLocal_box_RA, accRatioLocal_rotate_RA, accRatioLocal_scale_RA;
+    This needs to be synchronized during parallel tempering
 
-    //adjustment of phiDelta, angleDelta, scaleDelta:
-    static constexpr num InitialPhiDelta = 0.5;
-    static constexpr num InitialAngleDelta = 0.0;
-    static constexpr num InitialScaleDelta = 0.1;
-    static constexpr num MinScaleDelta = 0.0;
-    static constexpr num MaxScaleDelta = 1.0;
-    static constexpr num MinAngleDelta = -1.0;
-    static constexpr num MaxAngleDelta = 1.0;
-    static constexpr uint32_t AccRatioAdjustmentSamples = 100;
-    static constexpr num phiDeltaGrowFactor = 1.05;
-    static constexpr num phiDeltaShrinkFactor = 0.95;
-    //initialized to the respective constants above in the constructor
-    num curminAngleDelta;
-    num curmaxAngleDelta;
-    num curminScaleDelta;
-    num curmaxScaleDelta;
+*/   
+    struct AdjustmentData {
+        //adjustment of phiDelta, angleDelta, scaleDelta:
+        static constexpr num InitialPhiDelta = 0.5;
+        static constexpr num InitialAngleDelta = 0.0;
+        static constexpr num InitialScaleDelta = 0.1;
+        static constexpr num MinScaleDelta = 0.0;
+        static constexpr num MaxScaleDelta = 1.0;
+        static constexpr num MinAngleDelta = -1.0;
+        static constexpr num MaxAngleDelta = 1.0;
+        static constexpr uint32_t AccRatioAdjustmentSamples = 100;
+        static constexpr num phiDeltaGrowFactor = 1.05;
+        static constexpr num phiDeltaShrinkFactor = 0.95;
+
+        num phiDelta;   //MC step size for field components (box update)
+        num angleDelta; //  for rotation update (this is the minimal cos\theta)
+        num scaleDelta; //  for scaling update (the standard deviation of the gaussian radius update)
+        //used to adjust phiDelta/angleDelta/scaleDelta; acceptance ratios for local field updates
+        num targetAccRatioLocal_phi;
+        num lastAccRatioLocal_phi;
+        RunningAverage accRatioLocal_box_RA, accRatioLocal_rotate_RA, accRatioLocal_scale_RA;
+
+        //initialized to the respective constants above in the constructor
+        num curminAngleDelta;
+        num curmaxAngleDelta;
+        num curminScaleDelta;
+        num curmaxScaleDelta;
+
+        AdjustmentData(const ModelParams& pars) :
+            phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta),
+            scaleDelta(InitialScaleDelta),
+            targetAccRatioLocal_phi(phi),
+            lastAccRatioLocal_phi(0),
+            accRatioLocal_box_RA(AccRatioAdjustmentSamples),
+            accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),
+            accRatioLocal_scale_RA(AccRatioAdjustmentSamples),
+            curminAngleDelta(MinAngleDelta), curmaxAngleDelta(MaxAngleDelta),
+            curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta)
+        { }
+
+        static constexpr uint32_t bufsize = 7;
+
+        void get_data_from_buffer(const double* buffer) {
+            phiDelta = *buffer;
+            angleDelta = *(buffer + 1);
+            scaleDelta = *(buffer + 2);
+            curminAngleDelta = *(buffer + 3);
+            curmaxAngleDelta = *(buffer + 4);
+            curminScaleDelta = *(buffer + 5);
+            curmaxScaleDelta = *(buffer + 6);
+            assert(bufsize - 1 == 6);
+            // reset acc ratio running averagers
+            accRatioLocal_box_RA = RunningAverage(AccRatioAdjustmentSamples);
+            accRatioLocal_rotate_RA = RunningAverage(AccRatioAdjustmentSamples);
+            accRatioLocal_scale_RA = RunningAverage(AccRatioAdjustmentSamples);
+            
+        }
+
+        void set_buffer_to_data(double* buffer) const {
+            *buffer = phiDelta;
+            *(buffer + 1) = angleDelta;
+            *(buffer + 2) = scaleDelta;
+            *(buffer + 3) = curminAngleDelta;
+            *(buffer + 4) = curmaxAngleDelta;
+            *(buffer + 5) = curminScaleDelta;
+            *(buffer + 6) = curmaxScaleDelta;
+            assert(bufsize - 1 == 6);
+        }
+    } ad;
 
 
 /*
@@ -708,11 +769,11 @@ public:
         ar & cdwl;
         ar & coshTermPhi & sinhTermPhi;
         ar & coshTermCDWl & sinhTermCDWl;
-        ar & phiDelta & angleDelta & scaleDelta;
-        ar & targetAccRatioLocal_phi & lastAccRatioLocal_phi;
-        ar & accRatioLocal_box_RA & accRatioLocal_rotate_RA & accRatioLocal_scale_RA;
-        ar & curminAngleDelta & curmaxAngleDelta;
-        ar & curminScaleDelta & curmaxScaleDelta;
+        ar & ad.phiDelta & ad.angleDelta & ad.scaleDelta;
+        ar & ad.targetAccRatioLocal_phi & ad.lastAccRatioLocal_phi;
+        ar & ad.accRatioLocal_box_RA & ad.accRatioLocal_rotate_RA & ad.accRatioLocal_scale_RA;
+        ar & ad.curminAngleDelta & ad.curmaxAngleDelta;
+        ar & ad.curminScaleDelta & ad.curmaxScaleDelta;
         ar & performedSweeps;
     }
 };
