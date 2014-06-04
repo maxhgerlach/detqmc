@@ -5,7 +5,10 @@
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"
 #pragma GCC diagnostic pop
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <mpi.h>
+#pragma GCC diagnostic pop
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -190,7 +193,7 @@ int main(int argc, char **argv) {
                 DetQMCPT<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt);
                 simulation.run();
             } else if (resumeSimulation) {
-                DetQMCPT<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc, parpt);
+                DetQMCPT<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc);
                 //only very select parameters given in parmc are updated for the resumed simulation
                 simulation.run();
             }
@@ -200,7 +203,7 @@ int main(int argc, char **argv) {
                 DetQMCPT<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt);
                 simulation.run();
             } else if (resumeSimulation) {
-                DetQMCPT<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc, parpt);
+                DetQMCPT<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc);
                 //only very select parameters given in parmc are updated for the resumed simulation
                 simulation.run();
             }

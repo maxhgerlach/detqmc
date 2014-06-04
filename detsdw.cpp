@@ -2273,11 +2273,11 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
         }
     }
     //Hold a reference to the accRatioLocal_*_RA we currently need
-    std::reference_wrapper<RunningAverage> ra(accRatioLocal_box_RA);
+    std::reference_wrapper<RunningAverage> ra(ad.accRatioLocal_box_RA);
     switch (adapting_what) {
-    case ADAPT_BOX: ra = accRatioLocal_box_RA; break;
-    case ADAPT_ROTATE: ra = accRatioLocal_rotate_RA; break;
-    case ADAPT_SCALE: ra = accRatioLocal_scale_RA; break;
+    case ADAPT_BOX: ra = ad.accRatioLocal_box_RA; break;
+    case ADAPT_ROTATE: ra = ad.accRatioLocal_rotate_RA; break;
+    case ADAPT_SCALE: ra = ad.accRatioLocal_scale_RA; break;
     }
 
     ra.get().addValue(ad.lastAccRatioLocal_phi);
@@ -2953,7 +2953,7 @@ num DetSDW<CB>::phiAction() {
 template<CheckerboardMethod CB>
 void DetSDW<CB>::thermalizationOver() {
     std::cout << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
-              << "recent local accRatio = " << accRatioLocal_box_RA.get()
+              << "recent local accRatio = " << ad.accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
         num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);

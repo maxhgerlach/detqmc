@@ -94,7 +94,7 @@ public:
         ad.set_buffer_to_data(buffer);
     }
     void set_control_data(const double* buffer) {
-        ad.get_data_from_buffer(buffer):
+        ad.get_data_from_buffer(buffer);
     }
 
 
@@ -300,7 +300,7 @@ protected:
         AdjustmentData(const ModelParams& pars) :
             phiDelta(InitialPhiDelta), angleDelta(InitialAngleDelta),
             scaleDelta(InitialScaleDelta),
-            targetAccRatioLocal_phi(phi),
+            targetAccRatioLocal_phi(pars.accRatio),
             lastAccRatioLocal_phi(0),
             accRatioLocal_box_RA(AccRatioAdjustmentSamples),
             accRatioLocal_rotate_RA(AccRatioAdjustmentSamples),

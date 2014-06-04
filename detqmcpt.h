@@ -1,12 +1,16 @@
 // Parallel Tempering Determinantal QMC simulation handling
 
-#ifndef DETQMC_H_
-#define DETQMC_H_
+#ifndef MPIDETQMCPT_H_               
+#define MPIDETQMCPT_H_
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <mpi.h>
+#pragma GCC diagnostic pop
 #include <vector>
 #include <functional>
 #include <numeric>              // std::iota
+#include <algorithm>            // std::copy
 #include <memory>
 #include <cstdlib>
 #include <limits>
@@ -29,7 +33,7 @@
 #include "detqmcparams.h"
 #include "detmodelparams.h"
 #include "detmodel.h"
-#include "observablehandler.h"
+#include "mpiobservablehandlerpt.h"
 #include "rngwrapper.h"
 #include "exceptions.h"
 #include "tools.h"
@@ -52,8 +56,7 @@ public:
     //we allow to change some MC parameters at this point:
     //  sweeps & saveInterval
     //if values > than the old values are specified, change them
-    DetQMCPT(const std::string& stateFileName, const DetQMCParams& newParsmc,
-             const DetQMCPTParams& newParspt);
+    DetQMCPT(const std::string& stateFileName, const DetQMCParams& newParsmc);
 
 
     //carry out simulation determined by parsmc and parspt given in construction,
@@ -85,10 +88,10 @@ protected:
     MetadataMap ptMeta;    
     RngWrapper rng;
     std::unique_ptr<Model> replica;
-    typedef std::unique_ptr<ScalarObservableHandler> ObsPtr;
-    typedef std::unique_ptr<VectorObservableHandler> VecObsPtr;
+    typedef std::unique_ptr<ScalarObservableHandlerPT> ObsPtr;
+    typedef std::unique_ptr<VectorObservableHandlerPT> VecObsPtr;
     std::vector<ObsPtr> obsHandlers;
-    std::vector<VecObsPtr> vecObsHandlers;      //need to be pointers: holds both KeyValueObservableHandlers and VectorObservableHandlers
+    std::vector<VecObsPtr> vecObsHandlers;      //need to be pointers: holds both KeyValueObservableHandlerPTs and VectorObservableHandlerPTs
     uint32_t sweepsDone;                        //Measurement sweeps done
     uint32_t sweepsDoneThermalization;          //thermalization sweeps done
 
@@ -105,13 +108,13 @@ protected:
     std::string jobid; //id string from the job scheduling system, or "nojobid"
 
     //MPI specifics:
-    uint32_t numProcesses;      //total number of parallel processes
-    uint32_t processIndex;      //MPI-rank of the current process
+    int numProcesses;      //total number of parallel processes
+    int processIndex;      //MPI-rank of the current process
 
     // specific to the root process
-    std::vector<uint32_t> current_process_par; // indexed by process rank number, giving control parameter index
-                                               // currently associated to the replica at that process
-    std::vector<uint32_t> current_par_process; // the reverse association
+    std::vector<int> current_process_par; // indexed by process rank number, giving control parameter index
+                                          // currently associated to the replica at that process
+    std::vector<int> current_par_process; // the reverse association
     std::vector<double> exchange_action;       // for each replica: its locally measured exchange action
     // for control-parameter specific data, e.g. MC stepsize adjustment
     std::vector<double> control_data_buffer_1, control_data_buffer_2; 
@@ -142,11 +145,11 @@ private:
         ar & rng;                   //serialize completely
 
         for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
-            //ATM no further derived classes of ScalarObservableHandler have a method serializeContents
+            //ATM no further derived classes of ScalarObservableHandlerPT have a method serializeContents
             (*p)->serializeContents(SerializeContentsKey(), ar);
         }
         for (auto p = vecObsHandlers.begin(); p != vecObsHandlers.end(); ++p) {
-            //ATM no further derived classes of VectorObservableHandler have a method serializeContents
+            //ATM no further derived classes of VectorObservableHandlerPT have a method serializeContents
             (*p)->serializeContents(SerializeContentsKey(), ar);
         }
         ar & sweepsDone & sweepsDoneThermalization;
@@ -200,7 +203,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     // Set up MPI
     MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
     MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
-    if (numProcesses != parspt.controlParameterValues.size()) {
+    if (numProcesses != int(parspt.controlParameterValues.size())) {
         throw ConfigurationError("Number of processes " + numToString(numProcesses) +
                                  " does not match number of control parameter values " +
                                  numToString(parspt.controlParameterValues.size()));
@@ -212,7 +215,8 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
             std::cout << "No rng seed specified, will use std::time(0) determined at root process" << std::endl;
             parsmc.rngSeed = (uint32_t) std::time(0);
         }
-        MPI_Bcast(&rngSeed, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
+        unsigned broadcast_rngSeed = parsmc.rngSeed; // work around lacking support for MPI_UINT32_T
+        MPI_Bcast(&broadcast_rngSeed, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
     }
     rng = RngWrapper(parsmc.rngSeed, processIndex);
 
@@ -246,20 +250,20 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     auto scalarObs = replica->getScalarObservables();
     for (auto obsP = scalarObs.cbegin(); obsP != scalarObs.cend(); ++obsP) {
         obsHandlers.push_back(
-            ObsPtr(new ScalarObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            ObsPtr(new ScalarObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
 
     auto vectorObs = replica->getVectorObservables();
     for (auto obsP = vectorObs.cbegin(); obsP != vectorObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new VectorObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            VecObsPtr(new VectorObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
     auto keyValueObs = replica->getKeyValueObservables();
     for (auto obsP = keyValueObs.cbegin(); obsP != keyValueObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new KeyValueObservableHandler(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            VecObsPtr(new KeyValueObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
         );
     }
 
@@ -311,8 +315,7 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
 }
 
 template<class Model, class ModelParams>
-DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const DetQMCParams& newParsmc,
-                                       const DetQMCPTParams& newParspt) :
+DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const DetQMCParams& newParsmc) :
     parsmodel(), parsmc(), parspt(),
     //proper initialization of default initialized members done by loading from archive
     modelMeta(), mcMeta(), rng(), replica(),
@@ -579,12 +582,12 @@ void DetQMCPT<Model, ModelParams>::run() {
                     );
                 // serially walk through control parameters and propose exchange
                 if (processIndex == 0) {
-                    for (uint32_t cpi1 = 0; cpi1 < numReplicas - 1; ++cpi1) {
-                        uint32_t cpi2 = cpi1 + 1;
+                    for (int cpi1 = 0; cpi1 < numProcesses - 1; ++cpi1) {
+                        int cpi2 = cpi1 + 1;
                         double par1 = parspt.controlParameterValues[cpi1];
                         double par2 = parspt.controlParameterValues[cpi2];
-                        uint32_t indexProc1 = current_par_process[par1];
-                        uint32_t indexProc2 = current_par_process[par2];
+                        int indexProc1 = current_par_process[cpi1];
+                        int indexProc2 = current_par_process[cpi2];
                         double action1 = exchange_action[indexProc1];                    
                         double action2 = exchange_action[indexProc2];
 
@@ -626,10 +629,10 @@ void DetQMCPT<Model, ModelParams>::run() {
                 uint32_t new_param_index = 0;
                 MPI_Scatter( current_process_par.data(), // send buf
                              1,
-                             MPI_UINT32_T,
+                             MPI_INT,
                              &new_param_index,           // recv buf
-                             1
-                             MPI_UINT32_T,
+                             1,
+                             MPI_INT,
                              0,                          // root process
                              MPI_COMM_WORLD
                     );
@@ -674,4 +677,4 @@ void DetQMCPT<Model, ModelParams>::saveResults() {
 
 
 
-#endif /* DETQMC_H_ */
+#endif /* MPIDETQMCPT_H_ */
