@@ -112,7 +112,11 @@ protected:
     std::vector<uint32_t> current_process_par; // indexed by process rank number, giving control parameter index
                                                // currently associated to the replica at that process
     std::vector<uint32_t> current_par_process; // the reverse association
-    std::vector<double> exchange_action;          // for each replica: its locally measured exchange action
+    std::vector<double> exchange_action;       // for each replica: its locally measured exchange action
+    // for control-parameter specific data, e.g. MC stepsize adjustment
+    std::vector<double> control_data_buffer_1, control_data_buffer_2; 
+    // for each process:
+    std::vector<double> local_control_data_buffer;
 private:
     //Serialize only the content data that has changed after construction.
     //Only call for deserialization after DetQMCPT has already been constructed and initialized!
@@ -215,8 +219,11 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     // set up control parameters for current process replica parameters
     parsmodel.set_exchange_parameter_value(parspt.controlParameterValues[processIndex]);
 
+    replica = createReplica<Model>(rng, parsmodel);
+    
     // at rank 0 keep track of which process has which control parameter currently
     // and track exchange action contributions
+    // also initialize control parameter data buffers
     if (processIndex == 0) {
         // fill with 0, 1, 2, ... numProcesses-1
         current_process_par.resize(numProcesses);
@@ -224,9 +231,11 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
         current_par_process.resize(numProcesses);
         std::iota(current_par_process.begin(), current_par_process.end(), 0);
         exchange_action.resize(numProcesses, 0);
+        control_data_buffer_1.resize(numProcesses * replica->get_control_data_buffer_size());        
+        control_data_buffer_2.resize(numProcesses * replica->get_control_data_buffer_size());
     }
-    
-    replica = createReplica<Model>(rng, parsmodel);
+    local_control_data_buffer.resize(replica->get_control_data_buffer_size());
+
 
     //prepare metadata
     modelMeta = replica->prepareModelMetadataMap();
@@ -280,7 +289,8 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
 template<class Model, class ModelParams>
 DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
-                                       const DetQMCPTParams& parspt_) :
+                                       const DetQMCPTParams& parspt_)
+    :
     parsmodel(), parsmc(), parspt(),
     //proper initialization of default initialized members done in initFromParameters
     modelMeta(), mcMeta(), ptMeta(), rng(), replica(),
@@ -293,7 +303,9 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     numProcesses(1), processIndex(0),
     current_process_par(1, 0),
     current_par_process(1, 0),
-    exchange_action(1, 0)
+    exchange_action(1, 0),
+    control_data_buffer_1(),
+    control_data_buffer_2()
 {
     initFromParameters(parsmodel_, parsmc_, parspt_);
 }
@@ -313,7 +325,9 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     numProcesses(1), processIndex(0),
     current_process_par(1, 0),
     current_par_process(1, 0),
-    exchange_action(1, 0)
+    exchange_action(1, 0),
+    control_data_buffer_1(),
+    control_data_buffer_2()
 {
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -538,6 +552,20 @@ void DetQMCPT<Model, ModelParams>::run() {
         //replica exchange
         if (stage == T or stage == M) {
             if (parspt.exchangeInterval != 0 and (swCounter % parspt.exchangeInterval == 0)) {
+                // Gather control_data_buffer contents from all processes:
+                double* local_buf = local_control_data_buffer.data();
+                uint32_t local_buf_size = local_control_data_buffer.size();
+                replica->get_control_data(local_buf);
+                MPI_Gather( local_buf,                        // send buf
+                            local_buf_size,
+                            MPI_DOUBLE,
+                            control_data_buffer_1.data(),     // recv buf
+                            local_buf_size,
+                            MPI_DOUBLE,
+                            0,                                // root process
+                            MPI_COMM_WORLD
+                    );                            
+                
                 // Gather exchange action contribution from replicas
                 double localAction = replica->get_exchange_action_contribution();
                 MPI_Gather( &localAction,           // send buf
@@ -568,7 +596,30 @@ void DetQMCPT<Model, ModelParams>::run() {
                             current_process_par[indexProc2] = cpi1;
                             current_par_process[cpi1] = indexProc2;
                             current_par_process[cpi2] = indexProc1;
-                        }                    
+                            // take control parameter data in swapped process order
+                            //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc2 }
+                            std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
+                                       control_data_buffer_1.begin() + (indexProc2 + 1) * local_buf_size, // input end
+                                       control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
+                                );
+                            //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc1 }
+                            std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
+                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                                       control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
+                                );
+                        } else {
+                            // take control parameter data in original process order
+                            //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc1 }
+                            std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
+                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                                       control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
+                                );
+                            //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc2 }
+                            std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
+                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                                       control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
+                                );
+                        }
                     }
                 } // if (processIndex == 0)
                 // distribute and update control parameter
@@ -585,7 +636,17 @@ void DetQMCPT<Model, ModelParams>::run() {
                 replica->set_exchange_parameter_value(
                     parspt.controlParameterValues[new_param_index]
                     );
-                
+                // distribute new control parameter data and update replica
+                MPI_Scatter( control_data_buffer_2.data(), // send buf
+                             local_buf_size,
+                             MPI_DOUBLE,
+                             local_buf,                    // recv buf
+                             local_buf_size,
+                             MPI_DOUBLE,
+                             0,                            // root process
+                             MPI_COMM_WORLD
+                    );
+                replica->set_control_data(local_buf);
             }
         } //replica exchange
         
