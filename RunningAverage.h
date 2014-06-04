@@ -18,7 +18,7 @@ template<typename Val>
 class RunningAverage {
     int sampleSize;
     int samplesAdded;
-    std::list<Val> values;					//deque was problematic when serialized in a debug build
+    std::list<Val> values; //deque was problematic when serialized in a debug build
     Val runningAverage;
 public:
     RunningAverage(int sampleSize_);

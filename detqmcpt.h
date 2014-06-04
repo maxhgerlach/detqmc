@@ -98,11 +98,11 @@ protected:
     uint32_t curWalltimeSecs() {
         return static_cast<uint32_t>(elapsedTimer.elapsed().wall / 1000 / 1000 / 1000); // ns->mus->ms->s
     }
-    uint32_t totalWalltimeSecs;             //this is serialized and carries the elapsed walltime in seconds
-                                                    //accumulated over all runs, updated on call of saveResults()
-    uint32_t walltimeSecsLastSaveResults;       //timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
-    uint32_t grantedWalltimeSecs;               //walltime the simulation is allowed to run
-    std::string jobid;							//id string from the job scheduling system, or "nojobid"
+    uint32_t totalWalltimeSecs; //this is serialized and carries the elapsed walltime in seconds
+                                //accumulated over all runs, updated on call of saveResults()
+    uint32_t walltimeSecsLastSaveResults; //timer seconds at previous saveResults() call --> used to update totalWalltimeSecs
+    uint32_t grantedWalltimeSecs; //walltime the simulation is allowed to run
+    std::string jobid; //id string from the job scheduling system, or "nojobid"
 
     //MPI specifics:
     uint32_t numProcesses;      //total number of parallel processes
