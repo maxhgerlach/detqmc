@@ -1,6 +1,7 @@
 #ifndef DETQMCPTPARAMS_H
 #define DETQMCPTPARAMS_H
 
+#include <vector>
 #include <string>
 #include <set>
 

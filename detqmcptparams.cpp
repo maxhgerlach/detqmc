@@ -1,9 +1,8 @@
-#include <vector>
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/assign/std/vector.hpp"
+#include "boost/algorithm/string/join.hpp"
 #pragma GCC diagnostic pop
 
 #include "tools.h"
@@ -32,6 +31,7 @@ MetadataMap DetQMCPTParams::prepareMetadataMap() const {
     META_INSERT(exchangeInterval);
     META_INSERT(controlParameterName);
 #undef META_INSERT
-    //controlParameterValues
+    std::string valuesString = boost::algorithm::join(controlParameterValues, " ");    
+    meta["controlParameterValues"] = valuesString;
     return meta;
 }
