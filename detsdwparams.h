@@ -74,7 +74,10 @@ struct ModelParamsDetSDW {
     void check();
     MetadataMap prepareMetadataMap() const;
 
-    void set_exchange_parameter_value(num val) { r = val; }
+    void set_exchange_parameter_value(num val) {
+        r = val;
+        specified.insert("r");
+    }
     num  get_exchange_parameter_value() { return r; }    
 private:
     friend class boost::serialization::access;

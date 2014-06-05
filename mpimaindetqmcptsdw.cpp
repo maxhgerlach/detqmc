@@ -172,7 +172,10 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     record(modelOptions, modelpar.specified);
     record(mcOptions, mcpar.specified);
     record(ptOptions, ptpar.specified);    
-    
+    if (vm.count("rValues")) {
+        ptpar.specified.insert("controlParameterValues");
+    }
+    ptpar.specified.insert("controlParameterName");
     
     return std::make_tuple(runSimulation, resumeSimulation, modelpar, mcpar, ptpar);
 }
