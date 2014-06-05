@@ -87,7 +87,7 @@ protected:
     const std::vector<int>& process_par;
     //This is the receive buffer of most recently measured observable
     //values for each replica, ordered by process.  The method
-    //insertValue() of the derived classes below fill this, than
+    //insertValue() of the derived classes below fill this, then
     //call handleValues() defined above in this base class.
     std::vector<ObsType> process_cur_value;
     // These vectors contain one entry per control parameter value,
@@ -301,7 +301,7 @@ public:
         VectorObservableHandlerPT(observable, current_process_par,
                                   simulationParameters, ptParams,
                                   metadataToStoreModel, metadataToStoreMC) {
-        //this code is convenient but sets the vector indexes twice upon construction
+        //this code is convenient, but sets the vector indexes twice upon construction
         indexes = observable.keys;
         indexName = observable.keyName;
     }
