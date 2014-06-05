@@ -78,6 +78,9 @@ protected:
     void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc,
                             const DetQMCPTParams& parspt);
 
+    void replicaExchangeStep();
+
+    
     ModelParams parsmodel;
     DetQMCParams parsmc;
     DetQMCPTParams parspt;
@@ -235,6 +238,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
         current_par_process.resize(numProcesses);
         std::iota(current_par_process.begin(), current_par_process.end(), 0);
         exchange_action.resize(numProcesses, 0);
+        
         control_data_buffer_1.resize(numProcesses * replica->get_control_data_buffer_size());        
         control_data_buffer_2.resize(numProcesses * replica->get_control_data_buffer_size());
     }
@@ -286,7 +290,9 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     std::cout << "Job ID: " << jobid << "\n";
 
     std::cout << "\nSimulation initialized, parameters: " << std::endl;
-    std::cout << metadataToString(mcMeta, " ") << metadataToString(modelMeta, " ") << std::endl;
+    std::cout << metadataToString(mcMeta, " ")
+              << metadataToString(ptMeta, " ")
+              << metadataToString(modelMeta, " ") << std::endl;
 }
 
 
@@ -555,101 +561,7 @@ void DetQMCPT<Model, ModelParams>::run() {
         //replica exchange
         if (stage == T or stage == M) {
             if (parspt.exchangeInterval != 0 and (swCounter % parspt.exchangeInterval == 0)) {
-                // Gather control_data_buffer contents from all processes:
-                double* local_buf = local_control_data_buffer.data();
-                uint32_t local_buf_size = local_control_data_buffer.size();
-                replica->get_control_data(local_buf);
-                MPI_Gather( local_buf,                        // send buf
-                            local_buf_size,
-                            MPI_DOUBLE,
-                            control_data_buffer_1.data(),     // recv buf
-                            local_buf_size,
-                            MPI_DOUBLE,
-                            0,                                // root process
-                            MPI_COMM_WORLD
-                    );                            
-                
-                // Gather exchange action contribution from replicas
-                double localAction = replica->get_exchange_action_contribution();
-                MPI_Gather( &localAction,           // send buf
-                            1,
-                            MPI_DOUBLE,
-                            exchange_action.data(), // recv buf
-                            1,
-                            MPI_DOUBLE,
-                            0,                      // root process
-                            MPI_COMM_WORLD
-                    );
-                // serially walk through control parameters and propose exchange
-                if (processIndex == 0) {
-                    for (int cpi1 = 0; cpi1 < numProcesses - 1; ++cpi1) {
-                        int cpi2 = cpi1 + 1;
-                        double par1 = parspt.controlParameterValues[cpi1];
-                        double par2 = parspt.controlParameterValues[cpi2];
-                        int indexProc1 = current_par_process[cpi1];
-                        int indexProc2 = current_par_process[cpi2];
-                        double action1 = exchange_action[indexProc1];                    
-                        double action2 = exchange_action[indexProc2];
-
-                        num exchange_prob = get_replica_exchange_probability<Model>(par1, action1,
-                                                                                    par2, action2);
-                        if (exchange_prob >= 1 or rng.rand01() <= exchange_prob) {
-                            // swap control parameters
-                            current_process_par[indexProc1] = cpi2;
-                            current_process_par[indexProc2] = cpi1;
-                            current_par_process[cpi1] = indexProc2;
-                            current_par_process[cpi2] = indexProc1;
-                            // take control parameter data in swapped process order
-                            //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc2 }
-                            std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
-                                       control_data_buffer_1.begin() + (indexProc2 + 1) * local_buf_size, // input end
-                                       control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
-                                );
-                            //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc1 }
-                            std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
-                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
-                                       control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
-                                );
-                        } else {
-                            // take control parameter data in original process order
-                            //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc1 }
-                            std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
-                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
-                                       control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
-                                );
-                            //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc2 }
-                            std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
-                                       control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
-                                       control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
-                                );
-                        }
-                    }
-                } // if (processIndex == 0)
-                // distribute and update control parameter
-                uint32_t new_param_index = 0;
-                MPI_Scatter( current_process_par.data(), // send buf
-                             1,
-                             MPI_INT,
-                             &new_param_index,           // recv buf
-                             1,
-                             MPI_INT,
-                             0,                          // root process
-                             MPI_COMM_WORLD
-                    );
-                replica->set_exchange_parameter_value(
-                    parspt.controlParameterValues[new_param_index]
-                    );
-                // distribute new control parameter data and update replica
-                MPI_Scatter( control_data_buffer_2.data(), // send buf
-                             local_buf_size,
-                             MPI_DOUBLE,
-                             local_buf,                    // recv buf
-                             local_buf_size,
-                             MPI_DOUBLE,
-                             0,                            // root process
-                             MPI_COMM_WORLD
-                    );
-                replica->set_control_data(local_buf);
+                replicaExchangeStep();
             }
         } //replica exchange
         
@@ -657,6 +569,105 @@ void DetQMCPT<Model, ModelParams>::run() {
 }
 
 
+
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
+    // Gather control_data_buffer contents from all processes:
+    double* local_buf = local_control_data_buffer.data();
+    uint32_t local_buf_size = local_control_data_buffer.size();
+    replica->get_control_data(local_buf);
+    MPI_Gather( local_buf,                        // send buf
+                local_buf_size,
+                MPI_DOUBLE,
+                control_data_buffer_1.data(),     // recv buf
+                local_buf_size,
+                MPI_DOUBLE,
+                0,                                // root process
+                MPI_COMM_WORLD
+        );                            
+                
+    // Gather exchange action contribution from replicas
+    double localAction = replica->get_exchange_action_contribution();
+    MPI_Gather( &localAction,           // send buf
+                1,
+                MPI_DOUBLE,
+                exchange_action.data(), // recv buf
+                1,
+                MPI_DOUBLE,
+                0,                      // root process
+                MPI_COMM_WORLD
+        );
+    // serially walk through control parameters and propose exchange
+    if (processIndex == 0) {
+        for (int cpi1 = 0; cpi1 < numProcesses - 1; ++cpi1) {
+            int cpi2 = cpi1 + 1;
+            double par1 = parspt.controlParameterValues[cpi1];
+            double par2 = parspt.controlParameterValues[cpi2];
+            int indexProc1 = current_par_process[cpi1];
+            int indexProc2 = current_par_process[cpi2];
+            double action1 = exchange_action[indexProc1];                    
+            double action2 = exchange_action[indexProc2];
+
+            num exchange_prob = get_replica_exchange_probability<Model>(par1, action1,
+                                                                        par2, action2);
+            if (exchange_prob >= 1 or rng.rand01() <= exchange_prob) {
+                // swap control parameters
+                current_process_par[indexProc1] = cpi2;
+                current_process_par[indexProc2] = cpi1;
+                current_par_process[cpi1] = indexProc2;
+                current_par_process[cpi2] = indexProc1;
+                // take control parameter data in swapped process order
+                //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc2 }
+                std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
+                           control_data_buffer_1.begin() + (indexProc2 + 1) * local_buf_size, // input end
+                           control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
+                    );
+                //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc1 }
+                std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
+                           control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                           control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
+                    );
+            } else {
+                // take control parameter data in original process order
+                //  control_data_buffer_2 { indexProc1 } = control_data_buffer_1 { indexProc1 }
+                std::copy( control_data_buffer_1.begin() + indexProc1 * local_buf_size,       // input begin
+                           control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                           control_data_buffer_2.begin() + indexProc1 * local_buf_size        // output begin
+                    );
+                //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc2 }
+                std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
+                           control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                           control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
+                    );
+            }
+        }
+    } // if (processIndex == 0)
+    // distribute and update control parameter
+    uint32_t new_param_index = 0;
+    MPI_Scatter( current_process_par.data(), // send buf
+                 1,
+                 MPI_INT,
+                 &new_param_index,           // recv buf
+                 1,
+                 MPI_INT,
+                 0,                          // root process
+                 MPI_COMM_WORLD
+        );
+    replica->set_exchange_parameter_value(
+        parspt.controlParameterValues[new_param_index]
+        );
+    // distribute new control parameter data and update replica
+    MPI_Scatter( control_data_buffer_2.data(), // send buf
+                 local_buf_size,
+                 MPI_DOUBLE,
+                 local_buf,                    // recv buf
+                 local_buf_size,
+                 MPI_DOUBLE,
+                 0,                            // root process
+                 MPI_COMM_WORLD
+        );
+    replica->set_control_data(local_buf);
+}
 
 
 
