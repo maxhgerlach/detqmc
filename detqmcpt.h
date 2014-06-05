@@ -279,21 +279,23 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     } else {
         grantedWalltimeSecs = std::numeric_limits<decltype(grantedWalltimeSecs)>::max();
     }
-    std::cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
+    if (processIndex == 0) {
+        std::cout << "Granted walltime: " << grantedWalltimeSecs << " seconds.\n";
 
-    //query SLURM Jobid
-    const char* jobid_env = std::getenv("SLURM_JOBID");
-    if (jobid_env) {
-    	jobid = jobid_env;
-    } else {
-    	jobid = "nojobid";
+        //query SLURM Jobid
+        const char* jobid_env = std::getenv("SLURM_JOBID");
+        if (jobid_env) {
+            jobid = jobid_env;
+        } else {
+            jobid = "nojobid";
+        }
+        std::cout << "Job ID: " << jobid << "\n";
+
+        std::cout << "\nSimulation initialized, parameters: " << std::endl;
+        std::cout << metadataToString(mcMeta, " ")
+                  << metadataToString(ptMeta, " ")
+                  << metadataToString(modelMeta, " ") << std::endl;
     }
-    std::cout << "Job ID: " << jobid << "\n";
-
-    std::cout << "\nSimulation initialized, parameters: " << std::endl;
-    std::cout << metadataToString(mcMeta, " ")
-              << metadataToString(ptMeta, " ")
-              << metadataToString(modelMeta, " ") << std::endl;
 }
 
 
@@ -349,14 +351,18 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     ia >> parsmodel_ >> parsmc_ >> parspt_;
 
     if (newParsmc.sweeps > parsmc_.sweeps) {
-        std::cout << "Target sweeps will be changed from " << parsmc_.sweeps
-                  << " to " << newParsmc.sweeps << std::endl;
+        if (processIndex == 0) {
+            std::cout << "Target sweeps will be changed from " << parsmc_.sweeps
+                      << " to " << newParsmc.sweeps << std::endl;
+        }
         parsmc_.sweeps = newParsmc.sweeps;
         parsmc_.sweepsHasChanged = true;
     }
     if (newParsmc.saveInterval > 0 and newParsmc.saveInterval != parsmc_.saveInterval) {
-        std::cout << "saveInterval will be changed from " << parsmc_.saveInterval
-                  << " to " << newParsmc.saveInterval << std::endl;
+        if (processIndex == 0) {
+            std::cout << "saveInterval will be changed from " << parsmc_.saveInterval
+                      << " to " << newParsmc.saveInterval << std::endl;
+        }
         parsmc_.saveInterval = newParsmc.saveInterval;
     }
     parsmc_.stateFileName = stateFileName;
@@ -379,10 +385,12 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     initFromParameters(parsmodel_, parsmc_, parspt_);
     loadContents(ia);
 
-    std::cout << "\n"
-              << "State of previous simulation has been loaded.\n"
-              << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
-              << "  sweepsDone: " << sweepsDone << std::endl;
+    if (processIndex == 0) {
+        std::cout << "\n"
+                  << "State of previous simulation has been loaded.\n"
+                  << "  sweepsDoneThermalization: " << sweepsDoneThermalization << "\n"
+                  << "  sweepsDone: " << sweepsDone << std::endl;
+    }
 }
 
 template<class Model, class ModelParams>
@@ -390,6 +398,7 @@ void DetQMCPT<Model, ModelParams>::saveState() {
     timing.start("saveState");
 
     //serialize state to file
+    // -- every process needs to do this
     std::ofstream ofs;
     ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
     ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
@@ -398,31 +407,36 @@ void DetQMCPT<Model, ModelParams>::saveState() {
     saveContents(oa);
 
     //write out info about state of simulation to "info.dat"
-    std::string commonInfoFilename = "info.dat";
-    writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
-                      "Collected information about this determinantal quantum Monte Carlo simulation",
-                      false);
-    writeOnlyMetaData(commonInfoFilename, modelMeta,
-                      "Model parameters:",
-                      true);
-    writeOnlyMetaData(commonInfoFilename, mcMeta,
-                      "Monte Carlo parameters:",
-                      true);
-
-    MetadataMap currentState;
-    currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
-    currentState["sweepsDone"] = numToString(sweepsDone);
-
-    uint32_t cwts = curWalltimeSecs();
-    totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
-    walltimeSecsLastSaveResults = cwts;
-
-    currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
-    writeOnlyMetaData(commonInfoFilename, currentState,
+    // -- only the master process does this
+    if (processIndex == 0) {
+        std::string commonInfoFilename = "info.dat";
+        writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
+                          "Collected information about this determinantal quantum Monte Carlo simulation",
+                          false);
+        writeOnlyMetaData(commonInfoFilename, modelMeta,
+                          "Model parameters:",
+                          true);
+        writeOnlyMetaData(commonInfoFilename, mcMeta,
+                          "Monte Carlo parameters:",
+                          true);
+        
+        MetadataMap currentState;
+        currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
+        currentState["sweepsDone"] = numToString(sweepsDone);
+        
+        uint32_t cwts = curWalltimeSecs();
+        totalWalltimeSecs += (cwts - walltimeSecsLastSaveResults);
+        walltimeSecsLastSaveResults = cwts;
+        
+        currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
+        writeOnlyMetaData(commonInfoFilename, currentState,
                       "Current state of simulation:",
                       true);
+    }
 
-    std::cout << "State has been saved." << std::endl;
+    if (processIndex == 0) {
+        std::cout << "State has been saved." << std::endl;
+    }
 
     timing.stop("saveState");
 }
@@ -440,15 +454,21 @@ void DetQMCPT<Model, ModelParams>::run() {
     //local helper functions to initialize a "stage" of the big loop
     auto thermalizationStage = [&stage, this]() {
         stage = T;
-        std::cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << std::endl;
+        if (processIndex == 0) {
+            std::cout << "Thermalization for " << parsmc.thermalization << " sweeps..." << std::endl;
+        }
     };
     auto measurementsStage = [&stage, this]() {
         stage = M;
-        std::cout << "Measurements for " << parsmc.sweeps << " sweeps..." << std::endl;
+        if (processIndex == 0) {
+            std::cout << "Measurements for " << parsmc.sweeps << " sweeps..." << std::endl;
+        }
     };
-    auto finishedStage = [&stage]() {
+    auto finishedStage = [&stage, this]() {
         stage = F;
-        std::cout << "Measurements finished\n" << std::endl;
+        if (processIndex == 0) {
+            std::cout << "Measurements finished\n" << std::endl;
+        }
     };
 
     if (sweepsDoneThermalization < parsmc.thermalization) {
@@ -467,21 +487,28 @@ void DetQMCPT<Model, ModelParams>::run() {
     while (stage != F) {                //big loop
         // do we need to quit?
     	if (swCounter % 2 == 0) {
-            bool stop_now = false;
-            if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
-                std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
-                stop_now = true;
-            } else if (boost::filesystem::exists(abortFilename1) or
-                       boost::filesystem::exists(abortFilename2)) {
-                std::cout << "Found file " << abortFilename1 << ".\n";
-                stop_now = true;
+            char stop_now = false;
+            if (processIndex == 0) {
+                if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
+                    std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
+                    stop_now = true;
+                } else if (boost::filesystem::exists(abortFilename1) or
+                           boost::filesystem::exists(abortFilename2)) {
+                    std::cout << "Found file " << abortFilename1 << ".\n";
+                    stop_now = true;
+                }
             }
+            MPI_Bcast( &stop_now, 1, MPI_CHAR,
+                       0, MPI_COMM_WORLD
+                );
             if (stop_now) {
                 //close to exceeded walltime or we find that a file has been placed,
                 //which signals us to abort this run for some other reason.
                 //but only save state and exit if we have done an even
                 //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
-                std::cout << "Save state / results and exit gracefully." << std::endl;
+                if (processIndex == 0) {
+                    std::cout << "Save state / results and exit gracefully." << std::endl;
+                }
                 if (stage == Stage::M) {
                     saveResults();
                 }
@@ -505,13 +532,20 @@ void DetQMCPT<Model, ModelParams>::run() {
             ++sweepsDoneThermalization;
             ++swCounter;
             if (swCounter == parsmc.saveInterval) {
-                std::cout  << "  " << sweepsDoneThermalization << " ... saving state...";
+                if (processIndex == 0) {
+                    std::cout << "  " << sweepsDoneThermalization << " ... saving state...";
+                }
                 swCounter = 0;
                 saveState();
-                std::cout << std::endl;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if (processIndex == 0) {
+                    std::cout << std::endl;
+                }
             }
             if (sweepsDoneThermalization == parsmc.thermalization) {
-                std::cout << "Thermalization finished\n" << std::endl;
+                if (processIndex == 0) {
+                    std::cout << "Thermalization finished\n" << std::endl;
+                }
                 replica->thermalizationOver();
                 swCounter = 0;
                 measurementsStage();
@@ -541,11 +575,16 @@ void DetQMCPT<Model, ModelParams>::run() {
             }
             ++sweepsDone;
             if (swCounter == parsmc.saveInterval) {
-                std::cout << "  " << sweepsDone << " ... saving results and state ...";
+                if (processIndex == 0) {
+                    std::cout << "  " << sweepsDone << " ... saving results and state ...";
+                }
                 swCounter = 0;
                 saveResults();
                 saveState();
-                std::cout << std::endl;
+                MPI_Barrier(MPI_COMM_WORLD);
+                if (processIndex == 0) {
+                    std::cout << std::endl;
+                }
             }
             if (sweepsDone == parsmc.sweeps) {
                 swCounter = 0;
