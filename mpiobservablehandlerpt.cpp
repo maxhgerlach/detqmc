@@ -1,6 +1,13 @@
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <mpi.h>
 #pragma GCC diagnostic pop
+
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#include "boost/filesystem.hpp"
+#pragma GCC diagnostic pop
+namespace fs = boost::filesystem;
+
 #include "mpiobservablehandlerpt.h"
 
 ScalarObservableHandlerPT::ScalarObservableHandlerPT(
@@ -89,9 +96,10 @@ void ScalarObservableHandlerPT::outputTimeseries() {
             std::string subdirectory = "p" + numToString(cpi) + "_" +
                 ptparams.controlParameterName +
                 numToString(ptparams.controlParameterValues[cpi]);
+            fs::create_directories(fs::path(subdirectory));            
         
             if (not par_storage[cpi]) {
-                std::string filename = subdirectory + "/" + name + ".series";
+                std::string filename = (fs::path(subdirectory) / fs::path(name + ".series")).string();
                 if (par_storageFileStarted[cpi]) {
                     par_storage[cpi] =
                         std::unique_ptr<DoubleVectorWriterSuccessive>(
@@ -196,6 +204,7 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>
             std::string subdirectory = "p" + numToString(cpi) + "_" +
                 (*obsHandlers.begin())->ptparams.controlParameterName +
                 numToString((*obsHandlers.begin())->ptparams.controlParameterValues[cpi]);
+            fs::create_directories(fs::path(subdirectory));            
 
             for (auto p = obsHandlers.cbegin(); p != obsHandlers.cend(); ++p) {
                 num val, err;
@@ -212,7 +221,7 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>
             output.addMetadataMap((*obsHandlers.begin())->metaMC);
             output.addMeta("key", "observable");
             output.addHeaderText("observable\t value \t error");
-            output.writeToFile(subdirectory + "/results.values");
+            output.writeToFile((fs::path(subdirectory) / fs::path("results.values")).string());
         }
     }
 }
