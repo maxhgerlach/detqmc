@@ -52,7 +52,6 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
         ("updateMethod", po::value<std::string>(&modelpar.updateMethod_string)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
         ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "parameter to use with delayedUpdates")
-        ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
         ("lambda", po::value<num>(&modelpar.lambda)->default_value(1.0), "fermion-boson coupling")
         ("mu", po::value<num>(&modelpar.mu)->default_value(0.5), "chemical potential")
         ("L", po::value<uint32_t>(&modelpar.L), "linear spatial extent")
@@ -91,10 +90,12 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
          "file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
         ;
 
-    po::options_description ptOptions("Parameters for replica exchange / parallel tempering, specify via command line or config file");
+    po::options_description ptOptions("Parameters for SDW model replica exchange / parallel tempering, specify via command line or config file");
     ptOptions.add_options()
+        ("rValues", po::value<std::vector<num>>(&ptpar.controlParameterValues)->multitoken(), "values for r, the parameter tuning SDW transition")
+        ("exchangeInterval", po::value<uint32_t>(&ptpar.exchangeInterval)->default_value(0), "interval in sweeps between attempted replica exchanges; 0 means \"never\"")
         ;
-    
+    ptpar.controlParameterName = "r";
 
     po::variables_map vm;
 
