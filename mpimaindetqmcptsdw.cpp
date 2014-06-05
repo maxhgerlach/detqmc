@@ -86,8 +86,9 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
         ("measureInterval", po::value<uint32_t>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
         ("saveInterval", po::value<uint32_t>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation, must be even for serialization consistency")
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
-        ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
-         "file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
+        //Multiple processes -- only use standard state file names
+        // ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
+        //  "file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
         ;
 
     po::options_description ptOptions("Parameters for SDW model replica exchange / parallel tempering, specify via command line or config file");
@@ -107,17 +108,24 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 
     using std::cout; using std::endl;
 
+    //state file -- depends on MPI process rank
+    int processRank = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+    mcpar.stateFileName = "simulation." + numToString(processRank) + ".state";    
+    
     if (boost::filesystem::exists(mcpar.stateFileName)) {
-        cout << "Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;
+        cout << "p" << processRank << ": Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;
         resumeSimulation = true;
     }
 
     if (vm.count("help")) {
-        cout << "Usage:" << endl << endl
-             << genericOptions << endl
-             << modelOptions << endl
-             << mcOptions << endl
-             << ptOptions << endl;
+        if (processRank == 0) {
+            cout << "Usage:" << endl << endl
+                 << genericOptions << endl
+                 << modelOptions << endl
+                 << mcOptions << endl
+                 << ptOptions << endl;
+        }
         runSimulation = false;
     }
     if (vm.count("version")) {
@@ -125,7 +133,9 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     }
 
     if (runSimulation) {
-        cout << "Assume config file " << confFileName << endl;
+        if (processRank == 0) {
+            cout << "Assume config file " << confFileName << endl;
+        }
     }
 
     //parse config file, options specified there have lower precedence
@@ -170,11 +180,16 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 
 int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
-    
-    std::cout << "Build info:\n"
-              << metadataToString(collectVersionInfo())
-              << "\n";
 
+    int processRank = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+
+    if (processRank == 0) {
+        std::cout << "Build info:\n"
+                  << metadataToString(collectVersionInfo())
+                  << "\n";
+    }
+    
     ModelParamsDetSDW parmodel;
     DetQMCParams parmc;
     DetQMCPTParams parpt;    
@@ -194,6 +209,7 @@ int main(int argc, char **argv) {
                 DetQMCPT<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt);
                 simulation.run();
             } else if (resumeSimulation) {
+                // parmc.stateFileName -> is set process dependent
                 DetQMCPT<DetSDW<CB_ASSAAD_BERG>, ModelParamsDetSDW> simulation(parmc.stateFileName, parmc);
                 //only very select parameters given in parmc are updated for the resumed simulation
                 simulation.run();
@@ -201,6 +217,7 @@ int main(int argc, char **argv) {
         }
         else {
             if (not resumeSimulation) {
+                // parmc.stateFileName -> is set process dependent
                 DetQMCPT<DetSDW<CB_NONE>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt);
                 simulation.run();
             } else if (resumeSimulation) {
