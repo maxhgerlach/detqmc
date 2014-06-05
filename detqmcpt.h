@@ -546,7 +546,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                 if (processIndex == 0) {
                     std::cout << "Thermalization finished\n" << std::endl;
                 }
-                replica->thermalizationOver();
+                replica->thermalizationOver(processIndex);
                 swCounter = 0;
                 measurementsStage();
             }

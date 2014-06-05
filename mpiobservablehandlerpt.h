@@ -106,6 +106,8 @@ public:
         ar & countValues;
         ar & par_jkBlockValues;
         ar & par_total;
+        // par_metaModel does not need to be serialized -- is reset
+        // upon initialization
     }
 };
 

@@ -69,6 +69,10 @@ public:
     virtual MetadataMap prepareModelMetadataMap() const;
 
     virtual void thermalizationOver();
+    //the following overloaded version is for use in an MPI
+    //context. It writes to stdout and prepends the output
+    //by the processIndex
+    virtual void thermalizationOver(int processIndex);
 
     virtual void sweep(bool takeMeasurements);
     virtual void sweepThermalization();

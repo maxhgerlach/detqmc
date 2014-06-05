@@ -2384,18 +2384,18 @@ void DetSDW<CB>::attemptWolffClusterUpdate() {
     	prob_fermion *= sv_ratio;
     }
 
-    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
+//    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
 
     attemptedWolffClusterUpdates += 1;
     if (prob_fermion >= 1. or rng.rand01() < prob_fermion) {
         //update accepted
         acceptedWolffClusterUpdates += 1;
         addedWolffClusterSize += num(cluster_size);
-        std::cout << "accept cluster\n";
+        //std::cout << "accept cluster\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        std::cout << "reject cluster\n";
+        //std::cout << "reject cluster\n";
     }
 
     timing.stop("sdw-attemptWolffClusterUpdate");
@@ -2448,17 +2448,17 @@ void DetSDW<CB>::attemptGlobalShiftMove() {
 
     num prob = prob_scalar * prob_fermion;
 
-    std::cout << prob_scalar << "  " << prob_fermion << "\n";
+//    std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
     attemptedGlobalShifts += 1;
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         acceptedGlobalShifts += 1;
-        std::cout << "accept globalShift\n";
+        //std::cout << "accept globalShift\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        std::cout << "reject globalShift\n";
+        //std::cout << "reject globalShift\n";
     }
 
     timing.stop("sdw-attemptGlobalShiftMove");
@@ -2510,19 +2510,19 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
 
     num prob = prob_scalar * prob_fermion;
 
-    std::cout << "Shift + Cluster: " << cluster_size << "\n";
-    std::cout << prob_scalar << "  " << prob_fermion << "\n";
+    // std::cout << "Shift + Cluster: " << cluster_size << "\n";
+    // std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
     attemptedWolffClusterShiftUpdates += 1;
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         acceptedWolffClusterShiftUpdates += 1;
         addedWolffClusterSize += num(cluster_size);
-        std::cout << "accept cluster and shift\n";
+        //std::cout << "accept cluster and shift\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        std::cout << "reject cluster and shift\n";
+        //std::cout << "reject cluster and shift\n";
     }
     
     timing.stop("sdw-attemptWolffClusterShiftMove");     
@@ -2949,22 +2949,31 @@ num DetSDW<CB>::phiAction() {
     return action;
 }
 
-
 template<CheckerboardMethod CB>
-void DetSDW<CB>::thermalizationOver() {
-    std::cout << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
+void DetSDW<CB>::thermalizationOver(int processIndex) {
+    std::string prefix;
+    if (processIndex == -1) {
+        prefix = "";
+    } else {
+        prefix = "p" + numToString(processIndex) + " ";
+    }
+    
+    std::cout << prefix
+              << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
               << "recent local accRatio = " << ad.accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
         num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
-        std::cout << "globalShiftMove acceptance ratio = " << ratio
+        std::cout << prefix
+                  << "globalShiftMove acceptance ratio = " << ratio
                   << std::endl;
     }
     if (pars.wolffClusterUpdate) {
         num ratio = num(acceptedWolffClusterUpdates) /
-                num(attemptedWolffClusterUpdates);
+            num(attemptedWolffClusterUpdates);
         num avgsize = addedWolffClusterSize / num(acceptedWolffClusterUpdates);
-        std::cout << "wolffClusterUpdate acceptance ratio = " << ratio
+        std::cout << prefix
+                  << "wolffClusterUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }
@@ -2972,10 +2981,16 @@ void DetSDW<CB>::thermalizationOver() {
         num ratio = num(acceptedWolffClusterShiftUpdates) /
             num(attemptedWolffClusterShiftUpdates);
         num avgsize = addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
-        std::cout << "wolffClusterShiftUpdate acceptance ratio = " << ratio
+        std::cout << prefix
+                  << "wolffClusterShiftUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::thermalizationOver() {
+    thermalizationOver(-1);
 }
 
 
