@@ -79,6 +79,7 @@ protected:
                             const DetQMCPTParams& parspt);
 
     void replicaExchangeStep();
+    void replicaExchangeConsistencyCheck(); // verify that processes have the right control parameters
 
     
     ModelParams parsmodel;
@@ -563,6 +564,7 @@ void DetQMCPT<Model, ModelParams>::run() {
             if (parspt.exchangeInterval != 0 and (swCounter % parspt.exchangeInterval == 0)) {
                 replicaExchangeStep();
             }
+            replicaExchangeConsistencyCheck();
         } //replica exchange
         
     } // while (stage != F)
@@ -667,6 +669,31 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
                  MPI_COMM_WORLD
         );
     replica->set_control_data(local_buf);
+}
+
+
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::replicaExchangeConsistencyCheck() {
+    double local_exchange_parameter_value = replica->get_exchange_parameter_value();
+    std::vector<double> process_par_values(numProcesses, 0.0);
+    MPI_Gather( &local_exchange_parameter_value, // send buf
+                1,
+                MPI_DOUBLE,
+                process_par_values.data(), // recv buf
+                1,
+                MPI_DOUBLE,
+                0,              // root process
+                MPI_COMM_WORLD
+        );
+    if (processIndex == 0) {
+        for (int pi = 0; pi < numProcesses; ++pi) {
+            num v1 = process_par_values[pi];
+            num v2 = parspt.controlParameterValues[current_process_par[pi]];
+            if ( std::abs(v1 - v2) > 1E-10 ) {
+                throw GeneralError("Exchange parameter value mismatch!");
+            }
+        }
+    }
 }
 
 
