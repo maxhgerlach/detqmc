@@ -11,15 +11,17 @@ namespace fs = boost::filesystem;
 #include "mpiobservablehandlerpt.h"
 
 ScalarObservableHandlerPT::ScalarObservableHandlerPT(
-    const ScalarObservable& localObservable,
-    const std::vector<int>& current_process_par,
-    const DetQMCParams& simulationParameters,
-    const DetQMCPTParams& ptParams,
-    const MetadataMap& metadataToStoreModel,
-    const MetadataMap& metadataToStoreMC)
+        const ScalarObservable& localObservable,
+        const std::vector<int>& current_process_par,
+        const DetQMCParams& simulationParameters,
+        const DetQMCPTParams& ptParams,
+        const MetadataMap& metadataToStoreModel,
+        const MetadataMap& metadataToStoreMC,
+        const MetadataMap& metadataToStorePT)
     : ObservableHandlerPTCommon<double>(localObservable, current_process_par,
                                         simulationParameters, ptParams,
-                                        metadataToStoreModel, metadataToStoreMC),
+                                        metadataToStoreModel, metadataToStoreMC,
+                                        metadataToStorePT),
     par_timeseriesBuffer(),       
     par_storage(),    
     par_storageFileStarted()
@@ -109,6 +111,7 @@ void ScalarObservableHandlerPT::outputTimeseries() {
                     par_storage[cpi]->addHeaderText("Timeseries for observable " + name);
                     par_storage[cpi]->addMetadataMap(par_metaModel[cpi]);
                     par_storage[cpi]->addMetadataMap(metaMC);
+                    par_storage[cpi]->addMetadataMap(metaPT);
                     par_storage[cpi]->addMeta("observable", name);
                     par_storage[cpi]->writeHeader();
                     par_storageFileStarted[cpi] = true;
@@ -133,11 +136,13 @@ VectorObservableHandlerPT::VectorObservableHandlerPT(const VectorObservable& loc
                                                      const DetQMCParams& simulationParameters,
                                                      const DetQMCPTParams& ptParams,
                                                      const MetadataMap& metadataToStoreModel,
-                                                     const MetadataMap& metadataToStoreMC)
+                                                     const MetadataMap& metadataToStoreMC,
+                                                     const MetadataMap& metadataToStorePT)
 : ObservableHandlerPTCommon<arma::Col<double>>(
     localObservable, current_process_par,
     simulationParameters, ptParams,
     metadataToStoreModel, metadataToStoreMC,
+    metadataToStorePT,
     arma::zeros<arma::Col<double>>(localObservable.vectorSize)),
     vsize(localObservable.vectorSize), indexes(vsize), indexName("site"),
     mpi_gather_buffer()
@@ -219,6 +224,7 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>
             output.addHeaderText("Monte Carlo results for observable expectation values");
             output.addMetadataMap((*obsHandlers.begin())->par_metaModel[cpi]);
             output.addMetadataMap((*obsHandlers.begin())->metaMC);
+            output.addMetadataMap((*obsHandlers.begin())->metaPT);            
             output.addMeta("key", "observable");
             output.addHeaderText("observable\t value \t error");
             output.writeToFile((fs::path(subdirectory) / fs::path("results.values")).string());
@@ -260,6 +266,7 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandlerPT>>
                                      " expectation values");
                 output.addMetadataMap(obsptr->par_metaModel[cpi]);
                 output.addMetadataMap(obsptr->metaMC);
+                output.addMetadataMap(obsptr->metaPT);                
                 output.addMeta("key", obsptr->indexName);
                 output.addMeta("observable", obsptr->name);
                 output.addHeaderText("key\t value \t error");

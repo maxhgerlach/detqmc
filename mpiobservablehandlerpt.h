@@ -41,6 +41,7 @@ public:
         const DetQMCPTParams& ptParams,
         const MetadataMap& metadataToStoreModel,
         const MetadataMap& metadataToStoreMC,
+        const MetadataMap& metadataToStorePT,
         ObsType zeroValue = ObsType());
     virtual ~ObservableHandlerPTCommon() { }
     //To be called from rank 0:
@@ -68,6 +69,7 @@ protected:
     DetQMCPTParams ptparams;
     MetadataMap metaModel;
     MetadataMap metaMC;
+    MetadataMap metaPT;    
     uint32_t jkBlockCount;
     uint32_t jkBlockSizeSweeps;
 
@@ -119,6 +121,7 @@ ObservableHandlerPTCommon<ObsType>::ObservableHandlerPTCommon(
     const DetQMCPTParams& ptParams,
     const MetadataMap& metadataToStoreModel,
     const MetadataMap& metadataToStoreMC,
+    const MetadataMap& metadataToStorePT,
     ObsType zeroValue)
     : localObs(localObservable), name(localObs.name),
       zero(zeroValue),          //ObsType() may not be a valid choice!
@@ -126,6 +129,7 @@ ObservableHandlerPTCommon<ObsType>::ObservableHandlerPTCommon(
       ptparams(ptParams),
       metaModel(metadataToStoreModel),
       metaMC(metadataToStoreMC),
+      metaPT(metadataToStorePT),
       jkBlockCount(mcparams.jkBlocks),
       jkBlockSizeSweeps(mcparams.sweeps / jkBlockCount),
       lastSweepLogged(0),
@@ -215,7 +219,9 @@ public:
                               const DetQMCParams& simulationParameters,
                               const DetQMCPTParams& ptParams,
                               const MetadataMap& metadataToStoreModel,
-                              const MetadataMap& metadataToStoreMC);
+                              const MetadataMap& metadataToStoreMC,
+                              const MetadataMap& metadataToStorePT
+        );
 
     // Log newly measured observable value at each replica via the the
     // reference contained in this->obs, pass the number of the
@@ -271,7 +277,8 @@ public:
                               const DetQMCParams& simulationParameters,
                               const DetQMCPTParams& ptParams,
                               const MetadataMap& metadataToStoreModel,
-                              const MetadataMap& metadataToStoreMC);
+                              const MetadataMap& metadataToStoreMC,
+                              const MetadataMap& metadataToStorePT);
     void insertValue(uint32_t curSweep);    //compare to ScalarObservableHandlerPT function    
     uint32_t getVectorSize() {
         return vsize;
@@ -299,10 +306,12 @@ public:
                                 const DetQMCParams& simulationParameters,
                                 const DetQMCPTParams& ptParams,
                                 const MetadataMap& metadataToStoreModel,
-                                const MetadataMap& metadataToStoreMC) :
+                                const MetadataMap& metadataToStoreMC,
+                                const MetadataMap& metadataToStorePT) :
         VectorObservableHandlerPT(observable, current_process_par,
                                   simulationParameters, ptParams,
-                                  metadataToStoreModel, metadataToStoreMC) {
+                                  metadataToStoreModel, metadataToStoreMC,
+                                  metadataToStorePT) {
         //this code is convenient, but sets the vector indexes twice upon construction
         indexes = observable.keys;
         indexName = observable.keyName;

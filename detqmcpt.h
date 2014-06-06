@@ -248,27 +248,29 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
     //prepare metadata
     modelMeta = replica->prepareModelMetadataMap();
+    modelMeta.erase(parspt.controlParameterName);
     mcMeta = parsmc.prepareMetadataMap();
+    mcMeta.erase("stateFileName");
     ptMeta = parspt.prepareMetadataMap();
 
     //prepare observable handlers
     auto scalarObs = replica->getScalarObservables();
     for (auto obsP = scalarObs.cbegin(); obsP != scalarObs.cend(); ++obsP) {
         obsHandlers.push_back(
-            ObsPtr(new ScalarObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            ObsPtr(new ScalarObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta, ptMeta))
         );
     }
 
     auto vectorObs = replica->getVectorObservables();
     for (auto obsP = vectorObs.cbegin(); obsP != vectorObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new VectorObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            VecObsPtr(new VectorObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta, ptMeta))
         );
     }
     auto keyValueObs = replica->getKeyValueObservables();
     for (auto obsP = keyValueObs.cbegin(); obsP != keyValueObs.cend(); ++obsP) {
         vecObsHandlers.push_back(
-            VecObsPtr(new KeyValueObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta))
+            VecObsPtr(new KeyValueObservableHandlerPT(*obsP, current_process_par, parsmc, parspt, modelMeta, mcMeta, ptMeta))
         );
     }
 
@@ -419,6 +421,10 @@ void DetQMCPT<Model, ModelParams>::saveState() {
         writeOnlyMetaData(commonInfoFilename, mcMeta,
                           "Monte Carlo parameters:",
                           true);
+        writeOnlyMetaData(commonInfoFilename, ptMeta,
+                          "Replica exchange parameters:",
+                          true);
+        
         
         MetadataMap currentState;
         currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
