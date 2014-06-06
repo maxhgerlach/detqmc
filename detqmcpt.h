@@ -677,7 +677,7 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
                     );
                 //  control_data_buffer_2 { indexProc2 } = control_data_buffer_1 { indexProc2 }
                 std::copy( control_data_buffer_1.begin() + indexProc2 * local_buf_size,       // input begin
-                           control_data_buffer_1.begin() + (indexProc1 + 1) * local_buf_size, // input end
+                           control_data_buffer_1.begin() + (indexProc2 + 1) * local_buf_size, // input end
                            control_data_buffer_2.begin() + indexProc2 * local_buf_size        // output begin
                     );
             }
