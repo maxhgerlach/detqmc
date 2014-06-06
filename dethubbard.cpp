@@ -24,13 +24,12 @@
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
-template<>
-std::unique_ptr<DetHubbard> createReplica(RngWrapper& rng, ModelParams<DetHubbard> pars) {
+void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
 
-    return std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
+    replica_out = std::unique_ptr<DetHubbard>(new DetHubbard(rng, pars));
 }
 
 

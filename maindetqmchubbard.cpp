@@ -15,8 +15,9 @@
 #include "timing.h"
 #include "detqmc.h"
 #include "dethubbard.h"
-#include "detqmcparams.h"
 #include "dethubbardparams.h"
+
+
 
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.

@@ -11,7 +11,7 @@
 
 #include <functional>
 #include <utility>
-#include <memory>
+#include <memory>               // unique_ptr
 #include <vector>
 #include <tuple>
 #include <armadillo>
@@ -54,14 +54,24 @@ typedef UdV<num> UdVnum;
 class SerializeContentsKey;
 
 
-// This template should probably not be used.  Provide explicit specializations
-// for each implementation of a model
-template<class Model, class ModelParams>
-std::unique_ptr<Model> createReplica(RngWrapper& rng, ModelParams pars) {
-    BOOST_MPL_ASSERT(( not_defined<Model> ));
-    pars.check();
-    return std::unique_ptr<Model>(new Model(rng, pars));
-}
+// The previous function template, which was to be specialized
+// explicitly, led to errors that were hard to understand and fix.
+// To avoid this we do not use any generic template at all and
+// just *require* that model implementations are accompanied by
+// a function
+//     void createReplica(std::unique_ptr<Model>& replica_out,
+//                        RngWrapper& rng, ModelParams pars)
+
+
+
+// // This template should not be used.  Provide explicit specializations
+// // for each implementation of a model
+// template<class Model, class Params = ModelParams<Model> >
+// std::unique_ptr<Model> createReplica(RngWrapper& rng, Params pars) {
+//     BOOST_MPL_ASSERT(( not_defined<Model> ));
+//     pars.check();
+//     return std::unique_ptr<Model>(new Model(rng, pars));
+// }
 
 
 // Compute min{1, exp(-Delta), the acceptance probability for a
@@ -324,19 +334,19 @@ protected:
     //these receive as a template parameter the function to call for updates in a slice,
     //as well as B-Mat multiplicators like above
     template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-    		  class CallableUpdateInSlice,
-    		  class Callable_init, class Callable_measure_k, class Callable_finish>
+              class CallableUpdateInSlice,
+              class Callable_init, class Callable_measure_k, class Callable_finish>
     void sweepUp(bool takeMeasurements,
-    			 a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
+                 a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                  b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
                  CallableUpdateInSlice funcUpdateInSlice,
                  Callable_init initMeasurement, Callable_measure_k measure,
                  Callable_finish finishMeasurement);
     template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
-    		  class CallableUpdateInSlice,
-    		  class Callable_init, class Callable_measure_k, class Callable_finish>
+              class CallableUpdateInSlice,
+              class Callable_init, class Callable_measure_k, class Callable_finish>
     void sweepDown(bool takeMeasurements,
-    			   a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
+                   a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                    b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                    CallableUpdateInSlice funcUpdateInSlice,
                    Callable_init initMeasurement, Callable_measure_k measure,

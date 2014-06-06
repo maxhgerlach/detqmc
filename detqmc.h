@@ -183,7 +183,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     }
     rng = RngWrapper(parsmc.rngSeed);
 
-    replica = createReplica<Model>(rng, parsmodel);    
+    createReplica(replica, rng, parsmodel);    
 
     //prepare metadata
     modelMeta = replica->prepareModelMetadataMap();

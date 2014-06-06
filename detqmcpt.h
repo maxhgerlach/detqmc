@@ -227,7 +227,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     // set up control parameters for current process replica parameters
     parsmodel.set_exchange_parameter_value(parspt.controlParameterValues[processIndex]);
 
-    replica = createReplica<Model>(rng, parsmodel);
+    createReplica(replica, rng, parsmodel);
     
     // at rank 0 keep track of which process has which control parameter currently
     // and track exchange action contributions

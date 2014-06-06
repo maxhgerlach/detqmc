@@ -28,35 +28,24 @@
 #endif
 
 
-//unfortunately need to repeat code here -- partial function template
-//specializations are not allowed
-template<>
-std::unique_ptr<DetSDW<CB_NONE>> createReplica<DetSDW<CB_NONE>,ModelParamsDetSDW>(
-    RngWrapper& rng, ModelParamsDetSDW pars) {
+template<CheckerboardMethod CBM>
+void createReplica(std::unique_ptr<DetSDW<CBM>>& replica_out,
+                   RngWrapper& rng, ModelParamsDetSDW pars) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
 
-    assert((pars.checkerboard and (CB_NONE == CB_ASSAAD_BERG)) or
-           (not pars.checkerboard and (CB_NONE == CB_NONE))
+    assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
+           (not pars.checkerboard and (CBM == CB_NONE))
         );
 
-    return std::unique_ptr<DetSDW<CB_NONE>>(new DetSDW<CB_NONE>(rng, pars));
+    replica_out = std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
 }
-template<>
-std::unique_ptr<DetSDW<CB_ASSAAD_BERG>> createReplica<DetSDW<CB_ASSAAD_BERG>,ModelParamsDetSDW>(
-    RngWrapper& rng, ModelParamsDetSDW pars) {
-    pars = updateTemperatureParameters(pars);
-
-    pars.check();
-
-    assert((pars.checkerboard and (CB_ASSAAD_BERG == CB_ASSAAD_BERG)) or
-           (not pars.checkerboard and (CB_ASSAAD_BERG == CB_ASSAAD_BERG))
-        );
-
-    return std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>(new DetSDW<CB_ASSAAD_BERG>(rng, pars));
-}    
-
+//explicit instantiations:
+template void createReplica(std::unique_ptr<DetSDW<CB_NONE>>& replica_out,
+                            RngWrapper& rng, ModelParamsDetSDW pars);
+template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>& replica_out,
+                            RngWrapper& rng, ModelParamsDetSDW pars);
 
 
 

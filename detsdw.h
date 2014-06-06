@@ -33,13 +33,9 @@ std::string cbmToString(CheckerboardMethod cbm);
 
 template<CheckerboardMethod CBM> class DetSDW;
 
-template<>
-std::unique_ptr<DetSDW<CB_NONE>>
-createReplica<DetSDW<CB_NONE>,ModelParamsDetSDW>(RngWrapper& rng, ModelParamsDetSDW pars);
-template<>
-std::unique_ptr<DetSDW<CB_ASSAAD_BERG>>
-createReplica<DetSDW<CB_ASSAAD_BERG>,ModelParamsDetSDW>(RngWrapper& rng, ModelParamsDetSDW pars);
-
+template<CheckerboardMethod CBM>
+void createReplica(std::unique_ptr<DetSDW<CBM>>& replica_out,
+                   RngWrapper& rng, ModelParamsDetSDW pars);
 
 // return min{1, e^{-\Delta}}
 template<>
@@ -61,8 +57,8 @@ public:
 private:
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
-    friend std::unique_ptr<DetSDW<Checkerboard>>
-    createReplica<DetSDW<Checkerboard>,ModelParamsDetSDW>(RngWrapper& rng, ModelParams pars);
+    template<CheckerboardMethod CBM>
+    friend void createReplica(std::unique_ptr<DetSDW<CBM>>& replica_out, RngWrapper& rng, ModelParams pars);
 
     virtual ~DetSDW();
     virtual uint32_t getSystemN() const;

@@ -13,24 +13,23 @@
 
 #include "metadata.h"
 
-
-// Collect various structs defining various parameters.
-
-// The set specified included in each struct contains string representations
-// of all parameters actually specified.  This allows throwing an exception
-// at the appropriate point in the program if a parameter is missing.
-
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"
 typedef double num;     //possibility to switch to single precision if ever desired
 #pragma GCC diagnostic pop
 
 
+
+
+
 // Template for struct representing model specific parameters
 // -- needs to have a proper specialization for each model considered, which actually
 //    implements the functions and provides data members
 // for a class derived of DetModelGC this should at least be beta, m, s, dtau
+
+// The set specified contains string representations of all parameters
+// actually specified.  This allows throwing an exception at the
+// appropriate point in the program if a parameter is missing.
 template<class Model>
 struct ModelParams {
     void check() { }
