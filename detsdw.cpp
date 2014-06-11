@@ -2946,7 +2946,8 @@ void DetSDW<CB>::thermalizationOver(int processIndex) {
     if (processIndex == -1) {
         prefix = "";
     } else {
-        prefix = "p" + numToString(processIndex) + " ";
+        prefix = "p" + numToString(processIndex) + ": r"
+            + numToString(pars.r) + " ";
     }
     
     std::cout << prefix
