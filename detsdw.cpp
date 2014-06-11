@@ -14,7 +14,12 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
-#include <boost/assign/std/vector.hpp>    // 'operator+=()' for vectors
+#include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
+#include "boost/iostreams/stream.hpp"
+#include "boost/iostreams/device/back_inserter.hpp"
+#include "boost/iostreams/device/array.hpp"
 #pragma GCC diagnostic pop
 #include "observable.h"
 #include "detsdw.h"
@@ -60,10 +65,7 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     eye4cpx(arma::eye(4,4), arma::zeros(4,4)),
     rng(rng_), normal_distribution(rng),
     pars(pars_),
-    acceptedGlobalShifts(0), attemptedGlobalShifts(0),
-    acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
-    acceptedWolffClusterShiftUpdates(0), attemptedWolffClusterShiftUpdates(0),
-    addedWolffClusterSize(0.),
+    us(),                       // UpdateStatistics
     hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
     sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
     spaceNeigh(pars.L), timeNeigh(pars.m),
@@ -206,25 +208,25 @@ MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}    
     if (pars.globalShift) {
     	num globalShiftAccRatio =
-    			num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
+    			num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
     	META_INSERT(globalShiftAccRatio);
     }
     if (pars.wolffClusterUpdate) {
     	num wolffClusterUpdateAccRatio =
-    			num(acceptedWolffClusterUpdates) /
-    			num(attemptedWolffClusterUpdates);
+    			num(us.acceptedWolffClusterUpdates) /
+    			num(us.attemptedWolffClusterUpdates);
     	META_INSERT(wolffClusterUpdateAccRatio);
     	num averageAcceptedWolffClusterSize =
-    			addedWolffClusterSize / num(acceptedWolffClusterUpdates);
+    			us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
     if (pars.wolffClusterShiftUpdate) {
     	num wolffClusterShiftUpdateAccRatio =
-            num(acceptedWolffClusterShiftUpdates) /
-            num(attemptedWolffClusterShiftUpdates);
+            num(us.acceptedWolffClusterShiftUpdates) /
+            num(us.attemptedWolffClusterShiftUpdates);
     	META_INSERT(wolffClusterShiftUpdateAccRatio);
     	num averageAcceptedWolffClusterSize =
-            addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
+            us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
 #undef META_INSERT
@@ -2375,11 +2377,11 @@ void DetSDW<CB>::attemptWolffClusterUpdate() {
 
 //    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
 
-    attemptedWolffClusterUpdates += 1;
+    us.attemptedWolffClusterUpdates += 1;
     if (prob_fermion >= 1. or rng.rand01() < prob_fermion) {
         //update accepted
-        acceptedWolffClusterUpdates += 1;
-        addedWolffClusterSize += num(cluster_size);
+        us.acceptedWolffClusterUpdates += 1;
+        us.addedWolffClusterSize += num(cluster_size);
         //std::cout << "accept cluster\n";
     } else {
         //update rejected, restore previous state
@@ -2439,10 +2441,10 @@ void DetSDW<CB>::attemptGlobalShiftMove() {
 
 //    std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
-    attemptedGlobalShifts += 1;
+    us.attemptedGlobalShifts += 1;
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
-        acceptedGlobalShifts += 1;
+        us.acceptedGlobalShifts += 1;
         //std::cout << "accept globalShift\n";
     } else {
         //update rejected, restore previous state
@@ -2502,11 +2504,11 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
     // std::cout << "Shift + Cluster: " << cluster_size << "\n";
     // std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
-    attemptedWolffClusterShiftUpdates += 1;
+    us.attemptedWolffClusterShiftUpdates += 1;
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
-        acceptedWolffClusterShiftUpdates += 1;
-        addedWolffClusterSize += num(cluster_size);
+        us.acceptedWolffClusterShiftUpdates += 1;
+        us.addedWolffClusterSize += num(cluster_size);
         //std::cout << "accept cluster and shift\n";
     } else {
         //update rejected, restore previous state
@@ -2952,24 +2954,24 @@ void DetSDW<CB>::thermalizationOver(int processIndex) {
               << "recent local accRatio = " << ad.accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
-        num ratio = num(acceptedGlobalShifts) / num(attemptedGlobalShifts);
+        num ratio = num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
         std::cout << prefix
                   << "globalShiftMove acceptance ratio = " << ratio
                   << std::endl;
     }
     if (pars.wolffClusterUpdate) {
-        num ratio = num(acceptedWolffClusterUpdates) /
-            num(attemptedWolffClusterUpdates);
-        num avgsize = addedWolffClusterSize / num(acceptedWolffClusterUpdates);
+        num ratio = num(us.acceptedWolffClusterUpdates) /
+            num(us.attemptedWolffClusterUpdates);
+        num avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
         std::cout << prefix
                   << "wolffClusterUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }
     if (pars.wolffClusterShiftUpdate) {
-        num ratio = num(acceptedWolffClusterShiftUpdates) /
-            num(attemptedWolffClusterShiftUpdates);
-        num avgsize = addedWolffClusterSize / num(acceptedWolffClusterShiftUpdates);
+        num ratio = num(us.acceptedWolffClusterShiftUpdates) /
+            num(us.attemptedWolffClusterShiftUpdates);
+        num avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
         std::cout << prefix
                   << "wolffClusterShiftUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
@@ -3299,6 +3301,33 @@ num DetSDW<CB>::get_exchange_action_contribution() const {
     contrib *= 0.5 * pars.dtau;
     return contrib;
 }
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::get_control_data(std::string& buffer) const {
+    //serialize objects into a std::basic_string
+    //cf. http://stackoverflow.com/questions/3015582/direct-boost-serialization-to-char-array
+    namespace ios = boost::iostreams;
+    ios::back_insert_device<std::string> inserter(buffer);
+    ios::stream<ios::back_insert_device<std::string> > s(inserter);
+    boost::archive::binary_oarchive oa(s);
+
+    oa & us & ad;
+
+    s.flush();
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::set_control_data(const std::string& buffer) {
+    //wrap buffer inside a stream and deserialize into objects
+    //cf. http://stackoverflow.com/questions/3015582/direct-boost-serialization-to-char-array
+    namespace ios = boost::iostreams;
+    ios::basic_array_source<char> device(buffer.data(), buffer.size());
+    ios::stream<ios::basic_array_source<char> > s(device);
+    boost::archive::binary_iarchive ia(s);
+
+    ia & us & ad;
+}
+
 
 
 

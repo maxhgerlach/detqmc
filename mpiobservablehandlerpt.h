@@ -28,6 +28,8 @@ class SerializeContentsKey;
 #include "boost/serialization/vector.hpp"
 #include "boost/serialization/export.hpp"
 #include "boost_serialize_uniqueptr.h"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "boost/mpi.hpp"
 #pragma GCC diagnostic pop
 
 
@@ -142,8 +144,9 @@ ObservableHandlerPTCommon<ObsType>::ObservableHandlerPTCommon(
       par_total(),
       par_metaModel()
 {
-    MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
+    boost::mpi::communicator world;
+    processIndex = world.rank();
+    numProcesses = world.size();
     assert(int(ptparams.controlParameterValues.size()) == numProcesses);
     if (processIndex == 0) {
         process_cur_value.resize(numProcesses, zero);

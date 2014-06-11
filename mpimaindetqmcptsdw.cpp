@@ -1,13 +1,11 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"
-#pragma GCC diagnostic pop
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <mpi.h>
+#include "boost/mpi.hpp"
 #pragma GCC diagnostic pop
 #include <iostream>
 #include <fstream>
@@ -20,6 +18,8 @@
 #include "detqmcpt.h"
 #include "detsdw.h"
 #include "detsdwparams.h"
+
+namespace mpi = boost::mpi;
 
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
@@ -109,8 +109,8 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     using std::cout; using std::endl;
 
     //state file -- depends on MPI process rank
-    int processRank = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+    mpi::communicator world;
+    int processRank = world.rank();
     mcpar.stateFileName = "simulation." + numToString(processRank) + ".state";    
     
     if (boost::filesystem::exists(mcpar.stateFileName)) {
@@ -182,10 +182,10 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 
 
 int main(int argc, char **argv) {
-    MPI_Init(&argc, &argv);
+    mpi::environment env(argc, argv);
+    mpi::communicator world;    // default constructor corresponds to MPI_COMM_WORLD
 
-    int processRank = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &processRank);
+    int processRank = world.rank();
 
     if (processRank == 0) {
         std::cout << "Build info:\n"
@@ -232,6 +232,5 @@ int main(int argc, char **argv) {
     }
     timing.stop("total");
 
-    MPI_Finalize();
     return 0;
 }

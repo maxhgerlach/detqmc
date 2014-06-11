@@ -85,18 +85,20 @@ public:
     num get_exchange_action_contribution() const;
     // get/set control parameter [r] specific data -- here:
     // MC stepsize adjustment done during thermalization.  This is for
-    // MPI and therefore uses this plain pointer to a buffer for
-    // simplicity
-    constexpr uint32_t get_control_data_buffer_size() const {
-        return ad.bufsize;
-    }
-    void get_control_data(double* buffer) const {
-        ad.set_buffer_to_data(buffer);
-    }
-    void set_control_data(const double* buffer) {
-        ad.get_data_from_buffer(buffer);
-    }
-
+    // Boost MPI
+    //// and therefore uses this plain pointer to a buffer for
+    //// simplicity
+    // constexpr uint32_t get_control_data_buffer_size() const {
+    //     return ad.bufsize;
+    // }
+    // void get_control_data(double* buffer) const {
+    //     ad.set_buffer_to_data(buffer);
+    // }
+    // void set_control_data(const double* buffer) {
+    //     ad.get_data_from_buffer(buffer);
+    // }
+    void get_control_data(std::string& buffer) const;
+    void set_control_data(const std::string& buffer);
 
 
     //Perform the correction of the Green's function to ensure an
@@ -168,7 +170,7 @@ protected:
 
 /*
 
-    Statistics about updates
+    Statistics about [global] updates
     
     This needs to be synchronized during parallel tempering
 
@@ -188,6 +190,17 @@ protected:
             acceptedWolffClusterShiftUpdates(0), attemptedWolffClusterShiftUpdates(0),
             addedWolffClusterSize(0.0)
         { }
+
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int /*version*/) {
+            ar & acceptedGlobalShifts;
+            ar & attemptedGlobalShifts;
+            ar & acceptedWolffClusterUpdates;
+            ar & attemptedWolffClusterUpdates;
+            ar & acceptedWolffClusterShiftUpdates;
+            ar & attemptedWolffClusterShiftUpdates;
+            ar & addedWolffClusterSize;
+        }        
     } us;
     
 
@@ -319,37 +332,54 @@ protected:
             curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta)
         { }
 
-        static constexpr uint32_t numelemes = 7;
-        static constexpr uint32_t bufsize = numelemens * sizeof(double);
-
-        void get_data_from_buffer(const uint8_t* buffer) {
-            const double* double_buffer = reinterpret_cast<const double*>(buffer);
-            
-            phiDelta = *buffer;
-            angleDelta = *(buffer + 1);
-            scaleDelta = *(buffer + 2);
-            curminAngleDelta = *(buffer + 3);
-            curmaxAngleDelta = *(buffer + 4);
-            curminScaleDelta = *(buffer + 5);
-            curmaxScaleDelta = *(buffer + 6);
-            assert(bufsize - 1 == 6);
-            // reset acc ratio running averagers
-            accRatioLocal_box_RA = RunningAverage(AccRatioAdjustmentSamples);
-            accRatioLocal_rotate_RA = RunningAverage(AccRatioAdjustmentSamples);
-            accRatioLocal_scale_RA = RunningAverage(AccRatioAdjustmentSamples);
-            
+        template<class Archive>
+        void serialize(Archive & ar, const unsigned int /*version*/) {
+            ar & phiDelta;   
+            ar & angleDelta; 
+            ar & scaleDelta; 
+            ar & targetAccRatioLocal_phi;
+            ar & lastAccRatioLocal_phi;
+            ar & accRatioLocal_box_RA
+               & accRatioLocal_rotate_RA
+               & accRatioLocal_scale_RA;
+            ar & curminAngleDelta;
+            ar & curmaxAngleDelta;
+            ar & curminScaleDelta;
+            ar & curmaxScaleDelta;
         }
 
-        void set_buffer_to_data(double* buffer) const {
-            *buffer = phiDelta;
-            *(buffer + 1) = angleDelta;
-            *(buffer + 2) = scaleDelta;
-            *(buffer + 3) = curminAngleDelta;
-            *(buffer + 4) = curmaxAngleDelta;
-            *(buffer + 5) = curminScaleDelta;
-            *(buffer + 6) = curmaxScaleDelta;
-            assert(bufsize - 1 == 6);
-        }
+        
+        
+        // static constexpr uint32_t bufsize = numelemens * sizeof(double);
+
+        // void get_data_from_buffer(const uint8_t* buffer) {
+        //     const double* double_buffer = reinterpret_cast<const double*>(buffer);
+            
+        //     phiDelta = *buffer;
+        //     angleDelta = *(buffer + 1);
+        //     scaleDelta = *(buffer + 2);
+        //     curminAngleDelta = *(buffer + 3);
+        //     curmaxAngleDelta = *(buffer + 4);
+        //     curminScaleDelta = *(buffer + 5);
+        //     curmaxScaleDelta = *(buffer + 6);
+        //     assert(bufsize - 1 == 6);
+        //     // reset acc ratio running averagers
+        //     accRatioLocal_box_RA = RunningAverage(AccRatioAdjustmentSamples);
+        //     accRatioLocal_rotate_RA = RunningAverage(AccRatioAdjustmentSamples);
+        //     accRatioLocal_scale_RA = RunningAverage(AccRatioAdjustmentSamples);
+            
+        // }
+
+        // void set_buffer_to_data(double* buffer) const {
+        //     *buffer = phiDelta;
+        //     *(buffer + 1) = angleDelta;
+        //     *(buffer + 2) = scaleDelta;
+        //     *(buffer + 3) = curminAngleDelta;
+        //     *(buffer + 4) = curmaxAngleDelta;
+        //     *(buffer + 5) = curminScaleDelta;
+        //     *(buffer + 6) = curmaxScaleDelta;
+        //     assert(bufsize - 1 == 6);
+        // }
     } ad;
 
 
@@ -771,22 +801,24 @@ public:
     template<class Archive>
     void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
     	(void)sck;
-    	ar & acceptedGlobalShifts;
-    	ar & attemptedGlobalShifts;
-    	ar & acceptedWolffClusterUpdates;
-    	ar & attemptedWolffClusterUpdates; 
-        ar & acceptedWolffClusterShiftUpdates;  
-        ar & attemptedWolffClusterShiftUpdates;         
-    	ar & addedWolffClusterSize;
+    	// ar & acceptedGlobalShifts;
+    	// ar & attemptedGlobalShifts;
+    	// ar & acceptedWolffClusterUpdates;
+    	// ar & attemptedWolffClusterUpdates; 
+        // ar & acceptedWolffClusterShiftUpdates;  
+        // ar & attemptedWolffClusterShiftUpdates;         
+    	// ar & addedWolffClusterSize;
+        ar & us;
         ar & phi0 & phi1 & phi2;
         ar & cdwl;
         ar & coshTermPhi & sinhTermPhi;
         ar & coshTermCDWl & sinhTermCDWl;
-        ar & ad.phiDelta & ad.angleDelta & ad.scaleDelta;
-        ar & ad.targetAccRatioLocal_phi & ad.lastAccRatioLocal_phi;
-        ar & ad.accRatioLocal_box_RA & ad.accRatioLocal_rotate_RA & ad.accRatioLocal_scale_RA;
-        ar & ad.curminAngleDelta & ad.curmaxAngleDelta;
-        ar & ad.curminScaleDelta & ad.curmaxScaleDelta;
+        // ar & ad.phiDelta & ad.angleDelta & ad.scaleDelta;
+        // ar & ad.targetAccRatioLocal_phi & ad.lastAccRatioLocal_phi;
+        // ar & ad.accRatioLocal_box_RA & ad.accRatioLocal_rotate_RA & ad.accRatioLocal_scale_RA;
+        // ar & ad.curminAngleDelta & ad.curmaxAngleDelta;
+        // ar & ad.curminScaleDelta & ad.curmaxScaleDelta;
+        ar & ad;
         ar & performedSweeps;
     }
 };

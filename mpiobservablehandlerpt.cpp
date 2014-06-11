@@ -1,14 +1,15 @@
-#pragma GCC diagnostic ignored "-Wunused-parameter"
-#include <mpi.h>
-#pragma GCC diagnostic pop
-
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/filesystem.hpp"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include "boost/mpi.hpp"
 #pragma GCC diagnostic pop
-namespace fs = boost::filesystem;
 
 #include "mpiobservablehandlerpt.h"
+
+namespace fs = boost::filesystem;
+namespace mpi = boost::mpi;
+
 
 ScalarObservableHandlerPT::ScalarObservableHandlerPT(
         const ScalarObservable& localObservable,
@@ -55,16 +56,22 @@ void ScalarObservableHandlerPT::handleValues(uint32_t curSweep) {
 void ScalarObservableHandlerPT::insertValue(uint32_t curSweep) {
     //MPI: gather the value of localObs from each replica in the
     //buffer at the root process: process_cur_value
-    MPI_Gather( const_cast<double*>(&(localObs.valRef.get())), // sendbuf :
-                // pass memory address of what localObs references | need to cast away const for mpi < 3.0
-                1,                        // sendcount
-                MPI_DOUBLE,               // sendtype
-                process_cur_value.data(), // recvbuf: pointer to internal memory of vector [at root process]
-                1,                        // recvcount
-                MPI_DOUBLE,               // recvtype
-                0,                        // root
-                MPI_COMM_WORLD            // comm
-        );
+    
+    // MPI_Gather( const_cast<double*>(&(localObs.valRef.get())), // sendbuf :
+    //             // pass memory address of what localObs references | need to cast away const for mpi < 3.0
+    //             1,                        // sendcount
+    //             MPI_DOUBLE,               // sendtype
+    //             process_cur_value.data(), // recvbuf: pointer to internal memory of vector [at root process]
+    //             1,                        // recvcount
+    //             MPI_DOUBLE,               // recvtype
+    //             0,                        // root
+    //             MPI_COMM_WORLD            // comm
+    //     );
+    mpi::communicator world;
+    mpi::gather(world,
+                localObs.valRef.get(), // send: what localObs references
+                process_cur_value,     // recv
+                0);
                 
     this->handleValues(curSweep);
 }
@@ -152,23 +159,32 @@ VectorObservableHandlerPT::VectorObservableHandlerPT(const VectorObservable& loc
     }
     if (processIndex == 0) {
         mpi_gather_buffer.resize(numProcesses * vsize, 0.0);
+    } else {
+        mpi_gather_buffer.resize(1, 0.0);
     }
 }
 
 void VectorObservableHandlerPT::insertValue(uint32_t curSweep) {
+    mpi::communicator world;
     //MPI: gather the value of localObs from each replica in the
     //buffer at the root process: process_cur_value
     assert(vsize == localObs.valRef.get().n_elem);
-    MPI_Gather( const_cast<double*>(localObs.valRef.get().memptr()),  // sendbuf
-                // pass arma vector data behind localObs reference,
-                // need to cast away const for MPI < 3.0
-                vsize,                           // sendcount
-                MPI_DOUBLE,                      // sendtype
-                mpi_gather_buffer.data(),        // recvbuf: pointer to internal memory of vector [at root process]
-                vsize,                           // recvcount
-                MPI_DOUBLE,                      // recvtype
-                0,                               // root
-                MPI_COMM_WORLD                   // comm
+    // MPI_Gather( const_cast<double*>(localObs.valRef.get().memptr()),  // sendbuf
+    //             // pass arma vector data behind localObs reference,
+    //             // need to cast away const for MPI < 3.0
+    //             vsize,                           // sendcount
+    //             MPI_DOUBLE,                      // sendtype
+    //             mpi_gather_buffer.data(),        // recvbuf: pointer to internal memory of vector [at root process]
+    //             vsize,                           // recvcount
+    //             MPI_DOUBLE,                      // recvtype
+    //             0,                               // root
+    //             MPI_COMM_WORLD                   // comm
+    //     );
+    mpi::gather(world,
+                localObs.valRef.get().memptr(), // send: pass arma vector data behind localObs reference
+                vsize,                          // sendcount
+                mpi_gather_buffer,              // recv
+                0                               // root
         );
 
     // use the contiguous memory of mpi_gather_buffer to hold the data
@@ -186,7 +202,7 @@ void VectorObservableHandlerPT::insertValue(uint32_t curSweep) {
                 );
         }
     }
-                
+
     this->handleValues(curSweep);
 }
 
@@ -194,10 +210,9 @@ void VectorObservableHandlerPT::insertValue(uint32_t curSweep) {
 
 
 void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>& obsHandlers) {
-    int processIndex;
-    int numProcesses;
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
-    MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
+    boost::mpi::communicator world;
+    int processIndex = world.rank();
+    int numProcesses = world.size();
     if (processIndex == 0) {
         typedef std::map<std::string, num> StringNumMap;
         typedef std::shared_ptr<StringNumMap> StringNumMapPtr;
@@ -233,10 +248,9 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>
 }
 
 void outputResults(const std::vector<std::unique_ptr<VectorObservableHandlerPT>>& obsHandlers) {
-    int processIndex;
-    int numProcesses;
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
-    MPI_Comm_rank(MPI_COMM_WORLD, &processIndex);
+    boost::mpi::communicator world;
+    int processIndex = world.rank();
+    int numProcesses = world.size();
     if (processIndex == 0) {    
         typedef std::map<num, num> NumMap;
         typedef std::shared_ptr<NumMap> NumMapPtr;
