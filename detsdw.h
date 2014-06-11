@@ -169,16 +169,26 @@ protected:
 /*
 
     Statistics about updates
+    
+    This needs to be synchronized during parallel tempering
 
 */
-    uint32_t acceptedGlobalShifts;
-    uint32_t attemptedGlobalShifts;
-    uint32_t acceptedWolffClusterUpdates;
-    uint32_t attemptedWolffClusterUpdates;
-    uint32_t acceptedWolffClusterShiftUpdates;
-    uint32_t attemptedWolffClusterShiftUpdates;
-    num addedWolffClusterSize;
+    struct UpdateStatistics {
+        uint32_t acceptedGlobalShifts;
+        uint32_t attemptedGlobalShifts;
+        uint32_t acceptedWolffClusterUpdates;
+        uint32_t attemptedWolffClusterUpdates;
+        uint32_t acceptedWolffClusterShiftUpdates;
+        uint32_t attemptedWolffClusterShiftUpdates;
+        num addedWolffClusterSize;
 
+        UpdateStatistics() :
+            acceptedGlobalShifts(0), attemptedGlobalShifts(0),
+            acceptedWolffClusterUpdates(0), attemptedWolffClusterUpdates(0),
+            acceptedWolffClusterShiftUpdates(0), attemptedWolffClusterShiftUpdates(0),
+            addedWolffClusterSize(0.0)
+        { }
+    } us;
     
 
 /*
@@ -309,9 +319,12 @@ protected:
             curminScaleDelta(MinScaleDelta), curmaxScaleDelta(MaxScaleDelta)
         { }
 
-        static constexpr uint32_t bufsize = 7;
+        static constexpr uint32_t numelemes = 7;
+        static constexpr uint32_t bufsize = numelemens * sizeof(double);
 
-        void get_data_from_buffer(const double* buffer) {
+        void get_data_from_buffer(const uint8_t* buffer) {
+            const double* double_buffer = reinterpret_cast<const double*>(buffer);
+            
             phiDelta = *buffer;
             angleDelta = *(buffer + 1);
             scaleDelta = *(buffer + 2);
