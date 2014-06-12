@@ -21,6 +21,7 @@
 #include "boost/timer/timer.hpp"
 #include "boost/serialization/split_member.hpp"
 #include "boost/serialization/string.hpp"
+#include "boost/serialization/vector.hpp"
 #include "boost/assign/std/vector.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/archive/binary_oarchive.hpp"
@@ -29,6 +30,7 @@
 #include "boost/mpi.hpp"
 #pragma GCC diagnostic pop
 #include "metadata.h"
+#include "datamapwriter.h"
 #include "detqmcparams.h"
 #include "detmodelparams.h"
 #include "detmodel.h"
@@ -80,6 +82,8 @@ protected:
     void replicaExchangeStep();
     void replicaExchangeConsistencyCheck(); // verify that processes have the right control parameters
 
+    void saveReplicaExchangeStatistics();
+
     
     ModelParams parsmodel;
     DetQMCParams parsmc;
@@ -124,6 +128,41 @@ protected:
     std::vector<std::string> process_control_data_buffer; // map process index -> control data
     // for each process:
     std::string local_control_data_buffer;
+
+    //Statistics about replica exchange
+    // -- evaluate at rank 0 --
+    struct ExchangeStatistics {
+        // exchange acceptance ratios histogram
+        std::vector<int> par_swapUpAccepted; // count for each control parameter index how often replica exchanges
+                                                  // with one index higher are accepted
+        std::vector<int> par_swapUpProposed; // .. are proposed
+        // replica diffusion -- histograms if replicas (processes) are
+        // moving up or down in control parameter space
+        enum ParameterDirection {NONE_P, UP_P, DOWN_P};
+        std::vector<ParameterDirection> process_goingWhere; // track for each replica current direction
+        std::vector<int> par_countGoingUp;//at each attempted parameter swap: if replica at current parameter has visited parMax last (and not parMin) increase
+        std::vector<int> par_countGoingDown; //vice versa for replicas having visited parMin last (and not parMax)
+
+        ExchangeStatistics() :
+            par_swapUpAccepted(), par_swapUpProposed(), process_goingWhere(),
+            par_countGoingUp(), par_countGoingDown()
+            { }
+        
+        ExchangeStatistics(const DetQMCPTParams& ptPars) :
+            par_swapUpAccepted(ptPars.controlParameterValues.size(), 0),
+            par_swapUpProposed(ptPars.controlParameterValues.size(), 0),
+            process_goingWhere(ptPars.controlParameterValues.size(), NONE_P),
+            par_countGoingUp(ptPars.controlParameterValues.size(), 0),
+            par_countGoingDown(ptPars.controlParameterValues.size(), 0)
+            { }
+
+        template<class Archive>
+        void serialize(Archive& ar, const uint32_t /*version*/) {
+            ar & par_swapUpAccepted & par_swapUpProposed & process_goingWhere
+               & par_countGoingUp & par_countGoingDown;
+        }        
+    } es;
+    
 private:
     //Serialize only the content data that has changed after construction.
     //Only call for deserialization after DetQMCPT has already been constructed and initialized!
@@ -164,6 +203,8 @@ private:
         ar & current_process_par;
 
         ar & current_par_process;
+
+        ar & es;                // exchange statistics
     }
 };
 
@@ -234,7 +275,8 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     
     // at rank 0 keep track of which process has which control parameter currently
     // and track exchange action contributions
-    // also initialize control parameter data buffers
+    // also initialize control parameter data buffers,
+    // at rank 0: exchangeStatistics
     if (processIndex == 0) {
         // fill with 0, 1, 2, ... numProcesses-1
         current_process_par.resize(numProcesses);
@@ -247,6 +289,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
         // control_data_buffer_2.resize(numProcesses * replica->get_control_data_buffer_size());
         process_control_data_buffer.resize(numProcesses);        
         // control_data_buffer_2.resize(numProcesses);
+        es = ExchangeStatistics(parspt);
     }
     //local_control_data_buffer.resize(replica->get_control_data_buffer_size());
     local_control_data_buffer.clear();
@@ -326,8 +369,9 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     current_par_process(1, 0),
     exchange_action(1, 0),
     process_control_data_buffer(),
-                     //control_data_buffer_2(),
-    local_control_data_buffer()
+    //control_data_buffer_2(),
+    local_control_data_buffer(),
+    es()
 {
     initFromParameters(parsmodel_, parsmc_, parspt_);
 }
@@ -348,8 +392,9 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     current_par_process(1, 0),
     exchange_action(1, 0),
     process_control_data_buffer(),
-                     //control_data_buffer_2(),
-    local_control_data_buffer()
+    //control_data_buffer_2(),
+    local_control_data_buffer(),
+    es()
 {
     std::ifstream ifs;
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
@@ -433,7 +478,6 @@ void DetQMCPT<Model, ModelParams>::saveState() {
                           "Replica exchange parameters:",
                           true);
         
-        
         MetadataMap currentState;
         currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
         currentState["sweepsDone"] = numToString(sweepsDone);
@@ -449,10 +493,66 @@ void DetQMCPT<Model, ModelParams>::saveState() {
     }
 
     if (processIndex == 0) {
+        saveReplicaExchangeStatistics();
+    }
+
+    if (processIndex == 0) {
         std::cout << "State has been saved." << std::endl;
     }
 
     timing.stop("saveState");
+}
+
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::saveReplicaExchangeStatistics() {
+    IntDoubleMapWriter mapWriter;
+    mapWriter.addMetadataMap(modelMeta);
+    mapWriter.addMetadataMap(mcMeta);
+    mapWriter.addMetadataMap(ptMeta);
+
+    // index -> control parameter
+    std::shared_ptr<std::map<int, double>> controlParameters(new std::map<int,double>);
+    for (int cpi = 0; cpi < numProcesses; ++cpi) {
+        (*controlParameters)[cpi] = parspt.controlParameterValues[cpi];
+    }
+    IntDoubleMapWriter controlParametersWriter = mapWriter;
+    controlParametersWriter.addMeta("key", "control parameter index");    
+    controlParametersWriter.addHeaderText("Control parameter values");
+    controlParametersWriter.addHeaderText("control parameter index \t control parameter value");
+    controlParametersWriter.setData(controlParameters);
+    controlParametersWriter.writeToFile("exchange-parameters.values");
+
+    //control parameter swap acceptance
+    std::shared_ptr<std::map<int, double>> cpiAccRates(new std::map<int,double>);
+    for (int cpi = 0; cpi < numProcesses; ++cpi) {
+        int countAccepted = es.par_swapUpAccepted[cpi];
+        int countProposed = es.par_swapUpProposed[cpi];
+        double ar = static_cast<double>(countAccepted)
+                  / static_cast<double>(countProposed); 
+        (*cpiAccRates)[cpi] = ar;
+    }
+    IntDoubleMapWriter cpiAccRatesWriter = mapWriter;
+    cpiAccRatesWriter.addMeta("key", "control parameter index");    
+    cpiAccRatesWriter.addHeaderText("Acceptance ratio of exchanging replicas at control parameters (upwards)");
+    cpiAccRatesWriter.addHeaderText("control parameter index \t acceptance ratio");
+    cpiAccRatesWriter.setData(cpiAccRates);
+    cpiAccRatesWriter.writeToFile("exchange-acceptance.values");
+
+    //diffusion fraction
+    std::shared_ptr<std::map<int, double>> dfractions(new std::map<int,double>);
+    for (int cpi = 0; cpi < numProcesses; ++cpi) {
+        int countUp = es.par_countGoingUp[cpi];
+        int countDown = es.par_countGoingDown[cpi];
+        double df = static_cast<double>(countUp)
+                  / static_cast<double>(countUp + countDown);
+        (*dfractions)[cpi] = df;
+    }
+    IntDoubleMapWriter dfractionsWriter = mapWriter;
+    dfractionsWriter.addMeta("key", "control parameter index");    
+    dfractionsWriter.addHeaderText("Diffusion fraction of replicas at control parameters: df = nUp / (nUp + nDown)");
+    dfractionsWriter.addHeaderText("control parameter index \t diffusion fraction");
+    dfractionsWriter.setData(dfractions);
+    dfractionsWriter.writeToFile("exchange-diffusion.values");
 }
 
 template<class Model, class ModelParams>
@@ -680,9 +780,25 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
                 exchange_action, // recv at rank 0
                 0);
 
-    
-    // serially walk through control parameters and propose exchange
+
     if (processIndex == 0) {
+
+        //update histograms of replicas moving up or down
+        for (int pi = 0; pi < numProcesses; ++pi) {
+            int nPar = current_process_par[pi];            
+            if (nPar == numProcesses - 1) {
+                es.process_goingWhere[pi] = ExchangeStatistics::DOWN_P;
+            } else if (nPar == 0) {
+                es.process_goingWhere[pi] = ExchangeStatistics::UP_P;
+            }
+            if (es.process_goingWhere[pi] == ExchangeStatistics::DOWN_P) {
+                ++es.par_countGoingDown[nPar];
+            } else if (es.process_goingWhere[pi] == ExchangeStatistics::UP_P) {
+                ++es.par_countGoingUp[nPar];
+            }
+        }
+        
+        // serially walk through control parameters and propose exchange
         for (int cpi1 = 0; cpi1 < numProcesses - 1; ++cpi1) {
             int cpi2 = cpi1 + 1;
             double par1 = parspt.controlParameterValues[cpi1];
@@ -694,7 +810,9 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
 
             num exchange_prob = get_replica_exchange_probability<Model>(par1, action1,
                                                                         par2, action2);
+            ++es.par_swapUpProposed[cpi1];
             if (exchange_prob >= 1 or rng.rand01() <= exchange_prob) {
+                ++es.par_swapUpAccepted[cpi1];
                 // swap control parameters
                 current_process_par[indexProc1] = cpi2;
                 current_process_par[indexProc2] = cpi1;
