@@ -2952,6 +2952,7 @@ void DetSDW<CB>::thermalizationOver(int processIndex) {
     
     std::cout << prefix
               << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
+              << prefix
               << "recent local accRatio = " << ad.accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
