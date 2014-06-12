@@ -109,7 +109,7 @@ void ScalarObservableHandlerPT::outputTimeseries() {
         
             if (not par_storage[cpi]) {
                 std::string filename = (fs::path(subdirectory) / fs::path(name + ".series")).string();
-                if (par_storageFileStarted[cpi]) {
+                if (not par_storageFileStarted[cpi]) {
                     par_storage[cpi] =
                         std::unique_ptr<DoubleVectorWriterSuccessive>(
                             new DoubleVectorWriterSuccessive(filename,
