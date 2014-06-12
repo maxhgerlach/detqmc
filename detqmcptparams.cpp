@@ -1,3 +1,4 @@
+#include <functional>           // std::function
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -34,8 +35,24 @@ MetadataMap DetQMCPTParams::prepareMetadataMap() const {
 #undef META_INSERT
     using boost::algorithm::join;
     using boost::adaptors::transformed;
+    // std::string valuesString = join(
+    //     controlParameterValues | transformed(numToString<num>),
+    //     " ");
+    
+    /// The argument to transformed needs to fulfill some qualities,
+    /// e.g. it must be copy-constructible, the simple statement above
+    /// does not compile on the Intel Compiler, C++11 lambdas do not
+    /// work either (!
+    /// http://stackoverflow.com/questions/11872558/using-boost-adaptors-with-c11-lambdas),
+    /// apparently they need to be a functor with member result_type.
+    /// Work around: std::function
+    /// -- This may or may not be better in a more recent version of
+    /// Boost than 1.51 --
+    std::function<std::string(num)> func = [](num v) {
+        return numToString<num>(v);
+    };
     std::string valuesString = join(
-        controlParameterValues | transformed(numToString<num>),
+        controlParameterValues | transformed(func),
         " ");
     meta["controlParameterValues"] = valuesString;
     return meta;
