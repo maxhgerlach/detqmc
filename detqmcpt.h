@@ -452,6 +452,8 @@ template<class Model, class ModelParams>
 void DetQMCPT<Model, ModelParams>::saveState() {
     timing.start("saveState");
 
+    namespace fs = boost::filesystem;
+
     //serialize state to file
     // -- every process needs to do this
     std::ofstream ofs;
@@ -462,22 +464,9 @@ void DetQMCPT<Model, ModelParams>::saveState() {
     saveContents(oa);
 
     //write out info about state of simulation to "info.dat"
+    // -- one for the main directory and one for each subdirectory (control parameter specific)
     // -- only the master process does this
     if (processIndex == 0) {
-        std::string commonInfoFilename = "info.dat";
-        writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
-                          "Collected information about this determinantal quantum Monte Carlo simulation",
-                          false);
-        writeOnlyMetaData(commonInfoFilename, modelMeta,
-                          "Model parameters:",
-                          true);
-        writeOnlyMetaData(commonInfoFilename, mcMeta,
-                          "Monte Carlo parameters:",
-                          true);
-        writeOnlyMetaData(commonInfoFilename, ptMeta,
-                          "Replica exchange parameters:",
-                          true);
-        
         MetadataMap currentState;
         currentState["sweepsDoneThermalization"] = numToString(sweepsDoneThermalization);
         currentState["sweepsDone"] = numToString(sweepsDone);
@@ -487,9 +476,41 @@ void DetQMCPT<Model, ModelParams>::saveState() {
         walltimeSecsLastSaveResults = cwts;
         
         currentState["totalWallTimeSecs"] = numToString(totalWalltimeSecs);
-        writeOnlyMetaData(commonInfoFilename, currentState,
-                      "Current state of simulation:",
-                      true);
+
+        auto write_info = [this](const MetadataMap& modelMeta_, const MetadataMap& currentState,
+                                 const fs::path& subdirectory) {
+            fs::create_directories(subdirectory);
+            std::string commonInfoFilename = (subdirectory / fs::path("info.dat")).string();
+            writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
+                              "Collected information about this determinantal quantum Monte Carlo simulation",
+                              false);
+            writeOnlyMetaData(commonInfoFilename, modelMeta_,
+                              "Model parameters:",
+                              true);
+            writeOnlyMetaData(commonInfoFilename, mcMeta,
+                              "Monte Carlo parameters:",
+                              true);
+            writeOnlyMetaData(commonInfoFilename, ptMeta,
+                              "Replica exchange parameters:",
+                              true);
+        
+            writeOnlyMetaData(commonInfoFilename, currentState,
+                              "Current state of simulation:",
+                              true);
+        };
+
+        // top level directory: info not restricted to any value of the control parameter
+        write_info(modelMeta, currentState, fs::path("."));
+
+        // write a separate info.dat for each value of the control parameter
+        for (int cpi = 0; cpi < numProcesses; ++cpi) {
+            std::string parname = parspt.controlParameterName;
+            std::string parvalue = numToString(parspt.controlParameterValues[cpi]);
+            std::string subdir_string = "p" + numToString(cpi) + "_" + parname + parvalue;
+            MetadataMap modelMeta_cpi = modelMeta;
+            modelMeta_cpi[parname] = parvalue;
+            write_info(modelMeta_cpi, currentState, fs::path(subdir_string));
+        }        
     }
 
     if (processIndex == 0) {
