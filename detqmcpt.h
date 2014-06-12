@@ -720,7 +720,7 @@ void DetQMCPT<Model, ModelParams>::run() {
 
         //replica exchange
         if (stage == T or stage == M) {
-            if (parspt.exchangeInterval != 0 and (swCounter % parspt.exchangeInterval == 0)) {
+            if (parspt.exchangeInterval != 0 and ((sweepsDone + sweepsDoneThermalization) % parspt.exchangeInterval == 0)) {
                 replicaExchangeStep();
             }
             replicaExchangeConsistencyCheck();
