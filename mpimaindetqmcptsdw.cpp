@@ -38,9 +38,9 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 
     po::options_description genericOptions("Generic options, command line only");
     genericOptions.add_options()
-        ("version,v", "print version information (git hash, build date) and exit")
+        ("version", "print version information (git hash, build date) and exit")
         ("help", "print help on allowed options and exit")
-        ("conf,c", po::value<string>(&confFileName)->default_value("simulation.conf"),
+        ("conf", po::value<string>(&confFileName)->default_value("simulation.conf"),
          "specify configuration file to be used; settings in there will be overridden by command line arguments")
         ;
 
@@ -101,9 +101,13 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     po::variables_map vm;
 
     //parse command line
+    // short options like -v are disabled to not confuse the multitoken parser
+    // for option rValues in case of negative options
     po::options_description cmdlineOptions;
     cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions).add(ptOptions);
-    po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
+    po::store(po::parse_command_line(argc, argv, cmdlineOptions,
+                                     po::command_line_style::unix_style
+                                     ^ po::command_line_style::allow_short), vm);
     po::notify(vm);
 
     using std::cout; using std::endl;
