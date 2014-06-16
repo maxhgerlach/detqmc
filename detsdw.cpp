@@ -20,6 +20,7 @@
 #include "boost/iostreams/stream.hpp"
 #include "boost/iostreams/device/back_inserter.hpp"
 #include "boost/iostreams/device/array.hpp"
+#include "boost/filesystem.hpp"
 #pragma GCC diagnostic pop
 #include "observable.h"
 #include "detsdw.h"
@@ -31,6 +32,8 @@
 #if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
 #include "dumapp.h"
 #endif
+
+namespace fs = boost::filesystem;
 
 
 template<CheckerboardMethod CBM>
@@ -3272,6 +3275,172 @@ void DetSDW<CB>::consistencyCheck() {
 
 
 
+//Write out current system configuration samples to disk: ASCII or
+//binary. Proper filenames detected set up automatically.
+//----------------------------------------------------------------
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::saveConfigurationStreamText(const std::string& directory) {
+    fs::path phi_filepath = fs::path(directory) /
+                            fs::path("configs-phi.textstream");
+
+    std::ofstream phi_output(phi_filepath.c_str(), std::ios::app);
+    if (not phi_output) {
+        std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+        std::cerr << "Error code: " << strerror(errno) << "\n";
+    } else {
+        phi_output.precision(14);
+        phi_output.setf(std::ios::scientific, std::ios::floatfield);
+    
+        for (uint32_t ix = 0; ix < pars.L; ++ix) {
+            for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                uint32_t i = iy*pars.L + ix;
+                for (uint32_t k = 1; k <= pars.m; ++k) {
+                    phi_output << phi0(i, k) << "\n"
+                               << phi1(i, k) << "\n"
+                               << phi2(i, k) << "\n";
+                }
+            }
+        }
+        phi_output.flush();
+    }
+
+    fs::path cdwl_filepath = fs::path(directory) /
+                             fs::path("configs-l.textstream");
+
+    std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::app);
+    if (not cdwl_output) {
+        std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+        std::cerr << "Error code: " << strerror(errno) << "\n";
+    } else {    
+        for (uint32_t ix = 0; ix < pars.L; ++ix) {
+            for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                uint32_t i = iy*pars.L + ix;
+                for (uint32_t k = 1; k <= pars.m; ++k) {
+                    cdwl_output << cdwl(i, k) << "\n";
+                }
+            }
+        }
+        cdwl_output.flush();
+    }
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::saveConfigurationStreamBinary(const std::string& directory) {
+    fs::path phi_filepath = fs::path(directory) /
+                            fs::path("configs-phi.binarystream");
+
+    std::ofstream phi_output(phi_filepath.c_str(), std::ios::binary | std::ios::app);
+    if (not phi_output) {
+        std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+        std::cerr << "Error code: " << strerror(errno) << "\n";
+    } else {
+        for (uint32_t ix = 0; ix < pars.L; ++ix) {
+            for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                uint32_t i = iy*pars.L + ix;
+                for (uint32_t k = 1; k <= pars.m; ++k) {
+                    phi_output.write(reinterpret_cast<const char*>(&(phi0(i, k))),
+                                     sizeof(phi0(i, k)));
+                    phi_output.write(reinterpret_cast<const char*>(&(phi1(i, k))),
+                                     sizeof(phi1(i, k)));
+                    phi_output.write(reinterpret_cast<const char*>(&(phi2(i, k))),
+                                     sizeof(phi2(i, k)));
+                }
+            }
+        }
+        phi_output.flush();
+    }
+
+    fs::path cdwl_filepath = fs::path(directory) /
+                             fs::path("configs-l.binarystream");
+
+    std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::binary | std::ios::app);
+    if (not cdwl_output) {
+        std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+        std::cerr << "Error code: " << strerror(errno) << "\n";
+    } else {    
+        for (uint32_t ix = 0; ix < pars.L; ++ix) {
+            for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                uint32_t i = iy*pars.L + ix;
+                for (uint32_t k = 1; k <= pars.m; ++k) {
+                    cdwl_output.write(reinterpret_cast<const char*>(&(cdwl(i, k))),
+                                      sizeof(cdwl(i, k)));
+                }
+            }
+        }
+        cdwl_output.flush();
+    }
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::saveConfigurationStreamTextHeader(
+    const std::string& simInfoHeaderText, const std::string& directory) {
+    fs::path phi_filepath = fs::path(directory) /
+        fs::path("configs-phi.textstream");
+    // only write the header if the file does not exist yet
+    if (not fs::exists(phi_filepath)) {    
+        std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
+        if (not phi_output) {
+            std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {
+            phi_output << simInfoHeaderText;
+            phi_output << "## phi configuration stream\n";        
+            phi_output.flush();
+        }
+    }
+    
+    fs::path cdwl_filepath = fs::path(directory) /
+        fs::path("configs-l.textstream");
+    // only write the header if the file does not exist yet
+    if (not fs::exists(cdwl_filepath)) {
+        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
+        if (not cdwl_output) {
+            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {        
+            cdwl_output << simInfoHeaderText;
+            cdwl_output << "## l configuration stream\n";        
+            cdwl_output.flush();
+        }
+    }
+}
+
+template<CheckerboardMethod CB>
+void DetSDW<CB>::saveConfigurationStreamBinaryHeaderfile(
+    const std::string& simInfoHeaderText,
+    const std::string& directory) {
+    fs::path phi_filepath = fs::path(directory) /
+        fs::path("configs-phi.infoheader");
+    // only write the header if the file does not exist yet
+    if (not fs::exists(phi_filepath)) {    
+        std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
+        if (not phi_output) {
+            std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {
+            phi_output << simInfoHeaderText;
+            phi_output << "## binary phi configuration stream (64 bit double precision floats) in file configs-phi.binarystream\n";
+            phi_output.flush();
+        }
+    }
+    
+    fs::path cdwl_filepath = fs::path(directory) /
+        fs::path("configs-l.infoheader");
+    // only write the header if the file does not exist yet
+    if (not fs::exists(cdwl_filepath)) {
+        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
+        if (not cdwl_output) {
+            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {        
+            cdwl_output << simInfoHeaderText;
+            cdwl_output << "## binary l configuration stream (32 bit signed integers) in file configs-l.binarystream\n";
+            cdwl_output.flush();
+        }
+    }
+  
+}
 
 //Methods to implement a replica-exchange / parallel tempering scheme
 

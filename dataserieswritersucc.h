@@ -75,8 +75,8 @@ DataSeriesWriterSuccessive(const std::string& filename, bool appendToFile)
     : output(filename.c_str(), appendToFile ? std::ios::app : std::ios::out), header("")
 {
 	if (not output) {
-		std::cerr << "Could not open file " << filename << " for writing.\n";
-    	std::cerr << "Error code: " << strerror(errno) << "\n";
+            std::cerr << "Could not open file " << filename << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
 	}
 }
 

@@ -75,6 +75,18 @@ public:
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
 
+    //Write out current system configuration samples to disk: ASCII or
+    //binary. Proper filenames detected set up automatically.
+    //----------------------------------------------------------------
+    void saveConfigurationStreamText(const std::string& directory = ".");
+    void saveConfigurationStreamBinary(const std::string& directory = ".");
+    // If the file does not already exist, write an informative human
+    // readable header. For binary: write it to a separate text file.
+    void saveConfigurationStreamTextHeader(const std::string& simInfoHeaderText,
+                                           const std::string& directory = ".");
+    void saveConfigurationStreamBinaryHeaderfile(const std::string& simInfoHeaderText,
+                                                 const std::string& directory = ".");    
+
     //Methods to implement a replica-exchange / parallel tempering scheme
     //-------------------------------------------------------------------
     // get / set pars.r
