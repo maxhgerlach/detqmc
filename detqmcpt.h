@@ -84,6 +84,8 @@ protected:
 
     void saveReplicaExchangeStatistics();
 
+    // subdirectory currently associated with replica set to the control parameter with index cpi
+    std::string control_parameter_subdir(int cpi);
     
     ModelParams parsmodel;
     DetQMCParams parsmc;
@@ -117,6 +119,8 @@ protected:
     //MPI specifics:
     int numProcesses;      //total number of parallel processes
     int processIndex;      //MPI-rank of the current process
+
+    int local_current_parameter_index; // current control parameter index of this process's replica
 
     // specific to the root process
     std::vector<int> current_process_par; // indexed by process rank number, giving control parameter index
@@ -184,6 +188,7 @@ private:
                      new_param_index,     // recv
                      0                    // root
             );
+        local_current_parameter_index = new_param_index;
         replica->set_exchange_parameter_value(
             parspt.controlParameterValues[new_param_index]
             );        
@@ -213,6 +218,8 @@ private:
         ar & swCounter;
 
         ar & totalWalltimeSecs;
+
+        ar & local_current_parameter_index;
 
         ar & current_process_par;
 
@@ -283,7 +290,9 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     rng = RngWrapper(parsmc.rngSeed, processIndex);
 
     // set up control parameters for current process replica parameters
-    parsmodel.set_exchange_parameter_value(parspt.controlParameterValues[processIndex]);
+    local_current_parameter_index = processIndex;
+    parsmodel.set_exchange_parameter_value(
+        parspt.controlParameterValues[local_current_parameter_index]);
 
     createReplica(replica, rng, parsmodel);
     
@@ -337,6 +346,26 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
         );
     }
 
+    // setup files for system configuration streams [if files do not exist already]
+    // [each process for its local replica]
+    if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        std::string subdir_string = control_parameter_subdir(local_current_parameter_index);
+        std::string parname = parspt.controlParameterName;
+        std::string parvalue = numToString(parspt.controlParameterValues[local_current_parameter_index]);            
+        MetadataMap modelMeta_cpi = modelMeta;
+        modelMeta_cpi[parname] = parvalue;
+        std::string headerInfoText = metadataToString(modelMeta_cpi, "#")
+            + metadataToString(mcMeta, "#")
+            + metadataToString(ptMeta, "#");
+        if (parsmc.saveConfigurationStreamText) {
+            replica->saveConfigurationStreamTextHeader(headerInfoText, subdir_string);
+        }
+        if (parsmc.saveConfigurationStreamBinary) {
+            replica->saveConfigurationStreamBinaryHeaderfile(headerInfoText, subdir_string);
+        }
+    }
+
+
     //query allowed walltime
     const char* pbs_walltime = std::getenv("PBS_WALLTIME");
     if (pbs_walltime) {
@@ -379,6 +408,7 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
     grantedWalltimeSecs(0), jobid(""),
     numProcesses(1), processIndex(0),
+    local_current_parameter_index(0),
     current_process_par(1, 0),
     current_par_process(1, 0),
     exchange_action(1, 0),
@@ -402,6 +432,7 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
     grantedWalltimeSecs(0), jobid(""),
     numProcesses(1), processIndex(0),
+    local_current_parameter_index(0),
     current_process_par(1, 0),
     current_par_process(1, 0),
     exchange_action(1, 0),
@@ -518,9 +549,9 @@ void DetQMCPT<Model, ModelParams>::saveState() {
 
         // write a separate info.dat for each value of the control parameter
         for (int cpi = 0; cpi < numProcesses; ++cpi) {
+            std::string subdir_string = control_parameter_subdir(cpi);
             std::string parname = parspt.controlParameterName;
-            std::string parvalue = numToString(parspt.controlParameterValues[cpi]);
-            std::string subdir_string = "p" + numToString(cpi) + "_" + parname + parvalue;
+            std::string parvalue = numToString(parspt.controlParameterValues[cpi]);            
             MetadataMap modelMeta_cpi = modelMeta;
             modelMeta_cpi[parname] = parvalue;
             write_info(modelMeta_cpi, currentState, fs::path(subdir_string));
@@ -589,6 +620,17 @@ void DetQMCPT<Model, ModelParams>::saveReplicaExchangeStatistics() {
     dfractionsWriter.setData(dfractions);
     dfractionsWriter.writeToFile("exchange-diffusion.values");
 }
+
+
+template<class Model, class ModelParams>
+std::string DetQMCPT<Model, ModelParams>::control_parameter_subdir(int cpi) {
+    std::string parname = parspt.controlParameterName;
+    std::string parvalue = numToString(parspt.controlParameterValues[cpi]);
+    std::string subdir_string = "p" + numToString(cpi) + "_" + parname + parvalue;
+    return subdir_string;
+}
+
+
 
 template<class Model, class ModelParams>
 DetQMCPT<Model, ModelParams>::~DetQMCPT() {
@@ -725,6 +767,16 @@ void DetQMCPT<Model, ModelParams>::run() {
                 }
                 for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
                     (*ph)->insertValue(sweepsDone);
+                }
+
+                // This is a good time to write the current system configuration to disk
+                if (parsmc.saveConfigurationStreamText) {
+                    replica->saveConfigurationStreamText(
+                        control_parameter_subdir(local_current_parameter_index));
+                }
+                if (parsmc.saveConfigurationStreamBinary) {
+                    replica->saveConfigurationStreamBinary(
+                        control_parameter_subdir(local_current_parameter_index));
                 }
             }
             ++sweepsDone;
@@ -901,6 +953,7 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
     replica->set_exchange_parameter_value(
         parspt.controlParameterValues[new_param_index]
         );
+    local_current_parameter_index = new_param_index;
     // distribute new control parameter data and update replica
     local_control_data_buffer.clear();
     mpi::scatter(world,
@@ -923,6 +976,11 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
 template<class Model, class ModelParams>
 void DetQMCPT<Model, ModelParams>::replicaExchangeConsistencyCheck() {
     double local_exchange_parameter_value = replica->get_exchange_parameter_value();
+    double diff = local_exchange_parameter_value -
+        parspt.controlParameterValues[local_current_parameter_index];
+    if ( std::abs(diff) > 1E-10 ) {
+        throw GeneralError("local_current_parameter_index mismatch!");
+    }
     std::vector<double> process_par_values(numProcesses, 0.0);
     // MPI_Gather( &local_exchange_parameter_value, // send buf
     //             1,

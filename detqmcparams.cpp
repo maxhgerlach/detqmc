@@ -71,6 +71,8 @@ MetadataMap DetQMCParams::prepareMetadataMap() const {
     META_INSERT(rngSeed);
 #undef META_INSERT
     meta["timeseries"] = (timeseries ? "true" : "false");
+    meta["saveConfigurationStreamText"]   = (saveConfigurationStreamText   ? "true" : "false");
+    meta["saveConfigurationStreamBinary"] = (saveConfigurationStreamBinary ? "true" : "false");    
     meta["stateFileName"] = stateFileName;
     return meta;
 }

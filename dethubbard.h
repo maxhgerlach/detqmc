@@ -28,6 +28,7 @@
  *
  */
 
+#include "exceptions.h"
 #include "detmodel.h"
 #include "neighbortable.h"
 #include "rngwrapper.h"
@@ -67,6 +68,28 @@ public:
     virtual void sweepThermalization();
     virtual void sweepSimple(bool takeMeasurements);
     virtual void sweepSimpleThermalization();
+
+    // These currently are just dummy functions. DetHubbard does not
+    // support writing system configurations to disk. [and should fail if
+    // that program option is invoked]
+    void saveConfigurationStreamText(const std::string& directory = ".") {
+        (void)directory;
+        throw GeneralError("DetHubbard::saveConfigurationStreamText not implemented");
+    }
+    void saveConfigurationStreamBinary(const std::string& directory = ".") {
+        (void)directory;
+        throw GeneralError("DetHubbard::saveConfigurationStreamBinary not implemented");
+    }
+    void saveConfigurationStreamTextHeader(const std::string& simInfoHeaderText,
+                                           const std::string& directory = ".") {
+        (void)simInfoHeaderText; (void)directory;
+        throw GeneralError("DetHubbard::saveConfigurationStreamTextHeader not implemented");
+    }
+    void saveConfigurationStreamBinaryHeaderfile(const std::string& simInfoHeaderText,
+                                                 const std::string& directory = ".") {
+        (void)simInfoHeaderText; (void)directory;
+        throw GeneralError("DetHubbard::saveConfigurationStreamBinaryHeaderfile not implemented");
+    }
 protected:
     typedef DetModelGC<2, num, false> Base;
     // stupid C++ weirdness forces us to explicitly "import" these protected base

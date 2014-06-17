@@ -82,6 +82,7 @@ public:
     void saveConfigurationStreamBinary(const std::string& directory = ".");
     // If the file does not already exist, write an informative human
     // readable header. For binary: write it to a separate text file.
+    // Only write this file if it does not exist already.
     void saveConfigurationStreamTextHeader(const std::string& simInfoHeaderText,
                                            const std::string& directory = ".");
     void saveConfigurationStreamBinaryHeaderfile(const std::string& simInfoHeaderText,

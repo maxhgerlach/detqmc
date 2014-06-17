@@ -41,6 +41,9 @@ struct DetQMCParams {
     enum GreenUpdateType {GreenUpdateTypeSimple, GreenUpdateTypeStabilized};
     GreenUpdateType greenUpdateType;    
 
+    bool saveConfigurationStreamText;
+    bool saveConfigurationStreamBinary;
+    
     std::string stateFileName;      //for serialization dumps
     bool sweepsHasChanged;          //true, if the number of target sweeps has changed after resuming
 
@@ -48,7 +51,8 @@ struct DetQMCParams {
 
     DetQMCParams() :
         sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
-        rngSeed(), greenUpdateType_string(), stateFileName(), sweepsHasChanged(false), specified()
+        rngSeed(), greenUpdateType_string(), saveConfigurationStreamText(false), saveConfigurationStreamBinary(false),
+        stateFileName(), sweepsHasChanged(false), specified()
     { }
 
     // check consistency, convert strings to enums
@@ -65,6 +69,7 @@ private:
         ar  & sweeps & thermalization & jkBlocks & timeseries
             & measureInterval & saveInterval & rngSeed
             & greenUpdateType_string & greenUpdateType
+            & saveConfigurationStreamText & saveConfigurationStreamBinary
             & stateFileName
             & sweepsHasChanged
             & specified;

@@ -209,6 +209,20 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
         );
     }
 
+    // setup files for system configuration streams [if files do not exist already]
+    // [each process for its local replica]
+    if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        std::string headerInfoText = metadataToString(modelMeta, "#")
+            + metadataToString(mcMeta, "#");
+        if (parsmc.saveConfigurationStreamText) {
+            replica->saveConfigurationStreamTextHeader(headerInfoText);
+        }
+        if (parsmc.saveConfigurationStreamBinary) {
+            replica->saveConfigurationStreamBinaryHeaderfile(headerInfoText);
+        }
+    }
+
+    
     //query allowed walltime
     const char* pbs_walltime = std::getenv("PBS_WALLTIME");
     if (pbs_walltime) {
@@ -456,6 +470,14 @@ void DetQMC<Model, ModelParams>::run() {
                 }
                 for (auto ph = vecObsHandlers.begin(); ph != vecObsHandlers.end(); ++ph) {
                     (*ph)->insertValue(sweepsDone);
+                }
+
+                // This is a good time to write the current system configuration to disk
+                if (parsmc.saveConfigurationStreamText) {
+                    replica->saveConfigurationStreamText();
+                }
+                if (parsmc.saveConfigurationStreamBinary) {
+                    replica->saveConfigurationStreamBinary();
                 }
             }
             ++sweepsDone;

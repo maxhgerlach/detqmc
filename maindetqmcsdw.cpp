@@ -84,6 +84,10 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
         ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
          "file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
+        ("saveConfigurationStreamText", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
+         "when measuring, also save raw system configurations to disk, in text format")
+        ("saveConfigurationStreamBinary", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
+         "when measuring, also save raw system configurations to disk, in binary format")
         ;
 
     po::variables_map vm;
