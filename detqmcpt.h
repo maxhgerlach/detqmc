@@ -173,6 +173,20 @@ private:
         serializeContentsCommon(ar);
 
         replica->loadContents(SerializeContentsKey(), ar);
+
+        // distribute and update control parameter for replica
+        // after deserialization
+        namespace mpi = boost::mpi;
+        mpi::communicator world;        
+        int new_param_index = 0;
+        mpi::scatter(world,
+                     current_process_par, // send
+                     new_param_index,     // recv
+                     0                    // root
+            );
+        replica->set_exchange_parameter_value(
+            parspt.controlParameterValues[new_param_index]
+            );        
     }
 
     template<class Archive>
