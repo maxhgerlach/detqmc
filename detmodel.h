@@ -219,7 +219,7 @@ public:
     //Callable_finish: no arguments, finalize observable measurements for this sweep
     //
     //optional:
-    //  Callable_GlobalUpdate: no arguments, this is called after each sweep-up
+    //  Callable_GlobalUpdate: no arguments, this is called before each sweep-down
     //          and may be used to provide a global update encompassing all
     //          imaginary time slices
     //          By default: do nothing
@@ -1149,6 +1149,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
     timing.start("sweep");
 
     if (lastSweepDir == SweepDirection::Up) {
+        globalUpdate();
         sweepDown(takeMeasurements,
                   leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSlice,
@@ -1160,7 +1161,6 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
                 updateInSlice,
                 initMeasurement, measure, finishMeasurement);
         lastSweepDir = SweepDirection::Up;
-        globalUpdate();
     }
 
     timing.stop("sweep");
@@ -1181,6 +1181,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
     timing.start("sweep");
 
     if (lastSweepDir == SweepDirection::Up) {
+        globalUpdate();
         sweepDown(false,                                    //no measurements
                   leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSliceThermalization,
@@ -1194,7 +1195,6 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
                 VoidNoOp(), VoidNoOp(), VoidNoOp()        //no measurements
                 );
         lastSweepDir = SweepDirection::Up;
-        globalUpdate();
     }
 
     timing.stop("sweep");

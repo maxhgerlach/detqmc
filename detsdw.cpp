@@ -3276,7 +3276,7 @@ void DetSDW<CB>::consistencyCheck() {
 
 
 //Write out current system configuration samples to disk: ASCII or
-//binary. Proper filenames detected set up automatically.
+//binary.
 //----------------------------------------------------------------
 
 template<CheckerboardMethod CB>
