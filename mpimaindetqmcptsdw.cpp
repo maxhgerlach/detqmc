@@ -88,7 +88,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
         ("saveConfigurationStreamText", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
          "when measuring, also save raw system configurations to disk, in text format")
-        ("saveConfigurationStreamBinary", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
+        ("saveConfigurationStreamBinary", po::bool_switch(&mcpar.saveConfigurationStreamBinary)->default_value(false),
          "when measuring, also save raw system configurations to disk, in binary format")
         //Multiple processes -- only use standard state file names
         // ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
