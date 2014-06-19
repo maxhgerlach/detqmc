@@ -2327,7 +2327,8 @@ void DetSDW<CB>::updateInSliceThermalization(uint32_t timeslice) {
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::globalMove() {
-    if ((performedSweeps + 1) % pars.globalUpdateInterval == 0) {
+    //This is called before the sweep, i.e. before performedSweeps is updated
+    if ((performedSweeps) % pars.globalUpdateInterval == 0) {
         //the current sweep count is a multiple of globalMoveInterval
         if (pars.globalShift) {
             attemptGlobalShiftMove();
