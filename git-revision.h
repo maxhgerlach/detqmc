@@ -20,6 +20,12 @@ inline MetadataMap collectVersionInfo() {
     meta["buildTime"] = numToString(BUILD_TIME);
     meta["cppflags"] = numToString(CPPFLAGS);
     meta["cxxflags"] = numToString(CXXFLAGS);
+#ifdef BOOST_LIB_VERSION
+    meta["BOOST_LIB_VERSION"] = BOOST_LIB_VERSION;
+#endif  //BOOST_LIB_VERSION
+#ifdef ARMA_VERSION_MAJOR
+    meta["ARMA_VERSION"] = arma::arma_version::as_string();
+#endif //ARMA_VERSION_MAJOR    
     return meta;
 }
 
