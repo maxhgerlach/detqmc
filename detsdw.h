@@ -62,7 +62,7 @@ public:
 
     virtual ~DetSDW();
     virtual uint32_t getSystemN() const;
-    virtual MetadataMap prepareModelMetadataMap() const;
+    virtual MetadataMap prepareModelMetadataMap() const; // also contains dynamic data
 
     virtual void thermalizationOver();
     //the following overloaded version is for use in an MPI

@@ -186,7 +186,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     createReplica(replica, rng, parsmodel);    
 
     //prepare metadata
-    modelMeta = replica->prepareModelMetadataMap();
+    modelMeta = parsmodel.prepareMetadataMap();
     mcMeta = parsmc.prepareMetadataMap();
 
     //prepare observable handlers
@@ -336,8 +336,9 @@ void DetQMC<Model, ModelParams>::saveState() {
     writeOnlyMetaData(commonInfoFilename, collectVersionInfo(),
                       "Collected information about this determinantal quantum Monte Carlo simulation",
                       false);
-    writeOnlyMetaData(commonInfoFilename, modelMeta,
-                      "Model parameters:",
+    MetadataMap modelMeta_current = replica->prepareModelMetadataMap();
+    writeOnlyMetaData(commonInfoFilename, modelMeta_current,
+                      "Model parameters and some data:",
                       true);
     writeOnlyMetaData(commonInfoFilename, mcMeta,
                       "Monte Carlo parameters:",

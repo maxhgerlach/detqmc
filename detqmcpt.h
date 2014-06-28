@@ -319,7 +319,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
 
     //prepare metadata
-    modelMeta = replica->prepareModelMetadataMap();
+    modelMeta = parsmodel.prepareMetadataMap();
     modelMeta.erase(parspt.controlParameterName);
     mcMeta = parsmc.prepareMetadataMap();
     mcMeta.erase("stateFileName");
@@ -538,7 +538,6 @@ void DetQMCPT<Model, ModelParams>::saveState() {
             writeOnlyMetaData(commonInfoFilename, ptMeta,
                               "Replica exchange parameters:",
                               true);
-        
             writeOnlyMetaData(commonInfoFilename, currentState,
                               "Current state of simulation:",
                               true);
