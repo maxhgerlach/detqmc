@@ -173,6 +173,7 @@ class SerializeContentsKey {
 template<class Model, class ModelParams>
 void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
     parsmodel = parsmodel_;
+    parsmodel = updateTemperatureParameters(parsmodel);
     parsmc = parsmc_;
 
     parsmc.check();

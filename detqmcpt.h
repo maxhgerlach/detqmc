@@ -260,6 +260,7 @@ template<class Model, class ModelParams>
 void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
                                                      const DetQMCPTParams& parspt_) {
     parsmodel = parsmodel_;
+    parsmodel = updateTemperatureParameters(parsmodel);    
     parsmc = parsmc_;
     parspt = parspt_;
 
