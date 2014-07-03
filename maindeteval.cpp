@@ -36,7 +36,6 @@ int main(int argc, char **argv) {
     bool notau = false;
     bool noexp = false;
 
-
     //parse command line options
     namespace po = boost::program_options;
     po::options_description evalOptions("Time series evaluation options");
@@ -98,6 +97,12 @@ int main(int argc, char **argv) {
 
     uint32_t evalSamples = 0;
 
+    //metadata necessary for the computation of the susceptibility
+    // spatial system size, and number of imaginary time slices
+    uint32_t L = fromString<uint32_t>(meta.at("L"));
+    uint32_t N = L*L;
+    uint32_t m = fromString<uint32_t>(meta.at("m"));
+
     //process time series files
     std::vector<std::string> filenames = glob("*.series");
     for (std::string fn : filenames) {
@@ -110,30 +115,72 @@ int main(int argc, char **argv) {
 
         std::vector<double>* data = reader.getData();       //TODO: smart pointers!
         std::string obsName;
-        reader.getMeta("observable", obsName);      //TODO: change class to yield return values, not output parameters
+        reader.getMeta("observable", obsName);
         std::cout << "observable: " << obsName << "..." << std::flush;
 
         if (not noexp) {
             estimates[obsName] = average(*data);
             jkBlockEstimates[obsName] = jackknifeBlockEstimates(*data, jkBlocks);
-            if (obsName == "normPhi") {
+            // //this below is not what we want
+            // if (obsName == "normPhi") {
+            //     using std::pow;
+            //     estimates["normPhiSquared"] = average<double>( [](double v) { return pow(v, 2); }, *data);
+            //     jkBlockEstimates["normPhiSquared"] = jackknifeBlockEstimates<double>(
+            //             [](double v) { return pow(v, 2); },
+            //             *data, jkBlocks );
+            //     estimates["normPhiFourth"] = average<double>( [](double v) { return pow(v, 4); }, *data);
+            //     jkBlockEstimates["normPhiFourth"] = jackknifeBlockEstimates<double>(
+            //             [](double v) { return pow(v, 4); },
+            //             *data, jkBlocks );
+            //     estimates["normPhiBinder"] = 1.0 - (3.0*estimates["normPhiFourth"]) /
+            //             (5.0*pow(estimates["normPhiSquared"], 2));
+            //     jkBlockEstimates["normPhiBinder"] = std::vector<double>(jkBlocks, 0);
+            //     for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+            //         jkBlockEstimates["normPhiBinder"][jb] =
+            //                 1.0 - (3.0*jkBlockEstimates["normPhiFourth"][jb]) /
+            //                 (5.0*pow(jkBlockEstimates["normPhiSquared"][jb], 2));
+            //     }
+            // }
+
+            // compute Binder cumulant and susceptibility (connected,
+            // i.e. with the disconnected part substracted)
+            if (obsName == "normMeanPhi") {
                 using std::pow;
-                estimates["normPhiSquared"] = average<double>( [](double v) { return pow(v, 2); }, *data);
-                jkBlockEstimates["normPhiSquared"] = jackknifeBlockEstimates<double>(
-                        [](double v) { return pow(v, 2); },
-                        *data, jkBlocks );
-                estimates["normPhiFourth"] = average<double>( [](double v) { return pow(v, 4); }, *data);
-                jkBlockEstimates["normPhiFourth"] = jackknifeBlockEstimates<double>(
-                        [](double v) { return pow(v, 4); },
-                        *data, jkBlocks );
-                estimates["normPhiBinder"] = 1.0 - (3.0*estimates["normPhiFourth"]) /
-                        (5.0*pow(estimates["normPhiSquared"], 2));
-                jkBlockEstimates["normPhiBinder"] = std::vector<double>(jkBlocks, 0);
+                estimates["normMeanPhiSquared"] = average<double>(
+                    [](double v) { return pow(v, 2); },
+                    *data );
+                jkBlockEstimates["normMeanPhiSquared"] = jackknifeBlockEstimates<double>(
+                    [](double v) { return pow(v, 2); },
+                    *data, jkBlocks );
+                
+                estimates["normMeanPhiFourth"] = average<double>(
+                    [](double v) { return pow(v, 4); },
+                    *data );
+                jkBlockEstimates["normMeanPhiFourth"] = jackknifeBlockEstimates<double>(
+                    [](double v) { return pow(v, 4); },
+                    *data, jkBlocks );
+                
+                estimates["phiBinder"] = 1.0 - (3.0*estimates["normMeanPhiFourth"]) /
+                    (5.0*pow(estimates["normMeanPhiSquared"], 2));
+                jkBlockEstimates["phiBinder"] = std::vector<double>(jkBlocks, 0);
                 for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-                    jkBlockEstimates["normPhiBinder"][jb] =
-                            1.0 - (3.0*jkBlockEstimates["normPhiFourth"][jb]) /
-                            (5.0*pow(jkBlockEstimates["normPhiSquared"][jb], 2));
+                    jkBlockEstimates["phiBinder"][jb] =
+                        1.0 - (3.0*jkBlockEstimates["normMeanPhiFourth"][jb]) /
+                        (5.0*pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2));
                 }
+
+                estimates["phiSusceptibility"] = (m * N) * (
+                    estimates["normMeanPhiSquared"] -
+                    pow(estimates["normMeanPhi"], 2)
+                    );
+                jkBlockEstimates["phiSusceptibility"] = std::vector<double>(jkBlocks, 0);
+                for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                    jkBlockEstimates["phiSusceptibility"][jb] = (m * N) * (
+                        jkBlockEstimates["normMeanPhiSquared"][jb] -
+                        pow(jkBlockEstimates["normMeanPhi"][jb], 2)
+                        );
+                }
+                
             }
         }
 //      std::copy(std::begin(jkBlockEstimates[obsName]), std::end(jkBlockEstimates[obsName]), std::ostream_iterator<double>(std::cout, " "));
