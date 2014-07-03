@@ -81,7 +81,8 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
     ad(pars),                   // AdjustmentData
     performedSweeps(0),
-    normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
+//    normPhi(0), meanPhi(), meanPhiSquared(), normMeanPhi(0), sdwSusc(0),
+    meanPhi(), normMeanPhi(0),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
 //        kOccImag(), kOccXimag(kOccImag[XBAND]), kOccYimag(kOccImag[YBAND]),
     occ(), occX(occ[XBAND]), occY(occ[YBAND]),
@@ -128,17 +129,17 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
 
     using std::cref;
     using namespace boost::assign;
-    obsScalar += ScalarObservable(cref(normPhi), "normPhi", "np"),
-            ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
-            ScalarObservable(cref(meanPhiSquared), "meanPhiSquared", "mps"),
-            ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
-            ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
-            ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
+    obsScalar += //ScalarObservable(cref(normPhi), "normPhi", "np"),
+        ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
+        //ScalarObservable(cref(meanPhiSquared), "meanPhiSquared", "mps"),
+        //ScalarObservable(cref(sdwSusc), "sdwSusceptibility", "sdwsusc"),
+        ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
+        ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
             //ScalarObservable(cref(pairPlusMaximag), "pairPlusMaximag", "ppMaximag"),
             //ScalarObservable(cref(pairMinusMaximag), "pairMinusMaximag", "pmMaximag"),
-            ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
+        ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
             //ScalarObservable(cref(fermionEkinetic_imag), "fermionEkineticimag", "fEkinimag"),
-            ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
+        ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
             //ScalarObservable(cref(fermionEcouple_imag), "fermionEcoupleimag", "fEcoupleimag");
 
     kOccX.zeros(pars.N);
@@ -242,14 +243,14 @@ void DetSDW<CB>::initMeasurements() {
 
     timeslices_included_in_measurement.clear();
 
-    //normphi, meanPhi
-    normPhi = 0;
+    //meanPhi
+//  normPhi = 0;
     meanPhi.zeros();
     normMeanPhi = 0;
-    meanPhiSquared = 0;
+//  meanPhiSquared = 0;
 
-    //sdw-susceptibility
-    sdwSusc = 0;
+    // //sdw-susceptibility
+    // sdwSusc = 0;
 
     //fermion occupation number -- real space
     occX.zeros(pars.N);
@@ -297,9 +298,9 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
         Phi phi_site = getPhi(site, timeslice);
 
         meanPhi += phi_site;
-        normPhi += arma::norm(phi_site, 2);
+        //normPhi += arma::norm(phi_site, 2);
 
-        //sdw-susceptibility will be calculated in finishMeasurements()
+        // //sdw-susceptibility will be calculated in finishMeasurements()
     }
 
     //fermion occupation number -- real space
@@ -586,25 +587,25 @@ void DetSDW<CB>::finishMeasurements() {
     assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
-    normPhi /= num(N * m);
+//    normPhi /= num(N * m);
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
-    meanPhiSquared = arma::dot(meanPhi, meanPhi);
+    //meanPhiSquared = arma::dot(meanPhi, meanPhi);
 
-    Phi phi_0;
-    phi_0[0] = phi0(0, m);
-    phi_0[1] = phi1(0, m);
-    phi_0[2] = phi2(0, m);
-    sdwSusc = 0;
-    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-        for (uint32_t site = 0; site < N; ++site) {
-            sdwSusc += ( phi_0[0] * phi0(site,timeslice)
-                       + phi_0[1] * phi1(site,timeslice)
-                       + phi_0[2] * phi2(site,timeslice)
-                       );
-        }
-    }
-    sdwSusc *= dtau;
+    // Phi phi_0;
+    // phi_0[0] = phi0(0, m);
+    // phi_0[1] = phi1(0, m);
+    // phi_0[2] = phi2(0, m);
+    // sdwSusc = 0;
+    // for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+    //     for (uint32_t site = 0; site < N; ++site) {
+    //         sdwSusc += ( phi_0[0] * phi0(site,timeslice)
+    //                    + phi_0[1] * phi1(site,timeslice)
+    //                    + phi_0[2] * phi2(site,timeslice)
+    //                    );
+    //     }
+    // }
+    // sdwSusc *= dtau;
 
 
     //fermion occupation number -- real space

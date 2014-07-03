@@ -409,11 +409,11 @@ protected:
     Observables:
 
 */
-    num normPhi;        //averaged norm of field			//not very sensible physically
+    //num normPhi;        //averaged norm of field			//not very sensible physically
     Phi meanPhi;		//averaged field
-    num meanPhiSquared;	//square of averaged field
+    //num meanPhiSquared;	//square of averaged field              //compute this in the post-sim evaluation
     num normMeanPhi;	//norm of averaged field
-    num sdwSusc;        //spin-density-wave susceptibility
+    //num sdwSusc;        //spin-density-wave susceptibility            //compute this in the post-sim evaluation
 
     checkarray<VecNum, 2> kOcc;     //Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
     VecNum& kOccX;
