@@ -295,6 +295,8 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     parsmodel.set_exchange_parameter_value(
         parspt.controlParameterValues[local_current_parameter_index]);
 
+    parsmodel.check();
+
     createReplica(replica, rng, parsmodel);
     
     // at rank 0 keep track of which process has which control parameter currently

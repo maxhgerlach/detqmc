@@ -177,6 +177,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     parsmc = parsmc_;
 
     parsmc.check();
+    parsmodel.check();
 
     if (parsmc.specified.count("rngSeed") == 0) {
         std::cout << "No rng seed specified, will use std::time(0)" << std::endl;
