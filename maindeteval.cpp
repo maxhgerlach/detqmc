@@ -143,7 +143,9 @@ int main(int argc, char **argv) {
             // }
 
             // compute Binder cumulant and susceptibility (connected,
-            // i.e. with the disconnected part substracted)
+            // i.e. with the disconnected part substracted), 
+            // the suscseptibility *without* the subtracted part:
+            //   normMeanPhiSquared
             if (obsName == "normMeanPhi") {
                 using std::pow;
                 estimates["normMeanPhiSquared"] = average<double>(
