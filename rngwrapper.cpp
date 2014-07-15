@@ -43,6 +43,9 @@ RngWrapper::RngWrapper(uint32_t seed_, uint32_t processIndex_)
     uint32_t mySeed = ((seed * 181) * ((processIndex - 83) * 359)) % 104729;
 
     dsfmt_init_gen_rand(&dsfmt, mySeed);
+
+    std::cout << "RNG initialized from seed:" << seed << " processIndex: "
+              << processIndex << " -> mySeed: " << mySeed << "\n";
 }
 
 void RngWrapper::saveState() const {
