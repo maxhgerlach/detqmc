@@ -34,7 +34,7 @@ struct ModelParams<DetHubbard> {
 
     ModelParams() :
         model("hubbard"), checkerboard(),
-        t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), bc(),
+        t(), U(), mu(), L(), d(), beta(), m(), dtau(), s(), bc("pbc"),
         specified()
     { }
     
