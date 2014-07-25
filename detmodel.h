@@ -283,6 +283,7 @@ protected:
     //for a single timeslice and update the member variables green --
     //and if desired -- greenFwd and greenBwd
     void updateGreenFunctionUdV(uint32_t gc, const UdVV& UdV_L, const UdVV& UdV_R);
+    void updateGreenFunction_Eye_UdV(uint32_t gc, const UdVV& UdV_R);    
 
     //for each greenComponent call a function with the greenComponent as a parameter
     template<typename Callable>
@@ -503,7 +504,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
         std::vector<UdVV>& storage = (*UdVStorage)[gc];
         storage = std::vector<UdVV>(n + 1);
 
-        storage[0] = eye_UdV;
+        storage[0] = eye_UdV; 
         storage[1] = udvDecompose(computeBmat(gc, s, 0));
 
         for (uint32_t l = 1; l <= n - 1; ++l) {
@@ -512,8 +513,8 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
             const MatV&   V_t_l = storage[l].V_t;
             const uint32_t k_l   = s*l;
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
-            MatV B_lp1 = computeBmat(gc, k_lp1, k_l);
-            storage[l+1] = udvDecompose<V>((B_lp1 * U_l) * arma::diagmat(d_l));
+            MatV B_lp1_times_U_l = computeBmat(gc, k_lp1, k_l) * U_l;
+            storage[l+1] = udvDecompose<V>(B_lp1_times_U_l * arma::diagmat(d_l));
             storage[l+1].V_t =  V_t_l * storage[l+1].V_t;			//!!
         }
     };
@@ -594,16 +595,21 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 
 //    UdVV UdV_temp = udvDecompose<V>( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
 
+    MatV V_product = trans(V_t_r) * V_l;
+    
     UdVV UdV_temp = udvDecompose<V>(
     		trans(U_r) * U_t_l +
-    		diagmat(d_r) * trans(V_t_r) * V_l * diagmat(d_l)
+    		diagmat(d_r) * V_product * diagmat(d_l)
     );
 
 //    MatV green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
 
-    green_out = U_t_l * UdV_temp.V_t *
+    MatV U_product_1 = U_t_l * UdV_temp.V_t;
+    MatV U_product_2 = U_r * UdV_temp.U;
+    
+    green_out = U_product_1 *
     		diagmat(1.0 / UdV_temp.d) *
-    		trans(U_r * UdV_temp.U);
+                trans(U_product_2);
 
     timing.stop("greenFromUdV");
 //    return green;
@@ -633,9 +639,12 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
     		trans(U_r) * V_t_r + diagmat(d_r)
     );
 
-    green_out = V_t_r * UdV_temp.V_t *
+    MatV V_product = V_t_r * UdV_temp.V_t;
+    MatV U_product = U_r * UdV_temp.U;
+
+    green_out = V_product *
     		diagmat(1.0 / UdV_temp.d) *
-    		trans(U_r * UdV_temp.U);
+                trans(U_product);
 
     timing.stop("greenFromUdV");
 
@@ -715,7 +724,15 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunctionUdV(
     }
 }
 
-
+template<uint32_t GC, typename V, bool TimeDisplaced>
+void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunction_Eye_UdV(
+    uint32_t gc, const UdVV& UdV_R) {
+    if (TimeDisplaced) {
+        // no-op
+    } else {
+        greenFromEye_and_UdV(green[gc], UdV_R);
+    }
+}
 
 //compute the green function in timeslice s*(l-1) from scratch with the help
 //of the B-matrices computed before in the last up-sweep
@@ -757,16 +774,20 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
     );
     UdV_L.U = U_l * UdV_L.U;
 
-    //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
-    const UdVV& UdV_R = storage[l - 1];
+    // //Accuracy check:
+    // MatV g_wrapped = green[gc];
 
-//    //Accuracy check:
-//    MatV g_wrapped = green[gc];
+    if (l - 1 > 0) {
+        //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
+        const UdVV& UdV_R = storage[l - 1];
 
-    updateGreenFunctionUdV(gc, UdV_L, UdV_R);
-
-//    //Accuracy check:
-//    print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Down");
+        updateGreenFunctionUdV(gc, UdV_L, UdV_R);
+    } else {
+        updateGreenFunction_Eye_UdV(gc, UdV_L);
+    }
+    
+    // //Accuracy check:
+    // print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Down" + numToString(currentTimeslice));
 
     storage[l - 1] = UdV_L;
 
@@ -872,9 +893,9 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     //as a refresh of the current time slice.
     assert(currentTimeslice == k_lp1);
 
-    //The following is B(beta, k_lp1*dtau), valid from the last sweep
-    const UdVV& UdV_lp1 = storage[l + 1];
-
+    // //Accuracy check:
+    // MatV g_wrapped = green[gc];
+    
     //from the last step the following are B(k_l*dtau, 0):
     const MatV&   U_l   = storage[l].U;
     const VecNum& d_l   = storage[l].d;
@@ -883,18 +904,23 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     //UdV_temp will be the new B(k_lp1*dtau, 0):
     UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l) *
                                     arma::diagmat(d_l));
-
     UdV_temp.V_t = V_t_l * UdV_temp.V_t;
 
-//    //Accuracy check:
-//    MatV g_wrapped = green[gc];
+    
+    if (k_lp1 != m) {
+        //The following is B(beta, k_lp1*dtau), valid from the last sweep
+        const UdVV& UdV_lp1 = storage[l + 1];
 
-    updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
-
-//    //Accuracy check:
-//    print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Up");
+        updateGreenFunctionUdV(gc, UdV_lp1, UdV_temp);
+    } else {
+        updateGreenFunction_Eye_UdV(gc, UdV_temp);
+    }
 
     storage[l + 1] = UdV_temp;
+    
+    // //Accuracy check:
+    // print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Up" + numToString(currentTimeslice));
+
 
     currentTimeslice = k_lp1;
 
