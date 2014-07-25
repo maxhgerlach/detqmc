@@ -956,3 +956,12 @@ void DetHubbard::sweepThermalization() {
                                  [this](uint32_t timeslice) {this->updateInSlice(timeslice);});
 }
 
+
+
+void DetHubbard::consistencyCheck() {
+    // if (std::abs(occTotal - 1.0) > 1E-5) {
+    //     std::cout << "Warning occTotal = " << occTotal << "\n";
+    // }
+}
+
+

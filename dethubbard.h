@@ -249,6 +249,9 @@ protected:
     void measure(uint32_t timeslice);		//measure observables for one timeslice
     void finishMeasurements();				//finalize stored observable values (end of a sweep)
 
+    virtual void consistencyCheck();
+
+    
     //Given B(beta, tau) = V_l d_l U_l and B(tau, 0) = U_r d_r V_r
     //calculate a tuple of four NxN matrices (a,b,c,d) with
     // a = G(0), b = -(1-G(0))*B^(-1)(tau,0), c = B(tau,0)*G(0), d = G(tau)

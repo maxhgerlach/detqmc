@@ -65,8 +65,8 @@ UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
     //svd-call should use divide-and-conquer algorithm.
     //mat == U * diag(d) * trans(V_t)
 
-
-/*    
+/*
+    
     bool ok = arma::svd(result.U, result.d, result.V_t, mat, "dc");
     
     if (not ok) {
@@ -76,12 +76,12 @@ UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
             throw GeneralError("SVD failed (dc, then std)");
     	}
     }
-*/
 
+*/
     
 
     //Use std algorithm instead -- more precise -- this leads to
-    //higher stability, with actually not much longer runtimes
+    //much higher stability, with actually not much longer runtimes
     bool ok = arma::svd(result.U, result.d, result.V_t, mat, "std");
     if (not ok) {
         throw GeneralError("SVD failed (std)");

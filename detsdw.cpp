@@ -582,7 +582,7 @@ void DetSDW<CB>::finishMeasurements() {
     const auto L = pars.L;        
     const auto N = pars.N;
     const auto m = pars.m;
-    const auto dtau = pars.dtau;    
+//    const auto dtau = pars.dtau;    
     
     assert(timeslices_included_in_measurement.size() == m);
 
