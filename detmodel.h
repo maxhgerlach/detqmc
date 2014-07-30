@@ -522,7 +522,8 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
     for_each_gc(setup);
 
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
+        //updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
+        updateGreenFunction_Eye_UdV(gc, (*UdVStorage)[gc][n]);
     }
     currentTimeslice = m;
 
