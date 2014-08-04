@@ -951,8 +951,11 @@ MatCpx DetSDW<CB>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 //            	ksinhTerm *= prefactor;
 //            }
 
-            //is this the best way to set the real and imaginary parts of a complex submatrix?
-            //TODO: below some multiplications are repeated, could be pulled out -- however, currently this routine is not called when the checkerboard approx is used anyway
+            //is this the best way to set the real and imaginary parts
+            //of a complex submatrix?
+            //TODO: below some multiplications are repeated, could be
+            //pulled out -- however, currently this routine is not
+            //called often when the checkerboard approx is used anyway
             block(0, 0) = MatCpx(
             		diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
                     zeros(N,N));
