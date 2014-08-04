@@ -180,9 +180,10 @@ protected:
 */
     typedef VecNum::fixed<OPDIM> Phi;       //value of the (1,2,3)-component field at a single site and timeslice
     
-    //complex 4x4 identity matrix
+    // small identity matrices
     const MatCpx::fixed<4,4> eye4cpx;
-
+    const MatCpx::fixed<2,2> eye2cpx;
+    const MatNum::fixed<2,2> eye2num;
 /*
 
     Random numbers
@@ -543,17 +544,23 @@ protected:
     uint32_t coordsToSite(uint32_t x, uint32_t y) const {
         return y*pars.L + x;
     }
-//     Phi getPhi(uint32_t site, uint32_t timeslice) const {
-// //      assert(site >= 0);    //fulfilled always for uint
-//         assert(site <  pars.N);
-//         assert(timeslice >= 1);
-//         assert(timeslice <= pars.m);
-//         Phi result;
-//         result[0] = phi0(site,timeslice);
-//         result[1] = phi1(site,timeslice);
-//         result[2] = phi2(site,timeslice);
-//         return result;
-//     }
+    Phi getPhi(uint32_t site, uint32_t timeslice) const {
+//      assert(site >= 0);    //fulfilled always for uint
+        assert(site <  pars.N);
+        assert(timeslice >= 1);
+        assert(timeslice <= pars.m);
+        Phi result;
+        if (OPDIM == 3 or OPDIM == 2 or OPDIM == 1) {
+            result[0] = phi(site, 0, timeslice);
+        }
+        if (OPDIM == 3 or OPDIM == 2) {
+            result[1] = phi(site, 1, timeslice);
+        }
+        if (OPDIM == 3) {
+            result[2] = phi(site, 2, timeslice);
+        }
+        return result;
+    }
 
 
 /*
