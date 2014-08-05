@@ -130,13 +130,16 @@ public:
     //effectively symmetric Trotter decomposition.  This returns the
     //shifted matrix for the current timeslice.  This should be done
     //before measurements.
-    virtual MatCpx shiftGreenSymmetric();
+    virtual MatData shiftGreenSymmetric();
 protected:
 /*    
     the basic data type is complex for O(3) or O(2) order parameters,
     real for O(1):
 */
     typedef std::conditional<OPDIM==1, num, cpx>::type DataType;
+    constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
+    static num dataReal(const cpx& value) { return value.real(); }
+    static num dataReal(const num& value) { return value; }    
     typedef arma::Mat<DataType> MatData;
     typedef arma::Vec<DataType> VecData;
     typedef arma::Cube<DataType> CubeData;
@@ -180,10 +183,8 @@ protected:
 */
     typedef VecNum::fixed<OPDIM> Phi;       //value of the (1,2,3)-component field at a single site and timeslice
     
-    // small identity matrices
-    const MatCpx::fixed<4,4> eye4cpx;
-    const MatCpx::fixed<2,2> eye2cpx;
-    const MatNum::fixed<2,2> eye2num;
+    // small identity matrix
+    const MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> smalleye;
 /*
 
     Random numbers
@@ -603,10 +604,10 @@ protected:
     //for the symmetric checkerboard break-up (CB_ASSAAD_BERG) this is ignored
     // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to E^(sign * dtau * K_band) * A
     template <class Matrix>
-    MatCpx cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
     template <class Matrix>
-    MatCpx cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
 
     //cbLMultHoppingExp and cbRMultHoppingExp need separate implementations for each CheckerboardMethod,
     //this cannot be realized by a direct partial template specialization, but we need to have a proxy
@@ -614,17 +615,17 @@ protected:
     //compare first solution in winning answer at:
     //http://stackoverflow.com/questions/1501357/template-specialization-of-particular-members
     template <class Matrix>
-    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+                                   const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
-    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+                                   const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
-    MatCpx cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+                                   const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     template <class Matrix>
-    MatCpx cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
-    							  const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
+    MatData cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+                                   const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
     //functions called by the above:
     template<class Matrix>
     void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
@@ -634,16 +635,16 @@ protected:
     //the following take a MatrixSizeFactor*N x MatrixSizeFactor*N
     //matrix A and effectively multiply B(k2,k1) or its inverse to the
     //left or right of it and return the result
-    MatCpx checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
-    MatCpx checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1);
+    MatData checkerboardLeftMultiplyBmat(const MatData& A, uint32_t k2, uint32_t k1);
+    MatData checkerboardRightMultiplyBmat(const MatData& A, uint32_t k2, uint32_t k1);
+    MatData checkerboardLeftMultiplyBmatInv(const MatData& A, uint32_t k2, uint32_t k1);
+    MatData checkerboardRightMultiplyBmatInv(const MatData& A, uint32_t k2, uint32_t k1);
 
     //helpers for the checkerboardMultiplyFunctions
-    MatCpx rightMultiplyBk(const MatCpx& orig, uint32_t k);     //multiply B(k,k-1) from right to orig, return result
-    MatCpx rightMultiplyBkInv(const MatCpx& orig, uint32_t k);  //multiply B(k,k-1)^-1 from right to orig, return result
-    MatCpx leftMultiplyBk(const MatCpx& orig, uint32_t k);      //multiply B(k,k-1) from left to orig, return result
-    MatCpx leftMultiplyBkInv(const MatCpx& orig, uint32_t k);   //multiply B(k,k-1)^-1 from left to orig, return result
+    MatData rightMultiplyBk(const MatData& orig, uint32_t k);     //multiply B(k,k-1) from right to orig, return result
+    MatData rightMultiplyBkInv(const MatData& orig, uint32_t k);  //multiply B(k,k-1)^-1 from right to orig, return result
+    MatData leftMultiplyBk(const MatData& orig, uint32_t k);      //multiply B(k,k-1) from left to orig, return result
+    MatData leftMultiplyBkInv(const MatData& orig, uint32_t k);   //multiply B(k,k-1)^-1 from left to orig, return result
 
 /*
   
@@ -651,7 +652,7 @@ protected:
     
 */
     //compute B-matrix using dense matrix products or checkerboardLeftMultiplyBmat
-    MatCpx computeBmatSDW(uint32_t k2, uint32_t k1);            
+    MatData computeBmatSDW(uint32_t k2, uint32_t k1);            
 
     // compute sqrt(dtau) * cdwU * eta_{cdwl[i]}
     template<class Vec>
@@ -668,7 +669,7 @@ protected:
 */
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
     // for one timeslice. This may be useful for checks.
-    MatCpx computePotentialExponential(int sign, checkarray<num, OPDIM> phi, VecInt cdwl);
+    MatData computePotentialExponential(int sign, checkarray<num, OPDIM> phi, VecInt cdwl);
 
     //several checks, many are normally commented out
     virtual void consistencyCheck();
@@ -684,7 +685,7 @@ protected:
     //helper with functors RightMultiply, LeftMultiply depending on
     //the CheckerboardMethod
     template<class RightMultiply, class LeftMultiply>
-    MatCpx shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
+    MatData shiftGreenSymmetric_impl(RightMultiply, LeftMultiply);
 
     //measuring observables
     void initMeasurements();				//reset stored observable values (beginning of a sweep)
@@ -732,15 +733,18 @@ protected:
     template<class CallableProposeLocalUpdate>
     num updateInSlice_delayed(uint32_t timeslice, CallableProposeLocalUpdate proposeLocalUpdate);
     struct DelayedUpdatesData {		//some helper data for updatesInSlice_delayed that should not be realloced all the time
-    	MatCpx X;
-    	MatCpx Y;
-    	MatCpx Rj;
-    	MatCpx::fixed<4,4> Sj;
-    	MatCpx Cj;
-    	MatCpx::fixed<4,4> tempBlock;
-    	MatCpx::fixed<4,4> Mj;
+    	MatData X;
+    	MatData Y;
+    	MatData Rj;
+    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Sj;
+    	MatData Cj;
+    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> tempBlock;
+    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Mj;
     	DelayedUpdatesData(uint32_t N, uint32_t delaySteps)
-    		: X(4*delaySteps, 4*N), Y(4*N, 4*delaySteps), Rj(4, 4*N), Cj(4*N, 4) {
+            : X(MatrixSizeFactor*delaySteps, MatrixSizeFactor*N),
+              Y(MatrixSizeFactor*N, MatrixSizeFactor*delaySteps),
+              Rj(MatrixSizeFactor, MatrixSizeFactor*N),
+              Cj(MatrixSizeFactor*N, MatrixSizeFactor) {
     	}
     } dud;
 
@@ -764,7 +768,7 @@ protected:
     changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);			//choose Metropolis-randomly from +-1, +-2
     //more generic helpers
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
-    MatCpx::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
+    MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
         Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
 
     void globalMove();
@@ -1020,7 +1024,7 @@ struct DetSDW<CBM, OPDIM>::sdwComputeBmat {
     sdwComputeBmat(DetSDW<CBM, OPDIM>* parent_) :
         parent(parent_)
         { }
-    MatCpx operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
+    MatData operator()(uint32_t gc, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
         return parent->computeBmatSDW(k2, k1);
@@ -1033,7 +1037,7 @@ struct DetSDW<CBM, OPDIM>::sdwLeftMultiplyBmat {
     sdwLeftMultiplyBmat(DetSDW<CBM, OPDIM>* parent_) :
         parent(parent_)
     { }
-    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+    MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
         if (Checkerboard != CB_NONE) {
@@ -1050,7 +1054,7 @@ struct DetSDW<CBM, OPDIM>::sdwRightMultiplyBmat {
     sdwRightMultiplyBmat(DetSDW<CBM, OPDIM>* parent_) :
         parent(parent_)
         { }
-    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+    MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
         if (Checkerboard != CB_NONE) {
@@ -1067,7 +1071,7 @@ struct DetSDW<CBM, OPDIM>::sdwLeftMultiplyBmatInv {
     sdwLeftMultiplyBmatInv(DetSDW<CBM, OPDIM>* parent_) :
         parent(parent_)
         { }
-    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+    MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
         if (Checkerboard != CB_NONE) {
@@ -1084,7 +1088,7 @@ struct DetSDW<CBM, OPDIM>::sdwRightMultiplyBmatInv {
     sdwRightMultiplyBmatInv(DetSDW<CBM, OPDIM>* parent_) :
         parent(parent_)
         { }
-    MatCpx operator()(uint32_t gc, const MatCpx& mat, uint32_t k2, uint32_t k1) {
+    MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
         if (Checkerboard != CB_NONE) {

@@ -71,6 +71,13 @@ public:
     	return std::make_tuple(x, y, z);
     }
 
+    std::tuple<double,double> randPointOnCircle() {
+    	double phi = randRange(0., 2.*M_PI);
+    	double x = std::cos(phi);
+    	double y = std::sin(phi);
+        return std::make_tuple(x, y);
+    }
+
     //saving/loading state without Boost serialization
     void saveState() const;
     void loadState();

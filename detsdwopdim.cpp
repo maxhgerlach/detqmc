@@ -72,6 +72,76 @@ const num PhiHigh = 1;
 
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
+    Base(pars_, MatrixSizeFactor * pars_.L*pars_.L),
+    smalleye(arma::eye<MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> >(
+                 MatrixSizeFactor, MatrixSizeFactor)),
+    rng(rng_), normal_distribution(rng),
+    pars(pars_),
+    us(),                       // UpdateStatistics
+    hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
+    sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
+    spaceNeigh(pars.L), timeNeigh(pars.m),
+    propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
+    propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
+    propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
+    g(green[0]),
+    phi(pars.N, OPDIM, pars.m+1), cdwl(pars.N, pars.m+1),
+    coshTermPhi(pars.N, pars.m+1), sinhTermPhi(pars.N, pars.m+1),
+    coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
+    ad(pars),                   // AdjustmentData
+    performedSweeps(0),
+    meanPhi(), normMeanPhi(0),
+    kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
+    occ(), occX(occ[XBAND]), occY(occ[YBAND]),
+    pairPlusMax(0.0), pairMinusMax(0.0),
+    pairPlus(), pairMinus(),
+    fermionEkinetic(0), fermionEcouple(0),
+    occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
+    timeslices_included_in_measurement(),
+    dud(pars.N, pars.delaySteps), gmd(pars.N, m)
+{
+    //use contents of ModelParams pars
+    assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
+    assert(pars.N == pars.L*pars.L);
+    assert(pars.d == 2);
+    
+    setupRandomField();
+
+    //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
+    //So for actual calculations an additional minus-sign needs to be included.
+    //In the case of anti-periodic boundaries between i and j, another extra minus-sign
+    //must be added.
+    hopHor[XBAND] = pars.txhor;
+    hopVer[XBAND] = pars.txver;
+    hopHor[YBAND] = pars.tyhor;
+    hopVer[YBAND] = pars.tyver;
+    //precalculate hyperbolic functions, used in checkerboard decomposition
+    using std::sinh; using std::cosh;
+    num dtauHere = pars.dtau;                // to fix capture issues
+    for_each_band( [this, dtauHere](Band band) {
+            sinhHopHor[band] = sinh(-dtauHere * hopHor[band]);
+            coshHopHor[band] = cosh(-dtauHere * hopHor[band]);
+            sinhHopVer[band] = sinh(-dtauHere * hopVer[band]);
+            coshHopVer[band] = cosh(-dtauHere * hopVer[band]);
+            sinhHopHorHalf[band] = sinh(-0.5*dtauHere * hopHor[band]);
+            coshHopHorHalf[band] = cosh(-0.5*dtauHere * hopHor[band]);
+            sinhHopVerHalf[band] = sinh(-0.5*dtauHere * hopVer[band]);
+            coshHopVerHalf[band] = cosh(-0.5*dtauHere * hopVer[band]);
+        } );
+
+    setupPropK();
+
+    setupUdVStorage_and_calculateGreen();
+
+    using std::cref;
+    using namespace boost::assign;
+    obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
+        ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
+        ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
+        ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
+        ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
+
+    kOccX.zeros(pars.N);
     kOccY.zeros(pars.N);
     obsVector += VectorObservable(cref(kOccX), pars.N, "kOccX", "nkx"),
         VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
@@ -227,7 +297,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     }
     if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
         offset_y = 0.5;
- }
+    }
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
         uint32_t ksitey = ksite / L;
         uint32_t ksitex = ksite % L;
@@ -635,9 +705,9 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupRandomField() {
     for (uint32_t k = 1; k <= pars.m; ++k) {
         for (uint32_t site = 0; site < pars.N; ++site) {
-            phi0(site, k) = rng.randRange(PhiLow, PhiHigh);
-            phi1(site, k) = rng.randRange(PhiLow, PhiHigh);
-            phi2(site, k) = rng.randRange(PhiLow, PhiHigh);
+            for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+                phi(site, dim, k) = rng.randRange(PhiLow, PhiHigh);
+            }
             num r = rng.rand01();
             if      (r <= 0.25) cdwl(site, k) = +2;
             else if (r <= 0.5)	cdwl(site, k) = -2;
@@ -650,11 +720,8 @@ void DetSDW<CB, OPDIM>::setupRandomField() {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-std::tuple<num,num> DetSDW<CB, OPDIM>::getCoshSinhTermPhi(
-    num phi0, num phi1, num phi2) {
-    num phiNorm = std::sqrt( std::pow(phi0, 2)
-                             + std::pow(phi1, 2)
-                             + std::pow(phi2, 2) );
+std::tuple<num,num> DetSDW<CB, OPDIM>::getCoshSinhTermPhi(Phi phi) {
+    num phiNorm = arma::norm(phi, 2);
     return std::make_tuple(std::cosh(pars.lambda * pars.dtau * phiNorm),
                            std::sinh(pars.lambda * pars.dtau * phiNorm) / phiNorm);
 }
@@ -676,14 +743,14 @@ void DetSDW<CB, OPDIM>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::updateCoshSinhTermsPhi(uint32_t site, uint32_t k) {
-    std::tie(coshTermPhi(site,k), sinhTermPhi(site,k)) = getCoshSinhTermPhi(
-        phi0(site,k), phi1(site,k), phi2(site,k));
+    std::tie(coshTermPhi(site,k), sinhTermPhi(site,k)) =
+        getCoshSinhTermPhi(getPhi(site,k));
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::updateCoshSinhTermsCDWl(uint32_t site, uint32_t k) {
-    std::tie(coshTermCDWl(site,k), sinhTermCDWl(site,k)) = getCoshSinhTermCDWl(
-        cdwl(site, k));
+    std::tie(coshTermCDWl(site,k), sinhTermCDWl(site,k)) =
+        getCoshSinhTermCDWl(cdwl(site, k));
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -762,40 +829,6 @@ void DetSDW<CB, OPDIM>::setupPropK() {
     }
 }
 
-//template<bool TD, CheckerboardMethod CB, int OPDIM>
-//template<class Vec>
-//num DetSDW<TD,CB, OPDIM>::prefactor_gamma_cdwl(const Vec& cdwl) {
-//	uint32_t count_pm1 = 0;
-//	uint32_t count_pm2 = 0;
-//	for (uint32_t i = 0; i < N; ++i) {
-//		if (cdwl[i] == +1 or cdwl[i] == -1) {
-//			++count_pm1;
-//		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
-//			++count_pm2;
-//		}
-//	}
-//	num prefactor = std::pow(1. + std::sqrt(6.) / 3., count_pm1) *
-//					std::pow(1. - std::sqrt(6.) / 3., count_pm2);
-//	return prefactor;
-//}
-
-//template<bool TD, CheckerboardMethod CB, int OPDIM>
-//template<class Vec>
-//num DetSDW<TD,CB, OPDIM>::ln_prefactor_gamma_cdwl(const Vec& cdwl) {
-//	uint32_t count_pm1 = 0;
-//	uint32_t count_pm2 = 0;
-//	for (uint32_t i = 0; i < N; ++i) {
-//		if (cdwl[i] == +1 or cdwl[i] == -1) {
-//			++count_pm1;
-//		} else if (cdwl[i] == +2 or cdwl[i] == -2) {
-//			++count_pm2;
-//		}
-//	}
-//	num ln_prefactor = count_pm1 * std::log(1. + std::sqrt(6.)/3.) +
-//			count_pm2 * std::log(1. - std::sqrt(6.)/3.);
-//	return ln_prefactor;
-//}
-
 
 template<CheckerboardMethod CB, int OPDIM>
 template<class Vec>
@@ -806,6 +839,8 @@ VecNum DetSDW<CB, OPDIM>::compute_d_for_cdwl(const Vec& cdwl) {
     }
     return kd;
 }
+
+
 template<CheckerboardMethod CB, int OPDIM> inline
 num DetSDW<CB, OPDIM>::compute_d_for_cdwl_site(uint32_t cdwl) {
     //TODO: check assembly -- operations removed?
@@ -849,21 +884,11 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
             //VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
 
-//            //prefactor for discrete field (product of gamma_l_i)
-//            //this needs to cover all entries of the matrix, so in that case
-//            //we change kcoshTerm and ksinhTerm
-//            if (cdwU > 0) {
-//            	num prefactor = this->prefactor_gamma_cdwl(cdwl.col(k));
-//            	//std::cout << k << " prefactor = " << prefactor << "\n";
-//            	kcoshTerm *= prefactor;
-//            	ksinhTerm *= prefactor;
-//            }
-
             //is this the best way to set the real and imaginary parts
             //of a complex submatrix?
             //TODO: below some multiplications are repeated, could be
             //pulled out -- however, currently this routine is not
-            //called often when the checkerboard approx is used anyway
+            //called often anyway (when the checkerboard approx is used)
             block(0, 0) = MatCpx(
                 diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
                 zeros(N,N));
@@ -1483,34 +1508,34 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
     for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
         switch (pars.spinProposalMethod) {
         case SpinProposalMethod_Type::BOX:
-            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
-                                                                          [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                                                                              return this->proposeNewPhiBox(site, timeslice);
-                                                                          }
-                );
+            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                    return this->proposeNewPhiBox(site, timeslice);
+                } );
             break;
         case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
             //each sweep, alternate between rotating and scaling
             if (performedSweeps % 2 == 0) {
-                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
-                                                                              [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                                                                                  return this->proposeRotatedPhi(site, timeslice);
-                                                                              }
-                    );
+                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                    timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                        return this->proposeRotatedPhi(site, timeslice);
+                    } );
             } else {
-                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
-                                                                              [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                                                                                  return this->proposeScaledPhi(site, timeslice);
-                                                                              }
-                    );
+                ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                    timeslice,
+                    [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                        return this->proposeScaledPhi(site, timeslice);
+                    } );
             }
             break;
         case SpinProposalMethod_Type::ROTATE_AND_SCALE:
-            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(timeslice,
-                                                                          [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                                                                              return this->proposeRotatedScaledPhi(site, timeslice);
-                                                                          }
-                );
+            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                timeslice,
+                [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                    return this->proposeRotatedScaledPhi(site, timeslice);
+                } );
             break;
         }
     }
@@ -1521,8 +1546,7 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
         timeslice,
         [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
             return this->proposeNewCDWl(site, timeslice);
-        }
-        );
+        } );
 
     timing.stop("sdw-updateInSlice");
 }
@@ -1567,8 +1591,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(
-            newphi, new_cdwl, timeslice, site);
+        MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> delta_forsite =
+            get_delta_forsite(newphi, new_cdwl, timeslice, site);
 
         //****
         //Compute the determinant and inverse of I + Delta*(I - G)
@@ -1578,16 +1602,17 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         //Delta*(I - G) is a sparse matrix containing just 4 rows:
         //site, site+N, site+2N, site+3N
         //Compute the values of these rows [O(N)]:
-        checkarray<VecCpx, 4> rows;
-        for (uint32_t r = 0; r < 4; ++r) {
-            //TODO: Here are some unnecessary operations: delta_forsite contains many repeated
-            //elements, and even some zeros
-            rows[r] = VecCpx(4*pars.N);
-            for (uint32_t col = 0; col < 4*pars.N; ++col) {
+        checkarray<VecData, MatrixSizeFactor> rows;
+        for (uint32_t r = 0; r < MatrixSizeFactor; ++r) {
+            //TODO: Here are some unnecessary operations:
+            //delta_forsite contains many repeated elements, and even
+            //some zeros
+            rows[r] = VecData(MatrixSizeFactor*pars.N);
+            for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
                 rows[r][col] = -delta_forsite(r,0) * g.col(col)[site];
             }
             rows[r][site] += delta_forsite(r,0);
-            for (uint32_t dc = 1; dc < 4; ++dc) {
+            for (uint32_t dc = 1; dc < MatrixSizeFactor; ++dc) {
                 for (uint32_t col = 0; col < 4*pars.N; ++col) {
                     rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*pars.N];
                 }
@@ -1596,7 +1621,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         }
 
         // [I + Delta*(I - G)]^(-1) again is a sparse matrix
-        // with four rows site, site+N, site+2N, site+3N
+        // with two (four) rows site, site+N(, site+2N, site+3N).
         // compute them iteratively, together with the determinant of
         // I + Delta*(I - G)
         // Apart from these rows, the remaining diagonal entries of
@@ -1604,16 +1629,16 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         //
         // before this loop rows[] holds the entries of Delta*(I - G),
         // after the loop rows[] holds the corresponding rows of [I + Delta*(I - G)]^(-1)
-        cpx det = 1;
-        for (uint32_t l = 0; l < 4; ++l) {
-            VecCpx row = rows[l];
+        DataType det = 1;
+        for (uint32_t l = 0; l < MatrixSizeFactor; ++l) {
+            VecData row = rows[l];
             for (int k = l-1; k >= 0; --k) {
                 row[site + k*pars.N] = 0;
             }
             for (int k = l-1; k >= 0; --k) {
                 row += rows[l][site + k*pars.N] * rows[k];
             }
-            cpx divisor = cpx(1.0, 0) + row[site + l*pars.N];
+            DataType divisor = DataOne + row[site + l*pars.N];
             rows[l] = (-1.0/divisor) * row;
             rows[l][site + l*pars.N] += 1;
             for (int k = l - 1; k >= 0; --k) {
@@ -1687,7 +1712,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         //END-DEBUG-CHECK
         //****
 
-        num probSFermion = det.real();
+        num probSFermion = dataReal(det);
 
         //DEBUG: determinant computation from new routine updateInSlice_woodbury:
 //        MatCpx::fixed<4,4> g_sub;
@@ -1710,9 +1735,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             accratio += 1;
 
 //          num phisBefore = phiAction();
-            phi0(site, timeslice) = newphi[0];
-            phi1(site, timeslice) = newphi[1];
-            phi2(site, timeslice) = newphi[2];
+            for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+                phi(site, dim, timeslice) = newphi[dim];
+            }
             cdwl(site, timeslice) = new_cdwl;
             updateCoshSinhTerms(site, timeslice);
 //          num phisAfter = phiAction();
@@ -1834,19 +1859,25 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             //compensate for already included diagonal entries of I in invRows
             rows[0][site] -= 1;
             rows[1][site + pars.N] -= 1;
-            rows[2][site + 2*pars.N] -= 1;
-            rows[3][site + 3*pars.N] -= 1;
+            if (OPDIM == 3) {
+                rows[2][site + 2*pars.N] -= 1;
+                rows[3][site + 3*pars.N] -= 1;
+            }
             //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
             // [O(N^2)]
-            MatCpx gTimesInvRows(4*pars.N, 4*pars.N);
+            MatCpx gTimesInvRows(MatrixSizeFactor*pars.N,
+                                 MatrixSizeFactor*pars.N);
             const auto& G = g;
-            for (uint32_t col = 0; col < 4*pars.N; ++col) {
-                for (uint32_t row = 0; row < 4*pars.N; ++row) {
-                    gTimesInvRows(row, col) = G(row, site)            * rows[0][col]
-                        + G(row, site + pars.N)   * rows[1][col]
-                        + G(row, site + 2*pars.N) * rows[2][col]
-                        + G(row, site + 3*pars.N) * rows[3][col]
-                        ;
+            for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
+                for (uint32_t row = 0; row < MatrixSizeFactor*pars.N; ++row) {
+                    gTimesInvRows(row, col) =
+                          G(row, site)            * rows[0][col]
+                        + G(row, site + pars.N)   * rows[1][col];
+                    if (OPDIM == 3) {
+                        gTimesInvRows(row, col) +=
+                            G(row, site + 2*pars.N) * rows[2][col]
+                            G(row, site + 3*pars.N) * rows[3][col];
+                    }
                 }
             }
             g += gTimesInvRows;
@@ -1893,7 +1924,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 
 template<CheckerboardMethod CB, int OPDIM>
 template<class Callable>
-num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice, Callable proposeLocalUpdate) {
+num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
+                                              Callable proposeLocalUpdate) {
+    constexpr uint32_t MSF = MatrixSizeFactor;
     num accratio = 0.;
     for (uint32_t site = 0; site < pars.N; ++site) {
         Phi newphi;
@@ -1912,23 +1945,23 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice, Callable propo
         }
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(
+        MatData::fixed<MSF,MSF> delta_forsite = get_delta_forsite(
             newphi, new_cdwl, timeslice, site);
 
-        //Compute the 4x4 submatrix of G that corresponds to the site i
-        //g_sub = g[i::N, i::N]
-        MatCpx::fixed<4,4> g_sub;
-        for (uint32_t a = 0; a < 4; ++a) {
-            for (uint32_t b = 0; b < 4; ++b) {
+        //Compute the 4x4 (2x2) submatrix of G that corresponds to the
+        //site i g_sub = g[i::N, i::N]
+        MatData::fixed<MSF,MSF> g_sub;
+        for (uint32_t a = 0; a < MSF; ++a) {
+            for (uint32_t b = 0; b < MSF; ++b) {
                 g_sub(a,b) = g(site + a*pars.N, site + b*pars.N);
             }
         }
 
         //the determinant ratio for the spin update is given by the determinant
         //of the following matrix M
-        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * delta_forsite;
+        MatData::fixed<MSF,MSF> M = smalleye + (smalleye - g_sub) * delta_forsite;
 
-        num probSFermion = arma::det(M).real();
+        num probSFermion = dataReal(arma::det(M));
 
         num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
 
@@ -1937,25 +1970,25 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice, Callable propo
         if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
             accratio += 1.0;
-
-            phi0(site, timeslice) = newphi[0];
-            phi1(site, timeslice) = newphi[1];
-            phi2(site, timeslice) = newphi[2];
+            
+            for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+                phi(site, dim, timeslice) = newphi[dim];
+            }
             cdwl(site, timeslice) = new_cdwl;
             updateCoshSinhTerms(site, timeslice);
 
             //update g
 
-            MatCpx mat_V(4, 4*pars.N);
-            for (uint32_t r = 0; r < 4; ++r) {
+            MatData mat_V(MSF, MSF*pars.N);
+            for (uint32_t r = 0; r < MSF; ++r) {
                 mat_V.row(r) = g.row(site + r*pars.N);
                 mat_V(r, site + r*pars.N) -= 1.0;
             }
 
             //TODO: is it a good idea to do this copy? or would it be better to
             //compute the product directly with a non-contiguous subview?
-            MatCpx g_times_mat_U(4*pars.N, 4);
-            for (uint32_t c = 0; c < 4; ++c) {
+            MatData g_times_mat_U(MSF*pars.N, MSF);
+            for (uint32_t c = 0; c < MSF; ++c) {
                 g_times_mat_U.col(c) = g.col(site + c*pars.N);
             }
             g_times_mat_U = g_times_mat_U * delta_forsite;
@@ -1970,23 +2003,26 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice, Callable propo
 template<CheckerboardMethod CB, int OPDIM>
 template<class Callable>
 num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
+    constexpr auto MSF = MatrixSizeFactor;
     const auto N = pars.N;
     num accratio = 0.;
 
     auto getX = [this](uint32_t step) {
-        return dud.X.cols(4*step, 4*step + 3);
+        return dud.X.cols(MSF*step, MSF*step + MSF-1);
     };
     auto getY = [this](uint32_t step) {
-        return dud.Y.rows(4*step, 4*step + 3);
+        return dud.Y.rows(MSF*step, MSF*step + MSF-1);
     };
 
-    auto take4rows = [this, N](MatCpx& target, const MatCpx& source, uint32_t for_site) {
-        for (uint32_t r = 0; r < 4; ++r) {
+    // these two helper functions return submatrices containing just 2
+    // (OPDIM == 1 or 2) or 4 (OPDIM == 3) rows or columns
+    auto takesomerows = [this, N](MatData& target, const MatData& source, uint32_t for_site) {
+        for (uint32_t r = 0; r < MSF; ++r) {
             target.row(r) = source.row(for_site + r*N);
         }
     };
-    auto take4cols = [this, N](MatCpx& target, const MatCpx& source, uint32_t for_site) {
-        for (uint32_t c = 0; c < 4; ++c) {
+    auto takesomecols = [this, N](MatData& target, const MatData& source, uint32_t for_site) {
+        for (uint32_t c = 0; c < MSF; ++c) {
             target.col(c) = source.col(for_site + c*N);
         }
     };
@@ -1994,8 +2030,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
     uint32_t site = 0;
     while (site < N) {
         uint32_t delayStepsNow = std::min(pars.delaySteps, N - site);
-        dud.X.set_size(4*N, 4*delayStepsNow);
-        dud.Y.set_size(4*delayStepsNow, 4*N);
+        dud.X.set_size(MSF*N, MSF*delayStepsNow);
+        dud.Y.set_size(MSF*delayStepsNow, MSF*N);
         uint32_t j = 0;
         while (j < delayStepsNow and site < N) {
             Phi newphi;
@@ -2011,18 +2047,18 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                     probSPhi = std::exp(-dsphi);
             	}
 
-                MatCpx::fixed<4,4> delta_forsite = get_delta_forsite(newphi, new_cdwl, timeslice, site);
+                MatData::fixed<MSF,MSF> delta_forsite = get_delta_forsite(newphi, new_cdwl, timeslice, site);
 
-                take4rows(dud.Rj, g, site);
+                takesomerows(dud.Rj, g, site);
                 for (uint32_t l = 0; l < j; ++l) {
-                    take4rows(dud.tempBlock, getX(l), site);
+                    takesomerows(dud.tempBlock, getX(l), site);
                     dud.Rj += dud.tempBlock * getY(l);
                 }
 
-                take4cols(dud.Sj, dud.Rj, site);
+                takesomecols(dud.Sj, dud.Rj, site);
 
-                dud.Mj = eye4cpx - dud.Sj * delta_forsite + delta_forsite;
-                num probSFermion = arma::det(dud.Mj).real();
+                dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
+                num probSFermion = dataReal(arma::det(dud.Mj));
 
                 num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
 
@@ -2030,23 +2066,22 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 if (prob > 1.0 or rng.rand01() < prob) {
                     //count accepted update
                     accratio += 1.0;
-
-                    phi0(site, timeslice) = newphi[0];
-                    phi1(site, timeslice) = newphi[1];
-                    phi2(site, timeslice) = newphi[2];
+                    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+                        phi(site, dim, timeslice) = newphi[dim];
+                    }
                     cdwl(site, timeslice) = new_cdwl;
                     updateCoshSinhTerms(site, timeslice);
 
                     //we need Cj only to update X
-                    take4cols(dud.Cj, g, site);
+                    takesomecols(dud.Cj, g, site);
                     for (uint32_t l = 0; l < j; ++l) {
-                        take4cols(dud.tempBlock, getY(l), site);
+                        takesomecols(dud.tempBlock, getY(l), site);
                         dud.Cj += getX(l) * dud.tempBlock;
                     }
                     //Rj is now Rj - \Id_j, for updating Y
-                    for (uint32_t rc = 0; rc < 4; ++rc) {
+                    for (uint32_t rc = 0; rc < MSF; ++rc) {
                         uint32_t entry = site + rc * N;
-                        dud.Rj(rc, entry) -= cpx(1.0, 0.0);
+                        dud.Rj(rc, entry) -= DataOne;
                     }
 
                     //update X and Y
@@ -2060,8 +2095,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
         }
         if (j > 0) {
             if (j < delayStepsNow) {
-                dud.X.resize(4*N, 4*j);
-                dud.Y.resize(4*j, 4*N);
+                dud.X.resize(MSF*N, MSF*j);
+                dud.Y.resize(MSF*j, MSF*N);
             }
             //carry out the delayed updates of the Green's function
             g += dud.X*dud.Y;
@@ -2072,8 +2107,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx::fixed<4,4> DetSDW<CB, OPDIM>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
-                                                 uint32_t timeslice, uint32_t site) {
+MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
+    Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site) {
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
     //compute non-zero elements of delta
@@ -2441,19 +2476,44 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::addGlobalRandomDisplacement() {
     // shift fields by a random, constant displacement
-    num r0 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
-    phi0 += r0;
-    num r1 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
-    phi1 += r1;
-    num r2 = rng.randRange(-ad.phiDelta, +ad.phiDelta);
-    phi2 += r2;
+    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+        num r = rng.randRange(-ad.phiDelta, +ad.phiDelta);
+        phi( arma::span::all,
+             arma::span(dim, dim),
+             arma::span::all       ) += r;
+    }
+}
+
+
+template<int OPDIM> VecNum::fixed<OPDIM> randomDirection(RngWrapper& rng) {
+    (void) rng;
+    static_assert(OPDIM == 1 or OPDIM == 2 or OPDIM == 3,
+                  "unsupported OPDIM");
+}
+template<> VecNum::fixed<1> randomDirection(RngWrapper& rng) {
+    VecNum::fixed<1> isingDir;
+    if (rng.rand01() <= 0.5) {
+        isingDir[0] = -1.0;
+    } else {
+        isingDir[0] = +1.0;
+    }
+    return isingDir;
+}
+template<> VecNum::fixed<2> randomDirection(RngWrapper& rng) {
+    VecNum::fixed<2> circleDir;
+    std::tie(circleDir[0], circleDir[1]) = rng.randPointOnCircle();
+    return circleDir;
+}
+template<> VecNum::fixed<3> randomDirection(RngWrapper& rng) {
+    VecNum::fixed<3> sphereDir;
+    std::tie(sphereDir[0], sphereDir[1], sphereDir[2]) = rng.randPointOnSphere();
+    return sphereDir;
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
     // choose random direction
-    Phi rd;
-    std::tie(rd[0], rd[1], rd[2]) = rng.randPointOnSphere();
+    Phi rd = randomDirection<OPDIM>(rng);
 
     auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
         // phi -> phi - 2* (phi . r) * r
@@ -2464,9 +2524,9 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
         return arma::dot(this->getPhi(site,timeslice), rd);
     };
     auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
-        phi0(site,timeslice) = phi[0];
-        phi1(site,timeslice) = phi[1];
-        phi2(site,timeslice) = phi[2];
+        for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+            phi(site, dim, timeslice) = phi[dim];
+        }
         if (updateCoshSinh) {
             this->updateCoshSinhTermsPhi(site, timeslice);
         }
@@ -2476,7 +2536,6 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
         setPhi(site, timeslice, flippedPhi(site, timeslice));
     };
 
-    
     // construct cluster
     gmd.visited.zeros(pars.N, pars.m+1);
     typedef typename GlobalMoveData::SpaceTimeIndex STI;
@@ -2535,12 +2594,10 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
-    // Backup phi*, Green's function and UdV-storage.  For Quantities
+    // Backup phi, Green's function and UdV-storage.  For Quantities
     // which are recomputed entirely in each global update, we just
     // swap the contents.
-    gmd.phi0 = phi0;
-    gmd.phi1 = phi1;
-    gmd.phi2 = phi2;
+    gmd.phi = phi;
     gmd.coshTermPhi = coshTermPhi;
     gmd.sinhTermPhi = sinhTermPhi;
     gmd.g.swap(g);
@@ -2549,9 +2606,7 @@ void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
-    phi0.swap(gmd.phi0);
-    phi1.swap(gmd.phi1);
-    phi2.swap(gmd.phi2);
+    phi.swap(gmd.phi);
     coshTermPhi.swap(gmd.coshTermPhi);
     sinhTermPhi.swap(gmd.sinhTermPhi);
     g.swap(gmd.g);
@@ -2560,11 +2615,9 @@ void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
-    Phi phi;
-    phi[0] = phi0(site, timeslice);
-    phi[1] = phi1(site, timeslice);
-    phi[2] = phi2(site, timeslice);
+typename DetSDW<CB, OPDIM>::changedPhiInt
+DetSDW<CB, OPDIM>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
+    Phi phi = getPhi(site, timeslice);
 
     for (auto& phi_comp: phi) {
         num r = rng.randRange(-ad.phiDelta, +ad.phiDelta);
@@ -2574,23 +2627,32 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeNewPhiBox(ui
     return std::make_tuple(PHI, phi, cdwl(site,timeslice));
 }
 
-template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
+
+template<int OPDIM> VecNum::fixed<OPDIM> proposeRandomRotatedVector(
+    RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
+    (void) rng; void(angleDelta); void(oldvec);
+    throw GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
+    return oldvec;
+}
+template<> VecNum::fixed<3> proposeRandomRotatedVector(
+    RngWrapper& rng, num angleDelta, VecNum::fixed<3> vec) {
+
+    using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
     //old orientation
-    num x = phi0(site, timeslice);
-    num y = phi1(site, timeslice);
-    num z = phi2(site, timeslice);
+    num x = vec[0];
+    num y = vec[1];
+    num z = vec[2];
     //squares:
     num x2 = pow(x, 2.0);
     num y2 = pow(y, 2.0);
-    num z2 = pow(z, 2);
+    num z2 = pow(z, 2.0);
     //squared length
     num r2 = x2 + y2 + z2;
     //length
     num r = sqrt(r2);
 
     //new angular coordinates:
-    num cosTheta = rng.rand01() * (1.0 - ad.angleDelta) + ad.angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+    num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
     num phi = rng.rand01() * 2.0 * M_PI;
     num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
     num cosPhi = cos(phi);
@@ -2614,20 +2676,48 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedPhi(u
     newy *= r;
     newz *= r;
 
-    Phi newphi;
-    newphi[0] = newx;
-    newphi[1] = newy;
-    newphi[2] = newz;
+    //new orientation
+    vec[0] = newx;
+    vec[1] = newy;
+    vec[2] = newz;
+
+    return vec;
+}
+
+
+template<CheckerboardMethod CB, int OPDIM>
+typename DetSDW<CB, OPDIM>::changedPhiInt
+DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
+    assert(OPDIM == 3); 
+    Phi newphi = proposeRandomRotatedVector<OPDIM>(rng, ad.angleDelta,
+                                                   getPhi(site, timeslice));
     return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
 }
 
-template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
+
+
+
+template<int OPDIM>
+std::tuple<VecNum::fixed<OPDIM>, bool>
+proposeRandomScaledVector(
+    NormalDistribution& normal_distribution, num scaleDelta,
+    VecNum::fixed<OPDIM> vec) {
+    
+    (void) normal_distribution; void(scaleDelta) void(vec);
+    throw GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
+    return std::make_tuple(vec, false);
+}
+template<>
+std::tuple<VecNum::fixed<3>, bool>
+proposeRandomScaledVector(
+    NormalDistribution& normal_distribution, num scaleDelta,
+    VecNum::fixed<3> vec) {
+
     using std::pow; using std::abs;
     //old orientation
-    num x = phi0(site, timeslice);
-    num y = phi1(site, timeslice);
-    num z = phi2(site, timeslice);
+    num x = vec[0];
+    num y = vec[1];
+    num z = vec[2];
     //squares
     num x2 = pow(x, 2);
     num y2 = pow(y, 2);
@@ -2640,7 +2730,7 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeScaledPhi(ui
     //It is nececssary to consider the cubed length, as we have in spherical coordinates for
     //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
     //want to bias against long lengths
-    num new_r3 = normal_distribution.get(ad.scaleDelta, r3);
+    num new_r3 = normal_distribution.get(scaleDelta, r3);
     num scale  = 1.0;
     bool valid = true;
     // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
@@ -2659,19 +2749,49 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeScaledPhi(ui
     num new_y = y * scale;
     num new_z = z * scale;
 
+    vec[0] = new_x;
+    vec[1] = new_y;
+    vec[2] = new_z;
+    
+    return std::make_tuple(vec, valid);
+}
+
+
+template<CheckerboardMethod CB, int OPDIM>
+typename DetSDW<CB, OPDIM>::changedPhiInt
+DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
+    bool valid;
     Phi new_phi;
-    new_phi[0] = new_x;
-    new_phi[1] = new_y;
-    new_phi[2] = new_z;
+    std:tie(new_phi, valid) = proposeRandomScaledVector<OPDIM>(
+        normal_distribution, ad.scaleDelta, getPhi(site, timeslice));    
     return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
 }
 
-template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
+
+template<int OPDIM>
+std::tuple<VecNum::fixed<OPDIM>, bool>
+proposeRandomRotatedScaledVector(
+    NormalDistribution& normal_distribution, RngWrapper& rng,
+    num angleDelta, num scaleDelta,
+    VecNum::fixed<OPDIM> vec) {
+    
+    (void) normal_distribution; void(rng);
+    void(scaleDelta); void(angleDelta); void(vec);
+    throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
+    return std::make_tuple(vec, false);
+}
+template<>
+std::tuple<VecNum::fixed<3>, bool>
+proposeRandomScaledVector(
+    NormalDistribution& normal_distribution, RngWrapper& rng,
+    num angleDelta, num scaleDelta,
+    VecNum::fixed<3> vec) {
+    using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
+
     //old orientation
-    num x = phi0(site, timeslice);
-    num y = phi1(site, timeslice);
-    num z = phi2(site, timeslice);
+    num x = vec[0];
+    num y = vec[1];
+    num z = vec[2];
     //squares:
     num x2 = pow(x, 2);
     num y2 = pow(y, 2);
@@ -2680,7 +2800,6 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScale
     num r2 = x2 + y2 + z2;
     //length
     num r = sqrt(r2);
-
     //cubed length
     num r3 = pow(r, 3);
 
@@ -2689,21 +2808,22 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScale
     //It is nececssary to consider the cubed length, as we have in spherical coordinates for
     //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
     //want to bias against long lengths
-    num new_r3 = normal_distribution.get(ad.scaleDelta, r3);
+    num new_r3 = normal_distribution.get(scaleDelta, r3);
     if (new_r3 <= 0) {
         // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
         // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
         // and declare it as to be rejected.
-        Phi newphi;
-        newphi[0] = x;
-        newphi[1] = y;
-        newphi[2] = z;
-        return std::make_tuple(NONE, newphi, cdwl(site,timeslice));
+
+        //new orientation = old orientation
+        vec[0] = x;
+        vec[1] = y;
+        vec[2] = z;
+        return std::make_tuple(vec, false);
     } else {
         // otherwise we scale the spin appropriately and also change its orientation
 
         //new angular coordinates:
-        num cosTheta = rng.rand01() * (1.0 - ad.angleDelta) + ad.angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+        num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
         num phi = rng.rand01() * 2.0 * M_PI;
         num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
         num cosPhi = cos(phi);
@@ -2727,12 +2847,24 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScale
         newy *= new_r;
         newz *= new_r;
 
-        Phi newphi;
-        newphi[0] = newx;
-        newphi[1] = newy;
-        newphi[2] = newz;
-        return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
+        //new orientation
+        vec[0] = newx;
+        vec[1] = newy;
+        vec[2] = newz;
+        return std::make_tuple(vec, true);
     }
+}
+
+
+template<CheckerboardMethod CB, int OPDIM>
+typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
+    bool changedPhi;
+    Phi new_phi;
+    std::tie(new_phi, changedPhi) = proposeRandomRotatedScaledVector(
+        normal_distribution, rng, ad.angleDelta, ad.scaleDelta,
+        getPhi(site, timeslice));
+    return std::make_tuple(
+        (changedPhi ? PHI : NONE), new_phi, cdwl(site,timeslice));
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -2744,11 +2876,7 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeNewCDWl(
     else if (r <= 0.5)  cdwl_new = -2;
     else if (r <= 0.75) cdwl_new = +1;
     else                cdwl_new = -1;
-    Phi samephi;
-    samephi[0] = phi0(site,timeslice);
-    samephi[1] = phi1(site,timeslice);
-    samephi[2] = phi2(site,timeslice);
-    return std::make_tuple(CDWL, samephi, cdwl_new);
+    return std::make_tuple(CDWL, getPhi(site,timeslice), cdwl_new);
 }
 
 
