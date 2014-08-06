@@ -857,24 +857,24 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
         timing.start("computeBmatSDW_direct");
         using arma::eye; using arma::zeros; using arma::diagmat;
         if (k2 == k1) {
-            return MatCpx(eye(4*N,4*N), zeros(4*N,4*N));
+            return arma::eye<MatData>(MatrixSizeFactor*N, MatrixSizeFactor*N);
         }
         assert(k2 > k1);
         assert(k2 <= m);
 
         //compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-        auto singleTimesliceProp = [this,N](uint32_t k) -> MatCpx {
+        auto singleTimesliceProp = [this,N](uint32_t k) -> MatData {
             timing.start("singleTimesliceProp_direct");
-            MatCpx result(4*N, 4*N);
+            MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
-            //submatrix view helper for a 4N*4N matrix
-            auto block = [&result, N](uint32_t row, uint32_t col) {
+            //submatrix view helper for a 2Nx2n | 4Nx4N matrix
+            auto block = [&result, N](uint32_t row, u+int32_t col) {
                 return result.submat(row * N, col * N,
                                      (row + 1) * N - 1, (col + 1) * N - 1);
             };
-            const auto& kphi0 = phi0.col(k);
-            const auto& kphi1 = phi1.col(k);
-            const auto& kphi2 = phi2.col(k);
+            const auto& kphi0 = phi0.slice(k).col(0);
+            const auto& kphi1 = phi1.slice(k).col(1);
+            const auto& kphi2 = phi2.slice(k).col(2);
             //      debugSaveMatrix(kphi0, "kphi0");
             //      debugSaveMatrix(kphi1, "kphi1");
             //      debugSaveMatrix(kphi2, "kphi2");
@@ -882,49 +882,62 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             const auto& ksinhTermPhi = sinhTermPhi.col(k);
             const auto& kcoshTermCDWl = coshTermCDWl.col(k);
             const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
-            //VecNum kd = this->compute_d_for_cdwl(cdwl.col(k));
 
-            //is this the best way to set the real and imaginary parts
-            //of a complex submatrix?
-            //TODO: below some multiplications are repeated, could be
-            //pulled out -- however, currently this routine is not
-            //called often anyway (when the checkerboard approx is used)
-            block(0, 0) = MatCpx(
-                diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
-                zeros(N,N));
-            block(0, 1).zeros();
-            block(0, 2) = MatCpx(
-                diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                zeros(N,N));
-            block(0, 3) = MatCpx(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-            block(1, 0).zeros();
-            block(1, 1) = block(0, 0);
-            block(1, 2) = MatCpx(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-            block(1, 3) = MatCpx(
-                diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                zeros(N,N));
-            block(2, 0) = MatCpx(
-                diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                zeros(N,N));
-            block(2, 1) = MatCpx(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-            block(2, 2) = MatCpx(
-                diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy,
-                zeros(N,N));
-            block(2, 3).zeros();
-            block(3, 0) = MatCpx(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-            block(3, 1) = MatCpx(
-                diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                zeros(N,N));
-            block(3, 2).zeros();
-            block(3, 3) = block(2, 2);
+            //upper left 2*2 blocks
+            block(0, 0).set_real(
+                diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx);
+            if (OPDIM != 1) {
+                block(0, 0).set_imag(zeros(N, N));
+            }
+            block(0, 1).set_real(
+                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+            if (OPDIM != 1) {
+                block(0, 1).set_imag(
+                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+            }
+            block(1, 0).set_real(
+                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+            if (OPDIM != 1) {
+                block(1, 0).set_imag(
+                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+            }
+            block(1, 1).set_real(
+                diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy);
+            if (OPDIM != 1) {
+                block(1, 1).set_imag(zeros(N,N));
+            }
+
+            if (OPDIM == 3) {
+                //lower right 2*2 blocks
+                block(2, 2) = block(0, 0);
+                block(2, 3) = MatCpx(
+                    diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+                block(3, 2) = MatCpx(
+                    diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+                block(3, 3) = block(1, 1);
+
+                //anti-diagonal blocks
+                block(0, 3) = MatCpx(
+                    diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                    zeros(N,N));
+                block(1, 2) = MatCpx(
+                    diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                    zeros(N,N));
+                block(2, 0) = MatCpx(
+                    diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                    zeros(N,N));
+                block(3, 0) = MatCpx(
+                    diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                    zeros(N,N));
+
+                //zero blocks
+                block(0, 2).zeros();
+                block(1, 3).zeros();
+                block(2, 0).zeros();
+                block(3, 1).zeros();
+            }
 
             //      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
             //      debugSaveMatrix(arma::imag(result), "emdtauVemdtauK_imag");
@@ -956,51 +969,83 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 }
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatCpx DetSDW<CB, OPDIM>::computePotentialExponential(
-    int sign, VecNum phi0, VecNum phi1, VecNum phi2, VecInt cdwl) {
+MatData DetSDW<CB, OPDIM>::computePotentialExponential(
+    int sign, checkarray<VecNum, OPDIM> phi, VecInt cdwl) {
     const auto N = pars.N;
-    const VecCpx a (phi2, arma::zeros<VecNum>(N));
-    const VecCpx b (phi0, -phi1);
-    const VecCpx bc(phi0, +phi1);
 
-//    VecCpx d(N);
-//    for (uint32_t i = 0; i < N; ++i) {
-//    	d[i] = std::sqrt(dtau) * cdwU * cdwl_eta(cdwl[i]);
-//    }
-//    d.set_imag(arma::zeros<VecNum>(N));
-    VecCpx d(compute_d_for_cdwl(cdwl), arma::zeros<VecNum>(N));
+    //note: Armadillo functions set_real and set_imag are also defined
+    //for purely real matrices (where set_imag just does nothing)
+
+    VecData a;
+    if (OPDIM == 3) {
+        a.set_size(N);
+        a.set_real(phi[2]);
+        a.set_imag(arma::zeros<VecNum>(N));
+    }
+    
+    VecData b;
+    b.set_size(N);
+    b.set_real(phi[0]);
+    if (OPDIM == 2 or OPDIM == 3) {
+        b.set_imag(-phi[1]);
+    } // else b is real
+    
+    VecData bc;
+    bc.set_size(N);
+    b.set_real(phi[0]);
+    if (OPDIM == 2 or OPDIM == 3) {
+        b.set_imag( phi[1]);
+    } // else bc is real (and equal to b)
+
+    VecData d;
+    d.set_size(N);
+    d.set_real(compute_d_for_cdwl(cdwl));
+    if (OPDIM == 2 or OPDIM == 3) {
+        d.set_imag(arma::zeros<VecNum>(N));
+    } // else d is of (real) type VecNum anyway
+    
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-    MatCpx V(4*N, 4*N);
-    V.zeros(4*N, 4*N);
-    block(V,0,2).diag() = a;
-    block(V,0,3).diag() = b;
-    block(V,1,2).diag() = bc;
-    block(V,1,3).diag() = -a;
-    block(V,2,0).diag() = a;
-    block(V,2,1).diag() = b;
-    block(V,3,0).diag() = bc;
-    block(V,3,1).diag() = -a;
+    MatData V(MatrixSizeFactor*N, MatrixSizeFactor*N);
+    V.zeros(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
-    MatCpx D(4*N, 4*N);
-    D.zeros(4*N, 4*N);
-    block(D,0,0).diag()	= d;
-    block(D,1,1).diag()	= d;
-    block(D,2,2).diag()	= -d;
-    block(D,3,3).diag()	= -d;
+    //OPDIM == 1 or OPDIM == 2: just two non-zero blocks of a 2Nx2N matrix
+    block(V,0,1).diag() = b;
+    block(V,1,0).diag() = bc;
+
+    //OPDIM == 3: 4Nx4N matrix: some additional and some repeated blocks
+    if (OPDIM == 3) {
+        block(V,2,3).diag() = bc;
+        block(V,3,2).diag() =  b;
+        block(V,0,3).diag() =  a;
+        block(V,1,2).diag() = -a;
+        block(V,2,1).diag() = -a;
+        block(V,3,0).diag() = -a;
+    }
+
+    MatData D(MatrixSizeFactor*N, MatrixSizeFactor*N);
+    D.zeros(MatrixSizeFactor*N, MatrixSizeFactor*N);
+    //OPDIM == 1 or OPDIM == 2: just two non-zero blocks of a 2Nx2N matrix
+    block(D,0,0).diag()	=  d;
+    block(D,1,1).diag()	= -d;
+    //OPDIM == 3: 4Nx4N matrix: repeated blocks
+    if (OPDIM == 3) {
+        block(D,2,2).diag()	=  d;
+        block(D,3,3).diag()	= -d;
+    }
 #undef block
 
     VecNum eigval;
-    MatCpx eigvec;
+    MatData eigvec;
 
     arma::eig_sym(eigval, eigvec, num(sign)*0.5*pars.dtau*V);
-    MatCpx exp_vphi_half(4*N, 4*N);
+    MatData exp_vphi_half(MatrixSizeFactor*N, MatrixSizeFactor*N);
     exp_vphi_half = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
     arma::eig_sym(eigval, eigvec, -num(sign)*D);
-    MatCpx exp_D(4*N, 4*N);
+    MatData exp_D(MatrixSizeFactor*N, MatrixSizeFactor*N);
     exp_D = eigvec * arma::diagmat(arma::exp(eigval)) * arma::trans(eigvec);
 
-    MatCpx result = exp_vphi_half * exp_D * exp_vphi_half;
+    MatData result = exp_vphi_half * exp_D * exp_vphi_half;
 
     return result;
 }

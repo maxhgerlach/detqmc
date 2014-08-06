@@ -139,7 +139,8 @@ protected:
     typedef std::conditional<OPDIM==1, num, cpx>::type DataType;
     constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
     static num dataReal(const cpx& value) { return value.real(); }
-    static num dataReal(const num& value) { return value; }    
+    static num dataReal(const num& value) { return value; }
+
     typedef arma::Mat<DataType> MatData;
     typedef arma::Vec<DataType> VecData;
     typedef arma::Cube<DataType> CubeData;
@@ -669,7 +670,7 @@ protected:
 */
     // Compute e^( sign * dtau * V(phi-configuration) ) as a dense matrix.
     // for one timeslice. This may be useful for checks.
-    MatData computePotentialExponential(int sign, checkarray<num, OPDIM> phi, VecInt cdwl);
+    MatData computePotentialExponential(int sign, checkarray<VecNum, OPDIM> phi, VecInt cdwl);
 
     //several checks, many are normally commented out
     virtual void consistencyCheck();
@@ -705,7 +706,7 @@ protected:
     //update the auxiliary field and the green function in the single timeslice
     void updateInSlice(uint32_t timeslice);
     //this template member function calls the right one of those below
-    //return acceptance ratio for that sweepm
+    //return acceptance ratio for that sweep
     template<class CallableProposeSpin>
     num callUpdateInSlice_for_updateMethod(uint32_t timeslice, CallableProposeSpin proposeSpin) {
     	switch(pars.updateMethod) {
@@ -760,12 +761,12 @@ protected:
     };
     typedef std::tuple<Changed,Phi,int32_t> changedPhiInt;
     //generate a new phi:
-    changedPhiInt proposeNewPhiBox(uint32_t site, uint32_t timeslice);			//from a box
+    changedPhiInt proposeNewPhiBox(uint32_t site, uint32_t timeslice);		//from a box
     changedPhiInt proposeRotatedPhi(uint32_t site, uint32_t timeslice);		//same length, new angles
-    changedPhiInt proposeScaledPhi(uint32_t site, uint32_t timeslice);			//new length, same angles
+    changedPhiInt proposeScaledPhi(uint32_t site, uint32_t timeslice);		//new length, same angles
     changedPhiInt proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice);	//new length, new angles
     //generate a new cdwl:
-    changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);			//choose Metropolis-randomly from +-1, +-2
+    changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);		//choose Metropolis-randomly from +-1, +-2
     //more generic helpers
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
     MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
