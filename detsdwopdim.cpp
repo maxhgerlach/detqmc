@@ -2882,13 +2882,9 @@ typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeNewCDWl(
 
 template<CheckerboardMethod CB, int OPDIM>
 num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
-    //switched to asymmetric numerical derivative
     using arma::dot;
 
-    Phi oldphi;
-    oldphi[0] = phi0(site, timeslice);
-    oldphi[1] = phi1(site, timeslice);
-    oldphi[2] = phi2(site, timeslice);
+    Phi oldphi = getPhi(site, timeslice);
 
     Phi phiDiff = newphi - oldphi;
 
@@ -2901,27 +2897,19 @@ num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi ne
     num phiPow4Diff = newphiPow4 - oldphiPow4;
 
     uint32_t kEarlier = timeNeigh(ChainDir::MINUS, timeslice);
-    Phi phiEarlier;
-    phiEarlier[0] = phi0(site, kEarlier);
-    phiEarlier[1] = phi1(site, kEarlier);
-    phiEarlier[2] = phi2(site, kEarlier);
+    Phi phiEarlier = getPhi(site, kEarlier);
     uint32_t kLater = timeNeigh(ChainDir::PLUS, timeslice);
-    Phi phiLater;
-    phiLater[0] = phi0(site, kLater);
-    phiLater[1] = phi1(site, kLater);
-    phiLater[2] = phi2(site, kLater);
+    Phi phiLater = getPhi(site, kLater);
     Phi phiTimeNeigh = phiLater + phiEarlier;
 
     Phi phiZero;
-    phiZero[0] = phiZero[1] = phiZero[2] = 0;
+    phiZero.zeros();
     Phi phiSpaceNeigh = std::accumulate(
         spaceNeigh.beginNeighbors(site),
         spaceNeigh.endNeighbors(site),
         phiZero,
         [this, timeslice] (Phi accum, uint32_t neighSite) -> Phi{
-            accum[0] += phi0(neighSite, timeslice);
-            accum[1] += phi1(neighSite, timeslice);
-            accum[2] += phi2(neighSite, timeslice);
+            accum += getPhi(neighSite, timeslice);
             return accum;
         }
         );
@@ -2951,31 +2939,31 @@ num DetSDW<CB, OPDIM>::phiAction() {
     const auto N = pars.N;
     const auto m = pars.m;
     //switched to asymmetric numerical derivative
-    arma::field<Phi> phi(N, m+1);
+    arma::field<Phi> phiCopy(N, m+1);
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for (uint32_t site = 0; site < N; ++site) {
-            phi(site, timeslice)[0] = phi0(site, timeslice);
-            phi(site, timeslice)[1] = phi1(site, timeslice);
-            phi(site, timeslice)[2] = phi2(site, timeslice);
+            phiCopy(site, timeslice)[0] = phi(site, 0, timeslice);
+            phiCopy(site, timeslice)[1] = phi(site, 1, timeslice);
+            phiCopy(site, timeslice)[2] = phi(site, 2, timeslice);
         }
     }
     num action = 0;
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for (uint32_t site = 0; site < N; ++site) {
             Phi timeDerivative =
-                (phi(site, timeslice) - phi(site, timeNeigh(ChainDir::MINUS, timeslice)))
+                (phiCopy(site, timeslice) - phiCopy(site, timeNeigh(ChainDir::MINUS, timeslice)))
                 / dtau;
             action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
             //count only neighbors in PLUS-directions: no global overcounting of bonds
-            Phi xneighDiff = phi(site, timeslice) -
-                phi(spaceNeigh(XPLUS, site), timeslice);
+            Phi xneighDiff = phiCopy(site, timeslice) -
+                phiCopy(spaceNeigh(XPLUS, site), timeslice);
             action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
-            Phi yneighDiff = phi(site, timeslice) -
-                phi(spaceNeigh(YPLUS, site), timeslice);
+            Phi yneighDiff = phiCopy(site, timeslice) -
+                phiCopy(spaceNeigh(YPLUS, site), timeslice);
             action += 0.5 * dtau * arma::dot(yneighDiff, yneighDiff);
 
-            num phisq = arma::dot(phi(site, timeslice), phi(site, timeslice));
+            num phisq = arma::dot(phiCopy(site, timeslice), phiCopy(site, timeslice));
             action += 0.5 * dtau * r * phisq;
 
             action += 0.25 * dtau * u * std::pow(phisq, 2);
@@ -3079,17 +3067,17 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
-    typedef arma::subview<cpx> SubMatCpx;            //don't do references or const-references of this type
-    if (CB == CB_NONE) {
+MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
+    typedef arma::subview<DataType> SubMatData;            //don't do references or const-references of this type
+    if (CB == CB_NONE){ 
         //non-checkerboard
         return shiftGreenSymmetric_impl(
             //rightMultiply
-            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+            [this](SubMatData output, SubMatData input, Band band) -> void {
                 output = input * propK_half_inv[band];
             },
             //leftMultiply
-            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+            [this](SubMatData output, SubMatData input, Band band) -> void {
                 output = propK_half[band] * input;
             }
             );
@@ -3100,7 +3088,7 @@ MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
             // output and input are NxN blocks of a complex matrix
             // this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
             // to the right of input and stores the result in output
-            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+            [this](SubMatData output, SubMatData input, Band band) -> void {
                 output = input;      //copy
                 this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
                                                       coshHopVerHalf[band], +sinhHopVerHalf[band]);
@@ -3111,7 +3099,7 @@ MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
             // output and input are NxN blocks of a complex matrix
             // this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2} * [Input]
             // to the left of input and stores the result in output
-            [this](SubMatCpx output, SubMatCpx input, Band band) -> void {
+            [this](SubMatData output, SubMatData input, Band band) -> void {
                 output = input;      //copy
                 this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
                                                      coshHopVerHalf[band], -sinhHopVerHalf[band]);
@@ -3128,12 +3116,12 @@ MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
 //references in a sense)
 template<CheckerboardMethod CB, int OPDIM>
 template<class RightMultiply, class LeftMultiply>
-MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     const auto N = pars.N;
     //submatrix view helper for a 4N*4N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-    MatCpx tempG(4*N, 4*N);
-    const MatCpx& oldG = g;
+    MatData tempG(4*N, 4*N);
+    const MatData& oldG = g;
     //multiply e^(dtau/2 K) from the right
     for (uint32_t row = 0; row < 4; ++row) {
         //block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
@@ -3143,7 +3131,7 @@ MatCpx DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, 
         rightMultiply( block(tempG, row, 3), block(oldG, row, 3), YBAND );
     }
     //multiply e^(-dtau/2 K) from the left
-    MatCpx newG(4*N, 4*N);
+    MatData newG(4*N, 4*N);
     for (uint32_t col = 0; col < 4; ++col) {
         //block(newG, 0, col) = propKx_half * block(tempG, 0, col);
         leftMultiply( block(newG, 0, col), block(tempG, 0, col), XBAND );
@@ -3337,9 +3325,9 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamText(const std::string& directory
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
                 for (uint32_t k = 1; k <= pars.m; ++k) {
-                    phi_output << phi0(i, k) << "\n"
-                               << phi1(i, k) << "\n"
-                               << phi2(i, k) << "\n";
+                    for (uint32_t dim = 0; dim <= OPDIM; ++dim) {
+                        phi_output << phi(i, dim, k) << "\n";
+                    }
                 }
             }
         }
@@ -3380,12 +3368,10 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinary(const std::string& directo
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
                 for (uint32_t k = 1; k <= pars.m; ++k) {
-                    phi_output.write(reinterpret_cast<const char*>(&(phi0(i, k))),
-                                     sizeof(phi0(i, k)));
-                    phi_output.write(reinterpret_cast<const char*>(&(phi1(i, k))),
-                                     sizeof(phi1(i, k)));
-                    phi_output.write(reinterpret_cast<const char*>(&(phi2(i, k))),
-                                     sizeof(phi2(i, k)));
+                    for (uint32_t dim = 0; dim <= OPDIM; ++dim) {
+                        phi_output.write(reinterpret_cast<const char*>(&(phi(i, dim, k))),
+                                         sizeof(phi(i, dim, k)));
+                    }
                 }
             }
         }
@@ -3589,5 +3575,3 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
 
 template class DetSDW<CB_NONE>;
 template class DetSDW<CB_ASSAAD_BERG>;
-
-
