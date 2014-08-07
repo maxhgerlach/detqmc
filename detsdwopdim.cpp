@@ -560,31 +560,12 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     const auto L = pars.L;        
     const auto N = pars.N;
     const auto m = pars.m;
-//    const auto dtau = pars.dtau;    
     
     assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
-//    normPhi /= num(N * m);
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
-    //meanPhiSquared = arma::dot(meanPhi, meanPhi);
-
-    // Phi phi_0;
-    // phi_0[0] = phi0(0, m);
-    // phi_0[1] = phi1(0, m);
-    // phi_0[2] = phi2(0, m);
-    // sdwSusc = 0;
-    // for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-    //     for (uint32_t site = 0; site < N; ++site) {
-    //         sdwSusc += ( phi_0[0] * phi0(site,timeslice)
-    //                    + phi_0[1] * phi1(site,timeslice)
-    //                    + phi_0[2] * phi2(site,timeslice)
-    //                    );
-    //     }
-    // }
-    // sdwSusc *= dtau;
-
 
     //fermion occupation number -- real space
     occX /= num(m * N);
@@ -600,9 +581,7 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     //equal-time pairing-correlations
     //-------------------------------
     pairPlus /= m;
-    //pairPlusimag /= m;
     pairMinus /= m;
-    //pairMinusimag /= m;
     // sites around the maximum range L/2, L/2
     static const uint32_t numSitesFar = 9;
     uint32_t sitesfar[numSitesFar] = {
@@ -611,19 +590,13 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
         coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
     };
     pairPlusMax = 0;
-    //pairPlusMaximag = 0;
     pairMinusMax = 0;
-    //pairMinusMaximag = 0;
     for (uint32_t i : sitesfar) {
         pairPlusMax += pairPlus[i];
-        //pairPlusMaximag += pairPlusimag[i];
         pairMinusMax += pairMinus[i];
-        //pairMinusMaximag += pairMinusimag[i];
     }
     pairPlusMax /= numSitesFar;
-    //pairPlusMaximag /= numSitesFar;
     pairMinusMax /= numSitesFar;
-    //pairMinusMaximag /= numSitesFar;
 
     // Fermionic energy contribution
     // -----------------------------
@@ -1785,7 +1758,14 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         //END-DEBUG-CHECK
         //****
 
-        num probSFermion = dataReal(det);
+        num probSFermion;
+        if (OPDIM == 3) {
+            probSFermion = dataReal(det);
+        } else {    
+            //      /G 0 \
+            //  det \0 G*/ = |det G|^2
+            probSFermion = std::pow(std::abs(det), 2);
+        }
 
         //DEBUG: determinant computation from new routine updateInSlice_woodbury:
 //        MatCpx::fixed<4,4> g_sub;
@@ -2033,8 +2013,16 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
         //the determinant ratio for the spin update is given by the determinant
         //of the following matrix M
         MatData::fixed<MSF,MSF> M = smalleye + (smalleye - g_sub) * delta_forsite;
-
-        num probSFermion = dataReal(arma::det(M));
+        DataType det = arma::det(M);
+        
+        num probSFermion;
+        if (OPDIM == 3) {
+            probSFermion = dataReal(det);
+        } else {    
+            //      /G 0 \
+            //  det \0 G*/ = |det G|^2
+            probSFermion = std::pow(std::abs(det), 2);
+        }
 
         num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
 
@@ -2131,7 +2119,16 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 takesomecols(dud.Sj, dud.Rj, site);
 
                 dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
-                num probSFermion = dataReal(arma::det(dud.Mj));
+
+                num det = arma::det(dud.Mj);
+                num probSFermion;
+                if (OPDIM == 3) {
+                    probSFermion = dataReal(det);
+                } else {    
+                    //      /G 0 \
+                    //  det \0 G*/ = |det G|^2
+                    probSFermion = std::pow(std::abs(det), 2);
+                }
 
                 num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
 
@@ -2416,6 +2413,11 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     for (num sv_ratio : green_sv_ratios) {
     	prob_fermion *= sv_ratio;
     }
+    if (OPDIM < 3) {
+        //      /G 0 \
+        //  det \0 G*/ = |det G|^2
+        prob_fermion = std::pow(prob_fermion, 2);
+    }
 
 //    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
 
@@ -2478,6 +2480,11 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     for (num sv_ratio : green_sv_ratios) {
     	prob_fermion *= sv_ratio;
     }
+    if (OPDIM < 3) {
+        //      /G 0 \
+        //  det \0 G*/ = |det G|^2
+        prob_fermion = std::pow(prob_fermion, 2);
+    }
 
     num prob = prob_scalar * prob_fermion;
 
@@ -2539,6 +2546,11 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     num prob_fermion = 1.0;
     for (num sv_ratio : green_sv_ratios) {
     	prob_fermion *= sv_ratio;
+    }
+    if (OPDIM < 3) {
+        //      /G 0 \
+        //  det \0 G*/ = |det G|^2
+        prob_fermion = std::pow(prob_fermion, 2);
     }
 
     num prob = prob_scalar * prob_fermion;
