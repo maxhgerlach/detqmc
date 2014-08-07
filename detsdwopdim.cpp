@@ -273,7 +273,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
 
     timeslices_included_in_measurement.insert(timeslice);
 
-    MatCpx gshifted = shiftGreenSymmetric();
+    MatData gshifted = shiftGreenSymmetric();
 
     //normphi, meanPhi, sdw-susceptibility
     for (uint32_t site = 0; site < pars.N; ++site) {
@@ -281,12 +281,42 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         meanPhi += phi_site;
     }
 
+    //helper function to access the Green's function elements for the
+    //current time slice, definition depending on OPDIM
+    // *1 is for the row index,
+    // *2 is for the column index
+    auto gl = [this, N, &gshifted](uint32_t site1, BandSpin bs1,
+                                   uint32_t site2, BandSpin bs2) -> DataType {
+        static_assert(XUP == 0); static_assert(YDOWN == 1);
+        static_assert(XDOWN == 2); static_assert(YUP == 3);
+        if (OPDIM == 3) {
+            return gshifted(site1 + N*bs1, site2 + N*bs2);
+        }
+        else {
+            if ((bs1 == XUP or bs1 == YDOWN) and (bs2 == XUP or bs2 == YDOWN)) {
+                return gshifted(site1 + N*bs1, site2 + N*bs2);
+            }
+            else if ((bs1 == XDOWN or bs1 == YUP) and (bs2 == XDOWN or bs2 == YUP)) {
+                return std::conj(gshifted(site1 + N*(bs1-2), site2 + N*(bs2-2)));
+            }
+            else {
+                return DataType(0);
+            }
+        }
+    }
+    auto gl = [this, N, &gshifted](uint32_t site1, Band band1, Spin spin1,
+                                   uint32_t site2, Band band2, Spin spin2) -> DataType {
+        BandSpin bs1 = getBandSpin(band1, spin1);
+        BandSpin bs2 = getBandSpin(band2, spin2);
+        return gl(site1, bs1, site2, bs2);
+    };
+
     //fermion occupation number -- real space
     for (uint32_t i = 0; i < N; ++i) {
-        occX[i] += std::real(gshifted(i, i) + gshifted(i+N, i+N));
-        occY[i] += std::real(gshifted(i+2*N, i+2*N) + gshifted(i+3*N, i+3*N));
+        occX[i] += std::real(gl(i, XUP, i, XUP) + gl(i, XDOWN, i, XDOWN));
+        occY[i] += std::real(gl(i, YUP, i, YUP) + gl(i, YDOWN, i, YDOWN));
     }
-
+ 
     //fermion occupation number -- k-space
     static const num pi = M_PI;
     //offset k-components for antiperiodic bc
@@ -314,10 +344,10 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                 num argument = kx * (ix - jx) + ky * (iy - jy);
                 cpx phase = std::exp(cpx(0, argument));
 
-                cpx green_x_up   = gshifted(i, j);
-                cpx green_x_down = gshifted(i + N, j + N);
-                cpx green_y_up   = gshifted(i + 2*N, j + 2*N);
-                cpx green_y_down = gshifted(i + 3*N, j + 3*N);
+                DataType green_x_up   = gl(i, XUP, j, XUP);
+                DataType green_x_down = gl(i, XDOWN, j, XDOWN);
+                DataType green_y_up   = gl(i, YUP, j, YUP);
+                DataType green_y_down = gl(i, YDOWN, j, YDOWN);
 
                 cpx x_cpx = phase * (green_x_up + green_x_down);
                 cpx y_cpx = phase * (green_y_up + green_y_down);
@@ -331,16 +361,6 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     //equal-time pairing-correlations
     //-------------------------------
 
-    //helper to access the green function for the current time-slice
-    //(which used to be "l")
-    // *1 is for the row index,
-    // *2 is for the column index
-    auto gl = [this, N, &gshifted](uint32_t site1, Band band1, Spin spin1,
-                                   uint32_t site2, Band band2, Spin spin2) -> cpx {
-        return gshifted(site1 + 2*N*band1 + N*spin1,
-                        site2 + 2*N*band2 + N*spin2);
-    };
-
     for (uint32_t i = 0; i < N; ++i) {
         //            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
         //                    std::make_tuple(i, 0), std::make_tuple(0, i)
@@ -351,8 +371,8 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             std::tuple<uint32_t,uint32_t>(0, i)
         };
 
-        cpx pairPlusCpx(0, 0);
-        cpx pairMinusCpx(0, 0);
+        DataType pairPlusCpx(0);
+        DataType pairMinusCpx(0);
 
         for (auto sites : sitePairs) {
             uint32_t siteA = std::get<0>(sites);
@@ -360,7 +380,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
 
             // the following two unwieldy sums have been evaluated with the Mathematica
             // notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
-            pairPlusCpx += cpx(-4.0, 0) * (
+            pairPlusCpx += DataType(-4.0) * (
                 gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
                 gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
                 gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
@@ -371,7 +391,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                 gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
                 );
 
-            pairMinusCpx += cpx(-4.0, 0) * (
+            pairMinusCpx += DataType(-4.0) * (
                 gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
                 gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
                 gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
@@ -391,9 +411,9 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
 
     // Fermionic energy contribution
     // -----------------------------
-    auto glij = [this, N, &gshifted](uint32_t site1, uint32_t site2, Band band, Spin spin) -> cpx {
-        return gshifted(site1 + 2*N*band + N*spin,
-                        site2 + 2*N*band + N*spin);
+    auto glij = [this, gl](uint32_t site1, uint32_t site2, Band band, Spin spin) -> DataType {
+        return gl(site1, band, spin,
+                  site2, band, spin);
     };
     const auto txhor = pars.txhor;
     const auto txver = pars.txver;    
@@ -403,40 +423,48 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
         Spin spins[] = {SPINUP, SPINDOWN};
         for (auto spin: spins) {
-            cpx e = cpx(txhor,0) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
-                + cpx(txhor,0) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
-                + cpx(txver,0) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
-                + cpx(txver,0) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
-                + cpx(tyhor,0) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
-                + cpx(tyhor,0) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
-                + cpx(tyver,0) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
-                + cpx(tyver,0) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
+            DataType e = DataType(txhor) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
+                + DataType(txhor) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
+                + DataType(txver) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
+                + DataType(txver) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
+                + DataType(tyhor) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
+                + DataType(tyhor) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
+                + DataType(tyver) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
+                + DataType(tyver) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
             fermionEkinetic += std::real(e);
             //fermionEkinetic_imag += std::imag(e);
         }
     }
     for (uint32_t i = 0; i < N; ++i) {
-        auto glbs = [this, i, gshifted, N](Band band1, Spin spin1,
-                                           Band band2, Spin spin2) -> cpx {
-            return gshifted(i + 2*N*band1 + N*spin1,
-                            i + 2*N*band2 + N*spin2);
+        auto glbs = [this, i, gl](Band band1, Spin spin1,
+                                  Band band2, Spin spin2) -> DataType {
+            return gl(i, band1, spin1, i, band2, spin2);
         };
 
         //factors for different combinations of spins
         //overall factor of -1 included
-        cpx up_up(-phi2(i,timeslice), 0);
-        cpx up_dn(-phi0(i,timeslice), +phi1(i,timeslice));
-        cpx dn_up(-phi0(i,timeslice), -phi1(i,timeslice));
-        cpx dn_dn(+phi2(i,timeslice), 0);
+         // up_up, up_dn, dn_up, dn_dn;
+        DataType up_up(0);
+        DataType up_dn = DataType(-phi0(i,timeslice)); // real part
+        DataType dn_up = DataType(-phi0(i,timeslice));
+        DataType dn_dn(0);
+        if (OPDIM >= 2) {
+            dataImag(up_dn, +phi1(i,timeslice));
+            dataImag(dn_up, -phi1(i,timeslice));
+        }
+        if (OPDIM == 3) {
+            up_up = DataType(-phi2(i,timeslice));
+            dn_dn = DataType(+phi2(i,timeslice));
+        }
 
-        cpx e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
-                         glbs(YBAND, SPINUP, XBAND, SPINUP))
-            + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
-                       glbs(YBAND, SPINUP, XBAND, SPINDOWN))
-            + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
-                       glbs(YBAND, SPINDOWN, XBAND, SPINUP))
-            + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
-                       glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
+        DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
+                              glbs(YBAND, SPINUP, XBAND, SPINUP))
+                   + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
+                              glbs(YBAND, SPINUP, XBAND, SPINDOWN))
+                   + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
+                              glbs(YBAND, SPINDOWN, XBAND, SPINUP))
+                   + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
+                              glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
 
         fermionEcouple += std::real(e);
         //fermionEcouple_imag += std::imag(e);
@@ -452,7 +480,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                 const Band BandValues[2] = {XBAND, YBAND};
                 for (Band b1 : BandValues) {
                     for (Band b2 : BandValues) {
-                        cpx contrib = 4.0 -
+                        DataType contrib = 4.0 -
                             gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
                             gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
                             gl(i, b1, SPINUP, j, b2, SPINDOWN)*
@@ -471,21 +499,21 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                             (-2.0 +
                              gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
                              gl(j, b2, SPINUP, j, b2, SPINUP));
-                        occCorr(b1, b2)(i, j) += contrib.real();
+                        occCorr(b1, b2)(i, j) += std::real(contrib);
                     }
                 }
             } else {
                 //equal site i, use band-specific code
-                cpx contribxx = 4.0 - 2.0*
+                DataType contribxx = 4.0 - 2.0*
                     gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
                     gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
                     gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
                     gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
                     (-3.0 + 2.0*
                      gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
-                occCorr(XBAND,XBAND)(i, i) += contribxx.real();
+                occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
                 
-                cpx contribxy = 4.0 -
+                DataType contribxy = 4.0 -
                     gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
                     gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
                     gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
@@ -504,22 +532,22 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                     (-2.0 +
                      gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
                      gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(XBAND,YBAND)(i,i) += contribxy.real();
-                occCorr(YBAND,XBAND)(i,i) += contribxy.real(); // it's symmetric in xy
+                occCorr(XBAND,YBAND)(i,i) += std::real(contribxy);
+                occCorr(YBAND,XBAND)(i,i) += std::real(contribxy); // it's symmetric in xy
 
-                cpx contribyy = 4.0 - 2.0*
+                DataType contribyy = 4.0 - 2.0*
                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
                     gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
                     (-3.0 + 2.0*
                      gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(YBAND,YBAND)(i,i) += contribyy.real();
+                occCorr(YBAND,YBAND)(i,i) += std::real(contribyy);
             }
         }
     }
 
-    cpx occDiffSqContrib = 0.0;
+    DataType occDiffSqContrib = 0.0;
     for (uint32_t i = 0; i < N; ++i) {
         occDiffSqContrib += -2.0*
             gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
@@ -549,7 +577,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
             gl(i, YBAND, SPINUP, i, YBAND, SPINUP);
     }
-    occDiffSq += (occDiffSqContrib.real()) / num(N);
+    occDiffSq += (std::real(occDiffSqContrib)) / num(N);
 
     timing.stop("sdw-measure");
 }

@@ -138,10 +138,12 @@ protected:
 */
     typedef std::conditional<OPDIM==1, num, cpx>::type DataType;
     constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
-    static num dataReal(const cpx& value) { return value.real(); }
-    static num dataReal(const num& value) { return value; }
+    static num dataReal(const cpx& value) { return value.real(); } // could just use std::real
+    static num dataReal(const num& value) { return value; }        //      -- " --
     static void dataReal(cpx& value, num realPart) { value.real(realPart); }
     static void dataReal(num& value, num realPart) { value = realPart; }
+    static void dataImag(cpx& value, num imagPart) { value.imag(imagPart); }
+    static void dataImag(num& value, num imagPart) { value = imagPart; }
 
     typedef arma::Mat<DataType> MatData;
     typedef arma::Vec<DataType> VecData;
@@ -208,7 +210,13 @@ protected:
     
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
-    enum BandSpin {XUP = 0, XDOWN = 1, YUP = 2, YDOWN = 3};
+    enum BandSpin {XUP = 0, YDOWN = 1, XDOWN = 2, YUP = 3};
+    static inline BandSpin getBandSpin(Band b, Spin s) {
+        if      (b == XBAND and s == SPINUP)   return XUP;
+        else if (b == YBAND and s == SPINDOWN) return YDOWN;
+        else if (b == XBAND and s == SPINDOWN) return XDOWN;
+        else if (b == YBAND and s == SPINUP)   return YUP;
+    }
     typedef ModelParamsDetSDW::BC_Type BC_Type;
     typedef ModelParamsDetSDW::UpdateMethod_Type UpdateMethod_Type;
     typedef ModelParamsDetSDW::SpinProposalMethod_Type SpinProposalMethod_Type;
