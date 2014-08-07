@@ -1552,12 +1552,6 @@ MatCpx DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint
     assert(k2 > k1);
     assert(k2 <= pars.m);
 
-//    MatCpx result = rightMultiplyBkInv(A, k2);
-//
-//    for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
-//        result = rightMultiplyBkInv(result, k);
-//    }
-
     MatCpx result = rightMultiplyBkInv(A, k1 + 1);
 
     for (uint32_t k = k1 + 2; k <= k2; ++k) {
@@ -2188,6 +2182,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 template<CheckerboardMethod CB, int OPDIM>
 MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site) {
+    constexpr auto MSF = MatrixSizeFactor;
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
     //compute non-zero elements of delta
@@ -2197,30 +2192,47 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     //current lattice site and time slice of e^(sign*dtau*V)
     auto evMatrix = [this](
         int sign,
-        num kphi0, num kphi1, num kphi2,
+        Phi kphi,
         num kcoshTermPhi, num ksinhTermPhi,
-        num kcoshTermCDWl, num ksinhTermCDWl) -> MatCpx::fixed<4,4> {
-        MatNum::fixed<4,4> ev_real;
-        ev_real(0,0) = ev_real(1,1) = kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl;
-        ev_real(2,2) = ev_real(3,3) = kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl;
-        ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;
-        ev_real(2,0) = ev_real(0,2) =  sign * kphi2 * ksinhTermPhi * kcoshTermCDWl;
-        ev_real(2,1) = ev_real(0,3) =  sign * kphi0 * ksinhTermPhi * kcoshTermCDWl;
-        ev_real(3,0) = ev_real(1,2) =  sign * kphi0 * ksinhTermPhi * kcoshTermCDWl;
-        ev_real(3,1) = ev_real(1,3) = -sign * kphi2 * ksinhTermPhi * kcoshTermCDWl;
+        num kcoshTermCDWl, num ksinhTermCDWl) -> MatData::fixed<MSF,MSF> {
+        
+        MatData::fixed<MSF,MSF> ev;
 
-        MatNum::fixed<4,4> ev_imag;
-        ev_imag.zeros();
-        ev_imag(0,3) = -sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
-        ev_imag(1,2) =  sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
-        ev_imag(2,1) = -sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
-        ev_imag(3,0) =  sign * kphi1 * ksinhTermPhi * kcoshTermCDWl;
+        dataReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
+        dataReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
+//        ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;  //zeros
+        dataReal(ev(0,1), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
+        dataReal(ev(1,0), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
 
-        return MatCpx::fixed<4,4>(ev_real, ev_imag);
+        if (OPDIM == 3) {
+            dataReal(ev(2,2), dataReal(ev(0,0)));
+            dataReal(ev(3,3), dataReal(ev(1,1)));
+            dataReal(ev(0,3), sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+            dataReal(ev(3,0), dataReal(ev(0,3)));
+            dataReal(ev(3,2), dataReal(ev(0,1)));
+            dataReal(ev(2,3), dataReal(ev(1,0)));
+            dataReal(ev(2,1), -sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+            dataReal(ev(1,2), dataReal(ev(2,1)));
+        }
+
+        if (OPDIM > 1) {
+            MatNum::fixed<MSF,MSF> ev_imag;
+            ev_imag.zeros();
+            ev_imag(0,1) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+            ev_imag(1,0) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+
+            if (OPDIM == 3) {
+                ev_imag(2,3) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+                ev_imag(3,2) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+            }
+            ev.set_imag(ev_imag);
+        }        
+        
+        return ev;
     };
-    MatCpx::fixed<4,4> evOld = evMatrix(
+    MatData::fixed<MSF,MSF> evOld = evMatrix(
         +1,
-        phi0(site, timeslice), phi1(site, timeslice), phi2(site, timeslice),
+        getPhi(site, timeslice),
         coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
         coshTermCDWl(site, timeslice), sinhTermCDWl(site, timeslice)
         );
@@ -2230,20 +2242,20 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     // VecNum debug_phi1 = phi1.col(timeslice);
     // VecNum debug_phi2 = phi2.col(timeslice);
     // VecInt debug_cdwl = cdwl.col(timeslice);
-    // MatCpx evOld_big = computePotentialExponential(
+    // MatData evOld_big = computePotentialExponential(
     //     +1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
     // arma::uvec indices;
     // indices << site << site+N << site+2*N << site+3*N;
-    // MatCpx::fixed<4,4> evOld_big_sub = evOld_big.submat(indices, indices);
+    // MatData::fixed<MSF,MSF> evOld_big_sub = evOld_big.submat(indices, indices);
     // print_matrix_diff(evOld, evOld_big_sub, "evOld diff");
     // //DEBUG -- OK
 
     num coshTermPhi_new, sinhTermPhi_new, coshTermCDWl_new, sinhTermCDWl_new;
-    std::tie(coshTermPhi_new, sinhTermPhi_new) = getCoshSinhTermPhi(newphi[0], newphi[1], newphi[2]);
+    std::tie(coshTermPhi_new, sinhTermPhi_new) = getCoshSinhTermPhi(newphi);
     std::tie(coshTermCDWl_new, sinhTermCDWl_new) = getCoshSinhTermCDWl(new_cdwl);
-    MatCpx::fixed<4,4> emvNew = evMatrix(
+    MatData::fixed<MSF,MSF> emvNew = evMatrix(
         -1,
-        newphi[0], newphi[1], newphi[2],
+        newphi,
         coshTermPhi_new, sinhTermPhi_new,
         coshTermCDWl_new, sinhTermCDWl_new
         );
@@ -2253,14 +2265,14 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     // debug_phi1[site] = newphi[1];
     // debug_phi2[site] = newphi[2];
     // debug_cdwl[site] = new_cdwl;
-    // MatCpx emvNew_big = computePotentialExponential(
+    // MatData emvNew_big = computePotentialExponential(
     //     -1, debug_phi0, debug_phi1, debug_phi2, debug_cdwl);
-    // MatCpx::fixed<4,4> emvNew_big_sub = emvNew_big.submat(indices, indices);
+    // MatData::fixed<MSF,MSF> emvNew_big_sub = emvNew_big.submat(indices, indices);
     // print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
     // //DEBUG -- OK now
     
-    MatCpx::fixed<4,4> delta_forsite = emvNew * evOld;
-    delta_forsite.diag() -= cpx(1.0, 0);
+    MatData::fixed<MSF,MSF> delta_forsite = emvNew * evOld;
+    delta_forsite.diag() -= DataOne;
     return delta_forsite;
 }
 
@@ -3189,7 +3201,7 @@ MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
     }
 }
 
-//RightMultiply and LeftMultiply should be functors for complex matrix subviews,
+//RightMultiply and LeftMultiply should be functors for complex|real matrix subviews,
 //that take parameters (output, input, [BAND]).  Armadillo submatrix views apparently do not have
 //any const correctness, and passing them by reference makes no sense (they are rich
 //references in a sense)
@@ -3197,26 +3209,30 @@ template<CheckerboardMethod CB, int OPDIM>
 template<class RightMultiply, class LeftMultiply>
 MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     const auto N = pars.N;
-    //submatrix view helper for a 4N*4N matrix
+    //submatrix view helper for a 4N*4N or 2N*2N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-    MatData tempG(4*N, 4*N);
+    MatData tempG(MatrixSizeFactor*N, MatrixSizeFactor*N);
     const MatData& oldG = g;
     //multiply e^(dtau/2 K) from the right
     for (uint32_t row = 0; row < 4; ++row) {
         //block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
         rightMultiply( block(tempG, row, 0), block(oldG, row, 0), XBAND );
-        rightMultiply( block(tempG, row, 1), block(oldG, row, 1), XBAND );
-        rightMultiply( block(tempG, row, 2), block(oldG, row, 2), YBAND );
-        rightMultiply( block(tempG, row, 3), block(oldG, row, 3), YBAND );
+        rightMultiply( block(tempG, row, 1), block(oldG, row, 1), YBAND );
+        if (OPDIM == 3) {
+            rightMultiply( block(tempG, row, 2), block(oldG, row, 2), XBAND );
+            rightMultiply( block(tempG, row, 3), block(oldG, row, 3), YBAND );
+        }
     }
     //multiply e^(-dtau/2 K) from the left
-    MatData newG(4*N, 4*N);
+    MatData newG(MatrixSizeFactor*N, MatrixSizeFactor*N);
     for (uint32_t col = 0; col < 4; ++col) {
         //block(newG, 0, col) = propKx_half * block(tempG, 0, col);
         leftMultiply( block(newG, 0, col), block(tempG, 0, col), XBAND );
-        leftMultiply( block(newG, 1, col), block(tempG, 1, col), XBAND );
-        leftMultiply( block(newG, 2, col), block(tempG, 2, col), YBAND );
-        leftMultiply( block(newG, 3, col), block(tempG, 3, col), YBAND );
+        leftMultiply( block(newG, 1, col), block(tempG, 1, col), YBAND );
+        if (OPDIM == 3) {
+            leftMultiply( block(newG, 2, col), block(tempG, 2, col), XBAND );
+            leftMultiply( block(newG, 3, col), block(tempG, 3, col), YBAND );
+        }
     }
 #undef block
     return newG;

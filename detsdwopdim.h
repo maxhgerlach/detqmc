@@ -140,6 +140,8 @@ protected:
     constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
     static num dataReal(const cpx& value) { return value.real(); }
     static num dataReal(const num& value) { return value; }
+    static void dataReal(cpx& value, num realPart) { value.real(realPart); }
+    static void dataReal(num& value, num realPart) { value = realPart; }
 
     typedef arma::Mat<DataType> MatData;
     typedef arma::Vec<DataType> VecData;
