@@ -313,6 +313,12 @@ protected:
 
     Green's function
 
+    Note for OPDIM < 3: In the O(1) and O(2) model we only need to
+    store and consider the upper left 2Nx2N block of the 4Nx4N
+    matrices, corresponding to the XUP,YDOWN subspace.  The lower
+    right block representing the XDOWN,YUP subspace is the complex
+    conjugate of the upper block.  Transition probabilities are then
+    given by the squared absolute value of the determinant of g.
 */    
     MatData& g;
 
