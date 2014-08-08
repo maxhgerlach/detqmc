@@ -285,10 +285,10 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     //current time slice, definition depending on OPDIM
     // *1 is for the row index,
     // *2 is for the column index
-    auto gl = [this, N, &gshifted](uint32_t site1, BandSpin bs1,
-                                   uint32_t site2, BandSpin bs2) -> DataType {
-        static_assert(XUP == 0); static_assert(YDOWN == 1);
-        static_assert(XDOWN == 2); static_assert(YUP == 3);
+    auto gl1 = [this, N, &gshifted](uint32_t site1, BandSpin bs1,
+                                    uint32_t site2, BandSpin bs2) -> DataType {
+        static_assert(XUP == 0, "XUP wrong"); static_assert(YDOWN == 1, "YDOWN wrong");
+        static_assert(XDOWN == 2, "XDOWN wrong"); static_assert(YUP == 3, "YUP wrong");
         if (OPDIM == 3) {
             return gshifted(site1 + N*bs1, site2 + N*bs2);
         }
@@ -303,18 +303,18 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                 return DataType(0);
             }
         }
-    }
-    auto gl = [this, N, &gshifted](uint32_t site1, Band band1, Spin spin1,
-                                   uint32_t site2, Band band2, Spin spin2) -> DataType {
+    };
+    auto gl = [this, N, &gl1](uint32_t site1, Band band1, Spin spin1,
+                              uint32_t site2, Band band2, Spin spin2) -> DataType {
         BandSpin bs1 = getBandSpin(band1, spin1);
         BandSpin bs2 = getBandSpin(band2, spin2);
-        return gl(site1, bs1, site2, bs2);
+        return gl1(site1, bs1, site2, bs2);
     };
 
     //fermion occupation number -- real space
     for (uint32_t i = 0; i < N; ++i) {
-        occX[i] += std::real(gl(i, XUP, i, XUP) + gl(i, XDOWN, i, XDOWN));
-        occY[i] += std::real(gl(i, YUP, i, YUP) + gl(i, YDOWN, i, YDOWN));
+        occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
+        occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
     }
  
     //fermion occupation number -- k-space
@@ -344,10 +344,10 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                 num argument = kx * (ix - jx) + ky * (iy - jy);
                 cpx phase = std::exp(cpx(0, argument));
 
-                DataType green_x_up   = gl(i, XUP, j, XUP);
-                DataType green_x_down = gl(i, XDOWN, j, XDOWN);
-                DataType green_y_up   = gl(i, YUP, j, YUP);
-                DataType green_y_down = gl(i, YDOWN, j, YDOWN);
+                DataType green_x_up   = gl1(i, XUP, j, XUP);
+                DataType green_x_down = gl1(i, XDOWN, j, XDOWN);
+                DataType green_y_up   = gl1(i, YUP, j, YUP);
+                DataType green_y_down = gl1(i, YDOWN, j, YDOWN);
 
                 cpx x_cpx = phase * (green_x_up + green_x_down);
                 cpx y_cpx = phase * (green_y_up + green_y_down);
@@ -445,16 +445,16 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         //overall factor of -1 included
          // up_up, up_dn, dn_up, dn_dn;
         DataType up_up(0);
-        DataType up_dn = DataType(-phi0(i,timeslice)); // real part
-        DataType dn_up = DataType(-phi0(i,timeslice));
+        DataType up_dn = DataType(-phi(i,0,timeslice)); // real part
+        DataType dn_up = DataType(-phi(i,0,timeslice));
         DataType dn_dn(0);
         if (OPDIM >= 2) {
-            dataImag(up_dn, +phi1(i,timeslice));
-            dataImag(dn_up, -phi1(i,timeslice));
+            dataImag(up_dn, +phi(i,1,timeslice));
+            dataImag(dn_up, -phi(i,1,timeslice));
         }
         if (OPDIM == 3) {
-            up_up = DataType(-phi2(i,timeslice));
-            dn_dn = DataType(+phi2(i,timeslice));
+            up_up = DataType(-phi(i,2,timeslice));
+            dn_dn = DataType(+phi(i,2,timeslice));
         }
 
         DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
@@ -851,7 +851,8 @@ num DetSDW<CB, OPDIM>::compute_d_for_cdwl_site(uint32_t cdwl) {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
     //if (CB == CB_NONE) {
     {
         const auto N = pars.N;
@@ -869,13 +870,13 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
             //submatrix view helper for a 2Nx2n | 4Nx4N matrix
-            auto block = [&result, N](uint32_t row, u+int32_t col) {
+            auto block = [&result, N](uint32_t row, uint32_t col) {
                 return result.submat(row * N, col * N,
                                      (row + 1) * N - 1, (col + 1) * N - 1);
             };
-            const auto& kphi0 = phi0.slice(k).col(0);
-            const auto& kphi1 = (OPDIM >  1 ? phi1.slice(k).col(1) : kphi0);
-            const auto& kphi2 = (OPDIM == 3 ? phi2.slice(k).col(2) : kphi0);
+            const auto& kphi0 = phi.slice(k).col(0);
+            const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
+            const auto& kphi2 = (OPDIM == 3 ? phi.slice(k).col(2) : kphi0);
             //      Debugsavematrix(kphi0, "kphi0");
             //      debugSaveMatrix(kphi1, "kphi1");
             //      debugSaveMatrix(kphi2, "kphi2");
@@ -946,7 +947,7 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             return result;
         };
 
-        MatCpx result = singleTimesliceProp(k2);
+        MatData result = singleTimesliceProp(k2);
 
         for (uint32_t k = k2 - 1; k > k1; --k) {
             result *= singleTimesliceProp(k);               // equivalent to: result = result * singleTimesliceProp(k);
@@ -970,7 +971,8 @@ MatCpx DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
 }
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatData DetSDW<CB, OPDIM>::computePotentialExponential(
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::computePotentialExponential(
     int sign, checkarray<VecNum, OPDIM> phi, VecInt cdwl) {
     const auto N = pars.N;
 
@@ -1055,11 +1057,12 @@ MatData DetSDW<CB, OPDIM>::computePotentialExponential(
 
 template<CheckerboardMethod CB, int OPDIM>
 template<class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                           const Matrix&, Band, int, bool) {
     throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
     //TODO change things so this codepath is not needed
-    return MatCpx();
+    return MatData();
 }
 
 
@@ -1122,9 +1125,10 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t 
 // using the symmetric checkerboard break up
 template<CheckerboardMethod CB, int OPDIM>
 template<class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                           const Matrix& A, Band band, int sign, bool) {
-    MatCpx result = A;      //can't avoid this copy
+    MatData result = A;      //can't avoid this copy
 
     // perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
     cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
@@ -1139,7 +1143,8 @@ MatCpx DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<Checkerb
 // with A: NxN, sign = +/- 1, band = XBAND|YBAND: return a matrix equal to A * E^(sign * dtau * K_band)
 template<CheckerboardMethod CB, int OPDIM>
 template <class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbLMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     return cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
                                   A, band, sign, invertedCbOrder);
 }
@@ -1149,10 +1154,11 @@ MatCpx DetSDW<CB, OPDIM>::cbLMultHoppingExp(const Matrix& A, Band band, int sign
 
 template<CheckerboardMethod CB, int OPDIM>
 template<class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                           const Matrix&, Band, int, bool) {
     throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
-    return MatCpx();
+    return MatData();
 }
 
 
@@ -1210,9 +1216,11 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t
 
 template<CheckerboardMethod CB, int OPDIM>
 template<class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                           const Matrix& A, Band band, int sign, bool) {
-    MatCpx result = A;      //can't avoid this copy
+    typename DetSDW<CB, OPDIM>::MatData
+ result = A;      //can't avoid this copy
 
     //order of matrix multiplications symmetric
     //perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
@@ -1229,7 +1237,8 @@ MatCpx DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<Checkerb
 // with sign = +/- 1, band = XBAND|YBAND: return A * E^(sign * dtau * K_band)
 template<CheckerboardMethod CB, int OPDIM>
 template <class Matrix> inline
-MatCpx DetSDW<CB, OPDIM>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbRMultHoppingExp(const Matrix& A, Band band, int sign, bool invertedCbOrder) {
     return cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB>(),
                                   A, band, sign, invertedCbOrder);
 }
@@ -1239,7 +1248,8 @@ MatCpx DetSDW<CB, OPDIM>::cbRMultHoppingExp(const Matrix& A, Band band, int sign
 
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatCpx DetSDW<CB, OPDIM>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& orig, uint32_t k) {
     const auto N = pars.N;
     //helper: submatrix block for a matrix 
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
@@ -1304,11 +1314,12 @@ MatCpx DetSDW<CB, OPDIM>::leftMultiplyBk(const MatCpx& orig, uint32_t k) {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmat(const typename DetSDW<CB, OPDIM>::MatData& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= pars.m);
 
-    MatCpx result = leftMultiplyBk(A, k1 + 1);
+    MatData result = leftMultiplyBk(A, k1 + 1);
 
     for (uint32_t k = k1 + 2; k <= k2; ++k) {
         result = leftMultiplyBk(result, k);
@@ -1322,7 +1333,8 @@ MatCpx DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmat(const MatCpx& A, uint32_t
 
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatCpx DetSDW<CB, OPDIM>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& orig, uint32_t k) {
     const auto N = pars.N;
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
@@ -1387,11 +1399,12 @@ MatCpx DetSDW<CB, OPDIM>::leftMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmatInv(const typename DetSDW<CB, OPDIM>::MatData& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= pars.m);
 
-    MatCpx result = leftMultiplyBkInv(A, k2);
+    MatData result = leftMultiplyBkInv(A, k2);
 
     for (uint32_t k = k2 - 1; k >= k1 + 1; --k) {
         result = leftMultiplyBkInv(result, k);
@@ -1404,7 +1417,8 @@ MatCpx DetSDW<CB, OPDIM>::checkerboardLeftMultiplyBmatInv(const MatCpx& A, uint3
 }
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatCpx DetSDW<CB, OPDIM>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& orig, uint32_t k) {
     const auto N = pars.N;
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
@@ -1467,11 +1481,12 @@ MatCpx DetSDW<CB, OPDIM>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_t k2, uint32_t k1) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmat(const typename DetSDW<CB, OPDIM>::MatData& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= pars.m);
 
-    MatCpx result = rightMultiplyBk(A, k2);
+    MatData result = rightMultiplyBk(A, k2);
 
     for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
         result = rightMultiplyBk(result, k);
@@ -1484,7 +1499,8 @@ MatCpx DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmat(const MatCpx& A, uint32_
 }
 
 template<CheckerboardMethod CB, int OPDIM> inline
-MatCpx DetSDW<CB, OPDIM>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& orig, uint32_t k) {
     const auto N = pars.N;
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
@@ -1549,11 +1565,12 @@ MatCpx DetSDW<CB, OPDIM>::rightMultiplyBkInv(const MatCpx& orig, uint32_t k) {
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-MatCpx DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmatInv(const MatCpx& A, uint32_t k2, uint32_t k1) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmatInv(const typename DetSDW<CB, OPDIM>::MatData& A, uint32_t k2, uint32_t k1) {
     assert(k2 > k1);
     assert(k2 <= pars.m);
 
-    MatCpx result = rightMultiplyBkInv(A, k1 + 1);
+    MatData result = rightMultiplyBkInv(A, k1 + 1);
 
     for (uint32_t k = k1 + 2; k <= k2; ++k) {
         result = rightMultiplyBkInv(result, k);
@@ -1790,7 +1807,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         if (OPDIM == 3) {
             probSFermion = dataReal(det);
         } else {    
-            //      /G 0 \
+            //      /G 0 \                .
             //  det \0 G*/ = |det G|^2
             probSFermion = std::pow(std::abs(det), 2);
         }
@@ -1946,8 +1963,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             }
             //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
             // [O(N^2)]
-            MatCpx gTimesInvRows(MatrixSizeFactor*pars.N,
-                                 MatrixSizeFactor*pars.N);
+            MatData gTimesInvRows(MatrixSizeFactor*pars.N,
+                                  MatrixSizeFactor*pars.N);
             const auto& G = g;
             for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
                 for (uint32_t row = 0; row < MatrixSizeFactor*pars.N; ++row) {
@@ -2047,7 +2064,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
         if (OPDIM == 3) {
             probSFermion = dataReal(det);
         } else {    
-            //      /G 0 \
+            //      /G 0 \             .
             //  det \0 G*/ = |det G|^2
             probSFermion = std::pow(std::abs(det), 2);
         }
@@ -2153,7 +2170,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 if (OPDIM == 3) {
                     probSFermion = dataReal(det);
                 } else {    
-                    //      /G 0 \
+                    //      /G 0 \             .
                     //  det \0 G*/ = |det G|^2
                     probSFermion = std::pow(std::abs(det), 2);
                 }
@@ -2442,7 +2459,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     	prob_fermion *= sv_ratio;
     }
     if (OPDIM < 3) {
-        //      /G 0 \
+        //      /G 0 \              .
         //  det \0 G*/ = |det G|^2
         prob_fermion = std::pow(prob_fermion, 2);
     }
@@ -2509,7 +2526,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     	prob_fermion *= sv_ratio;
     }
     if (OPDIM < 3) {
-        //      /G 0 \
+        //      /G 0 \              .
         //  det \0 G*/ = |det G|^2
         prob_fermion = std::pow(prob_fermion, 2);
     }
@@ -2576,7 +2593,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     	prob_fermion *= sv_ratio;
     }
     if (OPDIM < 3) {
-        //      /G 0 \
+        //      /G 0 \              .
         //  det \0 G*/ = |det G|^2
         prob_fermion = std::pow(prob_fermion, 2);
     }
@@ -3198,7 +3215,8 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
     typedef arma::subview<DataType> SubMatData;            //don't do references or const-references of this type
     if (CB == CB_NONE){ 
         //non-checkerboard
@@ -3247,7 +3265,8 @@ MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
 //references in a sense)
 template<CheckerboardMethod CB, int OPDIM>
 template<class RightMultiply, class LeftMultiply>
-MatData DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMultiply leftMultiply) {
     const auto N = pars.N;
     //submatrix view helper for a 4N*4N or 2N*2N matrix
 #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
@@ -3684,7 +3703,7 @@ static inline num get_replica_exchange_probability_implementation_detsdw(
 }
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_NONE>>(
+num get_replica_exchange_probability<DetSDW<CB_NONE, 1>>(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
@@ -3694,7 +3713,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE>>(
 }
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 1>>(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
@@ -3703,6 +3722,47 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
         parameter_2, action_contribution_2);         
 }
 
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 2>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 3>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
 
 
 

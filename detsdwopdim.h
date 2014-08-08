@@ -38,16 +38,6 @@ template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
                    RngWrapper& rng, ModelParamsDetSDW pars);
 
-// return min{1, e^{-\Delta}}
-template<>
-num get_replica_exchange_probability<DetSDW<CB_NONE>>(
-    num parameter_1, num action_contribution_1,
-    num parameter_2, num action_contribution_2);
-template<>
-num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
-    num parameter_1, num action_contribution_1,
-    num parameter_2, num action_contribution_2);
-
 
 // template parameters:
 // Checkerboard:
@@ -60,7 +50,7 @@ class DetSDW: public DetModelGC<1,
                                 // the basic data type is complex for
                                 // O(3) or O(2) order parameters, real
                                 // for O(1):
-                                std::conditional<OPDIM==1, num, cpx>::type > {
+                                typename std::conditional<OPDIM==1, num, cpx>::type > {
 public:
     static_assert(OPDIM==1 or OPDIM==2 or OPDIM==3,
                   "Supported order parameter dimensions: 1, 2, or 3");
@@ -124,20 +114,13 @@ public:
     // }
     void get_control_data(std::string& buffer) const;
     void set_control_data(const std::string& buffer);
-
-
-    //Perform the correction of the Green's function to ensure an
-    //effectively symmetric Trotter decomposition.  This returns the
-    //shifted matrix for the current timeslice.  This should be done
-    //before measurements.
-    virtual MatData shiftGreenSymmetric();
 protected:
 /*    
     the basic data type is complex for O(3) or O(2) order parameters,
     real for O(1):
 */
-    typedef std::conditional<OPDIM==1, num, cpx>::type DataType;
-    constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
+    typedef typename std::conditional<OPDIM==1, num, cpx>::type DataType;
+    static constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
     static num dataReal(const cpx& value) { return value.real(); } // could just use std::real
     static num dataReal(const num& value) { return value; }        //      -- " --
     static void dataReal(cpx& value, num realPart) { value.real(realPart); }
@@ -146,14 +129,14 @@ protected:
     static void dataImag(num& value, num imagPart) { value = imagPart; }
 
     typedef arma::Mat<DataType> MatData;
-    typedef arma::Vec<DataType> VecData;
+    typedef arma::Col<DataType> VecData;
     typedef arma::Cube<DataType> CubeData;
 
 /*
     The Green's function etc. are 4*N x 4*N matrices for the O(3)
     model, 2*N x 2*N for the O(2) and O(1) models
 */    
-    constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
+    static constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
     
 /*
 
@@ -189,7 +172,8 @@ protected:
     typedef VecNum::fixed<OPDIM> Phi;       //value of the (1,2,3)-component field at a single site and timeslice
     
     // small identity matrix
-    const MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> smalleye;
+    // const MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> smalleye;
+    const typename MatData::fixed smalleye;
 /*
 
     Random numbers
@@ -697,7 +681,13 @@ protected:
   
     Routines related to measurements
     
-*/    
+*/
+    //Perform the correction of the Green's function to ensure an
+    //effectively symmetric Trotter decomposition.  This returns the
+    //shifted matrix for the current timeslice.  This should be done
+    //before measurements.
+    virtual MatData shiftGreenSymmetric();
+    
     //the upper function shiftGreenSymmetric() calls the following
     //helper with functors RightMultiply, LeftMultiply depending on
     //the CheckerboardMethod
@@ -753,10 +743,13 @@ protected:
     	MatData X;
     	MatData Y;
     	MatData Rj;
-    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Sj;
+//    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Sj;
+        typename MatData::fixed Sj;
     	MatData Cj;
-    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> tempBlock;
-    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Mj;
+    	// MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> tempBlock;
+    	// MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Mj;
+    	typename MatData::fixed tempBlock;
+    	typename MatData::fixed Mj;
     	DelayedUpdatesData(uint32_t N, uint32_t delaySteps)
             : X(MatrixSizeFactor*delaySteps, MatrixSizeFactor*N),
               Y(MatrixSizeFactor*N, MatrixSizeFactor*delaySteps),
@@ -785,7 +778,9 @@ protected:
     changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);		//choose Metropolis-randomly from +-1, +-2
     //more generic helpers
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
-    MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
+    // MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
+    //     Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
+    typename MatData::fixed get_delta_forsite(
         Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
 
     void globalMove();
@@ -1057,7 +1052,7 @@ struct DetSDW<CBM, OPDIM>::sdwLeftMultiplyBmat {
     MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
-        if (Checkerboard != CB_NONE) {
+        if (CBM != CB_NONE) {
             return parent->checkerboardLeftMultiplyBmat(mat, k2, k1);
         } else {
             return parent->computeBmatSDW(k2, k1) * mat;
@@ -1074,7 +1069,7 @@ struct DetSDW<CBM, OPDIM>::sdwRightMultiplyBmat {
     MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
-        if (Checkerboard != CB_NONE) {
+        if (CBM != CB_NONE) {
             return parent->checkerboardRightMultiplyBmat(mat, k2, k1);
         } else {
             return mat * parent->computeBmatSDW(k2, k1);
@@ -1091,7 +1086,7 @@ struct DetSDW<CBM, OPDIM>::sdwLeftMultiplyBmatInv {
     MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
-        if (Checkerboard != CB_NONE) {
+        if (CBM != CB_NONE) {
             return parent->checkerboardLeftMultiplyBmatInv(mat, k2, k1);
         } else {
             return arma::inv(parent->computeBmatSDW(k2, k1)) * mat;
@@ -1108,7 +1103,7 @@ struct DetSDW<CBM, OPDIM>::sdwRightMultiplyBmatInv {
     MatData operator()(uint32_t gc, const MatData& mat, uint32_t k2, uint32_t k1) {
         (void)gc;
         assert(gc == 0);
-        if (Checkerboard != CB_NONE) {
+        if (CBM != CB_NONE) {
             return parent->checkerboardRightMultiplyBmatInv(mat, k2, k1);
         } else {
             return mat * arma::inv(parent->computeBmatSDW(k2, k1));
@@ -1117,6 +1112,34 @@ struct DetSDW<CBM, OPDIM>::sdwRightMultiplyBmatInv {
 };
 
 
+
+
+// return min{1, e^{-\Delta}}
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 1>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 1>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 2>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 3>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3>>(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2);
+ 
 
 
 

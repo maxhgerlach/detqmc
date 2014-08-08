@@ -7,7 +7,7 @@ enum CheckerboardMethod {
     CB_NONE,                //regular, dense matrix products
     CB_ASSAAD_BERG, //checkerboard, two break-ups, making sure all multiplications are symmetric, as described by Erez Berg
 };
-template<CheckerboardMethod Checkerboard> class DetSDW;
+
 
 
 //use this in place of
@@ -90,7 +90,7 @@ private:
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
-            & opdim r & c & u & lambda & txhor & txver & tyhor & tyver
+            & opdim & r & c & u & lambda & txhor & txver & tyhor & tyver
             & cdwU & mu & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate

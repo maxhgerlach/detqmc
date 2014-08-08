@@ -179,5 +179,5 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
 
 
 
-template struct ModelParams<DetSDW<CB_NONE>>;
-template struct ModelParams<DetSDW<CB_ASSAAD_BERG>>;
+// template struct ModelParams<DetSDW<CB_NONE>>;
+// template struct ModelParams<DetSDW<CB_ASSAAD_BERG>>;
