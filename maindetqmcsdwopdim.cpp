@@ -42,7 +42,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("sdw"), "only the sdw model is supported")
-        ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value("opdim"), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  Default: 3")
+        ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value(3), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  Default: 3")
         ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
         ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod_string)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")

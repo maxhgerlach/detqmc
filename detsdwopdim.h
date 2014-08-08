@@ -58,8 +58,8 @@ public:
 private:
     DetSDW(RngWrapper& rng, const ModelParams& pars);
 public:
-    template<CheckerboardMethod CBM>
-    friend void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
+    template<CheckerboardMethod CBM, int OrderParameterDimension>
+    friend void createReplica(std::unique_ptr<DetSDW<CBM, OrderParameterDimension>>& replica_out,
                               RngWrapper& rng, ModelParams pars);
 
     virtual ~DetSDW();
@@ -127,17 +127,53 @@ protected:
 */
     typedef typename std::conditional<OPDIM==1, num, cpx>::type DataType;
     static constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
-    static num dataReal(const cpx& value) { return value.real(); } // could just use std::real
-    static num dataReal(const num& value) { return value; }        //      -- " --
-    static void dataReal(cpx& value, num realPart) { value.real(realPart); }
-    static void dataReal(num& value, num realPart) { value = realPart; }
-    static void dataImag(cpx& value, num imagPart) { value.imag(imagPart); }
-    static void dataImag(num& value, num imagPart) { value = imagPart; }
-
     typedef arma::Mat<DataType> MatData;
     typedef typename arma::Mat<DataType>::template fixed<MatrixSizeFactor,MatrixSizeFactor> MatSmall;
     typedef arma::Col<DataType> VecData;
     typedef arma::Cube<DataType> CubeData;
+    
+    static num dataReal(const cpx& value) { return value.real(); } // could just use std::real
+    static num dataReal(const num& value) { return value; }        //      -- " --
+    static void setReal(cpx& value, num realPart) { value.real(realPart); }
+    static void setReal(num& value, num realPart) { value = realPart; }
+    static void setImag(cpx& value, num imagPart) { value.imag(imagPart); }
+    static void setImag(num& value, num imagPart) { value = imagPart; }
+
+    //need these to have the same code handle real/complex subviews
+    //subviews do not have members set_real or set_imag.
+    //For real subviews: just discard the imagPart.
+    template<class Matrix1, class Matrix2>
+    static void setRealImag(arma::subview<num> subv,
+                            const Matrix1& realPart, const Matrix2& imagPart) {
+        (void) imagPart;
+        subv = realPart;
+    }
+    template<class Matrix1, class Matrix2>
+    static void setRealImag(arma::subview<cpx> subv,
+                            const Matrix1& realPart, const Matrix2& imagPart) {
+        subv = MatCpx(realPart, imagPart);
+    }
+    
+    // template<class Matrix>
+    // static void setReal(arma::subview<num> subv, Matrix realPart) {
+    //     subv = realPart;
+    // }
+    // template<class Matrix>
+    // static void setReal(arma::subview<cpx> subv, Matrix realPart) {
+    //     //warning: unnecessarily slow
+    //     MatCpx temp_mat = subv;
+    //     temp_mat.set_real(
+    //     subv.set_real(realPart);
+    // }
+    // template<class Matrix>
+    // static void setImag(arma::subview<num> subv, Matrix imagPart) {
+    //     subv = imagPart;
+    // }
+    // template<class Matrix>
+    // static void setImag(arma::subview<cpx> subv, Matrix imagPart) {
+    //     subv.set_imag(imagPart);
+    // }
+    
     
 /*
 
@@ -172,9 +208,8 @@ protected:
 */
     typedef VecNum::fixed<OPDIM> Phi;       //value of the (1,2,3)-component field at a single site and timeslice
     
-    // small identity matrix
-    // const MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> smalleye;
-    const typename MatData::fixed smalleye;
+    // small identity matrix (2x2 or 4x4)
+    const MatSmall smalleye;
 /*
 
     Random numbers
@@ -200,7 +235,7 @@ protected:
         if      (b == XBAND and s == SPINUP)   return XUP;
         else if (b == YBAND and s == SPINDOWN) return YDOWN;
         else if (b == XBAND and s == SPINDOWN) return XDOWN;
-        else if (b == YBAND and s == SPINUP)   return YUP;
+        else /* (b == YBAND and s == SPINUP)*/ return YUP;
     }
     typedef ModelParamsDetSDW::BC_Type BC_Type;
     typedef ModelParamsDetSDW::UpdateMethod_Type UpdateMethod_Type;
@@ -325,7 +360,7 @@ protected:
     // dimension, row indexes site    
     // [Index order: row, col, slice]
     // [Data layout; slice after slice, matrices then column major] 
-    CubeData phi;
+    CubeNum phi;
     
     //discrete field for cdwU: l_i(\tau_k) == cdwl(i,k).
     //row indexes site, column indexes timeslice
@@ -791,7 +826,7 @@ protected:
     // attempt a combined update
     void attemptWolffClusterShiftUpdate(); 
     struct GlobalMoveData {		//some helper data that should not be reallocated all the time
-        CubeData phi;
+        CubeNum phi;
     	MatNum coshTermPhi;
     	MatNum sinhTermPhi;
 

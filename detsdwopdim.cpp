@@ -73,7 +73,7 @@ const num PhiHigh = 1;
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     Base(pars_, MatrixSizeFactor * pars_.L*pars_.L),
-    smalleye(arma::eye<MatSmall >(MatrixSizeFactor, MatrixSizeFactor)),
+    smalleye(arma::eye<MatData>(MatrixSizeFactor, MatrixSizeFactor)),
     rng(rng_), normal_distribution(rng),
     pars(pars_),
     us(),                       // UpdateStatistics
@@ -305,8 +305,9 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     };
     auto gl = [this, N, &gl1](uint32_t site1, Band band1, Spin spin1,
                               uint32_t site2, Band band2, Spin spin2) -> DataType {
-        BandSpin bs1 = getBandSpin(band1, spin1);
-        BandSpin bs2 = getBandSpin(band2, spin2);
+        typedef DetSDW<CB,OPDIM> D;
+        BandSpin bs1 = D::getBandSpin(band1, spin1);
+        BandSpin bs2 = D::getBandSpin(band2, spin2);
         return gl1(site1, bs1, site2, bs2);
     };
 
@@ -448,8 +449,8 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         DataType dn_up = DataType(-phi(i,0,timeslice));
         DataType dn_dn(0);
         if (OPDIM >= 2) {
-            dataImag(up_dn, +phi(i,1,timeslice));
-            dataImag(dn_up, -phi(i,1,timeslice));
+            setImag(up_dn, +phi(i,1,timeslice));
+            setImag(dn_up, -phi(i,1,timeslice));
         }
         if (OPDIM == 3) {
             up_up = DataType(-phi(i,2,timeslice));
@@ -864,7 +865,7 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
         assert(k2 <= m);
 
         //compute the matrix e^(-dtau*V_k) * e^(-dtau*K)
-        auto singleTimesliceProp = [this,N](uint32_t k) -> MatData {
+        auto singleTimesliceProp = [this, N](uint32_t k) -> MatData {
             timing.start("singleTimesliceProp_direct");
             MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
@@ -885,53 +886,44 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
 
             //upper left 2*2 blocks
-            block(0, 0).set_real(
-                diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx);
-            if (OPDIM != 1) {
-                block(0, 0).set_imag(zeros(N, N));
-            }
-            block(0, 1).set_real(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-            if (OPDIM != 1) {
-                block(0, 1).set_imag(
-                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-            }
-            block(1, 0).set_real(
-                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-            if (OPDIM != 1) {
-                block(1, 0).set_imag(
-                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-            }
-            block(1, 1).set_real(
-                diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy);
-            if (OPDIM != 1) {
-                block(1, 1).set_imag(zeros(N,N));
-            }
+            typedef DetSDW<CB,OPDIM> D;
+            D::setRealImag(block(0, 0),
+                           diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
+                           zeros(N, N));
+            D::setRealImag(block(0, 1), 
+                           diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                           diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+            D::setRealImag(block(1, 0),
+                           diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                           diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+            D::setRealImag(block(1, 1),
+                           diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy,
+                           zeros(N,N));
 
             if (OPDIM == 3) {
                 //lower right 2*2 blocks
                 block(2, 2) = block(0, 0);
-                block(2, 3) = MatCpx(
-                    diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                    diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-                block(3, 2) = MatCpx(
-                    diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                    diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+                D::setRealImag(block(2, 3),
+                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                               diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+                D::setRealImag(block(3, 2),
+                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                               diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
                 block(3, 3) = block(1, 1);
 
                 //anti-diagonal blocks
-                block(0, 3) = MatCpx(
-                    diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                    zeros(N,N));
-                block(1, 2) = MatCpx(
-                    diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                    zeros(N,N));
-                block(2, 0) = MatCpx(
-                    diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                    zeros(N,N));
-                block(3, 0) = MatCpx(
-                    diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                    zeros(N,N));
+                D::setRealImag(block(0, 3),
+                               diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                               zeros(N,N));
+                D::setRealImag(block(1, 2),
+                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                               zeros(N,N));
+                D::setRealImag(block(2, 0),
+                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                               zeros(N,N));
+                D::setRealImag(block(3, 0),
+                               diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                               zeros(N,N));
 
                 //zero blocks
                 block(0, 2).zeros();
@@ -1085,9 +1077,9 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t 
     const auto N = pars.N;
     const auto L = pars.L;
     assert(subgroup == 0 or subgroup == 1);
-    arma::Row<cpx> new_row_i(N);
-    arma::Row<cpx> new_row_j(N);
-    arma::Row<cpx> new_row_k(N);
+    arma::Row<DataType> new_row_i(N);
+    arma::Row<DataType> new_row_j(N);
+    arma::Row<DataType> new_row_k(N);
     for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
         for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
             uint32_t i = this->coordsToSite(i1, i2);
@@ -1095,10 +1087,10 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t 
             uint32_t k = spaceNeigh(YPLUS, i);
             uint32_t l = spaceNeigh(XPLUS, k);
             //change rows i,j,k,l of result
-            const arma::Row<cpx>& ri = result.row(i);
-            const arma::Row<cpx>& rj = result.row(j);
-            const arma::Row<cpx>& rk = result.row(k);
-            const arma::Row<cpx>& rl = result.row(l);
+            const arma::Row<DataType>& ri = result.row(i);
+            const arma::Row<DataType>& rj = result.row(j);
+            const arma::Row<DataType>& rk = result.row(k);
+            const arma::Row<DataType>& rl = result.row(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
             if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
@@ -1178,9 +1170,9 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t
     const auto N = pars.N;
     const auto L = pars.L;
     assert(subgroup == 0 or subgroup == 1);
-    arma::Col<cpx> new_col_i(N);
-    arma::Col<cpx> new_col_j(N);
-    arma::Col<cpx> new_col_k(N);
+    arma::Col<DataType> new_col_i(N);
+    arma::Col<DataType> new_col_j(N);
+    arma::Col<DataType> new_col_k(N);
     for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
         for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
             uint32_t i = this->coordsToSite(i1, i2);
@@ -1188,10 +1180,10 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t
             uint32_t k = spaceNeigh(YPLUS, i);
             uint32_t l = spaceNeigh(XPLUS, k);
             //change cols i,j,k,l of result
-            const arma::Col<cpx>& ci = result.col(i);
-            const arma::Col<cpx>& cj = result.col(j);
-            const arma::Col<cpx>& ck = result.col(k);
-            const arma::Col<cpx>& cl = result.col(l);
+            const arma::Col<DataType>& ci = result.col(i);
+            const arma::Col<DataType>& cj = result.col(j);
+            const arma::Col<DataType>& ck = result.col(k);
+            const arma::Col<DataType>& cl = result.col(l);
             num b_sh_hor = sh_hor;
             num b_sh_ver = sh_ver;
             if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
@@ -2165,7 +2157,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 
                 dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
 
-                num det = arma::det(dud.Mj);
+                DataType det = arma::det(dud.Mj);
                 num probSFermion;
                 if (OPDIM == 3) {
                     probSFermion = dataReal(det);
@@ -2225,7 +2217,6 @@ template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::MatSmall
 DetSDW<CB, OPDIM>::get_delta_forsite(
     Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site) {
-    constexpr auto MSF = MatrixSizeFactor;
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
     //compute non-zero elements of delta
@@ -2241,25 +2232,27 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
         
         MatSmall ev;
 
-        dataReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
-        dataReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
+        typedef DetSDW<CB,OPDIM> D;
+
+        D::setReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
+        D::setReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
 //        ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;  //zeros
-        dataReal(ev(0,1), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
-        dataReal(ev(1,0), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
+        D::setReal(ev(0,1), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
+        D::setReal(ev(1,0), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
 
         if (OPDIM == 3) {
-            dataReal(ev(2,2), dataReal(ev(0,0)));
-            dataReal(ev(3,3), dataReal(ev(1,1)));
-            dataReal(ev(0,3), sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
-            dataReal(ev(3,0), dataReal(ev(0,3)));
-            dataReal(ev(3,2), dataReal(ev(0,1)));
-            dataReal(ev(2,3), dataReal(ev(1,0)));
-            dataReal(ev(2,1), -sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
-            dataReal(ev(1,2), dataReal(ev(2,1)));
+            D::setReal(ev(2,2), std::real(ev(0,0)));
+            D::setReal(ev(3,3), std::real(ev(1,1)));
+            D::setReal(ev(0,3), sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+            D::setReal(ev(3,0), std::real(ev(0,3)));
+            D::setReal(ev(3,2), std::real(ev(0,1)));
+            D::setReal(ev(2,3), std::real(ev(1,0)));
+            D::setReal(ev(2,1), -sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+            D::setReal(ev(1,2), std::real(ev(2,1)));
         }
 
         if (OPDIM > 1) {
-            MatSmall ev_imag;
+            MatNum::fixed<MatrixSizeFactor, MatrixSizeFactor> ev_imag;
             ev_imag.zeros();
             ev_imag(0,1) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
             ev_imag(1,0) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
@@ -2636,7 +2629,7 @@ void DetSDW<CB, OPDIM>::addGlobalRandomDisplacement() {
 
 template<int OPDIM>
 struct randomDirection {
-    VecNum::fixed<OPDIM> give(RngWrapper& rng) {
+    static VecNum::fixed<OPDIM> give(RngWrapper& rng) {
         (void) rng;
         static_assert(OPDIM == 1 or OPDIM == 2 or OPDIM == 3,
                       "unsupported OPDIM");
@@ -2644,7 +2637,7 @@ struct randomDirection {
 };
 template<>
 struct randomDirection<1> {
-    VecNum::fixed<1> give(RngWrapper& rng) {
+    static VecNum::fixed<1> give(RngWrapper& rng) {
         VecNum::fixed<1> isingDir;
         if (rng.rand01() <= 0.5) {
             isingDir[0] = -1.0;
@@ -2656,7 +2649,7 @@ struct randomDirection<1> {
 };
 template<>
 struct randomDirection<2> {
-    VecNum::fixed<2> give(RngWrapper& rng) {
+    static VecNum::fixed<2> give(RngWrapper& rng) {
         VecNum::fixed<2> circleDir;
         std::tie(circleDir[0], circleDir[1]) = rng.randPointOnCircle();
         return circleDir;
@@ -2664,7 +2657,7 @@ struct randomDirection<2> {
 };
 template<>
 struct randomDirection<3> {
-    VecNum::fixed<3> give(RngWrapper& rng) {
+    static VecNum::fixed<3> give(RngWrapper& rng) {
         VecNum::fixed<3> sphereDir;
         std::tie(sphereDir[0], sphereDir[1], sphereDir[2]) = rng.randPointOnSphere();
         return sphereDir;
@@ -2791,7 +2784,7 @@ DetSDW<CB, OPDIM>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
 
 template<int OPDIM>
 struct proposeRandomRotatedVector {
-    VecNum::fixed<OPDIM> give(RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
+    static VecNum::fixed<OPDIM> give(RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
         (void) rng; (void)angleDelta; (void)oldvec;
         throw GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
         return oldvec;
@@ -2799,8 +2792,8 @@ struct proposeRandomRotatedVector {
 };
 template<>
 struct proposeRandomRotatedVector<3> {
-    VecNum::fixed<3> give(RngWrapper& rng, num angleDelta, VecNum::fixed<3> vec) {
-        using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
+    static VecNum::fixed<3> give(RngWrapper& rng, num angleDelta, VecNum::fixed<3> vec) {
+        using std::pow; using std::sqrt; using std::cos; using std::sin;
         //old orientation
         num x = vec[0];
         num y = vec[1];
@@ -2863,17 +2856,17 @@ DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
 
 template<int OPDIM>
 struct proposeRandomScaledVector {
-    std::tuple<VecNum::fixed<OPDIM>, bool> give (NormalDistribution& normal_distribution,
-                                                 num scaleDelta, VecNum::fixed<OPDIM> vec) {
-        (void) normal_distribution; void(scaleDelta) void(vec);
+    static std::tuple<VecNum::fixed<OPDIM>, bool> give (NormalDistribution& normal_distribution,
+                                                        num scaleDelta, VecNum::fixed<OPDIM> vec) {
+        (void) normal_distribution; (void) scaleDelta; (void) vec;
         throw GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
         return std::make_tuple(vec, false);
     }
 };
 template<> struct proposeRandomScaledVector<3> {
-    std::tuple<VecNum::fixed<3>, bool> give( NormalDistribution&
-                                             normal_distribution, num scaleDelta,
-                                             VecNum::fixed<3> vec) {
+    static std::tuple<VecNum::fixed<3>, bool> give(NormalDistribution&
+                                                   normal_distribution, num scaleDelta,
+                                                   VecNum::fixed<3> vec) {
         using std::pow; using std::abs;
         //old orientation
         num x = vec[0];
@@ -2924,7 +2917,7 @@ typename DetSDW<CB, OPDIM>::changedPhiInt
 DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
     bool valid;
     Phi new_phi;
-    std:tie(new_phi, valid) = proposeRandomScaledVector<OPDIM>::give(
+    std::tie(new_phi, valid) = proposeRandomScaledVector<OPDIM>::give(
         normal_distribution, ad.scaleDelta, getPhi(site, timeslice));
     return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
 }
@@ -2932,10 +2925,10 @@ DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
 
 template<int OPDIM>
 struct proposeRandomRotatedScaledVector {
-    std::tuple<VecNum::fixed<OPDIM>, bool> give(NormalDistribution& normal_distribution,
+    static std::tuple<VecNum::fixed<OPDIM>, bool> give(NormalDistribution& normal_distribution,
                                                 RngWrapper& rng, num angleDelta, num scaleDelta,
                                                 VecNum::fixed<OPDIM> vec) {    
-        (void) normal_distribution; void(rng);
+        (void) normal_distribution; (void) rng;
         (void) scaleDelta; (void) angleDelta; (void) vec;
         throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
         return std::make_tuple(vec, false);
@@ -2943,10 +2936,10 @@ struct proposeRandomRotatedScaledVector {
 };
 template<>
 struct proposeRandomRotatedScaledVector<3> {
-    std::tuple<VecNum::fixed<3>, bool> give(NormalDistribution& normal_distribution,
-                                            RngWrapper& rng, num angleDelta, num scaleDelta,
-                                            VecNum::fixed<3> vec) {
-        using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
+    static std::tuple<VecNum::fixed<3>, bool> give(NormalDistribution& normal_distribution,
+                                                   RngWrapper& rng, num angleDelta, num scaleDelta,
+                                                   VecNum::fixed<3> vec) {
+        using std::pow; using std::sqrt; using std::cos; using std::sin;
 
         //old orientation
         num x = vec[0];
@@ -3020,7 +3013,7 @@ template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
     bool changedPhi;
     Phi new_phi;
-    std::tie(new_phi, changedPhi) = proposeRandomRotatedScaledVector::give(
+    std::tie(new_phi, changedPhi) = proposeRandomRotatedScaledVector<OPDIM>::give(
         normal_distribution, rng, ad.angleDelta, ad.scaleDelta,
         getPhi(site, timeslice));
     return std::make_tuple(
@@ -3069,7 +3062,8 @@ num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi ne
         spaceNeigh.endNeighbors(site),
         phiZero,
         [this, timeslice] (Phi accum, uint32_t neighSite) -> Phi{
-            accum += getPhi(neighSite, timeslice);
+            typedef DetSDW<CB,OPDIM> D;
+            accum += D::getPhi(neighSite, timeslice);
             return accum;
         }
         );
@@ -3780,5 +3774,9 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3>>(
 
 
 
-// template class DetSDW<CB_NONE>;
-// template class DetSDW<CB_ASSAAD_BERG>;
+template class DetSDW<CB_NONE,1>;
+template class DetSDW<CB_ASSAAD_BERG,1>;
+template class DetSDW<CB_NONE,2>;
+template class DetSDW<CB_ASSAAD_BERG,2>;
+template class DetSDW<CB_NONE,3>;
+template class DetSDW<CB_ASSAAD_BERG,3>;
