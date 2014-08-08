@@ -115,6 +115,12 @@ public:
     void get_control_data(std::string& buffer) const;
     void set_control_data(const std::string& buffer);
 protected:
+/*
+  The Green's function etc. are 4*N x 4*N matrices for the O(3)
+  model, 2*N x 2*N for the O(2) and O(1) models
+*/    
+    static constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
+
 /*    
     the basic data type is complex for O(3) or O(2) order parameters,
     real for O(1):
@@ -129,14 +135,9 @@ protected:
     static void dataImag(num& value, num imagPart) { value = imagPart; }
 
     typedef arma::Mat<DataType> MatData;
+    typedef typename arma::Mat<DataType>::template fixed<MatrixSizeFactor,MatrixSizeFactor> MatSmall;
     typedef arma::Col<DataType> VecData;
     typedef arma::Cube<DataType> CubeData;
-
-/*
-    The Green's function etc. are 4*N x 4*N matrices for the O(3)
-    model, 2*N x 2*N for the O(2) and O(1) models
-*/    
-    static constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
     
 /*
 
@@ -743,13 +744,10 @@ protected:
     	MatData X;
     	MatData Y;
     	MatData Rj;
-//    	MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Sj;
-        typename MatData::fixed Sj;
+        MatSmall Sj;
     	MatData Cj;
-    	// MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> tempBlock;
-    	// MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> Mj;
-    	typename MatData::fixed tempBlock;
-    	typename MatData::fixed Mj;
+    	MatSmall tempBlock;
+	MatSmall Mj;
     	DelayedUpdatesData(uint32_t N, uint32_t delaySteps)
             : X(MatrixSizeFactor*delaySteps, MatrixSizeFactor*N),
               Y(MatrixSizeFactor*N, MatrixSizeFactor*delaySteps),
@@ -778,9 +776,7 @@ protected:
     changedPhiInt proposeNewCDWl(uint32_t site, uint32_t timeslice);		//choose Metropolis-randomly from +-1, +-2
     //more generic helpers
     num deltaSPhi(uint32_t site, uint32_t timeslice, Phi newphi);
-    // MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> get_delta_forsite(
-    //     Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
-    typename MatData::fixed get_delta_forsite(
+    MatSmall get_delta_forsite(
         Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
 
     void globalMove();

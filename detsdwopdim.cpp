@@ -73,8 +73,7 @@ const num PhiHigh = 1;
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     Base(pars_, MatrixSizeFactor * pars_.L*pars_.L),
-    smalleye(arma::eye<MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> >(
-                 MatrixSizeFactor, MatrixSizeFactor)),
+    smalleye(arma::eye<MatSmall >(MatrixSizeFactor, MatrixSizeFactor)),
     rng(rng_), normal_distribution(rng),
     pars(pars_),
     us(),                       // UpdateStatistics
@@ -1266,16 +1265,16 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
 
     VecNum ax, max;
     if (OPDIM == 3) {
-        const auto& kphi2 = phi2.slice(k).col(2);
+        const auto& kphi2 = phi.slice(k).col(2);
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
     VecData b, bc;
-    const auto& kphi0 = phi0.slice(k).col(0);
+    const auto& kphi0 = phi.slice(k).col(0);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
-        const auto& kphi1 = (OPDIM >  1 ? phi1.slice(k).col(1) : kphi0);
+        const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
         b.set_imag( -kphi1);
         bc.set_imag( kphi1);
     }
@@ -1302,7 +1301,7 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
                                   + diagmat(mbcx) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
 
             block(result, 3, col) = diagmat(max)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
-                                  + diagmat(mbc)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
+                                  + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
                                   + diagmat(cmd)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
         }
     }
@@ -1351,17 +1350,17 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
 
     VecNum ax, max;
     if (OPDIM == 3) {
-        const auto& kphi2 = phi2.slice(k).col(2);
+        const auto& kphi2 = phi.slice(k).col(2);
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
     VecData b, bc;
 
-    const auto& kphi0 = phi0.slice(k).col(0);
+    const auto& kphi0 = phi.slice(k).col(0);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
-        const auto& kphi1 = (OPDIM >  1 ? phi1.slice(k).col(1) : kphi0);
+        const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
         b.set_imag( -kphi1);
         bc.set_imag( kphi1);
     }
@@ -1435,16 +1434,16 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
 
     VecNum ax, max;
     if (OPDIM == 3) {
-        const auto& kphi2 = phi2.slice(k).col(2);
+        const auto& kphi2 = phi.slice(k).col(2);
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
     VecData b, bc;
-    const auto& kphi0 = phi0.slice(k).col(0);
+    const auto& kphi0 = phi.slice(k).col(0);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
-        const auto& kphi1 = (OPDIM >  1 ? phi1.slice(k).col(1) : kphi0);
+        const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
         b.set_imag( -kphi1);
         bc.set_imag( kphi1);
     }
@@ -1517,17 +1516,17 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
 
     VecNum ax, max;
     if (OPDIM == 3) {
-        const auto& kphi2 = phi2.slice(k).col(2);
+        const auto& kphi2 = phi.slice(k).col(2);
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
     VecData b, bc;
 
-    const auto& kphi0 = phi0.slice(k).col(0);
+    const auto& kphi0 = phi.slice(k).col(0);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
-        const auto& kphi1 = (OPDIM >  1 ? phi1.slice(k).col(1) : kphi0);
+        const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
         b.set_imag( -kphi1);
         bc.set_imag( kphi1);
     }
@@ -1682,9 +1681,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatData::fixed<MatrixSizeFactor,MatrixSizeFactor> delta_forsite =
+        MatSmall delta_forsite =
             get_delta_forsite(newphi, new_cdwl, timeslice, site);
-
+        
         //****
         //Compute the determinant and inverse of I + Delta*(I - G)
         //based on Sherman-Morrison formula / Matrix-Determinant lemma
@@ -1973,8 +1972,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
                         + G(row, site + pars.N)   * rows[1][col];
                     if (OPDIM == 3) {
                         gTimesInvRows(row, col) +=
-                            G(row, site + 2*pars.N) * rows[2][col]
-                            G(row, site + 3*pars.N) * rows[3][col];
+                              G(row, site + 2*pars.N) * rows[2][col]
+                            + G(row, site + 3*pars.N) * rows[3][col];
                     }
                 }
             }
@@ -2043,12 +2042,12 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
         }
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatData::fixed<MSF,MSF> delta_forsite = get_delta_forsite(
+        MatSmall delta_forsite = get_delta_forsite(
             newphi, new_cdwl, timeslice, site);
 
         //Compute the 4x4 (2x2) submatrix of G that corresponds to the
         //site i g_sub = g[i::N, i::N]
-        MatData::fixed<MSF,MSF> g_sub;
+        MatSmall g_sub;
         for (uint32_t a = 0; a < MSF; ++a) {
             for (uint32_t b = 0; b < MSF; ++b) {
                 g_sub(a,b) = g(site + a*pars.N, site + b*pars.N);
@@ -2057,7 +2056,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
         //the determinant ratio for the spin update is given by the determinant
         //of the following matrix M
-        MatData::fixed<MSF,MSF> M = smalleye + (smalleye - g_sub) * delta_forsite;
+        MatSmall M = smalleye + (smalleye - g_sub) * delta_forsite;
         DataType det = arma::det(M);
         
         num probSFermion;
@@ -2153,7 +2152,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                     probSPhi = std::exp(-dsphi);
             	}
 
-                MatData::fixed<MSF,MSF> delta_forsite = get_delta_forsite(newphi, new_cdwl, timeslice, site);
+                MatSmall delta_forsite =
+                    get_delta_forsite(newphi, new_cdwl, timeslice, site);
 
                 takesomerows(dud.Rj, g, site);
                 for (uint32_t l = 0; l < j; ++l) {
@@ -2222,7 +2222,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
+typename DetSDW<CB, OPDIM>::MatSmall
+DetSDW<CB, OPDIM>::get_delta_forsite(
     Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site) {
     constexpr auto MSF = MatrixSizeFactor;
     //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
@@ -2236,9 +2237,9 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
         int sign,
         Phi kphi,
         num kcoshTermPhi, num ksinhTermPhi,
-        num kcoshTermCDWl, num ksinhTermCDWl) -> MatData::fixed<MSF,MSF> {
+        num kcoshTermCDWl, num ksinhTermCDWl) -> MatSmall {
         
-        MatData::fixed<MSF,MSF> ev;
+        MatSmall ev;
 
         dataReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
         dataReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
@@ -2258,7 +2259,7 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
         }
 
         if (OPDIM > 1) {
-            MatNum::fixed<MSF,MSF> ev_imag;
+            MatSmall ev_imag;
             ev_imag.zeros();
             ev_imag(0,1) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
             ev_imag(1,0) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
@@ -2272,7 +2273,7 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
         
         return ev;
     };
-    MatData::fixed<MSF,MSF> evOld = evMatrix(
+    MatSmall evOld = evMatrix(
         +1,
         getPhi(site, timeslice),
         coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
@@ -2295,7 +2296,7 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     num coshTermPhi_new, sinhTermPhi_new, coshTermCDWl_new, sinhTermCDWl_new;
     std::tie(coshTermPhi_new, sinhTermPhi_new) = getCoshSinhTermPhi(newphi);
     std::tie(coshTermCDWl_new, sinhTermCDWl_new) = getCoshSinhTermCDWl(new_cdwl);
-    MatData::fixed<MSF,MSF> emvNew = evMatrix(
+    MatSmall emvNew = evMatrix(
         -1,
         newphi,
         coshTermPhi_new, sinhTermPhi_new,
@@ -2313,7 +2314,7 @@ MatData::fixed<MSF,MSF> DetSDW<CB, OPDIM>::get_delta_forsite(
     // print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
     // //DEBUG -- OK now
     
-    MatData::fixed<MSF,MSF> delta_forsite = emvNew * evOld;
+    MatSmall delta_forsite = emvNew * evOld;
     delta_forsite.diag() -= DataOne;
     return delta_forsite;
 }
@@ -2633,35 +2634,47 @@ void DetSDW<CB, OPDIM>::addGlobalRandomDisplacement() {
 }
 
 
-template<int OPDIM> VecNum::fixed<OPDIM> randomDirection(RngWrapper& rng) {
-    (void) rng;
-    static_assert(OPDIM == 1 or OPDIM == 2 or OPDIM == 3,
-                  "unsupported OPDIM");
-}
-template<> VecNum::fixed<1> randomDirection(RngWrapper& rng) {
-    VecNum::fixed<1> isingDir;
-    if (rng.rand01() <= 0.5) {
-        isingDir[0] = -1.0;
-    } else {
-        isingDir[0] = +1.0;
+template<int OPDIM>
+struct randomDirection {
+    VecNum::fixed<OPDIM> give(RngWrapper& rng) {
+        (void) rng;
+        static_assert(OPDIM == 1 or OPDIM == 2 or OPDIM == 3,
+                      "unsupported OPDIM");
     }
-    return isingDir;
-}
-template<> VecNum::fixed<2> randomDirection(RngWrapper& rng) {
-    VecNum::fixed<2> circleDir;
-    std::tie(circleDir[0], circleDir[1]) = rng.randPointOnCircle();
-    return circleDir;
-}
-template<> VecNum::fixed<3> randomDirection(RngWrapper& rng) {
-    VecNum::fixed<3> sphereDir;
-    std::tie(sphereDir[0], sphereDir[1], sphereDir[2]) = rng.randPointOnSphere();
-    return sphereDir;
-}
+};
+template<>
+struct randomDirection<1> {
+    VecNum::fixed<1> give(RngWrapper& rng) {
+        VecNum::fixed<1> isingDir;
+        if (rng.rand01() <= 0.5) {
+            isingDir[0] = -1.0;
+        } else {
+            isingDir[0] = +1.0;
+        }
+        return isingDir;
+    }
+};
+template<>
+struct randomDirection<2> {
+    VecNum::fixed<2> give(RngWrapper& rng) {
+        VecNum::fixed<2> circleDir;
+        std::tie(circleDir[0], circleDir[1]) = rng.randPointOnCircle();
+        return circleDir;
+    }
+};
+template<>
+struct randomDirection<3> {
+    VecNum::fixed<3> give(RngWrapper& rng) {
+        VecNum::fixed<3> sphereDir;
+        std::tie(sphereDir[0], sphereDir[1], sphereDir[2]) = rng.randPointOnSphere();
+        return sphereDir;
+    }
+};
 
 template<CheckerboardMethod CB, int OPDIM>
 uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
     // choose random direction
-    Phi rd = randomDirection<OPDIM>(rng);
+    Phi rd = randomDirection<OPDIM>::give(rng);
 
     auto flippedPhi = [&](uint32_t site, uint32_t timeslice) -> Phi {
         // phi -> phi - 2* (phi . r) * r
@@ -2776,199 +2789,30 @@ DetSDW<CB, OPDIM>::proposeNewPhiBox(uint32_t site, uint32_t timeslice) {
 }
 
 
-template<int OPDIM> VecNum::fixed<OPDIM> proposeRandomRotatedVector(
-    RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
-    (void) rng; void(angleDelta); void(oldvec);
-    throw GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
-    return oldvec;
-}
-template<> VecNum::fixed<3> proposeRandomRotatedVector(
-    RngWrapper& rng, num angleDelta, VecNum::fixed<3> vec) {
-
-    using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
-    //old orientation
-    num x = vec[0];
-    num y = vec[1];
-    num z = vec[2];
-    //squares:
-    num x2 = pow(x, 2.0);
-    num y2 = pow(y, 2.0);
-    num z2 = pow(z, 2.0);
-    //squared length
-    num r2 = x2 + y2 + z2;
-    //length
-    num r = sqrt(r2);
-
-    //new angular coordinates:
-    num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
-    num phi = rng.rand01() * 2.0 * M_PI;
-    num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
-    num cosPhi = cos(phi);
-    num sinPhi = sin(phi);
-
-    // To find the new orientation, we first consider the normalized old spin
-    num x2n = x2 / r2;
-    num y2n = y2 / r2;
-    num xn = x / r;
-    num yn = y / r;
-    num zn = z / r;
-
-    //new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
-    // this gives a normalized vector
-    num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
-    num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
-    num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
-
-    // Then we set the length of the new spin appropriately
-    newx *= r;
-    newy *= r;
-    newz *= r;
-
-    //new orientation
-    vec[0] = newx;
-    vec[1] = newy;
-    vec[2] = newz;
-
-    return vec;
-}
-
-
-template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt
-DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
-    assert(OPDIM == 3); 
-    Phi newphi = proposeRandomRotatedVector<OPDIM>(rng, ad.angleDelta,
-                                                   getPhi(site, timeslice));
-    return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
-}
-
-
-
-
 template<int OPDIM>
-std::tuple<VecNum::fixed<OPDIM>, bool>
-proposeRandomScaledVector(
-    NormalDistribution& normal_distribution, num scaleDelta,
-    VecNum::fixed<OPDIM> vec) {
-    
-    (void) normal_distribution; void(scaleDelta) void(vec);
-    throw GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
-    return std::make_tuple(vec, false);
-}
-template<>
-std::tuple<VecNum::fixed<3>, bool>
-proposeRandomScaledVector(
-    NormalDistribution& normal_distribution, num scaleDelta,
-    VecNum::fixed<3> vec) {
-
-    using std::pow; using std::abs;
-    //old orientation
-    num x = vec[0];
-    num y = vec[1];
-    num z = vec[2];
-    //squares
-    num x2 = pow(x, 2);
-    num y2 = pow(y, 2);
-    num z2 = pow(z, 2);
-    //cubed length
-    num r3 = pow(x2 + y2 + z2, 3.0/2.0);
-
-    //Choose a new cubed length from the Gaussian distribution around the original cubed length.
-    //We use scaleDelta as the standard deviation of that distribution.
-    //It is nececssary to consider the cubed length, as we have in spherical coordinates for
-    //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-    //want to bias against long lengths
-    num new_r3 = normal_distribution.get(scaleDelta, r3);
-    num scale  = 1.0;
-    bool valid = true;
-    // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-    // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-    // and declare the update as to be rejected.
-    // Otherwise re scale the original spin appropriately.
-    if (new_r3 <= 0) {
-        scale = 1.0;
-        valid = false;
-    } else {
-        scale = pow((new_r3 / r3), (1.0 / 3.0));
-        valid = true;
+struct proposeRandomRotatedVector {
+    VecNum::fixed<OPDIM> give(RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
+        (void) rng; (void)angleDelta; (void)oldvec;
+        throw GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
+        return oldvec;
     }
-
-    num new_x = x * scale;
-    num new_y = y * scale;
-    num new_z = z * scale;
-
-    vec[0] = new_x;
-    vec[1] = new_y;
-    vec[2] = new_z;
-    
-    return std::make_tuple(vec, valid);
-}
-
-
-template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::changedPhiInt
-DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
-    bool valid;
-    Phi new_phi;
-    std:tie(new_phi, valid) = proposeRandomScaledVector<OPDIM>(
-        normal_distribution, ad.scaleDelta, getPhi(site, timeslice));    
-    return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
-}
-
-
-template<int OPDIM>
-std::tuple<VecNum::fixed<OPDIM>, bool>
-proposeRandomRotatedScaledVector(
-    NormalDistribution& normal_distribution, RngWrapper& rng,
-    num angleDelta, num scaleDelta,
-    VecNum::fixed<OPDIM> vec) {
-    
-    (void) normal_distribution; void(rng);
-    void(scaleDelta); void(angleDelta); void(vec);
-    throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
-    return std::make_tuple(vec, false);
-}
+};
 template<>
-std::tuple<VecNum::fixed<3>, bool>
-proposeRandomScaledVector(
-    NormalDistribution& normal_distribution, RngWrapper& rng,
-    num angleDelta, num scaleDelta,
-    VecNum::fixed<3> vec) {
-    using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
-
-    //old orientation
-    num x = vec[0];
-    num y = vec[1];
-    num z = vec[2];
-    //squares:
-    num x2 = pow(x, 2);
-    num y2 = pow(y, 2);
-    num z2 = pow(z, 2);
-    //squared length
-    num r2 = x2 + y2 + z2;
-    //length
-    num r = sqrt(r2);
-    //cubed length
-    num r3 = pow(r, 3);
-
-    //Choose a new cubed length from the Gaussian distribution around the original cubed length.
-    //We use scaleDelta as the standard deviation of that distribution.
-    //It is nececssary to consider the cubed length, as we have in spherical coordinates for
-    //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
-    //want to bias against long lengths
-    num new_r3 = normal_distribution.get(scaleDelta, r3);
-    if (new_r3 <= 0) {
-        // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
-        // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
-        // and declare it as to be rejected.
-
-        //new orientation = old orientation
-        vec[0] = x;
-        vec[1] = y;
-        vec[2] = z;
-        return std::make_tuple(vec, false);
-    } else {
-        // otherwise we scale the spin appropriately and also change its orientation
+struct proposeRandomRotatedVector<3> {
+    VecNum::fixed<3> give(RngWrapper& rng, num angleDelta, VecNum::fixed<3> vec) {
+        using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
+        //old orientation
+        num x = vec[0];
+        num y = vec[1];
+        num z = vec[2];
+        //squares:
+        num x2 = pow(x, 2.0);
+        num y2 = pow(y, 2.0);
+        num z2 = pow(z, 2.0);
+        //squared length
+        num r2 = x2 + y2 + z2;
+        //length
+        num r = sqrt(r2);
 
         //new angular coordinates:
         num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
@@ -2983,32 +2827,200 @@ proposeRandomScaledVector(
         num xn = x / r;
         num yn = y / r;
         num zn = z / r;
-        // new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+
+        //new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
         // this gives a normalized vector
         num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
         num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
         num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
 
         // Then we set the length of the new spin appropriately
-        num new_r = pow(new_r3, (1.0 / 3.0));
-        newx *= new_r;
-        newy *= new_r;
-        newz *= new_r;
+        newx *= r;
+        newy *= r;
+        newz *= r;
 
         //new orientation
         vec[0] = newx;
         vec[1] = newy;
         vec[2] = newz;
-        return std::make_tuple(vec, true);
+
+        return vec;
     }
+};
+
+
+template<CheckerboardMethod CB, int OPDIM>
+typename DetSDW<CB, OPDIM>::changedPhiInt
+DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
+    assert(OPDIM == 3); 
+    Phi newphi = proposeRandomRotatedVector<OPDIM>::give(
+        rng, ad.angleDelta, getPhi(site, timeslice));
+    return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
 }
 
+
+
+
+template<int OPDIM>
+struct proposeRandomScaledVector {
+    std::tuple<VecNum::fixed<OPDIM>, bool> give (NormalDistribution& normal_distribution,
+                                                 num scaleDelta, VecNum::fixed<OPDIM> vec) {
+        (void) normal_distribution; void(scaleDelta) void(vec);
+        throw GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
+        return std::make_tuple(vec, false);
+    }
+};
+template<> struct proposeRandomScaledVector<3> {
+    std::tuple<VecNum::fixed<3>, bool> give( NormalDistribution&
+                                             normal_distribution, num scaleDelta,
+                                             VecNum::fixed<3> vec) {
+        using std::pow; using std::abs;
+        //old orientation
+        num x = vec[0];
+        num y = vec[1];
+        num z = vec[2];
+        //squares
+        num x2 = pow(x, 2);
+        num y2 = pow(y, 2);
+        num z2 = pow(z, 2);
+        //cubed length
+        num r3 = pow(x2 + y2 + z2, 3.0/2.0);
+
+        //Choose a new cubed length from the Gaussian distribution around the original cubed length.
+        //We use scaleDelta as the standard deviation of that distribution.
+        //It is nececssary to consider the cubed length, as we have in spherical coordinates for
+        //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+        //want to bias against long lengths
+        num new_r3 = normal_distribution.get(scaleDelta, r3);
+        num scale  = 1.0;
+        bool valid = true;
+        // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+        // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+        // and declare the update as to be rejected.
+        // Otherwise re scale the original spin appropriately.
+        if (new_r3 <= 0) {
+            scale = 1.0;
+            valid = false;
+        } else {
+            scale = pow((new_r3 / r3), (1.0 / 3.0));
+            valid = true;
+        }
+
+        num new_x = x * scale;
+        num new_y = y * scale;
+        num new_z = z * scale;
+
+        vec[0] = new_x;
+        vec[1] = new_y;
+        vec[2] = new_z;
+    
+        return std::make_tuple(vec, valid);
+    }
+};
+
+
+template<CheckerboardMethod CB, int OPDIM>
+typename DetSDW<CB, OPDIM>::changedPhiInt
+DetSDW<CB, OPDIM>::proposeScaledPhi(uint32_t site, uint32_t timeslice) {
+    bool valid;
+    Phi new_phi;
+    std:tie(new_phi, valid) = proposeRandomScaledVector<OPDIM>::give(
+        normal_distribution, ad.scaleDelta, getPhi(site, timeslice));
+    return std::make_tuple(valid ? PHI : NONE, new_phi, cdwl(site,timeslice));
+}
+
+
+template<int OPDIM>
+struct proposeRandomRotatedScaledVector {
+    std::tuple<VecNum::fixed<OPDIM>, bool> give(NormalDistribution& normal_distribution,
+                                                RngWrapper& rng, num angleDelta, num scaleDelta,
+                                                VecNum::fixed<OPDIM> vec) {    
+        (void) normal_distribution; void(rng);
+        (void) scaleDelta; (void) angleDelta; (void) vec;
+        throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
+        return std::make_tuple(vec, false);
+    }
+};
+template<>
+struct proposeRandomRotatedScaledVector<3> {
+    std::tuple<VecNum::fixed<3>, bool> give(NormalDistribution& normal_distribution,
+                                            RngWrapper& rng, num angleDelta, num scaleDelta,
+                                            VecNum::fixed<3> vec) {
+        using std::pow; using std::rng; using std::sqrt; using std::cos; using std::sin;
+
+        //old orientation
+        num x = vec[0];
+        num y = vec[1];
+        num z = vec[2];
+        //squares:
+        num x2 = pow(x, 2);
+        num y2 = pow(y, 2);
+        num z2 = pow(z, 2);
+        //squared length
+        num r2 = x2 + y2 + z2;
+        //length
+        num r = sqrt(r2);
+        //cubed length
+        num r3 = pow(r, 3);
+
+        //Choose a new cubed length from the Gaussian distribution around the original cubed length.
+        //We use scaleDelta as the standard deviation of that distribution.
+        //It is nececssary to consider the cubed length, as we have in spherical coordinates for
+        //the infinitesimal volume element: dV = d(r^3 / 3) d\phi d(\cos\theta), and we do not
+        //want to bias against long lengths
+        num new_r3 = normal_distribution.get(scaleDelta, r3);
+        if (new_r3 <= 0) {
+            // The gaussian-distributed new r^3 might be negative or zero, in that case the proposed new spin must
+            // be rejected -- we sample r only from (0, inf).  In this case we just return the original spin again
+            // and declare it as to be rejected.
+
+            //new orientation = old orientation
+            vec[0] = x;
+            vec[1] = y;
+            vec[2] = z;
+            return std::make_tuple(vec, false);
+        } else {
+            // otherwise we scale the spin appropriately and also change its orientation
+
+            //new angular coordinates:
+            num cosTheta = rng.rand01() * (1.0 - angleDelta) + angleDelta;     // \in [angleDelta, 1.0] since rand() \in [0, 1.0]
+            num phi = rng.rand01() * 2.0 * M_PI;
+            num sinTheta = sqrt(1.0 - pow(cosTheta, 2.0));
+            num cosPhi = cos(phi);
+            num sinPhi = sin(phi);
+
+            // To find the new orientation, we first consider the normalized old spin
+            num x2n = x2 / r2;
+            num y2n = y2 / r2;
+            num xn = x / r;
+            num yn = y / r;
+            num zn = z / r;
+            // new spin (rotated so that cone from which the new spin is chosen has its center axis precisely aligned with the old spin);
+            // this gives a normalized vector
+            num newx = (sinTheta / (x2n+y2n)) * ((x2n*zn + y2n)*cosPhi + (zn-1)*xn*yn*sinPhi) + xn*cosTheta;
+            num newy = (sinTheta / (x2n+y2n)) * ((zn-1)*xn*yn*cosPhi + (x2n + y2n*zn)*sinPhi) + yn*cosTheta;
+            num newz = -sinTheta * (xn*cosPhi + yn*sinPhi) + zn*cosTheta;
+
+            // Then we set the length of the new spin appropriately
+            num new_r = pow(new_r3, (1.0 / 3.0));
+            newx *= new_r;
+            newy *= new_r;
+            newz *= new_r;
+
+            //new orientation
+            vec[0] = newx;
+            vec[1] = newy;
+            vec[2] = newz;
+            return std::make_tuple(vec, true);
+        }
+    }
+};
 
 template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::changedPhiInt DetSDW<CB, OPDIM>::proposeRotatedScaledPhi(uint32_t site, uint32_t timeslice) {
     bool changedPhi;
     Phi new_phi;
-    std::tie(new_phi, changedPhi) = proposeRandomRotatedScaledVector(
+    std::tie(new_phi, changedPhi) = proposeRandomRotatedScaledVector::give(
         normal_distribution, rng, ad.angleDelta, ad.scaleDelta,
         getPhi(site, timeslice));
     return std::make_tuple(
@@ -3768,5 +3780,5 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3>>(
 
 
 
-template class DetSDW<CB_NONE>;
-template class DetSDW<CB_ASSAAD_BERG>;
+// template class DetSDW<CB_NONE>;
+// template class DetSDW<CB_ASSAAD_BERG>;
