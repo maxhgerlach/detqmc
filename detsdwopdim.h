@@ -126,7 +126,6 @@ protected:
     real for O(1):
 */
     typedef typename std::conditional<OPDIM==1, num, cpx>::type DataType;
-    static constexpr DataType DataOne = DataType( 1.0 ); // imaginary part 0
     typedef arma::Mat<DataType> MatData;
     typedef typename arma::Mat<DataType>::template fixed<MatrixSizeFactor,MatrixSizeFactor> MatSmall;
     typedef arma::Col<DataType> VecData;

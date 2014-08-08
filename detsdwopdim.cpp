@@ -1720,7 +1720,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             for (int k = l-1; k >= 0; --k) {
                 row += rows[l][site + k*pars.N] * rows[k];
             }
-            DataType divisor = DataOne + row[site + l*pars.N];
+            DataType divisor = DataType(1) + row[site + l*pars.N];
             rows[l] = (-1.0/divisor) * row;
             rows[l][site + l*pars.N] += 1;
             for (int k = l - 1; k >= 0; --k) {
@@ -2188,7 +2188,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                     //Rj is now Rj - \Id_j, for updating Y
                     for (uint32_t rc = 0; rc < MSF; ++rc) {
                         uint32_t entry = site + rc * N;
-                        dud.Rj(rc, entry) -= DataOne;
+                        dud.Rj(rc, entry) -= DataType(1);
                     }
 
                     //update X and Y
@@ -2308,7 +2308,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
     // //DEBUG -- OK now
     
     MatSmall delta_forsite = emvNew * evOld;
-    delta_forsite.diag() -= DataOne;
+    delta_forsite.diag() -= DataType(1);
     return delta_forsite;
 }
 
