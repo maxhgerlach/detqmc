@@ -26,6 +26,7 @@ struct ModelParamsDetSDW {
     bool adaptScaleVariance;         //valid unless spinProposalMethod=="box" -- this controls if the variance of the spin updates should be adapted during thermalization
     uint32_t delaySteps;             //parameter in case updateMethod is "delayed"
 
+    uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     num r;
     num c;                      // currently fixed to 1.0
     num u;                      // currently fixed to 1.0
@@ -63,8 +64,8 @@ struct ModelParamsDetSDW {
         model("sdw"), checkerboard(),
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
-        adaptScaleVariance(),
-        delaySteps(), r(), c(1.0), u(1.0), lambda(),
+        adaptScaleVariance(), delaySteps(),
+        opdim(3), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
         globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatUpdateInSlice(),
@@ -89,7 +90,7 @@ private:
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
-            & r & c & u & lambda & txhor & txver & tyhor & tyver
+            & opdim r & c & u & lambda & txhor & txver & tyhor & tyver
             & cdwU & mu & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate

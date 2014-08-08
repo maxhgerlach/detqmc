@@ -46,6 +46,7 @@ void createReplica(std::unique_ptr<DetSDW<CBM>>& replica_out,
     assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
            (not pars.checkerboard and (CBM == CB_NONE))
         );
+    assert(pars.opdim == OPDIM);
 
     replica_out = std::unique_ptr<DetSDW<CBM>>(new DetSDW<CBM>(rng, pars));
 }

@@ -28,6 +28,9 @@ void ModelParamsDetSDW::check() {
     if (d != 2) {
         throw ParameterWrong("d", d);
     }
+    if (opdim == 1 or opdim == 2 or opdim == 3) {
+        throw ParameterWrong("opdim", opdim);
+    }
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
     for (const std::string& test_bc : possibleBC) {
@@ -127,6 +130,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     MetadataMap meta;
     #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     meta["model"] = "sdw";
+    meta["opdim"] = numToString(opdim);
     meta["checkerboard"] = (checkerboard ? "true" : "false");
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
