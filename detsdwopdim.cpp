@@ -1013,7 +1013,7 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
         block(V,0,3).diag() =  a;
         block(V,1,2).diag() = -a;
         block(V,2,1).diag() = -a;
-        block(V,3,0).diag() = -a;
+        block(V,3,0).diag() =  a;
     }
 
     MatData D(MatrixSizeFactor*N, MatrixSizeFactor*N);
@@ -1023,8 +1023,8 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
     block(D,1,1).diag()	= -d;
     //OPDIM == 3: 4Nx4N matrix: repeated blocks
     if (OPDIM == 3) {
-        block(D,2,2).diag()	=  d;
-        block(D,3,3).diag()	= -d;
+        block(D,2,2).diag() =  d;
+        block(D,3,3).diag() = -d;
     }
 #undef block
 
