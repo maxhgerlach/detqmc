@@ -46,7 +46,8 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
     assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
            (not pars.checkerboard and (CBM == CB_NONE))
         );
-
+    assert(pars.opdim == OPDIM);
+    
     replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(new DetSDW<CBM, OPDIM>(rng, pars));
 }
 //explicit instantiations:
@@ -890,6 +891,7 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             D::setRealImag(block(0, 0),
                            diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
                            zeros(N, N));
+            // code setting the imaginary parts should just be fully ignored for OPDIM==1
             D::setRealImag(block(0, 1), 
                            diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                            diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
@@ -903,12 +905,14 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             if (OPDIM == 3) {
                 //lower right 2*2 blocks
                 block(2, 2) = block(0, 0);
-                D::setRealImag(block(2, 3),
-                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                               diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-                D::setRealImag(block(3, 2),
-                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                               diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+                // D::setRealImag(block(2, 3),
+                //                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                //                diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+                block(2, 3) = block(1, 0);
+                // D::setRealImag(block(3, 2),
+                //                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                //                diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
+                block(3, 2) = block(0, 1);
                 block(3, 3) = block(1, 1);
 
                 //anti-diagonal blocks
@@ -986,9 +990,9 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
     
     VecData bc;
     bc.set_size(N);
-    b.set_real(phi[0]);
+    bc.set_real(phi[0]);
     if (OPDIM == 2 or OPDIM == 3) {
-        b.set_imag( phi[1]);
+        bc.set_imag( phi[1]);
     } // else bc is real (and equal to b)
 
     VecData d;
