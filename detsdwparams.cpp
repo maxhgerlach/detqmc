@@ -28,7 +28,7 @@ void ModelParamsDetSDW::check() {
     if (d != 2) {
         throw ParameterWrong("d", d);
     }
-    if (opdim == 1 or opdim == 2 or opdim == 3) {
+    if (not (opdim == 1 or opdim == 2 or opdim == 3)) {
         throw ParameterWrong("opdim", opdim);
     }
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
