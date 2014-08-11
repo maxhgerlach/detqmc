@@ -27,6 +27,7 @@
 #include "exceptions.h"
 #include "timing.h"
 #include "checkarray.h"
+#include "tools.h"
 #include "pytools.h"
 
 #if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
@@ -905,14 +906,12 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             if (OPDIM == 3) {
                 //lower right 2*2 blocks
                 block(2, 2) = block(0, 0);
-                // D::setRealImag(block(2, 3),
-                //                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                //                diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-                block(2, 3) = block(1, 0);
-                // D::setRealImag(block(3, 2),
-                //                diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                //                diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-                block(3, 2) = block(0, 1);
+                D::setRealImag(block(2, 3),
+                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                               diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
+                D::setRealImag(block(3, 2),
+                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                               diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
                 block(3, 3) = block(1, 1);
 
                 //anti-diagonal blocks
@@ -1372,22 +1371,22 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     for (uint32_t col = 0; col < MatrixSizeFactor; ++col) {
         using arma::diagmat;
         block(result, 0, col) = cbLMultHoppingExp(diagmat(cmd) * block(orig, 0, col), XBAND, +1, true)
-                              + cbLMultHoppingExp(diagmat(bx)  * block(orig, 1, col), YBAND, +1, true);
+                              + cbLMultHoppingExp(diagmat(bx)  * block(orig, 1, col), XBAND, +1, true);
 
-        block(result, 1, col) = cbLMultHoppingExp(diagmat(bcx) * block(orig, 0, col), XBAND, +1, true)
+        block(result, 1, col) = cbLMultHoppingExp(diagmat(bcx) * block(orig, 0, col), YBAND, +1, true)
                               + cbLMultHoppingExp(diagmat(cd)  * block(orig, 1, col), YBAND, +1, true);
 
         if (OPDIM == 3) {
-            block(result, 0, col) += cbLMultHoppingExp(diagmat(ax)  * block(orig, 3, col), YBAND, +1, true);
-            block(result, 1, col) += cbLMultHoppingExp(diagmat(max) * block(orig, 2, col), XBAND, +1, true);
+            block(result, 0, col) += cbLMultHoppingExp(diagmat(ax)  * block(orig, 3, col), XBAND, +1, true);
+            block(result, 1, col) += cbLMultHoppingExp(diagmat(max) * block(orig, 2, col), YBAND, +1, true);
             
             //only a total of three terms each time because of zero blocks in the E^(+dtau*V) matrix
-            block(result, 2, col) = cbLMultHoppingExp(diagmat(max)  * block(orig, 1, col), YBAND, +1, true)
+            block(result, 2, col) = cbLMultHoppingExp(diagmat(max)  * block(orig, 1, col), XBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(cmd)  * block(orig, 2, col), XBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(bcx)  * block(orig, 3, col), YBAND, +1, true);
+                                  + cbLMultHoppingExp(diagmat(bcx)  * block(orig, 3, col), XBAND, +1, true);
                                                   
-            block(result, 3, col) = cbLMultHoppingExp(diagmat(ax)   * block(orig, 0, col), XBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(bc)   * block(orig, 2, col), XBAND, +1, true)
+            block(result, 3, col) = cbLMultHoppingExp(diagmat(ax)   * block(orig, 0, col), YBAND, +1, true)
+                                  + cbLMultHoppingExp(diagmat(bx)   * block(orig, 2, col), YBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(cd)   * block(orig, 3, col), YBAND, +1, true);
         }
     }
@@ -1457,22 +1456,22 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     for (uint32_t row = 0; row < MatrixSizeFactor; ++row) {
         using arma::diagmat;
         block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
-                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1, false);
+                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), XBAND, -1, false);
                   
-        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  XBAND, -1, false)
+        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 1) * diagmat(cmd),  YBAND, -1, false);
 
         if (OPDIM == 3) {
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), YBAND, -1, false);
-            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  XBAND, -1, false);            
+            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1, false);
+            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  YBAND, -1, false);            
             
-            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1, false)
+            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cd),   XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbx),  YBAND, -1, false);
+                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbx),  XBAND, -1, false);
                   
-            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbcx), XBAND, -1, false)
+            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbcx), YBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
         }
     }
