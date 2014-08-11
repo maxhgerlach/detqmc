@@ -3112,9 +3112,9 @@ num DetSDW<CB, OPDIM>::phiAction() {
     arma::field<Phi> phiCopy(N, m+1);
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for (uint32_t site = 0; site < N; ++site) {
-            phiCopy(site, timeslice)[0] = phi(site, 0, timeslice);
-            phiCopy(site, timeslice)[1] = phi(site, 1, timeslice);
-            phiCopy(site, timeslice)[2] = phi(site, 2, timeslice);
+            for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+                phiCopy(site, timeslice)[dim] = phi(site, dim, timeslice);
+            }
         }
     }
     num action = 0;
@@ -3295,7 +3295,7 @@ DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMul
     MatData tempG(MatrixSizeFactor*N, MatrixSizeFactor*N);
     const MatData& oldG = g;
     //multiply e^(dtau/2 K) from the right
-    for (uint32_t row = 0; row < 4; ++row) {
+    for (uint32_t row = 0; row < MatrixSizeFactor; ++row) {
         //block(tempG, row, 0) = block(oldG, row, 0) * propKx_half_inv;
         rightMultiply( block(tempG, row, 0), block(oldG, row, 0), XBAND );
         rightMultiply( block(tempG, row, 1), block(oldG, row, 1), YBAND );
@@ -3306,7 +3306,7 @@ DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMul
     }
     //multiply e^(-dtau/2 K) from the left
     MatData newG(MatrixSizeFactor*N, MatrixSizeFactor*N);
-    for (uint32_t col = 0; col < 4; ++col) {
+    for (uint32_t col = 0; col < MatrixSizeFactor; ++col) {
         //block(newG, 0, col) = propKx_half * block(tempG, 0, col);
         leftMultiply( block(newG, 0, col), block(tempG, 0, col), XBAND );
         leftMultiply( block(newG, 1, col), block(tempG, 1, col), YBAND );
