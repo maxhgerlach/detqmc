@@ -3709,7 +3709,7 @@ static inline num get_replica_exchange_probability_implementation_detsdw(
 }
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_NONE, 1>>(
+num get_replica_exchange_probability<DetSDW<CB_NONE, 1> >(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
@@ -3719,28 +3719,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE, 1>>(
 }
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 1>>(
-    num parameter_1, num action_contribution_1,
-    num parameter_2, num action_contribution_2)
-{
-    return get_replica_exchange_probability_implementation_detsdw(
-        parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
-}
-
-
-template<>
-num get_replica_exchange_probability<DetSDW<CB_NONE, 2>>(
-    num parameter_1, num action_contribution_1,
-    num parameter_2, num action_contribution_2)
-{
-    return get_replica_exchange_probability_implementation_detsdw(
-        parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
-}
-
-template<>
-num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2>>(
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 1> >(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
@@ -3751,7 +3730,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2>>(
 
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_NONE, 3>>(
+num get_replica_exchange_probability<DetSDW<CB_NONE, 2> >(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
@@ -3761,7 +3740,28 @@ num get_replica_exchange_probability<DetSDW<CB_NONE, 3>>(
 }
 
 template<>
-num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3>>(
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2> >(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_NONE, 3> >(
+    num parameter_1, num action_contribution_1,
+    num parameter_2, num action_contribution_2)
+{
+    return get_replica_exchange_probability_implementation_detsdw(
+        parameter_1, action_contribution_1,
+        parameter_2, action_contribution_2);         
+}
+
+template<>
+num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3> >(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
