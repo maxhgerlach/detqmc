@@ -3176,7 +3176,7 @@ void DetSDW<CB>::consistencyCheck() {
 //    	MatCpx checkbk_inv_right = checkerboardRightMultiplyBmatInv(
 //    			arma::eye<MatCpx>(4*N,4*N),
 //    			k, k-1);
-//    	std::cout << "cb:" << checkerboard << " " << k << "\n";
+//    	std::cout << "cb:" << CB << " " << k << "\n";
 //    	print_matrix_diff(bk, checkbk_left, "bk_left");
 //    	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
 //    	print_matrix_diff(bk, checkbk_right, "bk_right");
@@ -3184,14 +3184,14 @@ void DetSDW<CB>::consistencyCheck() {
 //    	MatCpx emv = computePotentialExponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
 //    	MatNum propK_whole(4*N, 4*N);
 //    	propK_whole.zeros();
-//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+// #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 //    	block(propK_whole, 0, 0) = propKx;
 //    	block(propK_whole, 1, 1) = propKx;
 //    	block(propK_whole, 2, 2) = propKy;
 //    	block(propK_whole, 3, 3) = propKy;
 //    	MatCpx bk_ref = emv * propK_whole;
 //    	print_matrix_diff(bk, bk_ref, "bk_ref");
-//#undef block
+// #undef block
 //    	MatCpx bk_ref_inv = arma::inv(bk_ref);
 //    	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
 //    	// spaceneigh.save();

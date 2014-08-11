@@ -3360,126 +3360,137 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
             }
         }
     }
-    // compare bmat-evaluation
-   for (uint32_t k = 1; k <= m; ++k) {
-   	MatData bk = computeBmatSDW(k, k-1);
-   	MatData bk_inv = arma::inv(bk);
-   	MatData checkbk_left = checkerboardLeftMultiplyBmat(
-   			arma::eye<MatData>(4*N,4*N),
-   			k, k-1);
-   	MatData checkbk_right = checkerboardRightMultiplyBmat(
-   			arma::eye<MatData>(4*N,4*N),
-   			k, k-1);
-   	MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
-   			arma::eye<MatData>(4*N,4*N),
-   			k, k-1);
-   	MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
-   			arma::eye<MatData>(4*N,4*N),
-   			k, k-1);
-   	std::cout << "cb:" << CB << " " << k << "\n";
-   	print_matrix_diff(bk, checkbk_left, "bk_left");
-   	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
-   	print_matrix_diff(bk, checkbk_right, "bk_right");
-   	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
-        checkarray<VecNum, OPDIM> phik;
-        phik[0] = phi.slice(k).col(0);
-        phik[1] = phi.slice(k).col(1);
-        phik[2] = phi.slice(k).col(2);
-   	MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
-   	MatNum propK_whole(4*N, 4*N);
-   	propK_whole.zeros();
-#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-   	block(propK_whole, 0, 0) = propKx;
-   	block(propK_whole, 1, 1) = propKy;   // !
-   	block(propK_whole, 2, 2) = propKx;   // !
-   	block(propK_whole, 3, 3) = propKy;
-   	MatData bk_ref = emv * propK_whole;
-   	print_matrix_diff(bk, bk_ref, "bk_ref");
-#undef block
-   	MatData bk_ref_inv = arma::inv(bk_ref);
-   	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
-   	// spaceneigh.save();
-   	// debugsavematrix(phi0.col(k), "phi0");
-   	// debugsavematrix(phi1.col(k), "phi1");
-   	// debugsavematrix(phi2.col(k), "phi2");
-   	// debugsavematrix(cdwl.col(k), "cdwl");
-   	// debugsavematrix(propKx, "propkx");
-   	// debugsavematrix(propKy, "propky");
-   	// debugsavematrixcpx(emv, "emv");
-   	// debugsavematrixcpx(bk, "bk");
-   	// debugsavematrixcpx(bk_inv, "bk_inv");
-   	// debugsavematrixcpx(checkbk_left, "check_bk_left");
-   	// debugsavematrixcpx(checkbk_inv_left, "check_bk_inv_left");
-   	// debugsavematrixcpx(bk_ref, "bk_ref");
-   	// debugsavematrixcpx(bk_ref_inv, "bk_ref_inv");
-   	// exit(0);
-   }
+//     // compare bmat-evaluation
+//    for (uint32_t k = 1; k <= m; ++k) {
+//    	MatData bk = computeBmatSDW(k, k-1);
+//    	MatData bk_inv = arma::inv(bk);
+//    	MatData checkbk_left = checkerboardLeftMultiplyBmat(
+//    			arma::eye<MatData>(4*N,4*N),
+//    			k, k-1);
+//    	MatData checkbk_right = checkerboardRightMultiplyBmat(
+//    			arma::eye<MatData>(4*N,4*N),
+//    			k, k-1);
+//    	MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
+//    			arma::eye<MatData>(4*N,4*N),
+//    			k, k-1);
+//    	MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
+//    			arma::eye<MatData>(4*N,4*N),
+//    			k, k-1);
+//    	std::cout << "cb:" << CB << " " << k << "\n";
+//    	print_matrix_diff(bk, checkbk_left, "bk_left");
+//    	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
+//    	print_matrix_diff(bk, checkbk_right, "bk_right");
+//    	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
+//         checkarray<VecNum, OPDIM> phik;
+//         phik[0] = phi.slice(k).col(0);
+//         phik[1] = phi.slice(k).col(1);
+//         phik[2] = phi.slice(k).col(2);
+//    	MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
+//    	MatNum propK_whole(4*N, 4*N);
+//    	propK_whole.zeros();
+// #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+//    	block(propK_whole, 0, 0) = propKx;
+//    	block(propK_whole, 1, 1) = propKy;   // !
+//    	block(propK_whole, 2, 2) = propKx;   // !
+//    	block(propK_whole, 3, 3) = propKy;
+//    	MatData bk_ref = emv * propK_whole;
+//    	print_matrix_diff(bk, bk_ref, "bk_ref");
+// #undef block
+//    	MatData bk_ref_inv = arma::inv(bk_ref);
+//    	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
+//    	// spaceneigh.save();
+//    	// debugSaveMatrix(phi.slice(k).col(0), "phi0");
+//    	// debugSaveMatrix(phi.slice(k).col(1), "phi1");
+//         // debugSaveMatrix(phi.slice(k).col(2), "phi2");
+//    	// debugSaveMatrix(cdwl.col(k), "cdwl");
+//    	// debugSaveMatrix(propKx, "propkx");
+//    	// debugSaveMatrix(propKy, "propky");
+//    	// debugSaveMatrixCpx(emv, "emv");
+//    	// debugSaveMatrixCpx(bk, "bk");
+//    	// debugSaveMatrixCpx(bk_inv, "bk_inv");
+//    	// debugSaveMatrixCpx(checkbk_left, "check_bk_left");
+//    	// debugSaveMatrixCpx(checkbk_inv_left, "check_bk_inv_left");
+//    	// debugSaveMatrixCpx(checkbk_right, "check_bk_right");
+//    	// debugSaveMatrixCpx(checkbk_inv_right, "check_bk_inv_right");
+//    	// debugSaveMatrixCpx(bk_ref, "bk_ref");
+//    	// debugSaveMatrixCpx(bk_ref_inv, "bk_ref_inv");
+//    	// exit(0);
+//    }
 
-    // Verify get_delta_forsite
+//     // Verify get_delta_forsite
 //     for (uint32_t k = 1; k <= m; ++k) {
 //     	for (auto stage : {1, 2}) {
-//     		uint32_t site = rng.randInt(0, N-1);
-//     		std::cout << k << " " << stage << " " << site << "\n";
-//     		Phi new_phi;
-//     		int32_t new_cdwl;
-//     		Changed changed;
-//     		switch (stage) {
-//     		case 1:
-//     			std::tie(changed, new_phi, new_cdwl) = proposeNewPhiBox(site, k);
-//     			break;
-//     		case 2:
-//     		default:
-//     			std::tie(changed, new_phi, new_cdwl) = proposeNewCDWl(site, k);
-//     			break;
-//     		}
-//     		MatCpx::fixed<4,4> delta = get_delta_forsite(new_phi, new_cdwl, k, site);
-//     		VecNum n_phi0 = phi0.col(k);
-//     		n_phi0[site] = new_phi[0];
-//     		VecNum n_phi1 = phi1.col(k);
-//     		n_phi1[site] = new_phi[1];
-//     		VecNum n_phi2 = phi2.col(k);
-//     		n_phi2[site] = new_phi[2];
-//     		VecInt n_cdwl = cdwl.col(k);
-//     		n_cdwl[site] = new_cdwl;
-//     		MatCpx big_delta =
-//     				computePotentialExponential(-1, n_phi0, n_phi1, n_phi2, n_cdwl)
-//     				*
-//     				computePotentialExponential(+1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k))
-//     				-
-//     				arma::eye<MatCpx>(4*N, 4*N);
-//     		arma::uvec indices;
-//     		indices << site << site+N << site+2*N << site+3*N;
-//     		MatCpx::fixed<4,4> big_delta_sub = big_delta.submat(indices, indices);
-//     		std::cout << (new_phi[0] - phi0(site, k)) << " "
-//     				  << (new_phi[1] - phi1(site, k)) << " "
-//     				  << (new_phi[2] - phi2(site, k)) << std::endl;
-//     		std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
-//     				<< " -> " << cdwl_gamma(new_cdwl)
-//     				<< std::endl;
+//             uint32_t site = rng.randInt(0, N-1);
+//             std::cout << k << " " << stage << " " << site << "\n";
+//             Phi new_phi;
+//             int32_t new_cdwl;
+//             Changed changed;
+//             switch (stage) {
+//             case 1:
+//                 std::tie(changed, new_phi, new_cdwl) = proposeNewPhiBox(site, k);
+//                 break;
+//             case 2:
+//             default:
+//                 std::tie(changed, new_phi, new_cdwl) = proposeNewCDWl(site, k);
+//                 break;
+//             }
+//             MatSmall delta = get_delta_forsite(new_phi, new_cdwl, k, site);
+//             checkarray<VecNum, OPDIM> o_phi;
+// 	    o_phi[0] = phi.slice(k).col(0);
+// 	    o_phi[1] = phi.slice(k).col(1);
+// 	    o_phi[2] = phi.slice(k).col(2);
+//             checkarray<VecNum, OPDIM> n_phi;
+// 	    n_phi[0] = phi.slice(k).col(0);
+// 	    n_phi[1] = phi.slice(k).col(1);
+// 	    n_phi[2] = phi.slice(k).col(2);
+// 	    n_phi[0][site] = new_phi[0];
+// 	    n_phi[1][site] = new_phi[1];
+// 	    n_phi[2][site] = new_phi[2];
+//             VecInt n_cdwl = cdwl.col(k);
+//             n_cdwl[site] = new_cdwl;
+//             MatCpx big_delta =
+//                 computePotentialExponential(-1, n_phi, n_cdwl)
+//                 *
+//                 computePotentialExponential(+1, o_phi, cdwl.col(k))
+//                 -
+//                 arma::eye<MatCpx>(MatrixSizeFactor*N, MatrixSizeFactor*N);
+//             arma::uvec indices;
+//             if (OPDIM == 3) {
+//                 indices << site << site+N << site+2*N << site+3*N;
+//             } else {
+//                 indices << site << site+N;
+//             }
+//             MatCpx::fixed<MatrixSizeFactor,MatrixSizeFactor> big_delta_sub = big_delta.submat(indices, indices);
+//             // std::cout << (new_phi[0] - phi0(site, k)) << " "
+//             //           << (new_phi[1] - phi1(site, k)) << " "
+//             //           << (new_phi[2] - phi2(site, k)) << std::endl;
+//             // std::cout << "cdwl: " << cdwl(site,k) << " -> " << new_cdwl << ", gamma: " << cdwl_gamma(cdwl(site,k))
+//             //           << " -> " << cdwl_gamma(new_cdwl)
+//             //           << std::endl;
 // //    		python_matshow2(arma::real(big_delta).eval(), "real(big_delta)",
 // //    				        arma::real(delta).eval(), "real(delta)");
-//     		//python_matshow(arma::imag(big_delta).eval());
-//     		print_matrix_diff(delta, big_delta_sub, "delta");
+//             //python_matshow(arma::imag(big_delta).eval());
+//             print_matrix_diff(delta, big_delta_sub, "delta");
 // //    		python_matshow(arma::real(delta - big_delta_sub).eval());
 // //    		python_matshow(arma::imag(delta - big_delta_sub).eval());
 //     	}
 //     }
 
-    // UdV storage -- unitarity
-//    for (uint32_t l = 0; l <= n; ++l) {
-//    	const MatCpx& U   = (*UdVStorage)[0][l].U;
-//    	const MatCpx& V_t = (*UdVStorage)[0][l].V_t;
-//    	print_matrix_diff(
-//    			(U*U.t()).eval(),
-//    			eye_gc,
-//    			"U l=" + numToString(l)
-//    	);
-//    	print_matrix_diff(
-//    			(V_t.t()*V_t).eval(),
-//    			eye_gc,
-//    			"V l=" + numToString(l)
-//    	);
-//    }
+   // //UdV storage -- unitarity
+   // for (uint32_t l = 0; l <= n; ++l) {
+   // 	const MatCpx& U   = (*UdVStorage)[0][l].U;
+   // 	const MatCpx& V_t = (*UdVStorage)[0][l].V_t;
+   // 	print_matrix_diff(
+   // 			(U*U.t()).eval(),
+   // 			eye_gc,
+   // 			"U l=" + numToString(l)
+   // 	);
+   // 	print_matrix_diff(
+   // 			(V_t.t()*V_t).eval(),
+   // 			eye_gc,
+   // 			"V l=" + numToString(l)
+   // 	);
+   // }
 }
 
 
