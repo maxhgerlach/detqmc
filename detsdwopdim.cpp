@@ -918,7 +918,7 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                 D::setRealImag(block(1, 2),
                                diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                                zeros(N,N));
-                D::setRealImag(block(2, 0),
+                D::setRealImag(block(2, 1),
                                diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
                                zeros(N,N));
                 D::setRealImag(block(3, 0),
@@ -3353,55 +3353,59 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
         }
     }
     // compare bmat-evaluation
-//    for (uint32_t k = 1; k <= m; ++k) {
-//    	MatCpx bk = computeBmatSDW(k, k-1);
-//    	MatCpx bk_inv = arma::inv(bk);
-//    	MatCpx checkbk_left = checkerboardLeftMultiplyBmat(
-//    			arma::eye<MatCpx>(4*N,4*N),
-//    			k, k-1);
-//    	MatCpx checkbk_right = checkerboardRightMultiplyBmat(
-//    			arma::eye<MatCpx>(4*N,4*N),
-//    			k, k-1);
-//    	MatCpx checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
-//    			arma::eye<MatCpx>(4*N,4*N),
-//    			k, k-1);
-//    	MatCpx checkbk_inv_right = checkerboardRightMultiplyBmatInv(
-//    			arma::eye<MatCpx>(4*N,4*N),
-//    			k, k-1);
-//    	std::cout << "cb:" << checkerboard << " " << k << "\n";
-//    	print_matrix_diff(bk, checkbk_left, "bk_left");
-//    	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
-//    	print_matrix_diff(bk, checkbk_right, "bk_right");
-//    	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
-//    	MatCpx emv = computePotentialExponential(-1, phi0.col(k), phi1.col(k), phi2.col(k), cdwl.col(k));
-//    	MatNum propK_whole(4*N, 4*N);
-//    	propK_whole.zeros();
-//#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-//    	block(propK_whole, 0, 0) = propKx;
-//    	block(propK_whole, 1, 1) = propKx;
-//    	block(propK_whole, 2, 2) = propKy;
-//    	block(propK_whole, 3, 3) = propKy;
-//    	MatCpx bk_ref = emv * propK_whole;
-//    	print_matrix_diff(bk, bk_ref, "bk_ref");
-//#undef block
-//    	MatCpx bk_ref_inv = arma::inv(bk_ref);
-//    	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
-//    	// spaceneigh.save();
-//    	// debugsavematrix(phi0.col(k), "phi0");
-//    	// debugsavematrix(phi1.col(k), "phi1");
-//    	// debugsavematrix(phi2.col(k), "phi2");
-//    	// debugsavematrix(cdwl.col(k), "cdwl");
-//    	// debugsavematrix(propKx, "propkx");
-//    	// debugsavematrix(propKy, "propky");
-//    	// debugsavematrixcpx(emv, "emv");
-//    	// debugsavematrixcpx(bk, "bk");
-//    	// debugsavematrixcpx(bk_inv, "bk_inv");
-//    	// debugsavematrixcpx(checkbk_left, "check_bk_left");
-//    	// debugsavematrixcpx(checkbk_inv_left, "check_bk_inv_left");
-//    	// debugsavematrixcpx(bk_ref, "bk_ref");
-//    	// debugsavematrixcpx(bk_ref_inv, "bk_ref_inv");
-//    	// exit(0);
-//    }
+   for (uint32_t k = 1; k <= m; ++k) {
+   	MatData bk = computeBmatSDW(k, k-1);
+   	MatData bk_inv = arma::inv(bk);
+   	MatData checkbk_left = checkerboardLeftMultiplyBmat(
+   			arma::eye<MatData>(4*N,4*N),
+   			k, k-1);
+   	MatData checkbk_right = checkerboardRightMultiplyBmat(
+   			arma::eye<MatData>(4*N,4*N),
+   			k, k-1);
+   	MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
+   			arma::eye<MatData>(4*N,4*N),
+   			k, k-1);
+   	MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
+   			arma::eye<MatData>(4*N,4*N),
+   			k, k-1);
+   	std::cout << "cb:" << CB << " " << k << "\n";
+   	print_matrix_diff(bk, checkbk_left, "bk_left");
+   	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
+   	print_matrix_diff(bk, checkbk_right, "bk_right");
+   	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
+        checkarray<VecNum, OPDIM> phik;
+        phik[0] = phi.slice(k).col(0);
+        phik[1] = phi.slice(k).col(1);
+        phik[2] = phi.slice(k).col(2);
+   	MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
+   	MatNum propK_whole(4*N, 4*N);
+   	propK_whole.zeros();
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+   	block(propK_whole, 0, 0) = propKx;
+   	block(propK_whole, 1, 1) = propKy;   // !
+   	block(propK_whole, 2, 2) = propKx;   // !
+   	block(propK_whole, 3, 3) = propKy;
+   	MatData bk_ref = emv * propK_whole;
+   	print_matrix_diff(bk, bk_ref, "bk_ref");
+#undef block
+   	MatData bk_ref_inv = arma::inv(bk_ref);
+   	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
+   	// spaceneigh.save();
+   	// debugsavematrix(phi0.col(k), "phi0");
+   	// debugsavematrix(phi1.col(k), "phi1");
+   	// debugsavematrix(phi2.col(k), "phi2");
+   	// debugsavematrix(cdwl.col(k), "cdwl");
+   	// debugsavematrix(propKx, "propkx");
+   	// debugsavematrix(propKy, "propky");
+   	// debugsavematrixcpx(emv, "emv");
+   	// debugsavematrixcpx(bk, "bk");
+   	// debugsavematrixcpx(bk_inv, "bk_inv");
+   	// debugsavematrixcpx(checkbk_left, "check_bk_left");
+   	// debugsavematrixcpx(checkbk_inv_left, "check_bk_inv_left");
+   	// debugsavematrixcpx(bk_ref, "bk_ref");
+   	// debugsavematrixcpx(bk_ref_inv, "bk_ref_inv");
+   	// exit(0);
+   }
 
     // Verify get_delta_forsite
 //     for (uint32_t k = 1; k <= m; ++k) {
