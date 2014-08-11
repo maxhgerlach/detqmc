@@ -1263,6 +1263,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
     }
     VecData b, bc;
     const auto& kphi0 = phi.slice(k).col(0);
+    b.set_size( N);
+    bc.set_size(N);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
@@ -1346,9 +1348,11 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
-    VecData b, bc;
 
     const auto& kphi0 = phi.slice(k).col(0);
+    VecData b, bc;
+    b.set_size( N);
+    bc.set_size(N);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
@@ -1430,8 +1434,10 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
-    VecData b, bc;
     const auto& kphi0 = phi.slice(k).col(0);
+    VecData b, bc;
+    b.set_size( N);
+    bc.set_size(N);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
@@ -1512,9 +1518,11 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
     }
-    VecData b, bc;
 
     const auto& kphi0 = phi.slice(k).col(0);
+    VecData b, bc;
+    b.set_size( N);
+    bc.set_size(N);
     b.set_real( kphi0);
     bc.set_real(kphi0);
     if (OPDIM >  1) {
