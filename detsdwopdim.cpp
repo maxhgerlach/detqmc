@@ -2120,21 +2120,21 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
     const auto N = pars.N;
     num accratio = 0.;
 
-    auto getX = [this](uint32_t step) {
+    auto getX = [this, MSF](uint32_t step) {
         return dud.X.cols(MSF*step, MSF*step + MSF-1);
     };
-    auto getY = [this](uint32_t step) {
+    auto getY = [this, MSF](uint32_t step) {
         return dud.Y.rows(MSF*step, MSF*step + MSF-1);
     };
 
     // these two helper functions return submatrices containing just 2
     // (OPDIM == 1 or 2) or 4 (OPDIM == 3) rows or columns
-    auto takesomerows = [this, N](MatData& target, const MatData& source, uint32_t for_site) {
+    auto takesomerows = [this, N, MSF](MatData& target, const MatData& source, uint32_t for_site) {
         for (uint32_t r = 0; r < MSF; ++r) {
             target.row(r) = source.row(for_site + r*N);
         }
     };
-    auto takesomecols = [this, N](MatData& target, const MatData& source, uint32_t for_site) {
+    auto takesomecols = [this, N, MSF](MatData& target, const MatData& source, uint32_t for_site) {
         for (uint32_t c = 0; c < MSF; ++c) {
             target.col(c) = source.col(for_site + c*N);
         }
