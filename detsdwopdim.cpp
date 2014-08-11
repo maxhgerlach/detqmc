@@ -2689,9 +2689,9 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
     auto projectedPhi = [&](uint32_t site, uint32_t timeslice) -> num {
         return arma::dot(this->getPhi(site,timeslice), rd);
     };
-    auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi phi) -> void {
+    auto setPhi = [&](uint32_t site, uint32_t timeslice, Phi this_phi) -> void {
         for (uint32_t dim = 0; dim < OPDIM; ++dim) {
-            phi(site, dim, timeslice) = phi[dim];
+            phi(site, dim, timeslice) = this_phi[dim];
         }
         if (updateCoshSinh) {
             this->updateCoshSinhTermsPhi(site, timeslice);
