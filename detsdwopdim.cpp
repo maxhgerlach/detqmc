@@ -920,10 +920,10 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                                diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                                zeros(N,N));
                 D::setRealImag(block(1, 2),
-                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
+                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
                                zeros(N,N));
                 D::setRealImag(block(2, 1),
-                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
+                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                                zeros(N,N));
                 D::setRealImag(block(3, 0),
                                diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
