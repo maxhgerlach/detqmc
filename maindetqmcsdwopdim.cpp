@@ -17,6 +17,13 @@
 #include "detsdwopdim.h"
 #include "detsdwparams.h"
 
+
+// for versions of the program restricted to only one or two
+// variations of O(1), O(2), O(3), define one or two of the macros
+//   DETSDW_NO_O1, DETSDW_NO_O2, DETSDW_NO_O3
+
+
+
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
 //return a tuple (runSimulation = true or false, simulationParameterStructs)
@@ -42,7 +49,11 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("sdw"), "only the sdw model is supported")
+#if (defined(DETSDW_NO_O1) + defined(DETSDW_NO_O2) + defined(DETSDW_NO_O3) <= 1)
+        //only include this option if at most one of the DETSDW_NO_O*
+        //macros is defined
         ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value(3), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  Default: 3")
+#endif //(defined(DETSDW_NO_O1) + defined(DETSDW_NO_O2) + defined(DETSDW_NO_O3) <= 1)
         ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
         ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod_string)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
@@ -71,6 +82,16 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
         ("wolffClusterShiftUpdate", po::value<bool>(&modelpar.wolffClusterShiftUpdate)->default_value(false), "perform global Wolff-like single cluster update combined with the global shift move")
         ("repeatUpdateInSlice", po::value<uint32_t>(&modelpar.repeatUpdateInSlice)->default_value(1), "how often to repeat updateInSlice for eacht timeslice per sweep, default: 1")
         ;
+
+#if defined(DETSDW_NO_O1) && defined(DETSDW_NO_O2)
+    modelpar.opdim = 3;
+#endif //defined(DETSDW_NO_O1) && defined(DETSDW_NO_O2)
+#if defined(DETSDW_NO_O1) && defined(DETSDW_NO_O3)
+    modelpar.opdim = 2;
+#endif //defined(DETSDW_NO_O1) && defined(DETSDW_NO_O2)
+#if defined(DETSDW_NO_O2) && defined(DETSDW_NO_O3)
+    modelpar.opdim = 1;
+#endif //defined(DETSDW_NO_O1) && defined(DETSDW_NO_O2)
 
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
     mcpar.saveInterval = 0;
@@ -200,17 +221,29 @@ int main(int argc, char **argv) {
                                      // branching here
             if (not resumeSimulation) {
                 switch (opdim) {
+                    #ifndef DETSDW_NO_O1
                     RUN_CASE(CB_ASSAAD_BERG, 1)
+                    #endif
+                    #ifndef DETSDW_NO_O2
 		    RUN_CASE(CB_ASSAAD_BERG, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O3
 		    RUN_CASE(CB_ASSAAD_BERG, 3)
+                    #endif
                     DEFAULT_CASE
                 }
             } else if (resumeSimulation) {
                 //only very select parameters given in parmc are updated for the resumed simulation
                 switch (opdim) {
+                    #ifndef DETSDW_NO_O1
                     RESUME_CASE(CB_ASSAAD_BERG, 1)
-		    RESUME_CASE(CB_ASSAAD_BERG, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O2
+                    RESUME_CASE(CB_ASSAAD_BERG, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O3
 		    RESUME_CASE(CB_ASSAAD_BERG, 3)
+                    #endif
                     DEFAULT_CASE
                 }                
             }
@@ -218,17 +251,29 @@ int main(int argc, char **argv) {
         else {
             if (not resumeSimulation) {
                 switch (opdim) {
+                    #ifndef DETSDW_NO_O1
                     RUN_CASE(CB_NONE, 1)
-		    RUN_CASE(CB_NONE, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O2
+                    RUN_CASE(CB_NONE, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O3
 		    RUN_CASE(CB_NONE, 3)
-                    DEFAULT_CASE                        
+                    #endif
+                    DEFAULT_CASE
                 }
             } else if (resumeSimulation) {
                 //only very select parameters given in parmc are updated for the resumed simulation
                 switch (opdim) {
+                    #ifndef DETSDW_NO_O1
                     RESUME_CASE(CB_NONE, 1)
-		    RESUME_CASE(CB_NONE, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O2
+                    RESUME_CASE(CB_NONE, 2)
+                    #endif
+                    #ifndef DETSDW_NO_O3
 		    RESUME_CASE(CB_NONE, 3)
+                    #endif
                     DEFAULT_CASE
                 }                
             }

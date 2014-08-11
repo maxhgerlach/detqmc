@@ -52,19 +52,24 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
     replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(new DetSDW<CBM, OPDIM>(rng, pars));
 }
 //explicit instantiations:
+#ifndef DETSDW_NO_O1
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
+#endif //DETSDW_NO_O1
+#ifndef DETSDW_NO_O2
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
+#endif //DETSDW_NO_O2
+#ifndef DETSDW_NO_O3
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 3>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 3>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars);
-
+#endif //DETSDW_NO_O3
 
 
 //initial values for field components chosen from this range:
@@ -3787,11 +3792,21 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3> >(
 
 
 
+// to speed up compilation: allow to define some of the following
+// macros if we do not use all possible instantiaions in our code
+// (see detsdwo{1,2,3}.cpp)
 
-
+#ifndef DETSDW_NO_O1
 template class DetSDW<CB_NONE,1>;
 template class DetSDW<CB_ASSAAD_BERG,1>;
+#endif //DETSDW_NO_O1
+#ifndef DETSDW_NO_O2
 template class DetSDW<CB_NONE,2>;
 template class DetSDW<CB_ASSAAD_BERG,2>;
+#endif //DETSDW_NO_O2
+#ifndef DETSDW_NO_O3
 template class DetSDW<CB_NONE,3>;
 template class DetSDW<CB_ASSAAD_BERG,3>;
+#endif //DETSDW_NO_O3
+
+
