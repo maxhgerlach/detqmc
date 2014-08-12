@@ -49,14 +49,19 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
          "specify configuration file to be used; settings in there will be overridden by command line arguments")
         ;
 
+#if defined(DETSDW_NO_O3) && defined(DETSDW_NO_O2)
+    const uint32_t default_opdim = 1;
+#elif defined(DETSDW_NO_O3) && defined(DETSDW_NO_O1)
+    const uint32_t default_opdim = 2;
+#elif defined(DETSDW_NO_O2) && defined(DETSDW_NO_O1)
+    const uint32_t default_opdim = 3;
+#else
+    const uint32_t default_opdim = 3;
+#endif 
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("sdw"), "only the sdw model is supported")
-#if (defined(DETSDW_NO_O1) + defined(DETSDW_NO_O2) + defined(DETSDW_NO_O3) <= 1)
-        //only include this option if at most one of the DETSDW_NO_O*
-        //macros is defined
-        ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value(3), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  Default: 3")
-#endif //(defined(DETSDW_NO_O1) + defined(DETSDW_NO_O2) + defined(DETSDW_NO_O3) <= 1)
+        ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value(default_opdim), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  If specified explicitly, must agree with the template instantiations included in the compiled executable")
         ("checkerboard", po::value<bool>(&modelpar.checkerboard)->default_value(false), "use a checkerboard decomposition to compute the propagator for the SDW model")
         ("spinProposalMethod", po::value<std::string>(&modelpar.spinProposalMethod_string)->default_value("box"), "SDW model: method how new field values are proposed for local values: box, rotate_then_scale, or rotate_and_scale")
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
@@ -94,7 +99,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 #if defined(DETSDW_NO_O2) && defined(DETSDW_NO_O3)
     modelpar.opdim = 1;
 #endif //defined(DETSDW_NO_O1) && defined(DETSDW_NO_O2)
-    
+
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
     mcpar.saveInterval = 0;
     mcOptions.add_options()
@@ -139,8 +144,8 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     //state file -- depends on MPI process rank
     mpi::communicator world;
     int processRank = world.rank();
-    mcpar.stateFileName = "simulation." + numToString(processRank) + ".state";    
-    
+    mcpar.stateFileName = "simulation." + numToString(processRank) + ".state";
+
     if (boost::filesystem::exists(mcpar.stateFileName)) {
         cout << "p" << processRank << ": Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;
         resumeSimulation = true;
@@ -199,12 +204,12 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     };
     record(modelOptions, modelpar.specified);
     record(mcOptions, mcpar.specified);
-    record(ptOptions, ptpar.specified);    
+    record(ptOptions, ptpar.specified);
     if (vm.count("rValues")) {
         ptpar.specified.insert("controlParameterValues");
     }
     ptpar.specified.insert("controlParameterName");
-    
+
     return std::make_tuple(runSimulation, resumeSimulation, modelpar, mcpar, ptpar);
 }
 
@@ -220,18 +225,15 @@ int main(int argc, char **argv) {
                   << metadataToString(collectVersionInfo())
                   << "\n";
     }
-    
+
     ModelParamsDetSDW parmodel;
     DetQMCParams parmc;
-    DetQMCPTParams parpt;    
+    DetQMCPTParams parpt;
     bool runSimulation;
     bool resumeSimulation;
     std::tie(runSimulation, resumeSimulation, parmodel, parmc, parpt) = configureSimulation(argc, argv);
 
-    // if (parmodel.timedisplaced) {
-    // 	std::cerr << "timedisplaced routines not implemented currently \n";
-    // 	return 1;
-    // }
+    int return_code = 0;
 
 #define RUN_CASE(cb, opdim) case opdim: {                               \
                                 DetQMCPT<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt); \
@@ -245,8 +247,9 @@ int main(int argc, char **argv) {
                                }
 #define DEFAULT_CASE default:                           \
     std::cerr << "Invalid opdim: " << opdim << "\n";    \
+    return_code = 1;                                    \
     break;
-    
+
     if (runSimulation) {
         uint32_t opdim = parmodel.opdim;
         if (parmodel.checkerboard) { // As long as CheckerboardMethod
@@ -279,7 +282,7 @@ int main(int argc, char **argv) {
                 RESUME_CASE(CB_ASSAAD_BERG, 3)
 #endif
                 DEFAULT_CASE
-                }                
+                }
             }
         }
         else {
@@ -309,7 +312,7 @@ int main(int argc, char **argv) {
                 RESUME_CASE(CB_NONE, 3)
 #endif
                 DEFAULT_CASE
-                }                
+                }
             }
         }
     }
@@ -317,6 +320,6 @@ int main(int argc, char **argv) {
 #undef RESUME_CASE
 #undef DEFAULT_CASE
     timing.stop("total");
-    
-    return 0;
+
+    return return_code;
 }
