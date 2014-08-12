@@ -4,9 +4,11 @@
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"
+#include "boost/algorithm/string/join.hpp"
 #pragma GCC diagnostic pop
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include <string>
 #include <tuple>
 #include "git-revision.h"
@@ -123,10 +125,22 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     //parse command line
     po::options_description cmdlineOptions;
     cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions);
-    po::store(po::parse_command_line(argc, argv, cmdlineOptions), vm);
+    po::parsed_options parsed = po::command_line_parser(argc, argv)
+        .options(cmdlineOptions)
+        .allow_unregistered()   // do not throw an exception for unknown program options
+        .run();
+    po::store(parsed, vm);
     po::notify(vm);
 
     using std::cout; using std::endl;
+
+    //inform about unknown program options
+    std::vector<std::string> unrecognized_options = po::collect_unrecognized(parsed.options, po::exclude_positional);
+    if (not unrecognized_options.empty()) {
+        cout << "Ignored the following unrecognized options: "
+             << boost::algorithm::join(unrecognized_options, ", ")
+             << endl << endl;
+    }
 
     if (boost::filesystem::exists(mcpar.stateFileName)) {
         cout << "Found simulation state file " << mcpar.stateFileName << ", will resume simulation" << endl;

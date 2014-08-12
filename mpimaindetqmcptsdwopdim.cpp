@@ -6,6 +6,7 @@
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/mpi.hpp"
+#include "boost/algorithm/string/join.hpp"
 #pragma GCC diagnostic pop
 #include <iostream>
 #include <fstream>
@@ -134,12 +135,23 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     // for option rValues in case of negative options
     po::options_description cmdlineOptions;
     cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions).add(ptOptions);
-    po::store(po::parse_command_line(argc, argv, cmdlineOptions,
-                                     po::command_line_style::unix_style
-                                     ^ po::command_line_style::allow_short), vm);
+    po::parsed_options parsed = po::command_line_parser(argc, argv)
+        .options(cmdlineOptions)
+        .allow_unregistered()   // do not throw an exception for unknown program options
+        .style(po::command_line_style::unix_style ^ po::command_line_style::allow_short)
+        .run();
+    po::store(parsed, vm);
     po::notify(vm);
 
     using std::cout; using std::endl;
+
+    //inform about unknown program options
+    std::vector<std::string> unrecognized_options = po::collect_unrecognized(parsed.options, po::exclude_positional);
+    if (not unrecognized_options.empty()) {
+        cout << "Ignored the following unrecognized options: "
+             << boost::algorithm::join(unrecognized_options, ", ")
+             << endl << endl;
+    }
 
     //state file -- depends on MPI process rank
     mpi::communicator world;
