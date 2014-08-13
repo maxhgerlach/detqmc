@@ -97,6 +97,8 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     ad(pars),                   // AdjustmentData
     performedSweeps(0),
     meanPhi(), normMeanPhi(0),
+    kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
+    greenXUP_summed(), greenYDOWN_summed(), greenXDOWN_summed(), greenYUP_summed(),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
     occ(), occX(occ[XBAND]), occY(occ[YBAND]),
     pairPlusMax(0.0), pairMinusMax(0.0),
@@ -151,7 +153,17 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     kOccY.zeros(pars.N);
     obsVector += VectorObservable(cref(kOccX), pars.N, "kOccX", "nkx"),
         VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
-
+    // output some different sectors of the Green's function in the
+    // momentum space representation
+    obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+        VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
+        VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+        VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
+    kgreenXUP.zeros(pars.N);
+    kgreenYDOWN.zeros(pars.N);
+    kgreenXDOWN.zeros(pars.N);
+    kgreenYUP.zeros(pars.N);
+        
     occX.zeros(pars.N);
     occY.zeros(pars.N);
     obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
@@ -240,6 +252,15 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
     meanPhi.zeros();
     normMeanPhi = 0;
 
+    // some sectors of the momentum space Green's function,
+    // helpers:
+    greenXUP_summed.zeros(pars.N, pars.N);
+    greenYDOWN_summed.zeros(pars.N, pars.N);
+    if (OPDIM == 3) {
+        greenXDOWN_summed.zeros(pars.N, pars.N);
+        greenYUP_summed.zeros(pars.N, pars.N);
+    }
+    
     //fermion occupation number -- real space
     occX.zeros(pars.N);
     occY.zeros(pars.N);
@@ -285,6 +306,19 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     for (uint32_t site = 0; site < pars.N; ++site) {
         Phi phi_site = getPhi(site, timeslice);
         meanPhi += phi_site;
+    }
+
+    // some sectors of the momentum space Green's function
+    // helpers:
+    auto gblock = [&gshifted, N](uint32_t row, uint32_t col) {
+        return gshifted.submat(row * N, col * N,
+                               (row + 1) * N - 1, (col + 1) * N - 1);
+    };
+    greenXUP_summed   += gblock(0, 0);
+    greenYDOWN_summed += gblock(1, 1);
+    if (OPDIM == 3) {
+        greenXDOWN_summed += gblock(2, 2);
+        greenYUP_summed   += gblock(3, 3);
     }
 
     //helper function to access the Green's function elements for the
@@ -602,6 +636,23 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
 
+    // some sectors of the momentum space Green's function
+    greenXUP_summed /= num(m);
+    greenYDOWN_summed /= num(m);
+    computeStructureFactor(kgreenXUP, greenXUP_summed);
+    computeStructureFactor(kgreenYDOWN, greenYDOWN_summed);
+    if (OPDIM == 3) {
+        greenXDOWN_summed /= num(m);
+        greenYUP_summed   /= num(m);
+        computeStructureFactor(kgreenXDOWN, greenXDOWN_summed);
+        computeStructureFactor(kgreenYUP, greenYUP_summed);
+    } else {
+        // the following equalities are up to complex conjugation,
+        // but we only consider real parts anyway
+        kgreenXDOWN = kgreenXUP;
+        kgreenYUP = kgreenYDOWN;
+    }
+
     //fermion occupation number -- real space
     occX /= num(m * N);
     occY /= num(m * N);
@@ -708,6 +759,37 @@ void DetSDW<CB, OPDIM>::computeStructureFactor(VecNum& out_k, const MatNum& in_r
     out_k /= num(N);
 }
 
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::computeStructureFactor(VecNum& out_k, const MatCpx& in_r) {
+    static const num pi = M_PI;
+    const auto L = pars.L;
+    const auto N = pars.N;    
+    out_k.zeros(N);
+    for (uint32_t ksite = 0; ksite < N; ++ksite) {
+        uint32_t ksitey = ksite / L;
+        uint32_t ksitex = ksite % L;
+        // num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
+        // num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
+        num ky = -pi + num(ksitey) * 2*pi / num(L);
+        num kx = -pi + num(ksitex) * 2*pi / num(L);
+        cpx k_contrib = cpx(0);
+        for (uint32_t i = 0; i < N; ++i) {
+            num iy = num(i / L);
+            num ix = num(i % L);
+            for (uint32_t j = 0; j  < N; ++j) {
+                num jy = num(j / L);
+                num jx = num(j % L);
+
+                num argument = kx * (ix - jx) + ky * (iy - jy);
+                cpx phase = std::exp(cpx(0, argument));
+
+                k_contrib += in_r(i,j) * phase;
+            }
+        }
+        out_k(ksite) = k_contrib.real();
+    }
+    out_k /= num(N);
+}
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupRandomField() {

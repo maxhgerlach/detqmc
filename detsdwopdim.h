@@ -485,6 +485,20 @@ protected:
     Phi meanPhi;		//averaged field
     num normMeanPhi;	//norm of averaged field
 
+    // diagonal blocks of the (equal time) Green's function in
+    // momentum space
+    VecNum kgreenXUP;
+    VecNum kgreenYDOWN;
+    // the following two are equal to the upper to in the cases of
+    // OPDIM == 1 or 2
+    VecNum kgreenXDOWN;
+    VecNum kgreenYUP;
+    // helpers for the above: real space, summed and averaged over
+    // imaginary time during a sweep
+    MatData greenXUP_summed, greenYDOWN_summed,
+        greenXDOWN_summed, greenYUP_summed;
+    
+    
     checkarray<VecNum, 2> kOcc;     //Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
     VecNum& kOccX;
     VecNum& kOccY;
@@ -736,7 +750,7 @@ protected:
     std::set<uint32_t> timeslices_included_in_measurement; 	//for a consistency check -- sweep includes correct #timeslices
     // compute the structure factor from a matrix of real space correlations
     void computeStructureFactor(VecNum& out_k, const MatNum& in_r);
-    
+    void computeStructureFactor(VecNum& out_k, const MatCpx& in_r); // this computes the real part of the Fourier transform of in_r
 
     
 /*
