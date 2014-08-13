@@ -789,7 +789,17 @@ void DetSDW<CB, OPDIM>::updateCoshSinhTermsCDWl() {
 }
 
 
-
+// compute e^(-dtau*K^{\alpha}..) matrices by diagonalization
+// (\alpha = x, y):
+//
+//    K^{\alpha}[i, j] = - t^{\alpha}_ij
+//
+//  default: t^{x}_{i, i \pm \hat{x}} = -1     [x hor]
+//           t^{x}_{i, i \pm \hat{y}} = -0.5   [x ver]
+//           t^{y}_{i, i \pm \hat{x}} = 0.5    [x hor]
+//           t^{y}_{i, i \pm \hat{y}} = 1      [x ver]
+//
+//  chemical potential term:  - \mu \delta_{ij} not included here
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupPropK() {
     const uint32_t dim = 2;

@@ -98,7 +98,7 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
     assert(pars.N == pars.L*pars.L);
     assert(pars.d == 2);
-    
+
     setupRandomField();
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
@@ -187,8 +187,8 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
 
     occDiffSq = 0.0;
-    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");   
-    
+    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");
+
     consistencyCheck();
 }
 
@@ -209,7 +209,7 @@ uint32_t DetSDW<CB>::getSystemN() const {
 template<CheckerboardMethod CB>
 MetadataMap DetSDW<CB>::prepareModelMetadataMap() const {
     MetadataMap meta = pars.prepareMetadataMap();
-#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}    
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     if (pars.globalShift) {
     	num globalShiftAccRatio =
     			num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
@@ -325,7 +325,7 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
         uint32_t ksitex = ksite % L;
         num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
         num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
- 
+
         for (uint32_t i = 0; i < N; ++i) {
             num iy = num(i / L);
             num ix = num(i % L);
@@ -418,9 +418,9 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
                         site2 + 2*N*band + N*spin);
     };
     const auto txhor = pars.txhor;
-    const auto txver = pars.txver;    
+    const auto txver = pars.txver;
     const auto tyhor = pars.tyhor;
-    const auto tyver = pars.tyver;    
+    const auto tyver = pars.tyver;
     for (uint32_t i = 0; i < N; ++i) {
         //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
         Spin spins[] = {SPINUP, SPINDOWN};
@@ -506,7 +506,7 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
                     (-3.0 + 2.0*
                      gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
                 occCorr(XBAND,XBAND)(i, i) += contribxx.real();
-                
+
                 cpx contribxy = 4.0 -
                     gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
                     gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
@@ -579,11 +579,11 @@ void DetSDW<CB>::measure(uint32_t timeslice) {
 template<CheckerboardMethod CB>
 void DetSDW<CB>::finishMeasurements() {
     //to ease notation:
-    const auto L = pars.L;        
+    const auto L = pars.L;
     const auto N = pars.N;
     const auto m = pars.m;
-//    const auto dtau = pars.dtau;    
-    
+//    const auto dtau = pars.dtau;
+
     assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
@@ -671,7 +671,7 @@ void DetSDW<CB>::finishMeasurements() {
         }
     }
     computeStructureFactor(chargeCorrFT, chargeCorr);
-    
+
     occDiffSq /= num(m);
 }
 
@@ -686,7 +686,7 @@ template<CheckerboardMethod CB>
 void DetSDW<CB>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
     const auto L = pars.L;
-    const auto N = pars.N;    
+    const auto N = pars.N;
     // //offset k-components for antiperiodic bc
     // num offset_x = 0.0;
     // num offset_y = 0.0;
@@ -806,12 +806,22 @@ void DetSDW<CB>::updateCoshSinhTermsCDWl() {
 }
 
 
-
+// compute e^(-dtau*K^{\alpha}..) matrices by diagonalization
+// (\alpha = x, y):
+//
+//    K^{\alpha}[i, j] = - t^{\alpha}_ij
+//
+//  default: t^{x}_{i, i \pm \hat{x}} = -1     [x hor]
+//           t^{x}_{i, i \pm \hat{y}} = -0.5   [x ver]
+//           t^{y}_{i, i \pm \hat{x}} = 0.5    [x hor]
+//           t^{y}_{i, i \pm \hat{y}} = 1      [x ver]
+//
+//  chemical potential term:  - \mu \delta_{ij} not included here
 template<CheckerboardMethod CB>
 void DetSDW<CB>::setupPropK() {
     const uint32_t dim = 2;
     const uint32_t z = 2*dim;
-    
+
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
     t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
@@ -846,7 +856,7 @@ void DetSDW<CB>::setupPropK() {
             }
         }
         //debugSaveMatrix(k, "k" + bandstr(band));
-        
+
         propK[band] = computePropagator(pars.dtau, k);
 
         propK_half[band] = computePropagator(pars.dtau / 2.0, k);
@@ -1446,15 +1456,15 @@ MatCpx DetSDW<CB>::rightMultiplyBk(const MatCpx& orig, uint32_t k) {
         block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 2) * diagmat(max),  XBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbcx), XBAND, -1, false);
-                  
+
         block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(cd),   XBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbx),  XBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 3) * diagmat(ax),   XBAND, -1, false);
-                  
+
         block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cmd),  YBAND, -1, false);
-                  
+
         block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
@@ -2236,7 +2246,7 @@ MatCpx::fixed<4,4> DetSDW<CB>::get_delta_forsite(Phi newphi, int32_t new_cdwl,
     // MatCpx::fixed<4,4> emvNew_big_sub = emvNew_big.submat(indices, indices);
     // print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
     // //DEBUG -- OK now
-    
+
     MatCpx::fixed<4,4> delta_forsite = emvNew * evOld;
     delta_forsite.diag() -= cpx(1.0, 0);
     return delta_forsite;
@@ -2364,13 +2374,13 @@ void DetSDW<CB>::attemptWolffClusterUpdate() {
     // term by term with the SV's of the updated Green's function.
     VecNum old_green_sv = arma::svd(g);
 
-    
+
     globalMoveStoreBackups();
-    
-    
+
+
     uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
 
-    
+
     //recompute Green's function
     setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
@@ -2421,7 +2431,7 @@ void DetSDW<CB>::attemptGlobalShiftMove() {
     VecNum old_green_sv = arma::svd(g);
 
     globalMoveStoreBackups();
-    
+
     // shift fields by a random, constant displacement
     addGlobalRandomDisplacement();
 
@@ -2479,9 +2489,9 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
     VecNum old_green_sv = arma::svd(g);
 
     globalMoveStoreBackups();
-    
+
     uint32_t cluster_size = buildAndFlipCluster(false);
-    
+
     // compute current bosonic weight
     num old_scalar_action = phiAction();
 
@@ -2523,8 +2533,8 @@ void DetSDW<CB>::attemptWolffClusterShiftUpdate() {
         globalMoveRestoreBackups();
         //std::cout << "reject cluster and shift\n";
     }
-    
-    timing.stop("sdw-attemptWolffClusterShiftMove");     
+
+    timing.stop("sdw-attemptWolffClusterShiftMove");
 }
 
 //helper functions for global updates:
@@ -2568,7 +2578,7 @@ uint32_t DetSDW<CB>::buildAndFlipCluster(bool updateCoshSinh) {
         setPhi(site, timeslice, flippedPhi(site, timeslice));
     };
 
-    
+
     // construct cluster
     gmd.visited.zeros(pars.N, pars.m+1);
     typedef typename GlobalMoveData::SpaceTimeIndex STI;
@@ -2895,7 +2905,7 @@ num DetSDW<CB>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
     const auto u = pars.u;
     const auto c = pars.c;
     const auto z = pars.d * 2;
-    
+
     num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
 
     num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiSpaceNeigh, phiDiff));
@@ -2957,7 +2967,7 @@ void DetSDW<CB>::thermalizationOver(int processIndex) {
         prefix = "p" + numToString(processIndex) + ": r"
             + numToString(pars.r) + " ";
     }
-    
+
     std::cout << prefix
               << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
               << prefix
@@ -3296,7 +3306,7 @@ void DetSDW<CB>::saveConfigurationStreamText(const std::string& directory) {
     } else {
         phi_output.precision(14);
         phi_output.setf(std::ios::scientific, std::ios::floatfield);
-    
+
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -3317,7 +3327,7 @@ void DetSDW<CB>::saveConfigurationStreamText(const std::string& directory) {
     if (not cdwl_output) {
         std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
         std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {    
+    } else {
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -3363,7 +3373,7 @@ void DetSDW<CB>::saveConfigurationStreamBinary(const std::string& directory) {
     if (not cdwl_output) {
         std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
         std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {    
+    } else {
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -3383,18 +3393,18 @@ void DetSDW<CB>::saveConfigurationStreamTextHeader(
     fs::path phi_filepath = fs::path(directory) /
         fs::path("configs-phi.textstream");
     // only write the header if the file does not exist yet
-    if (not fs::exists(phi_filepath)) {    
+    if (not fs::exists(phi_filepath)) {
         std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
         if (not phi_output) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
         } else {
             phi_output << simInfoHeaderText;
-            phi_output << "## phi configuration stream\n";        
+            phi_output << "## phi configuration stream\n";
             phi_output.flush();
         }
     }
-    
+
     fs::path cdwl_filepath = fs::path(directory) /
         fs::path("configs-l.textstream");
     // only write the header if the file does not exist yet
@@ -3403,9 +3413,9 @@ void DetSDW<CB>::saveConfigurationStreamTextHeader(
         if (not cdwl_output) {
             std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {        
+        } else {
             cdwl_output << simInfoHeaderText;
-            cdwl_output << "## l configuration stream\n";        
+            cdwl_output << "## l configuration stream\n";
             cdwl_output.flush();
         }
     }
@@ -3418,7 +3428,7 @@ void DetSDW<CB>::saveConfigurationStreamBinaryHeaderfile(
     fs::path phi_filepath = fs::path(directory) /
         fs::path("configs-phi.infoheader");
     // only write the header if the file does not exist yet
-    if (not fs::exists(phi_filepath)) {    
+    if (not fs::exists(phi_filepath)) {
         std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
         if (not phi_output) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
@@ -3429,7 +3439,7 @@ void DetSDW<CB>::saveConfigurationStreamBinaryHeaderfile(
             phi_output.flush();
         }
     }
-    
+
     fs::path cdwl_filepath = fs::path(directory) /
         fs::path("configs-l.infoheader");
     // only write the header if the file does not exist yet
@@ -3438,13 +3448,13 @@ void DetSDW<CB>::saveConfigurationStreamBinaryHeaderfile(
         if (not cdwl_output) {
             std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {        
+        } else {
             cdwl_output << simInfoHeaderText;
             cdwl_output << "## binary l configuration stream (32 bit signed integers) in file configs-l.binarystream\n";
             cdwl_output.flush();
         }
     }
-  
+
 }
 
 //Methods to implement a replica-exchange / parallel tempering scheme
@@ -3533,7 +3543,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE>>(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 template<>
@@ -3543,7 +3553,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 
@@ -3553,5 +3563,3 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG>>(
 
 template class DetSDW<CB_NONE>;
 template class DetSDW<CB_ASSAAD_BERG>;
-
-
