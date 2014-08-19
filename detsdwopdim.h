@@ -482,7 +482,7 @@ protected:
     Observables:
 
 */
-    Phi meanPhi;		//averaged field
+    Phi meanPhi;		//averaged field [~ magnetization]
     num normMeanPhi;	//norm of averaged field
 
     // diagonal blocks of the (equal time) Green's function in
