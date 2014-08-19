@@ -84,7 +84,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 
     //we need exactly one of the parameters 'm' and 'beta'
     if (pars.specified.count("beta") != 0 and pars.specified.count("m") != 0) {
-    	throw ParameterWrong("Only specify one of the parameters beta and dtau");
+    	throw ParameterWrong("Only specify one of the parameters beta and m");
     }
     if (pars.specified.count("m") == 0 and pars.specified.count("beta") == 0) {
     	throw ParameterWrong("Specify either parameter m or beta");
@@ -101,9 +101,13 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
     }
 
     // m needs to be larger than s
-    if (pars.m <= pars.s) {
-    	throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
-                             + " do not agree. m must be larger than s.");
+    while (pars.m <= pars.s) {
+    	// throw ParameterWrong("Parameters m=" + numToString(pars.m) + " and s=" + numToString(pars.s)
+        //                      + " do not agree. m must be larger than s.");
+        pars.s -= 1;
+    }
+    if (pars.s < 1) {
+        throw ParameterWrong("Cannot choose parameter s obeying 0 < s < m =" + numToString(pars.m));
     }
 
     return pars;
