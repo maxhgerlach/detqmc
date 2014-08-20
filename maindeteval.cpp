@@ -102,6 +102,7 @@ int main(int argc, char **argv) {
     uint32_t L = fromString<uint32_t>(meta.at("L"));
     uint32_t N = L*L;
     uint32_t m = fromString<uint32_t>(meta.at("m"));
+    double dtau = fromString<double>(meta.at("dtau"));
 
     //process time series files
     std::vector<std::string> filenames = glob("*.series");
@@ -171,13 +172,13 @@ int main(int argc, char **argv) {
                         (5.0*pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2));
                 }
 
-                estimates["phiSusceptibility"] = (m * N) * (
+                estimates["phiSusceptibility"] = (dtau * m * N) * (
                     estimates["normMeanPhiSquared"] -
                     pow(estimates["normMeanPhi"], 2)
                     );
                 jkBlockEstimates["phiSusceptibility"] = std::vector<double>(jkBlocks, 0);
                 for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-                    jkBlockEstimates["phiSusceptibility"][jb] = (m * N) * (
+                    jkBlockEstimates["phiSusceptibility"][jb] = (dtau * m * N) * (
                         jkBlockEstimates["normMeanPhiSquared"][jb] -
                         pow(jkBlockEstimates["normMeanPhi"][jb], 2)
                         );
