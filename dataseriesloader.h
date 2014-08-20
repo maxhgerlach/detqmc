@@ -248,7 +248,10 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
     while (isspace(input.peek())) {
         input.seekg(-1, ios::cur);
     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
     std::size_t length = input.tellg() - startPos + 1;     //length of data to be read in
+#pragma GCC diagnostic pop
     input.seekg(startPos);
     char* buffer = new char[length + 1];
     input.read(buffer, length);
