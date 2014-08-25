@@ -900,7 +900,6 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l) *
                                     arma::diagmat(d_l));
     UdV_temp.V_t = V_t_l * UdV_temp.V_t;
-
     
     if (k_lp1 != m) {
         //The following is B(beta, k_lp1*dtau), valid from the last sweep
@@ -915,7 +914,6 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     
     // //Accuracy check:
     // print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Up" + numToString(currentTimeslice));
-
 
     currentTimeslice = k_lp1;
 

@@ -1,6 +1,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include "boost/program_options.hpp"
 #include "boost/version.hpp"
 #include "boost/filesystem.hpp"

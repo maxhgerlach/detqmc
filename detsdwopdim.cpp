@@ -14,6 +14,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
@@ -2641,11 +2642,11 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         us.acceptedGlobalShifts += 1;
-        //std::cout << "accept globalShift\n";
+        // std::cout << "accept globalShift\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        //std::cout << "reject globalShift\n";
+        // std::cout << "reject globalShift\n";
     }
 
     timing.stop("sdw-attemptGlobalShiftMove");

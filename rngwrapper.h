@@ -26,6 +26,7 @@ extern "C" {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include "boost/serialization/string.hpp"
 #include "boost/serialization/access.hpp"
 #include "boost/serialization/export.hpp"

@@ -180,8 +180,9 @@ protected:
 
 */
     typedef DetModelGC<1, DataType> Base;
-    // stupid C++ weirdness forces us to explicitly "import" these protected base
-    // class member variables:
+    // stupid C++ weirdness (visibility in different look-up phases)
+    // forces us to explicitly "import" these protected base class
+    // member variables:
     // (see: http://stackoverflow.com/questions/11405/gcc-problem-using-a-member-of-a-base-class-that-depends-on-a-template-argument )
     using Base::dtau;
     using Base::m;
@@ -198,8 +199,14 @@ protected:
     using Base::beta;
     using Base::s;
     using Base::currentTimeslice;
+    // also for typedefs:
     typedef typename Base::UdVV UdVV;
-
+    // also for methods (g++ 4.8)
+    using Base::sweep_skeleton;
+    using Base::sweepThermalization_skeleton;
+    using Base::sweepSimple_skeleton;
+    using Base::sweepSimpleThermalization_skeleton;
+    using Base::setupUdVStorage_and_calculateGreen_skeleton;
 /*
 
     More type definitions
