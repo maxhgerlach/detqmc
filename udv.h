@@ -22,6 +22,8 @@
 
 //matrices used in the computation of B-matrices decomposed into
 //(U,d,V) = (unitary matrix, real diagonal matrix elements >= 0, unitary matrix)
+//We store U, d, V_t. V_t is the conjugate-transpose of V. The Lapack-Routines
+//to compute svd(M) for a matrix M return U, d, V_t with M = U*d*V = U*d*(V_t)^(dagger).
 //Initialize at beginning of simulation by member function setupUdVStorage()
 
 template <typename num, typename num_s = double>

@@ -273,8 +273,10 @@ protected:
     MatV4 greenFromUdV_timedisplaced(const UdVV& UdV_l, const UdVV& UdV_r) const;
     //use a faster method that does not yield information about the time-displaced
     //Green functions.
-    // Uses B(beta, tau) = V_l d_l U_t_l.t()   and     B(tau, 0) = U_r d_r V_t_r.t(),
+    // Uses B(beta, tau) = U_l d_l V_l   and     B(tau, 0) = U_r d_r V_r,
     // computes G(tau) = [Id + B(tau,0).B(beta,tau)]^{-1}
+    //                 = [Id + U_r d_r V_r U_l d_l V_l]^{-1}
+    //                 = (V_t_L V_t_x) D_x^{-1} (U_R U_x)^{dagger}
     void greenFromUdV(MatV& green_out, const UdVV& UdV_l, const UdVV& UdV_r) const;
     //The following is useful to compute G(\beta) = [1 + B(\beta, 0)]^{-1}
     void greenFromEye_and_UdV(MatV& green_out, const UdVV& UdV_r) const;
@@ -515,14 +517,13 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
             MatV B_lp1_times_U_l = computeBmat(gc, k_lp1, k_l) * U_l;
             storage[l+1] = udvDecompose<V>(B_lp1_times_U_l * arma::diagmat(d_l));
-            storage[l+1].V_t =  V_t_l * storage[l+1].V_t;			//!!
+            storage[l+1].V_t =  V_t_l * storage[l+1].V_t;
         }
     };
 
     for_each_gc(setup);
 
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        //updateGreenFunctionUdV(gc, eye_UdV, (*UdVStorage)[gc][n]);
         updateGreenFunction_Eye_UdV(gc, (*UdVStorage)[gc][n]);
     }
     currentTimeslice = m;
@@ -578,42 +579,43 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
 
 
 
+//use a faster method that does not yield information about the time-displaced
+//Green functions.
+// Uses B(beta, tau) = U_l d_l V_l   and     B(tau, 0) = U_r d_r V_r,
+// computes G(tau) = [Id + B(tau,0).B(beta,tau)]^{-1}
+//                 = [Id + U_r d_r V_r U_l d_l V_l]^{-1}
+//                 = (V_t_L V_t_x) D_x^{-1} (U_R U_x)^{dagger}
 template<uint32_t GC, typename V, bool TimeDisplaced>
 void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 		MatV& green_out,
 		const UdVV& UdV_l,
 		const UdVV& UdV_r) const {
     timing.start("greenFromUdV");
-    //variable names changed according to labeling in notes
-    const MatV&   V_l   = UdV_l.U;   //!
+    const MatV&   U_l   = UdV_l.U;
     const VecNum& d_l   = UdV_l.d;
-    const MatV&   U_t_l = UdV_l.V_t;   //!
+    const MatV&   V_t_l = UdV_l.V_t;
     const MatV&   U_r   = UdV_r.U;
     const VecNum& d_r   = UdV_r.d;
     const MatV&   V_t_r = UdV_r.V_t;
 
     using arma::diagmat; using arma::trans;
 
-//    UdVV UdV_temp = udvDecompose<V>( inv(U_l * U_r) + diagmat(d_r) * (V_r * V_l) * diagmat(d_l) );
-
-    MatV V_product = trans(V_t_r) * V_l;
+    MatV VU_rl_product = trans(V_t_r) * U_l;
+    MatV UtVt_rl_product = trans(U_r) * V_t_l;
     
     UdVV UdV_temp = udvDecompose<V>(
-    		trans(U_r) * U_t_l +
-    		diagmat(d_r) * V_product * diagmat(d_l)
-    );
+        UtVt_rl_product +
+        diagmat(d_r) * VU_rl_product * diagmat(d_l)
+        );
 
-//    MatV green = inv(UdV_temp.V * U_l) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
-
-    MatV U_product_1 = U_t_l * UdV_temp.V_t;
-    MatV U_product_2 = U_r * UdV_temp.U;
+    MatV Vt_product = V_t_l * UdV_temp.V_t;
+    MatV U_product  = U_r * UdV_temp.U;
     
-    green_out = U_product_1 *
-    		diagmat(1.0 / UdV_temp.d) *
-                trans(U_product_2);
+    green_out = Vt_product *
+        diagmat(1.0 / UdV_temp.d) *
+        trans(U_product);
 
     timing.stop("greenFromUdV");
-//    return green;
 }
 
 
@@ -622,34 +624,26 @@ template<uint32_t GC, typename V, bool TimeDisplaced>
 void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
 		MatV& green_out,
 		const UdVV& UdV_r) const {
-	timing.start("greenFromUdV");
-	//Here we consider the special case V_l*d_l*U_t_l.t() = 1
+    timing.start("greenFromUdV");
+    //Here we consider the special case U_l*d_l*V_t_l.t() = 1
     const MatV&   U_r   = UdV_r.U;
     const VecNum& d_r   = UdV_r.d;
     const MatV&   V_t_r = UdV_r.V_t;
 
-//    using arma::inv; using arma::diagmat; using arma::eye;
-
-//    UdVV UdV_temp = udvDecompose<V>( inv(V_r * U_r) + diagmat(d_r) );
-
-//    MatV green = inv(UdV_temp.V * V_r) * diagmat(1.0 / UdV_temp.d) * inv(U_r * UdV_temp.U);
-
     using arma::diagmat; using arma::trans;
 
     UdVV UdV_temp = udvDecompose<V>(
-    		trans(U_r) * V_t_r + diagmat(d_r)
-    );
-
-    MatV V_product = V_t_r * UdV_temp.V_t;
+        trans(U_r) * V_t_r + diagmat(d_r)
+        );
+    
+    MatV V_t_product = V_t_r * UdV_temp.V_t;
     MatV U_product = U_r * UdV_temp.U;
-
-    green_out = V_product *
+    
+    green_out = V_t_product *
     		diagmat(1.0 / UdV_temp.d) *
                 trans(U_product);
 
     timing.stop("greenFromUdV");
-
-//    return green;
 }
 
 
