@@ -15,7 +15,10 @@ enum CheckerboardMethod {
 
 
 struct ModelParamsDetSDW {
-    std::string model;               // should be "sdw"
+    std::string model;          // should be "sdw"
+
+    bool turnoffFermions;      // normally false, if true: simulate a pure O(opdim) model, without fermion determinants
+    
     bool checkerboard;               //use a checkerboard decomposition for computing the propagator
     std::string updateMethod_string; //"iterative", "woodbury", or "delayed"
     enum UpdateMethod_Type { ITERATIVE, WOODBURY, DELAYED };
@@ -61,7 +64,8 @@ struct ModelParamsDetSDW {
     std::set<std::string> specified;
 
     ModelParamsDetSDW() :
-        model("sdw"), checkerboard(),
+        model("sdw"), turnoffFermions(false),
+        checkerboard(),
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
         adaptScaleVariance(), delaySteps(),
@@ -86,7 +90,8 @@ private:
     template<class Archive>
         void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar  & model & checkerboard
+        ar  & model & turnoffFermions
+            & checkerboard
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps

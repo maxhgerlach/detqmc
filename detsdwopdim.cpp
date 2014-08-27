@@ -201,7 +201,11 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupUdVStorage_and_calculateGreen() {
-    setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+    if (not pars.turnoffFermions) {
+        setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+    } else {
+        g .zeros();
+    }
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -254,40 +258,44 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
     meanPhi.zeros();
     normMeanPhi = 0;
 
-    // some sectors of the momentum space Green's function,
-    // helpers:
-    greenXUP_summed.zeros(pars.N, pars.N);
-    greenYDOWN_summed.zeros(pars.N, pars.N);
-    if (OPDIM == 3) {
-        greenXDOWN_summed.zeros(pars.N, pars.N);
-        greenYUP_summed.zeros(pars.N, pars.N);
-    }
-    
-    //fermion occupation number -- real space
-    occX.zeros(pars.N);
-    occY.zeros(pars.N);
+    if (not pars.turnoffFermions) {
 
-    //fermion occupation number -- k-space
-    kOccX.zeros(pars.N);
-    kOccY.zeros(pars.N);
-
-    //equal-time pairing-correlations
-    pairPlus.zeros(pars.N);
-    pairMinus.zeros(pars.N);
-
-    // Fermionic energy contribution
-    fermionEkinetic = 0;
-    fermionEcouple = 0;
-
-    // band occupation / charge correlations
-    const Band BandValues[2] = {XBAND, YBAND};
-    for (Band b1 : BandValues) {
-    	for (Band b2 : BandValues) {
-            MatNum& occC = occCorr(b1, b2);
-            occC.zeros(pars.N,pars.N);
+        // some sectors of the momentum space Green's function,
+        // helpers:
+        greenXUP_summed.zeros(pars.N, pars.N);
+        greenYDOWN_summed.zeros(pars.N, pars.N);
+        if (OPDIM == 3) {
+            greenXDOWN_summed.zeros(pars.N, pars.N);
+            greenYUP_summed.zeros(pars.N, pars.N);
         }
+    
+        //fermion occupation number -- real space
+        occX.zeros(pars.N);
+        occY.zeros(pars.N);
+
+        //fermion occupation number -- k-space
+        kOccX.zeros(pars.N);
+        kOccY.zeros(pars.N);
+
+        //equal-time pairing-correlations
+        pairPlus.zeros(pars.N);
+        pairMinus.zeros(pars.N);
+
+        // Fermionic energy contribution
+        fermionEkinetic = 0;
+        fermionEcouple = 0;
+
+        // band occupation / charge correlations
+        const Band BandValues[2] = {XBAND, YBAND};
+        for (Band b1 : BandValues) {
+            for (Band b2 : BandValues) {
+                MatNum& occC = occCorr(b1, b2);
+                occC.zeros(pars.N,pars.N);
+            }
+        }
+        occDiffSq = 0.0;
+
     }
-    occDiffSq = 0.0;
 
     timing.stop("sdw-measure");
 }
@@ -302,326 +310,329 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
 
     timeslices_included_in_measurement.insert(timeslice);
 
-    MatData gshifted = shiftGreenSymmetric();
-
     //normphi, meanPhi, sdw-susceptibility
     for (uint32_t site = 0; site < pars.N; ++site) {
         Phi phi_site = getPhi(site, timeslice);
         meanPhi += phi_site;
     }
 
-    // some sectors of the momentum space Green's function
-    // helpers:
-    auto gblock = [&gshifted, N](uint32_t row, uint32_t col) {
-        return gshifted.submat(row * N, col * N,
-                               (row + 1) * N - 1, (col + 1) * N - 1);
-    };
-    greenXUP_summed   += gblock(0, 0);
-    greenYDOWN_summed += gblock(1, 1);
-    if (OPDIM == 3) {
-        greenXDOWN_summed += gblock(2, 2);
-        greenYUP_summed   += gblock(3, 3);
-    }
+    if (not pars.turnoffFermions) {
+    
+        MatData gshifted = shiftGreenSymmetric();
 
-    //helper function to access the Green's function elements for the
-    //current time slice, definition depending on OPDIM
-    // *1 is for the row index,
-    // *2 is for the column index
-    auto gl1 = [this, N, &gshifted](uint32_t site1, BandSpin bs1,
-                                    uint32_t site2, BandSpin bs2) -> DataType {
-        static_assert(XUP == 0, "XUP wrong"); static_assert(YDOWN == 1, "YDOWN wrong");
-        static_assert(XDOWN == 2, "XDOWN wrong"); static_assert(YUP == 3, "YUP wrong");
+        // some sectors of the momentum space Green's function
+        // helpers:
+        auto gblock = [&gshifted, N](uint32_t row, uint32_t col) {
+            return gshifted.submat(row * N, col * N,
+                                   (row + 1) * N - 1, (col + 1) * N - 1);
+        };
+        greenXUP_summed   += gblock(0, 0);
+        greenYDOWN_summed += gblock(1, 1);
         if (OPDIM == 3) {
-            return gshifted(site1 + N*bs1, site2 + N*bs2);
+            greenXDOWN_summed += gblock(2, 2);
+            greenYUP_summed   += gblock(3, 3);
         }
-        else {
-            if ((bs1 == XUP or bs1 == YDOWN) and (bs2 == XUP or bs2 == YDOWN)) {
+
+        //helper function to access the Green's function elements for the
+        //current time slice, definition depending on OPDIM
+        // *1 is for the row index,
+        // *2 is for the column index
+        auto gl1 = [this, N, &gshifted](uint32_t site1, BandSpin bs1,
+                                        uint32_t site2, BandSpin bs2) -> DataType {
+            static_assert(XUP == 0, "XUP wrong"); static_assert(YDOWN == 1, "YDOWN wrong");
+            static_assert(XDOWN == 2, "XDOWN wrong"); static_assert(YUP == 3, "YUP wrong");
+            if (OPDIM == 3) {
                 return gshifted(site1 + N*bs1, site2 + N*bs2);
             }
-            else if ((bs1 == XDOWN or bs1 == YUP) and (bs2 == XDOWN or bs2 == YUP)) {
-                return std::conj(gshifted(site1 + N*(bs1-2), site2 + N*(bs2-2)));
-            }
             else {
-                return DataType(0);
-            }
-        }
-    };
-    auto gl = [this, N, &gl1](uint32_t site1, Band band1, Spin spin1,
-                              uint32_t site2, Band band2, Spin spin2) -> DataType {
-        typedef DetSDW<CB,OPDIM> D;
-        BandSpin bs1 = D::getBandSpin(band1, spin1);
-        BandSpin bs2 = D::getBandSpin(band2, spin2);
-        return gl1(site1, bs1, site2, bs2);
-    };
-
-    //fermion occupation number -- real space
-    for (uint32_t i = 0; i < N; ++i) {
-        occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
-        occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
-    }
- 
-    //fermion occupation number -- k-space
-    static const num pi = M_PI;
-    //offset k-components for antiperiodic bc
-    num offset_x = 0.0;
-    num offset_y = 0.0;
-    if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
-        offset_x = 0.5;
-    }
-    if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
-        offset_y = 0.5;
-    }
-    for (uint32_t ksite = 0; ksite < N; ++ksite) {
-        uint32_t ksitey = ksite / L;
-        uint32_t ksitex = ksite % L;
-        num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
-        num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
- 
-        for (uint32_t i = 0; i < N; ++i) {
-            num iy = num(i / L);
-            num ix = num(i % L);
-            for (uint32_t j = 0; j  < N; ++j) {
-                num jy = num(j / L);
-                num jx = num(j % L);
-
-                num argument = kx * (ix - jx) + ky * (iy - jy);
-                cpx phase = std::exp(cpx(0, argument));
-
-                DataType green_x_up   = gl1(i, XUP, j, XUP);
-                DataType green_x_down = gl1(i, XDOWN, j, XDOWN);
-                DataType green_y_up   = gl1(i, YUP, j, YUP);
-                DataType green_y_down = gl1(i, YDOWN, j, YDOWN);
-
-                cpx x_cpx = phase * (green_x_up + green_x_down);
-                cpx y_cpx = phase * (green_y_up + green_y_down);
-
-                kOccX[ksite] += std::real(x_cpx);
-                kOccY[ksite] += std::real(y_cpx);
-            }
-        }
-    }
-
-    //equal-time pairing-correlations
-    //-------------------------------
-
-    for (uint32_t i = 0; i < N; ++i) {
-        //            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
-        //                    std::make_tuple(i, 0), std::make_tuple(0, i)
-        //            };
-        //compiler-compatibilty fix
-        std::tuple<uint32_t,uint32_t> sitePairs[2] = {
-            std::tuple<uint32_t,uint32_t>(i, 0),
-            std::tuple<uint32_t,uint32_t>(0, i)
-        };
-
-        DataType pairPlusCpx(0);
-        DataType pairMinusCpx(0);
-
-        for (auto sites : sitePairs) {
-            uint32_t siteA = std::get<0>(sites);
-            uint32_t siteB = std::get<1>(sites);
-
-            // the following two unwieldy sums have been evaluated with the Mathematica
-            // notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
-            pairPlusCpx += DataType(-4.0) * (
-                gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-                gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
-                gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-                gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
-                gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-                gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-                gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-                gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-                );
-
-            pairMinusCpx += DataType(-4.0) * (
-                gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
-                gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
-                gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
-                gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
-                gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
-                gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
-                gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
-                gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
-                );
-        }
-
-        pairPlus[i] += std::real(pairPlusCpx);
-        //pairPlusimag[i] += std::imag(pairPlusCpx);
-        pairMinus[i] += std::real(pairMinusCpx);
-        //pairMinusimag[i] += std::imag(pairMinusCpx);
-    }
-
-    // Fermionic energy contribution
-    // -----------------------------
-    auto glij = [this, gl](uint32_t site1, uint32_t site2, Band band, Spin spin) -> DataType {
-        return gl(site1, band, spin,
-                  site2, band, spin);
-    };
-    const auto txhor = pars.txhor;
-    const auto txver = pars.txver;    
-    const auto tyhor = pars.tyhor;
-    const auto tyver = pars.tyver;    
-    for (uint32_t i = 0; i < N; ++i) {
-        //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
-        Spin spins[] = {SPINUP, SPINDOWN};
-        for (auto spin: spins) {
-            DataType e = DataType(txhor) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
-                + DataType(txhor) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
-                + DataType(txver) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
-                + DataType(txver) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
-                + DataType(tyhor) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
-                + DataType(tyhor) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
-                + DataType(tyver) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
-                + DataType(tyver) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
-            fermionEkinetic += std::real(e);
-            //fermionEkinetic_imag += std::imag(e);
-        }
-    }
-    for (uint32_t i = 0; i < N; ++i) {
-        auto glbs = [this, i, gl](Band band1, Spin spin1,
-                                  Band band2, Spin spin2) -> DataType {
-            return gl(i, band1, spin1, i, band2, spin2);
-        };
-
-        //factors for different combinations of spins
-        //overall factor of -1 included
-         // up_up, up_dn, dn_up, dn_dn;
-        DataType up_up(0);
-        DataType up_dn = DataType(-phi(i,0,timeslice)); // real part
-        DataType dn_up = DataType(-phi(i,0,timeslice));
-        DataType dn_dn(0);
-        if (OPDIM >= 2) {
-            setImag(up_dn, +phi(i,1,timeslice));
-            setImag(dn_up, -phi(i,1,timeslice));
-        }
-        if (OPDIM == 3) {
-            up_up = DataType(-phi(i,2,timeslice));
-            dn_dn = DataType(+phi(i,2,timeslice));
-        }
-
-        DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
-                              glbs(YBAND, SPINUP, XBAND, SPINUP))
-                   + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
-                              glbs(YBAND, SPINUP, XBAND, SPINDOWN))
-                   + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
-                              glbs(YBAND, SPINDOWN, XBAND, SPINUP))
-                   + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
-                              glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
-
-        fermionEcouple += std::real(e);
-        //fermionEcouple_imag += std::imag(e);
-    }
-
-    // band occupation / charge correlations
-    // -------------------------------------
-    // code generated in Mathematica: sdw-cdw-corr-obs.nb
-    for (uint32_t i = 0; i < N; ++i) {
-        for (uint32_t j = 0; j < N; ++j) {
-            if (i != j) {
-                //unequal sites, slightly generic
-                const Band BandValues[2] = {XBAND, YBAND};
-                for (Band b1 : BandValues) {
-                    for (Band b2 : BandValues) {
-                        DataType contrib = 4.0 -
-                            gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
-                            gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
-                            gl(i, b1, SPINUP, j, b2, SPINDOWN)*
-                            gl(j, b2, SPINDOWN, i, b1, SPINUP) - 2.0*
-                            gl(j, b2, SPINDOWN, j, b2, SPINDOWN) -
-                            gl(i, b1, SPINDOWN, j, b2, SPINUP)*
-                            gl(j, b2, SPINUP, i, b1, SPINDOWN) -
-                            gl(i, b1, SPINUP, j, b2, SPINUP)*
-                            gl(j, b2, SPINUP, i, b1, SPINUP) - 2.0*
-                            gl(j, b2, SPINUP, j, b2, SPINUP) +
-                            gl(i, b1, SPINDOWN, i, b1, SPINDOWN)*
-                            (-2.0 +
-                             gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
-                             gl(j, b2, SPINUP, j, b2, SPINUP)) +
-                            gl(i, b1, SPINUP, i, b1, SPINUP)*
-                            (-2.0 +
-                             gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
-                             gl(j, b2, SPINUP, j, b2, SPINUP));
-                        occCorr(b1, b2)(i, j) += std::real(contrib);
-                    }
+                if ((bs1 == XUP or bs1 == YDOWN) and (bs2 == XUP or bs2 == YDOWN)) {
+                    return gshifted(site1 + N*bs1, site2 + N*bs2);
                 }
-            } else {
-                //equal site i, use band-specific code
-                DataType contribxx = 4.0 - 2.0*
-                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
-                    gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
-                    gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
-                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
-                    (-3.0 + 2.0*
-                     gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
-                occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
-                
-                DataType contribxy = 4.0 -
-                    gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-                    gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
-                    gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
-                    gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) - 2.0*
-                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) -
-                    gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
-                    gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) -
-                    gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
-                    gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
-                    gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
-                    gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
-                    (-2.0 +
-                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
-                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
-                    gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
-                    (-2.0 +
-                     gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
-                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(XBAND,YBAND)(i,i) += std::real(contribxy);
-                occCorr(YBAND,XBAND)(i,i) += std::real(contribxy); // it's symmetric in xy
+                else if ((bs1 == XDOWN or bs1 == YUP) and (bs2 == XDOWN or bs2 == YUP)) {
+                    return std::conj(gshifted(site1 + N*(bs1-2), site2 + N*(bs2-2)));
+                }
+                else {
+                    return DataType(0);
+                }
+            }
+        };
+        auto gl = [this, N, &gl1](uint32_t site1, Band band1, Spin spin1,
+                                  uint32_t site2, Band band2, Spin spin2) -> DataType {
+            typedef DetSDW<CB,OPDIM> D;
+            BandSpin bs1 = D::getBandSpin(band1, spin1);
+            BandSpin bs2 = D::getBandSpin(band2, spin2);
+            return gl1(site1, bs1, site2, bs2);
+        };
 
-                DataType contribyy = 4.0 - 2.0*
-                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
-                    gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
-                    gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
-                    gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-                    (-3.0 + 2.0*
-                     gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                occCorr(YBAND,YBAND)(i,i) += std::real(contribyy);
+        //fermion occupation number -- real space
+        for (uint32_t i = 0; i < N; ++i) {
+            occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
+            occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
+        }
+ 
+        //fermion occupation number -- k-space
+        static const num pi = M_PI;
+        //offset k-components for antiperiodic bc
+        num offset_x = 0.0;
+        num offset_y = 0.0;
+        if (pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) {
+            offset_x = 0.5;
+        }
+        if (pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) {
+            offset_y = 0.5;
+        }
+        for (uint32_t ksite = 0; ksite < N; ++ksite) {
+            uint32_t ksitey = ksite / L;
+            uint32_t ksitex = ksite % L;
+            num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
+            num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
+ 
+            for (uint32_t i = 0; i < N; ++i) {
+                num iy = num(i / L);
+                num ix = num(i % L);
+                for (uint32_t j = 0; j  < N; ++j) {
+                    num jy = num(j / L);
+                    num jx = num(j % L);
+
+                    num argument = kx * (ix - jx) + ky * (iy - jy);
+                    cpx phase = std::exp(cpx(0, argument));
+
+                    DataType green_x_up   = gl1(i, XUP, j, XUP);
+                    DataType green_x_down = gl1(i, XDOWN, j, XDOWN);
+                    DataType green_y_up   = gl1(i, YUP, j, YUP);
+                    DataType green_y_down = gl1(i, YDOWN, j, YDOWN);
+
+                    cpx x_cpx = phase * (green_x_up + green_x_down);
+                    cpx y_cpx = phase * (green_y_up + green_y_down);
+
+                    kOccX[ksite] += std::real(x_cpx);
+                    kOccY[ksite] += std::real(y_cpx);
+                }
             }
         }
-    }
 
-    DataType occDiffSqContrib = 0.0;
-    for (uint32_t i = 0; i < N; ++i) {
-        occDiffSqContrib += -2.0*
-            gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
-            gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) +
-            gl(i, XBAND, SPINUP, i, XBAND, SPINUP) + 2.0*
-            gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-            gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) + 2.0*
-            gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
-            gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) +
-            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
-            gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
-            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) + 2.0*
-            gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
-            gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) + 2.0*
-            gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
-            gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
-            gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
-            gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) +
-            gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
-            (1.0 + 2.0*
-             gl(i, XBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
-             gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
-             gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
-            gl(i, YBAND, SPINUP, i, YBAND, SPINUP) - 2.0*
-            gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
-            gl(i, YBAND, SPINUP, i, YBAND, SPINUP) + 2.0*
-            gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-            gl(i, YBAND, SPINUP, i, YBAND, SPINUP);
-    }
-    occDiffSq += (std::real(occDiffSqContrib)) / num(N);
+        //equal-time pairing-correlations
+        //-------------------------------
 
+        for (uint32_t i = 0; i < N; ++i) {
+            //            checkarray<std::tuple<uint32_t,uint32_t>, 2> sitePairs = {
+            //                    std::make_tuple(i, 0), std::make_tuple(0, i)
+            //            };
+            //compiler-compatibilty fix
+            std::tuple<uint32_t,uint32_t> sitePairs[2] = {
+                std::tuple<uint32_t,uint32_t>(i, 0),
+                std::tuple<uint32_t,uint32_t>(0, i)
+            };
+
+            DataType pairPlusCpx(0);
+            DataType pairMinusCpx(0);
+
+            for (auto sites : sitePairs) {
+                uint32_t siteA = std::get<0>(sites);
+                uint32_t siteB = std::get<1>(sites);
+
+                // the following two unwieldy sums have been evaluated with the Mathematica
+                // notebook pairing-corr.nb (and they match the terms calculated by hand on paper)
+                pairPlusCpx += DataType(-4.0) * (
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+                    );
+
+                pairMinusCpx += DataType(-4.0) * (
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINDOWN) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, XBAND, SPINUP) -
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINDOWN) +
+                    gl(siteA, XBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, XBAND, SPINUP, siteB, YBAND, SPINUP) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINDOWN) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, XBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, XBAND, SPINUP) +
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINUP)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINDOWN) -
+                    gl(siteA, YBAND, SPINDOWN, siteB, YBAND, SPINDOWN)*gl(siteA, YBAND, SPINUP, siteB, YBAND, SPINUP)
+                    );
+            }
+
+            pairPlus[i] += std::real(pairPlusCpx);
+            //pairPlusimag[i] += std::imag(pairPlusCpx);
+            pairMinus[i] += std::real(pairMinusCpx);
+            //pairMinusimag[i] += std::imag(pairMinusCpx);
+        }
+
+        // Fermionic energy contribution
+        // -----------------------------
+        auto glij = [this, gl](uint32_t site1, uint32_t site2, Band band, Spin spin) -> DataType {
+            return gl(site1, band, spin,
+                      site2, band, spin);
+        };
+        const auto txhor = pars.txhor;
+        const auto txver = pars.txver;    
+        const auto tyhor = pars.tyhor;
+        const auto tyver = pars.tyver;    
+        for (uint32_t i = 0; i < N; ++i) {
+            //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
+            Spin spins[] = {SPINUP, SPINDOWN};
+            for (auto spin: spins) {
+                DataType e = DataType(txhor) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
+                    + DataType(txhor) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
+                    + DataType(txver) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
+                    + DataType(txver) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
+                    + DataType(tyhor) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
+                    + DataType(tyhor) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
+                    + DataType(tyver) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
+                    + DataType(tyver) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
+                fermionEkinetic += std::real(e);
+                //fermionEkinetic_imag += std::imag(e);
+            }
+        }
+        for (uint32_t i = 0; i < N; ++i) {
+            auto glbs = [this, i, gl](Band band1, Spin spin1,
+                                      Band band2, Spin spin2) -> DataType {
+                return gl(i, band1, spin1, i, band2, spin2);
+            };
+
+            //factors for different combinations of spins
+            //overall factor of -1 included
+            // up_up, up_dn, dn_up, dn_dn;
+            DataType up_up(0);
+            DataType up_dn = DataType(-phi(i,0,timeslice)); // real part
+            DataType dn_up = DataType(-phi(i,0,timeslice));
+            DataType dn_dn(0);
+            if (OPDIM >= 2) {
+                setImag(up_dn, +phi(i,1,timeslice));
+                setImag(dn_up, -phi(i,1,timeslice));
+            }
+            if (OPDIM == 3) {
+                up_up = DataType(-phi(i,2,timeslice));
+                dn_dn = DataType(+phi(i,2,timeslice));
+            }
+
+            DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
+                                  glbs(YBAND, SPINUP, XBAND, SPINUP))
+                + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
+                           glbs(YBAND, SPINUP, XBAND, SPINDOWN))
+                + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
+                           glbs(YBAND, SPINDOWN, XBAND, SPINUP))
+                + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
+                           glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
+
+            fermionEcouple += std::real(e);
+            //fermionEcouple_imag += std::imag(e);
+        }
+
+        // band occupation / charge correlations
+        // -------------------------------------
+        // code generated in Mathematica: sdw-cdw-corr-obs.nb
+        for (uint32_t i = 0; i < N; ++i) {
+            for (uint32_t j = 0; j < N; ++j) {
+                if (i != j) {
+                    //unequal sites, slightly generic
+                    const Band BandValues[2] = {XBAND, YBAND};
+                    for (Band b1 : BandValues) {
+                        for (Band b2 : BandValues) {
+                            DataType contrib = 4.0 -
+                                gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
+                                gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
+                                gl(i, b1, SPINUP, j, b2, SPINDOWN)*
+                                gl(j, b2, SPINDOWN, i, b1, SPINUP) - 2.0*
+                                gl(j, b2, SPINDOWN, j, b2, SPINDOWN) -
+                                gl(i, b1, SPINDOWN, j, b2, SPINUP)*
+                                gl(j, b2, SPINUP, i, b1, SPINDOWN) -
+                                gl(i, b1, SPINUP, j, b2, SPINUP)*
+                                gl(j, b2, SPINUP, i, b1, SPINUP) - 2.0*
+                                gl(j, b2, SPINUP, j, b2, SPINUP) +
+                                gl(i, b1, SPINDOWN, i, b1, SPINDOWN)*
+                                (-2.0 +
+                                 gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+                                 gl(j, b2, SPINUP, j, b2, SPINUP)) +
+                                gl(i, b1, SPINUP, i, b1, SPINUP)*
+                                (-2.0 +
+                                 gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+                                 gl(j, b2, SPINUP, j, b2, SPINUP));
+                            occCorr(b1, b2)(i, j) += std::real(contrib);
+                        }
+                    }
+                } else {
+                    //equal site i, use band-specific code
+                    DataType contribxx = 4.0 - 2.0*
+                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
+                        gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
+                        gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
+                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+                        (-3.0 + 2.0*
+                         gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
+                    occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
+                
+                    DataType contribxy = 4.0 -
+                        gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                        gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
+                        gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
+                        gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) - 2.0*
+                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) -
+                        gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
+                        gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) -
+                        gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
+                        gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+                        gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+                        (-2.0 +
+                         gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
+                        gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+                        (-2.0 +
+                         gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+                    occCorr(XBAND,YBAND)(i,i) += std::real(contribxy);
+                    occCorr(YBAND,XBAND)(i,i) += std::real(contribxy); // it's symmetric in xy
+
+                    DataType contribyy = 4.0 - 2.0*
+                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
+                        gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
+                        gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                        (-3.0 + 2.0*
+                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+                    occCorr(YBAND,YBAND)(i,i) += std::real(contribyy);
+                }
+            }
+        }
+
+        DataType occDiffSqContrib = 0.0;
+        for (uint32_t i = 0; i < N; ++i) {
+            occDiffSqContrib += -2.0*
+                gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
+                gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) +
+                gl(i, XBAND, SPINUP, i, XBAND, SPINUP) + 2.0*
+                gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) + 2.0*
+                gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
+                gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) +
+                gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
+                gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+                gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) + 2.0*
+                gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
+                gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) + 2.0*
+                gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
+                gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+                gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
+                gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) +
+                gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+                (1.0 + 2.0*
+                 gl(i, XBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+                 gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) - 2.0*
+                 gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
+                gl(i, YBAND, SPINUP, i, YBAND, SPINUP) - 2.0*
+                gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+                gl(i, YBAND, SPINUP, i, YBAND, SPINUP) + 2.0*
+                gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+                gl(i, YBAND, SPINUP, i, YBAND, SPINUP);
+        }
+        occDiffSq += (std::real(occDiffSqContrib)) / num(N);
+    }
+    
     timing.stop("sdw-measure");
 }
 
@@ -638,80 +649,84 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
 
-    // some sectors of the momentum space Green's function
-    greenXUP_summed /= num(m);
-    greenYDOWN_summed /= num(m);
-    computeStructureFactor(kgreenXUP, greenXUP_summed);
-    computeStructureFactor(kgreenYDOWN, greenYDOWN_summed);
-    if (OPDIM == 3) {
-        greenXDOWN_summed /= num(m);
-        greenYUP_summed   /= num(m);
-        computeStructureFactor(kgreenXDOWN, greenXDOWN_summed);
-        computeStructureFactor(kgreenYUP, greenYUP_summed);
-    } else {
-        // the following equalities are up to complex conjugation,
-        // but we only consider real parts anyway
-        kgreenXDOWN = kgreenXUP;
-        kgreenYUP = kgreenYDOWN;
-    }
-
-    //fermion occupation number -- real space
-    occX /= num(m * N);
-    occY /= num(m * N);
-
-    //fermion occupation number -- k-space
-    for (uint32_t ksite = 0; ksite < N; ++ksite) {
-        // add 2.0 and not 1.0 because spin is included
-        kOccX[ksite] = 2.0 - kOccX[ksite] / num(m * N);
-        kOccY[ksite] = 2.0 - kOccY[ksite] / num(m * N);
-    }
-
-    //equal-time pairing-correlations
-    //-------------------------------
-    pairPlus /= m;
-    pairMinus /= m;
-    // sites around the maximum range L/2, L/2
-    static const uint32_t numSitesFar = 9;
-    uint32_t sitesfar[numSitesFar] = {
-        coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
-        coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
-        coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
-    };
-    pairPlusMax = 0;
-    pairMinusMax = 0;
-    for (uint32_t i : sitesfar) {
-        pairPlusMax += pairPlus[i];
-        pairMinusMax += pairMinus[i];
-    }
-    pairPlusMax /= numSitesFar;
-    pairMinusMax /= numSitesFar;
-
-    // Fermionic energy contribution
-    // -----------------------------
-    fermionEkinetic /= num(m*N);
-    fermionEcouple /= num(m*N);
-
-
-    // band occupation / charge correlations
-    // -------------------------------------
-    const Band BandValues[2] = {XBAND, YBAND};
-    for (Band b1 : BandValues) {
-    	for (Band b2 : BandValues) {
-            occCorr(b1,b2) /= num(m);
-        }
-    }
-    chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
-        occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
-
-    // Fourier transforms
-    for (Band b1 : BandValues) {
-        for (Band b2 : BandValues) {
-            computeStructureFactor(occCorrFT(b1,b2), occCorr(b1,b2));
-        }
-    }
-    computeStructureFactor(chargeCorrFT, chargeCorr);
+    if (not pars.turnoffFermions) {
     
-    occDiffSq /= num(m);
+        // some sectors of the momentum space Green's function
+        greenXUP_summed /= num(m);
+        greenYDOWN_summed /= num(m);
+        computeStructureFactor(kgreenXUP, greenXUP_summed);
+        computeStructureFactor(kgreenYDOWN, greenYDOWN_summed);
+        if (OPDIM == 3) {
+            greenXDOWN_summed /= num(m);
+            greenYUP_summed   /= num(m);
+            computeStructureFactor(kgreenXDOWN, greenXDOWN_summed);
+            computeStructureFactor(kgreenYUP, greenYUP_summed);
+        } else {
+            // the following equalities are up to complex conjugation,
+            // but we only consider real parts anyway
+            kgreenXDOWN = kgreenXUP;
+            kgreenYUP = kgreenYDOWN;
+        }
+
+        //fermion occupation number -- real space
+        occX /= num(m * N);
+        occY /= num(m * N);
+
+        //fermion occupation number -- k-space
+        for (uint32_t ksite = 0; ksite < N; ++ksite) {
+            // add 2.0 and not 1.0 because spin is included
+            kOccX[ksite] = 2.0 - kOccX[ksite] / num(m * N);
+            kOccY[ksite] = 2.0 - kOccY[ksite] / num(m * N);
+        }
+
+        //equal-time pairing-correlations
+        //-------------------------------
+        pairPlus /= m;
+        pairMinus /= m;
+        // sites around the maximum range L/2, L/2
+        static const uint32_t numSitesFar = 9;
+        uint32_t sitesfar[numSitesFar] = {
+            coordsToSite(L/2 - 1, L/2 - 1), coordsToSite(L/2, L/2 - 1), coordsToSite(L/2 + 1, L/2 - 1),
+            coordsToSite(L/2 - 1, L/2),     coordsToSite(L/2, L/2),     coordsToSite(L/2 + 1, L/2),
+            coordsToSite(L/2 - 1, L/2 + 1), coordsToSite(L/2, L/2 + 1), coordsToSite(L/2 + 1, L/2 + 1)
+        };
+        pairPlusMax = 0;
+        pairMinusMax = 0;
+        for (uint32_t i : sitesfar) {
+            pairPlusMax += pairPlus[i];
+            pairMinusMax += pairMinus[i];
+        }
+        pairPlusMax /= numSitesFar;
+        pairMinusMax /= numSitesFar;
+
+        // Fermionic energy contribution
+        // -----------------------------
+        fermionEkinetic /= num(m*N);
+        fermionEcouple /= num(m*N);
+
+
+        // band occupation / charge correlations
+        // -------------------------------------
+        const Band BandValues[2] = {XBAND, YBAND};
+        for (Band b1 : BandValues) {
+            for (Band b2 : BandValues) {
+                occCorr(b1,b2) /= num(m);
+            }
+        }
+        chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
+            occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
+
+        // Fourier transforms
+        for (Band b1 : BandValues) {
+            for (Band b2 : BandValues) {
+                computeStructureFactor(occCorrFT(b1,b2), occCorr(b1,b2));
+            }
+        }
+        computeStructureFactor(chargeCorrFT, chargeCorr);
+    
+        occDiffSq /= num(m);
+
+    }
 }
 
 
@@ -1732,14 +1747,20 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
         }
     }
 
-    //Update discrete cdwl fields
-    //currently just discard this accratio
-    callUpdateInSlice_for_updateMethod(
-        timeslice,
-        [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-            return this->proposeNewCDWl(site, timeslice);
-        } );
 
+    if (not pars.turnoffFermions) {
+
+        //Update discrete cdwl fields
+        //currently just discard this accratio
+
+        callUpdateInSlice_for_updateMethod(
+            timeslice,
+            [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                return this->proposeNewCDWl(site, timeslice);
+            } );
+        
+    }
+    
     timing.stop("sdw-updateInSlice");
 }
 
@@ -1783,69 +1804,75 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 
         //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatSmall delta_forsite =
-            get_delta_forsite(newphi, new_cdwl, timeslice, site);
-        
-        //****
-        //Compute the determinant and inverse of I + Delta*(I - G)
-        //based on Sherman-Morrison formula / Matrix-Determinant lemma
-        //****
+        num probSFermion = 1.0;
+        num prob_cdwl = 1.0;
 
-        //Delta*(I - G) is a sparse matrix containing just 4 rows:
-        //site, site+N, site+2N, site+3N
-        //Compute the values of these rows [O(N)]:
         checkarray<VecData, MatrixSizeFactor> rows;
-        for (uint32_t r = 0; r < MatrixSizeFactor; ++r) {
-            //TODO: Here are some unnecessary operations:
-            //delta_forsite contains many repeated elements, and even
-            //some zeros
-            rows[r] = VecData(MatrixSizeFactor*pars.N);
-            for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
-                rows[r][col] = -delta_forsite(r,0) * g.col(col)[site];
-            }
-            rows[r][site] += delta_forsite(r,0);
-            for (uint32_t dc = 1; dc < MatrixSizeFactor; ++dc) {
-                for (uint32_t col = 0; col < 4*pars.N; ++col) {
-                    rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*pars.N];
+        
+        if (not pars.turnoffFermions) {
+        
+            MatSmall delta_forsite =
+                get_delta_forsite(newphi, new_cdwl, timeslice, site);
+        
+            //****
+            //Compute the determinant and inverse of I + Delta*(I - G)
+            //based on Sherman-Morrison formula / Matrix-Determinant lemma
+            //****
+
+            //Delta*(I - G) is a sparse matrix containing just 4 rows:
+            //site, site+N, site+2N, site+3N
+            //Compute the values of these rows [O(N)]:
+            for (uint32_t r = 0; r < MatrixSizeFactor; ++r) {
+                //TODO: Here are some unnecessary operations:
+                //delta_forsite contains many repeated elements, and even
+                //some zeros
+                rows[r] = VecData(MatrixSizeFactor*pars.N);
+                for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
+                    rows[r][col] = -delta_forsite(r,0) * g.col(col)[site];
                 }
-                rows[r][site + dc*pars.N] += delta_forsite(r,dc);
+                rows[r][site] += delta_forsite(r,0);
+                for (uint32_t dc = 1; dc < MatrixSizeFactor; ++dc) {
+                    for (uint32_t col = 0; col < 4*pars.N; ++col) {
+                        rows[r][col] += -delta_forsite(r,dc) * g.col(col)[site + dc*pars.N];
+                    }
+                    rows[r][site + dc*pars.N] += delta_forsite(r,dc);
+                }
             }
-        }
 
-        // [I + Delta*(I - G)]^(-1) again is a sparse matrix
-        // with two (four) rows site, site+N(, site+2N, site+3N).
-        // compute them iteratively, together with the determinant of
-        // I + Delta*(I - G)
-        // Apart from these rows, the remaining diagonal entries of
-        // [I + Delta*(I - G)]^(-1) are 1
-        //
-        // before this loop rows[] holds the entries of Delta*(I - G),
-        // after the loop rows[] holds the corresponding rows of [I + Delta*(I - G)]^(-1)
-        DataType det = 1;
-        for (uint32_t l = 0; l < MatrixSizeFactor; ++l) {
-            VecData row = rows[l];
-            for (int k = l-1; k >= 0; --k) {
-                row[site + k*pars.N] = 0;
+            // [I + Delta*(I - G)]^(-1) again is a sparse matrix
+            // with two (four) rows site, site+N(, site+2N, site+3N).
+            // compute them iteratively, together with the determinant of
+            // I + Delta*(I - G)
+            // Apart from these rows, the remaining diagonal entries of
+            // [I + Delta*(I - G)]^(-1) are 1
+            //
+            // before this loop rows[] holds the entries of Delta*(I - G),
+            // after the loop rows[] holds the corresponding rows of [I + Delta*(I - G)]^(-1)
+            DataType det = 1;
+            for (uint32_t l = 0; l < MatrixSizeFactor; ++l) {
+                VecData row = rows[l];
+                for (int k = l-1; k >= 0; --k) {
+                    row[site + k*pars.N] = 0;
+                }
+                for (int k = l-1; k >= 0; --k) {
+                    row += rows[l][site + k*pars.N] * rows[k];
+                }
+                DataType divisor = DataType(1) + row[site + l*pars.N];
+                rows[l] = (-1.0/divisor) * row;
+                rows[l][site + l*pars.N] += 1;
+                for (int k = l - 1; k >= 0; --k) {
+                    rows[k] -= (rows[k][site + l*pars.N] / divisor) * row;
+                }
+                det *= divisor;
             }
-            for (int k = l-1; k >= 0; --k) {
-                row += rows[l][site + k*pars.N] * rows[k];
-            }
-            DataType divisor = DataType(1) + row[site + l*pars.N];
-            rows[l] = (-1.0/divisor) * row;
-            rows[l][site + l*pars.N] += 1;
-            for (int k = l - 1; k >= 0; --k) {
-                rows[k] -= (rows[k][site + l*pars.N] / divisor) * row;
-            }
-            det *= divisor;
-        }
 
-        //****DEBUG
+            //****DEBUG
 //      checkarray<VecCpx, 4> invRows = {{rows[0], rows[1], rows[2], rows[3]}};
-        //****END-DEBUG
+            //****END-DEBUG
 
-        //****
-        //DEBUG: This slow code was working before.
-        //Compare results with the better-performing sherman-morrison code
+            //****
+            //DEBUG: This slow code was working before.
+            //Compare results with the better-performing sherman-morrison code
 //      SpMatCpx delta(4*N, 4*N);
 //      arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
 //      //Armadilo lacks non-contiguous submatrix views for sparse matrices
@@ -1876,11 +1903,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //      std::cout << weightRatio << std::endl;
 
 //      std::cout << weightRatio << " vs. " << det << std::endl;
-        //END DEBUG
-        //****
+            //END DEBUG
+            //****
 
-        //****
-        // DEBUG-CHECK Delta*(I - G) vs. rows
+            //****
+            // DEBUG-CHECK Delta*(I - G) vs. rows
 //      MatCpx check = delta * (eyeCpx - g.slice(timeslice));
 //      for (uint32_t r = 0; r < 4; ++r) {
 //          check.row(site + r*N) -= rows[r].st();
@@ -1889,11 +1916,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //      debugSaveMatrix(MatNum(arma::real(check)), "check_real");
 //      debugSaveMatrix(MatNum(arma::imag(check)), "check_imag");
 //      exit(0);
-        // END-DEBUG-CHECK
-        //****
+            // END-DEBUG-CHECK
+            //****
 
-        //****
-        //DEBUG-CHECK [I+Delta*(I - G)]^(-1) vs. invRows
+            //****
+            //DEBUG-CHECK [I+Delta*(I - G)]^(-1) vs. invRows
 //      MatCpx inv = arma::inv(target);
 //      inv -= eyeCpx;
 //      for (uint32_t r = 0; r < 4; ++r) {
@@ -1901,19 +1928,18 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //          inv.row(site + r*N)[site + r*N] += 1;
 //      }
 //      std::cout << "inv-div: " << arma::max(arma::max(inv)) << std::endl;
-        //END-DEBUG-CHECK
-        //****
+            //END-DEBUG-CHECK
+            //****
 
-        num probSFermion;
-        if (OPDIM == 3) {
-            probSFermion = dataReal(det);
-        } else {    
-            //      /G 0 \                .
-            //  det \0 G*/ = |det G|^2
-            probSFermion = std::pow(std::abs(det), 2);
-        }
+            if (OPDIM == 3) {
+                probSFermion = dataReal(det);
+            } else {    
+                //      /G 0 \                .
+                //  det \0 G*/ = |det G|^2
+                probSFermion = std::pow(std::abs(det), 2);
+            }
 
-        //DEBUG: determinant computation from new routine updateInSlice_woodbury:
+            //DEBUG: determinant computation from new routine updateInSlice_woodbury:
 //        MatCpx::fixed<4,4> g_sub;
 //        for (uint32_t a = 0; a < 4; ++a) {
 //            for (uint32_t b = 0; b < 4; ++b) {
@@ -1922,11 +1948,15 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //        }
 //        MatCpx::fixed<4,4> M = eye4cpx + (eye4cpx - g_sub) * deltanonzero;                        //!
 //        std::cout << "det: " << (probSFermion - arma::det(M).real()) / probSFermion << "\n";
-        //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
+            //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
 
-
-        num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
-
+            prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+           
+        } else {
+            probSFermion = 1.0;
+            prob_cdwl = 1.0;
+        }
+        
         num prob = probSPhi * probSFermion * prob_cdwl;
 
         if (prob > 1.0 or rng.rand01() < prob) {
@@ -1937,8 +1967,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             for (uint32_t dim = 0; dim < OPDIM; ++dim) {
                 phi(site, dim, timeslice) = newphi[dim];
             }
-            cdwl(site, timeslice) = new_cdwl;
-            updateCoshSinhTerms(site, timeslice);
+
+            if (not pars.turnoffFermions) {
+            
+                cdwl(site, timeslice) = new_cdwl;
+                updateCoshSinhTerms(site, timeslice);
 //          num phisAfter = phiAction();
 //          std::cout << std::scientific << dsphi << " vs. " << phisAfter << " - " << phisBefore << " = " <<
 //                  (phisAfter - phisBefore) << std::endl;
@@ -1949,15 +1982,15 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //          debugSaveMatrix(MatNum(arma::real(g.slice(timeslice))), "gslice_new_real");
 //          debugSaveMatrix(MatNum(arma::imag(g.slice(timeslice))), "gslice_new_imag");
 
-            //****
-            //DEBUG
+                //****
+                //DEBUG
 //          MatCpx gPrimeRef = g.slice(timeslice) * arma::inv(target);
-            //END DEBUG
-            //****
+                //END DEBUG
+                //****
 
 
-            //DEBUG
-            //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
+                //DEBUG
+                //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
 //            MatCpx delta(4*N, 4*N);
 //            delta.fill(cpx(0,0));
 //            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
@@ -1972,12 +2005,12 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //            }
 //            MatCpx g_new_ref = g * arma::inv(
 //                    arma::eye(4*N,4*N) + delta*(arma::eye(4*N,4*N) - g));
-            //END DEBUG
+                //END DEBUG
 
 
-            //DEBUG
-            //Compare green's function updated with the method of updateInSlice_woodbury
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with the method of updateInSlice_woodbury
+                //with this one:
 //            MatCpx g_woodbury = g;        //copy
 //            MatCpx::fixed<4,4> g_woodbury_sub;
 //            for (uint32_t a = 0; a < 4; ++a) {
@@ -1997,11 +2030,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //            }
 //            g_woodbury_times_mat_U = g_woodbury_times_mat_U * deltanonzero;
 //            g_woodbury += (g_woodbury_times_mat_U) * (arma::inv(M) * mat_V);
-            //END DEBUG
+                //END DEBUG
 
-            //DEBUG
-            //Compare green's function updated with a large matrix woodbury formula
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with a large matrix woodbury formula
+                //with this one:
 //            MatCpx delta(4*N, 4*N);
 //            delta.fill(cpx(0,0));
 //            arma::uvec::fixed<4> idx = {site, site + N, site + 2*N, site + 3*N};
@@ -2020,12 +2053,12 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //                    mat_U_large *
 //                    arma::inv(arma::eye(4*N,4*N) - mat_V_large * mat_U_large) *
 //                    mat_V_large);
-            //END DEBUG
+                //END DEBUG
 
 
-            //DEBUG
-            //Compare green's function updated with a reasonably sized matrix woodbury formula
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with a reasonably sized matrix woodbury formula
+                //with this one:
 //            MatCpx mat_U_reas(4*N,4);
 //            mat_U_reas.fill(cpx(0,0));
 //            for (uint32_t k = 0; k < 4; ++k) {
@@ -2052,68 +2085,70 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //                    mat_U_reas *
 //                    arma::inv(M_rev) *
 //                    mat_V_reas);
-            //END DEBUG
+                //END DEBUG
 
 
-            //compensate for already included diagonal entries of I in invRows
-            rows[0][site] -= 1;
-            rows[1][site + pars.N] -= 1;
-            if (OPDIM == 3) {
-                rows[2][site + 2*pars.N] -= 1;
-                rows[3][site + 3*pars.N] -= 1;
-            }
-            //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
-            // [O(N^2)]
-            MatData gTimesInvRows(MatrixSizeFactor*pars.N,
-                                  MatrixSizeFactor*pars.N);
-            const auto& G = g;
-            for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
-                for (uint32_t row = 0; row < MatrixSizeFactor*pars.N; ++row) {
-                    gTimesInvRows(row, col) =
-                          G(row, site)            * rows[0][col]
-                        + G(row, site + pars.N)   * rows[1][col];
-                    if (OPDIM == 3) {
-                        gTimesInvRows(row, col) +=
-                              G(row, site + 2*pars.N) * rows[2][col]
-                            + G(row, site + 3*pars.N) * rows[3][col];
+                //compensate for already included diagonal entries of I in invRows
+                rows[0][site] -= 1;
+                rows[1][site + pars.N] -= 1;
+                if (OPDIM == 3) {
+                    rows[2][site + 2*pars.N] -= 1;
+                    rows[3][site + 3*pars.N] -= 1;
+                }
+                //compute G' = G * [I + Delta*(I - G)]^(-1) = G * [I + invRows]
+                // [O(N^2)]
+                MatData gTimesInvRows(MatrixSizeFactor*pars.N,
+                                      MatrixSizeFactor*pars.N);
+                const auto& G = g;
+                for (uint32_t col = 0; col < MatrixSizeFactor*pars.N; ++col) {
+                    for (uint32_t row = 0; row < MatrixSizeFactor*pars.N; ++row) {
+                        gTimesInvRows(row, col) =
+                            G(row, site)            * rows[0][col]
+                            + G(row, site + pars.N)   * rows[1][col];
+                        if (OPDIM == 3) {
+                            gTimesInvRows(row, col) +=
+                                G(row, site + 2*pars.N) * rows[2][col]
+                                + G(row, site + 3*pars.N) * rows[3][col];
+                        }
                     }
                 }
-            }
-            g += gTimesInvRows;
+                g += gTimesInvRows;
 
-            //DEBUG
+                //DEBUG
 //            std::cout << "ref g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_new_ref) / g)))) << "\n";
 //            std::cout << "ref g_max: " << arma::max(arma::max(arma::abs(((g - g_new_ref) / g)))) << "\n";
-            //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
+                //compare with a full-force evaluation of G*[I + Delta*(I - G)]^{-1}
 
-            //DEBUG
-            //Compare green's function updated with an large woodbury formula
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with an large woodbury formula
+                //with this one:
 //            std::cout << "woodbury large g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury_large) / g)))) << "\n";
 //            std::cout << "woodbury large g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury_large) / g)))) << "\n";
-            //END DEBUG
+                //END DEBUG
 
-            //DEBUG
-            //Compare green's function updated with a reasonably sized matrix woodbury formula
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with a reasonably sized matrix woodbury formula
+                //with this one:
 //            std::cout << "woodbury reas g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury_reas) / g)))) << "\n";
 //            std::cout << "woodbury reas g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury_reas) / g)))) << "\n";
-            //END DEBUG
+                //END DEBUG
 
 
-            //DEBUG
-            //Compare green's function updated with the method of updateInSlice_woodbury
-            //with this one:
+                //DEBUG
+                //Compare green's function updated with the method of updateInSlice_woodbury
+                //with this one:
 //            std::cout << "woodbury g_mean: " << arma::mean(arma::mean(arma::abs(((g - g_woodbury) / g)))) << "\n";
 //            std::cout << "woodbury g_max: " << arma::max(arma::max(arma::abs(((g - g_woodbury) / g)))) << "\n";
-            //END DEBUG
+                //END DEBUG
 
-            //****
-            //DEBUG
+                //****
+                //DEBUG
 //          std::cout << arma::max(arma::max(
 //                  (arma::abs(gPrimeRef - g.slice(timeslice))))) << std::endl;
-            //END DEBUG
-            //****
+                //END DEBUG
+                //****
+                
+            } // if (not pars.turnoffFermions) 
         }
     }
     accratio /= num(pars.N);
@@ -2142,35 +2177,46 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
             num dsphi = deltaSPhi(site, timeslice, newphi);
             probSPhi = std::exp(-dsphi);
         }
-        //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        MatSmall delta_forsite = get_delta_forsite(
-            newphi, new_cdwl, timeslice, site);
-
-        //Compute the 4x4 (2x2) submatrix of G that corresponds to the
-        //site i g_sub = g[i::N, i::N]
-        MatSmall g_sub;
-        for (uint32_t a = 0; a < MSF; ++a) {
-            for (uint32_t b = 0; b < MSF; ++b) {
-                g_sub(a,b) = g(site + a*pars.N, site + b*pars.N);
-            }
-        }
-
-        //the determinant ratio for the spin update is given by the determinant
-        //of the following matrix M
-        MatSmall M = smalleye + (smalleye - g_sub) * delta_forsite;
-        DataType det = arma::det(M);
+        num probSFermion = 1.0;
+        num prob_cdwl = 1.0;
         
-        num probSFermion;
-        if (OPDIM == 3) {
-            probSFermion = dataReal(det);
-        } else {    
-            //      /G 0 \             .
-            //  det \0 G*/ = |det G|^2
-            probSFermion = std::pow(std::abs(det), 2);
-        }
+        MatSmall delta_forsite;
+        MatSmall M;
+        if (not pars.turnoffFermions) {
+        
+            //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
-        num prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+            delta_forsite = get_delta_forsite(
+                newphi, new_cdwl, timeslice, site);
+
+            //Compute the 4x4 (2x2) submatrix of G that corresponds to the
+            //site i g_sub = g[i::N, i::N]
+            MatSmall g_sub;
+            for (uint32_t a = 0; a < MSF; ++a) {
+                for (uint32_t b = 0; b < MSF; ++b) {
+                    g_sub(a,b) = g(site + a*pars.N, site + b*pars.N);
+                }
+            }
+
+            //the determinant ratio for the spin update is given by the determinant
+            //of the following matrix M
+            M = smalleye + (smalleye - g_sub) * delta_forsite;
+            DataType det = arma::det(M);
+        
+            if (OPDIM == 3) {
+                probSFermion = dataReal(det);
+            } else {    
+                //      /G 0 \             .
+                //  det \0 G*/ = |det G|^2
+                probSFermion = std::pow(std::abs(det), 2);
+            }
+
+            prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
+        } else {
+            probSFermion = 1.0;
+            prob_cdwl = 1.0;
+        }
 
         num prob = probSPhi * probSFermion * prob_cdwl;
 
@@ -2181,26 +2227,31 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
             for (uint32_t dim = 0; dim < OPDIM; ++dim) {
                 phi(site, dim, timeslice) = newphi[dim];
             }
-            cdwl(site, timeslice) = new_cdwl;
-            updateCoshSinhTerms(site, timeslice);
 
-            //update g
+            if (not pars.turnoffFermions) {
+            
+                cdwl(site, timeslice) = new_cdwl;
+                updateCoshSinhTerms(site, timeslice);
 
-            MatData mat_V(MSF, MSF*pars.N);
-            for (uint32_t r = 0; r < MSF; ++r) {
-                mat_V.row(r) = g.row(site + r*pars.N);
-                mat_V(r, site + r*pars.N) -= 1.0;
+                //update g
+
+                MatData mat_V(MSF, MSF*pars.N);
+                for (uint32_t r = 0; r < MSF; ++r) {
+                    mat_V.row(r) = g.row(site + r*pars.N);
+                    mat_V(r, site + r*pars.N) -= 1.0;
+                }
+
+                //TODO: is it a good idea to do this copy? or would it be better to
+                //compute the product directly with a non-contiguous subview?
+                MatData g_times_mat_U(MSF*pars.N, MSF);
+                for (uint32_t c = 0; c < MSF; ++c) {
+                    g_times_mat_U.col(c) = g.col(site + c*pars.N);
+                }
+                g_times_mat_U = g_times_mat_U * delta_forsite;
+
+                g += (g_times_mat_U) * (arma::inv(M) * mat_V);
+                
             }
-
-            //TODO: is it a good idea to do this copy? or would it be better to
-            //compute the product directly with a non-contiguous subview?
-            MatData g_times_mat_U(MSF*pars.N, MSF);
-            for (uint32_t c = 0; c < MSF; ++c) {
-                g_times_mat_U.col(c) = g.col(site + c*pars.N);
-            }
-            g_times_mat_U = g_times_mat_U * delta_forsite;
-
-            g += (g_times_mat_U) * (arma::inv(M) * mat_V);
         }
     }
     accratio /= num(pars.N);
@@ -2210,6 +2261,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 template<CheckerboardMethod CB, int OPDIM>
 template<class Callable>
 num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
+    assert(not pars.turnoffFermions); // makes no sense to use delayed updates
+    
     constexpr auto MSF = MatrixSizeFactor;
     const auto N = pars.N;
     num accratio = 0.;
@@ -2531,41 +2584,48 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     using std::exp; using std::cout;
     timing.start("sdw-attemptWolffClusterUpdate");
 
-    // compute current fermion weight (implicitly given by singular values)
-
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
     assert(currentTimeslice == pars.m);
-    // The product of the singular values of g is equal to the
-    // absolute value of its determinant.  Don't compute the whole
-    // product explicitly because it contains both very large and
-    // very small numbers --> over/underflows!  Instead use the
-    // fact that the SV's are sorted by magnitude and compare them
-    // term by term with the SV's of the updated Green's function.
-    VecNum old_green_sv = arma::svd(g);
 
-    
+    VecNum old_green_sv;
+    if (not pars.turnoffFermions) {
+        // compute current fermion weight (implicitly given by singular values)
+
+        // The product of the singular values of g is equal to the
+        // absolute value of its determinant.  Don't compute the whole
+        // product explicitly because it contains both very large and
+        // very small numbers --> over/underflows!  Instead use the
+        // fact that the SV's are sorted by magnitude and compare them
+        // term by term with the SV's of the updated Green's function.
+        old_green_sv = arma::svd(g);
+    }
+
     globalMoveStoreBackups();
-    
     
     uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
 
-    
-    //recompute Green's function
-    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
-
-    //compute fermion transition probability; new weight given implicitly:
-    VecNum new_green_sv = arma::svd(g);
-    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-    //green_sv_ratios.print(std::cout);
     num prob_fermion = 1.0;
-    for (num sv_ratio : green_sv_ratios) {
-    	prob_fermion *= sv_ratio;
-    }
-    if (OPDIM < 3) {
-        //      /G 0 \              .
-        //  det \0 G*/ = |det G|^2
-        prob_fermion = std::pow(prob_fermion, 2);
+    
+    if (not pars.turnoffFermions) {
+    
+        //recompute Green's function
+        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+        //compute fermion transition probability; new weight given implicitly:
+        VecNum new_green_sv = arma::svd(g);
+        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+        //green_sv_ratios.print(std::cout);
+        prob_fermion = 1.0;
+        for (num sv_ratio : green_sv_ratios) {
+            prob_fermion *= sv_ratio;
+        }
+        if (OPDIM < 3) {
+            //      /G 0 \              .
+            //  det \0 G*/ = |det G|^2
+            prob_fermion = std::pow(prob_fermion, 2);
+        }
+
     }
 
 //    std::cout << "Cluster: " << cluster_size << "  " << prob_fermion << "\n";
@@ -2594,45 +2654,62 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
     assert(currentTimeslice == pars.m);
+
+    VecNum old_green_sv;
     //num old_green_det = arma::det(g).real();
 //    num old_green_det = Base::abs_det_green_from_storage();
 //    std::cout << old_green_det << "\n";
-    // The product of the singular values of g is equal to the
-    // absolute value of its determinant.  Don't compute the whole
-    // product explicitly because it contains both very large and
-    // very small numbers --> over/underflows!  Instead use the
-    // fact that the SV's are sorted by magnitude and compare them
-    // term by term with the SV's of the updated Green's function.
-    VecNum old_green_sv = arma::svd(g);
 
+    if (not pars.turnoffFermions) {
+        // The product of the singular values of g is equal to the
+        // absolute value of its determinant.  Don't compute the whole
+        // product explicitly because it contains both very large and
+        // very small numbers --> over/underflows!  Instead use the
+        // fact that the SV's are sorted by magnitude and compare them
+        // term by term with the SV's of the updated Green's function.
+        old_green_sv = arma::svd(g);
+    }
+    
     globalMoveStoreBackups();
     
     // shift fields by a random, constant displacement
     addGlobalRandomDisplacement();
 
-    updateCoshSinhTermsPhi();
+    if (not pars.turnoffFermions) {
+    
+        updateCoshSinhTermsPhi();
 
-    //recompute Green's function
-    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+        //recompute Green's function
+        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
-    //compute new weight
-    num new_scalar_action = phiAction();
-    //num new_green_det = Base::abs_det_green_from_storage();
-    //std::cout << new_green_det << "\n";
-    VecNum new_green_sv = arma::svd(g);
-
-    //compute transition probability
-    num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
-//    num prob_fermion = old_green_det / new_green_det;
-    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-    num prob_fermion = 1.0;
-    for (num sv_ratio : green_sv_ratios) {
-    	prob_fermion *= sv_ratio;
     }
-    if (OPDIM < 3) {
-        //      /G 0 \              .
-        //  det \0 G*/ = |det G|^2
-        prob_fermion = std::pow(prob_fermion, 2);
+        
+    //compute new weight, transition probability
+    num new_scalar_action = phiAction();
+
+    num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
+    
+    num prob_fermion = 1.0;
+
+    if (not pars.turnoffFermions) {
+    
+        //num new_green_det = Base::abs_det_green_from_storage();
+        //std::cout << new_green_det << "\n";
+        VecNum new_green_sv = arma::svd(g);
+
+        //compute transition probability
+//    num prob_fermion = old_green_det / new_green_det;
+        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+        prob_fermion = 1.0;
+        for (num sv_ratio : green_sv_ratios) {
+            prob_fermion *= sv_ratio;
+        }
+        if (OPDIM < 3) {
+            //      /G 0 \              .
+            //  det \0 G*/ = |det G|^2
+            prob_fermion = std::pow(prob_fermion, 2);
+        }
+        
     }
 
     num prob = prob_scalar * prob_fermion;
@@ -2660,14 +2737,18 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
     assert(currentTimeslice == pars.m);
-    // The product of the singular values of g is equal to the
-    // absolute value of its determinant.  Don't compute the whole
-    // product explicitly because it contains both very large and
-    // very small numbers --> over/underflows!  Instead use the
-    // fact that the SV's are sorted by magnitude and compare them
-    // term by term with the SV's of the updated Green's function.
-    VecNum old_green_sv = arma::svd(g);
-
+    
+    VecNum old_green_sv;
+    if (not pars.turnoffFermions) {
+        // The product of the singular values of g is equal to the
+        // absolute value of its determinant.  Don't compute the whole
+        // product explicitly because it contains both very large and
+        // very small numbers --> over/underflows!  Instead use the
+        // fact that the SV's are sorted by magnitude and compare them
+        // term by term with the SV's of the updated Green's function.
+        old_green_sv = arma::svd(g);
+    }
+    
     globalMoveStoreBackups();
     
     uint32_t cluster_size = buildAndFlipCluster(false);
@@ -2677,31 +2758,39 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
 
     addGlobalRandomDisplacement();
 
-    updateCoshSinhTermsPhi();
-
-    //recompute Green's function
-    setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
-
     //compute new weight
     num new_scalar_action = phiAction();
-    //num new_green_det = Base::abs_det_green_from_storage();
-    //std::cout << new_green_det << "\n";
-    VecNum new_green_sv = arma::svd(g);
-
     //compute transition probability
     num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
-//    num prob_fermion = old_green_det / new_green_det;
-    VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-    num prob_fermion = 1.0;
-    for (num sv_ratio : green_sv_ratios) {
-    	prob_fermion *= sv_ratio;
-    }
-    if (OPDIM < 3) {
-        //      /G 0 \              .
-        //  det \0 G*/ = |det G|^2
-        prob_fermion = std::pow(prob_fermion, 2);
-    }
 
+    num prob_fermion = 1.0;
+
+    if (not pars.turnoffFermions) {
+    
+        updateCoshSinhTermsPhi();
+
+        //recompute Green's function
+        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+        //num new_green_det = Base::abs_det_green_from_storage();
+        //std::cout << new_green_det << "\n";
+        VecNum new_green_sv = arma::svd(g);
+
+        //compute transition probability
+//    num prob_fermion = old_green_det / new_green_det;
+        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+        prob_fermion = 1.0;
+        for (num sv_ratio : green_sv_ratios) {
+            prob_fermion *= sv_ratio;
+        }
+        if (OPDIM < 3) {
+            //      /G 0 \              .
+            //  det \0 G*/ = |det G|^2
+            prob_fermion = std::pow(prob_fermion, 2);
+        }
+
+    }
+        
     num prob = prob_scalar * prob_fermion;
 
     // std::cout << "Shift + Cluster: " << cluster_size << "\n";
@@ -2862,19 +2951,29 @@ void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
     // which are recomputed entirely in each global update, we just
     // swap the contents.
     gmd.phi = phi;
-    gmd.coshTermPhi = coshTermPhi;
-    gmd.sinhTermPhi = sinhTermPhi;
-    gmd.g.swap(g);
-    gmd.UdVStorage.swap(UdVStorage);
+
+    if (not pars.turnoffFermions) {
+    
+        gmd.coshTermPhi = coshTermPhi;
+        gmd.sinhTermPhi = sinhTermPhi;
+        gmd.g.swap(g);
+        gmd.UdVStorage.swap(UdVStorage);
+
+    }
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
     phi.swap(gmd.phi);
-    coshTermPhi.swap(gmd.coshTermPhi);
-    sinhTermPhi.swap(gmd.sinhTermPhi);
-    g.swap(gmd.g);
-    UdVStorage.swap(gmd.UdVStorage);
+
+    if (not pars.turnoffFermions) {
+        
+        coshTermPhi.swap(gmd.coshTermPhi);
+        sinhTermPhi.swap(gmd.sinhTermPhi);
+        g.swap(gmd.g);
+        UdVStorage.swap(gmd.UdVStorage);
+        
+    }
 }
 
 
@@ -3286,46 +3385,115 @@ void DetSDW<CB, OPDIM>::thermalizationOver() {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepSimple(bool takeMeasurements) {
-    sweepSimple_skeleton(takeMeasurements,
-                         sdwComputeBmat(this),
-                         [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
-                         [this]() {this->initMeasurements();},
-                         [this](uint32_t timeslice) {this->measure(timeslice);},
-                         [this]() {this->finishMeasurements();});
+
+    if (not pars.turnoffFermions) {
+    
+        sweepSimple_skeleton(takeMeasurements,
+                             sdwComputeBmat(this),
+                             [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
+                             [this]() {this->initMeasurements();},
+                             [this](uint32_t timeslice) {this->measure(timeslice);},
+                             [this]() {this->finishMeasurements();});
+
+    } else {
+        // sweepSimple_skeleton without the Green's function updates
+        
+        if (takeMeasurements) {
+            initMeasurements();
+        }
+        for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+            this->updateInSlice(timeslice);
+            if (takeMeasurements) {
+                measure(timeslice);
+            }
+        }
+        if (takeMeasurements) {
+            finishMeasurements();
+        }
+        
+    }
+    
     ++performedSweeps;
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepSimpleThermalization() {
-    sweepSimpleThermalization_skeleton(
-        sdwComputeBmat(this),
-        [this](uint32_t timeslice) {
+
+    if (not pars.turnoffFermions) {
+    
+        sweepSimpleThermalization_skeleton(
+            sdwComputeBmat(this),
+            [this](uint32_t timeslice) {
+                this->updateInSliceThermalization(timeslice);
+            });
+
+    } else {
+        
+        // sweepSimple_skeleton without the Green's function updates
+        for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
             this->updateInSliceThermalization(timeslice);
-        });
+        }
+
+    }
+
     ++performedSweeps;
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
-    sweep_skeleton(takeMeasurements,
-                   sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
-                   sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
-                   [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
-                   [this]() {this->initMeasurements();},
-                   [this](uint32_t timeslice) {this->measure(timeslice);},
-                   [this]() {this->finishMeasurements();},
-                   [this]() {this->globalMove();});
+
+    if (not pars.turnoffFermions) {
+    
+        sweep_skeleton(takeMeasurements,
+                       sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
+                       sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
+                       [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
+                       [this]() {this->initMeasurements();},
+                       [this](uint32_t timeslice) {this->measure(timeslice);},
+                       [this]() {this->finishMeasurements();},
+                       [this]() {this->globalMove();});
+
+    } else {
+
+        if (lastSweepDir == SweepDirection::Up) {
+            this->globalMove();
+            sweepSimple(takeMeasurements);
+            lastSweepDir = SweepDirection::Down;
+        } else {
+            sweepSimple(takeMeasurements);
+            lastSweepDir = SweepDirection::Up;
+        }
+        
+    }
+
     ++performedSweeps;
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepThermalization() {
-    sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
-                                 sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
-                                 [this](uint32_t timeslice) {
-                                     this->updateInSliceThermalization(timeslice);
-                                 },
-                                 [this]() {this->globalMove();});
+
+    if (not pars.turnoffFermions) {
+    
+        sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
+                                     sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
+                                     [this](uint32_t timeslice) {
+                                         this->updateInSliceThermalization(timeslice);
+                                     },
+                                     [this]() {this->globalMove();});
+
+    } else {
+        
+        if (lastSweepDir == SweepDirection::Up) {
+            this->globalMove();
+            sweepSimpleThermalization();
+            lastSweepDir = SweepDirection::Down;
+        } else {
+            sweepSimpleThermalization();
+            lastSweepDir = SweepDirection::Up;
+        }
+
+    }
+    
     ++performedSweeps;
 }
 
@@ -3417,6 +3585,10 @@ DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMul
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::consistencyCheck() {
+    if (pars.turnoffFermions) {
+        return;
+    }
+    
     const auto N = pars.N;
     const auto m = pars.m;
     // phi*, coshTerm*, sinhTerm*

@@ -544,17 +544,17 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimple_skeleton(
 		Callable_GC_k2_k1 computeBmat, Callable_UpdateInSlice_k updateInSlice,
 		Callable_init initMeasurement,
 		Callable_measure_k measure, Callable_finish finishMeasurement) {
-	if (takeMeasurements) {
-		initMeasurement();
-	}
+    if (takeMeasurements) {
+        initMeasurement();
+    }
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for_each_gc( [this, timeslice, &computeBmat](uint32_t gc) {
-            green[gc] = arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
-            					  computeBmat(gc, m, timeslice));
-        });
+                green[gc] = arma::inv(arma::eye(sz,sz) + computeBmat(gc, timeslice, 0) *
+                                      computeBmat(gc, m, timeslice));
+            });
         updateInSlice(timeslice);
         if (takeMeasurements) {
-        	measure(timeslice);
+            measure(timeslice);
         }
     }
     if (takeMeasurements) {

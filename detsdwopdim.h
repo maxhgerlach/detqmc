@@ -201,6 +201,7 @@ protected:
     using Base::currentTimeslice;
     // also for typedefs:
     typedef typename Base::UdVV UdVV;
+    typedef typename Base::SweepDirection SweepDirection;
     // also for methods (g++ 4.8)
     using Base::sweep_skeleton;
     using Base::sweepThermalization_skeleton;

@@ -55,7 +55,8 @@ void ModelParamsDetSDW::check() {
         if (delaySteps <= 0 or delaySteps > N) {
             throw ParameterWrong("delaySteps", delaySteps);
         }
-    }
+    }    
+    
     std::string possibleSpinProposalMethods[] = {"box", "rotate_then_scale", "rotate_and_scale"};
     bool spinProposalMethod_is_one_of_the_possible = false;
     for (const std::string& test_spinProposalMethod: possibleSpinProposalMethods) {
@@ -121,6 +122,11 @@ void ModelParamsDetSDW::check() {
         spinProposalMethod = BOX;
     }
 
+    // if fermions are turned off: no delayed updates
+    if (turnoffFermions and updateMethod == DELAYED) {
+        throw ParameterWrong("Cannot turn off fermions and have delayed updates at the same time");
+    }
+
     // computed parameters
     N = L*L;
 }
@@ -132,6 +138,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     meta["model"] = "sdw";
     meta["opdim"] = numToString(opdim);
     meta["checkerboard"] = (checkerboard ? "true" : "false");
+    meta["turnoffFermions"] = (turnoffFermions ? "true" : "false");
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (spinProposalMethod != BOX) {
