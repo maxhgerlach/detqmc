@@ -15,6 +15,7 @@
 #include <fstream>
 #include <armadillo>
 #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/preprocessor/comma.hpp"
