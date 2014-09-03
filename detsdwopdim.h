@@ -847,12 +847,11 @@ protected:
     // attempt a combined update
     void attemptWolffClusterShiftUpdate(); 
     struct GlobalMoveData {		//some helper data that should not be reallocated all the time
+        // quantities to be backed up:
         CubeNum phi;
     	MatNum coshTermPhi;
     	MatNum sinhTermPhi;
-
     	MatData g;
-
     	std::unique_ptr<checkarray<std::vector<UdVV>, 1>> UdVStorage;
 
     	//for the cluster update: mark visited sites by 1, else 0
