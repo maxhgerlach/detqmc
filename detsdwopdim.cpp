@@ -202,7 +202,8 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupUdVStorage_and_calculateGreen() {
     if (not pars.turnoffFermions) {
-        setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+        //setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+        setupUdVStorage_and_calculateGreen_skeleton(sdwLeftMultiplyBmat(this));
     } else {
         g .zeros();
     }
@@ -2719,11 +2720,11 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         us.acceptedGlobalShifts += 1;
-        // std::cout << "accept globalShift\n";
+        std::cout << "\naccept globalShift\n\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        // std::cout << "reject globalShift\n";
+        std::cout << "\nreject globalShift\n\n";
     }
 
     timing.stop("sdw-attemptGlobalShiftMove");
@@ -3645,21 +3646,22 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
             }
         }
     }
-//     // compare bmat-evaluation
+    // compare bmat-evaluation
+//    constexpr auto MSF = MatrixSizeFactor;
 //    for (uint32_t k = 1; k <= m; ++k) {
 //    	MatData bk = computeBmatSDW(k, k-1);
 //    	MatData bk_inv = arma::inv(bk);
 //    	MatData checkbk_left = checkerboardLeftMultiplyBmat(
-//    			arma::eye<MatData>(4*N,4*N),
+//    			arma::eye<MatData>(MSF*N,MSF*N),
 //    			k, k-1);
 //    	MatData checkbk_right = checkerboardRightMultiplyBmat(
-//    			arma::eye<MatData>(4*N,4*N),
+//    			arma::eye<MatData>(MSF*N,MSF*N),
 //    			k, k-1);
 //    	MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
-//    			arma::eye<MatData>(4*N,4*N),
+//    			arma::eye<MatData>(MSF*N,MSF*N),
 //    			k, k-1);
 //    	MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
-//    			arma::eye<MatData>(4*N,4*N),
+//    			arma::eye<MatData>(MSF*N,MSF*N),
 //    			k, k-1);
 //    	std::cout << "cb:" << CB << " " << k << "\n";
 //    	print_matrix_diff(bk, checkbk_left, "bk_left");
@@ -3668,16 +3670,22 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
 //    	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
 //         checkarray<VecNum, OPDIM> phik;
 //         phik[0] = phi.slice(k).col(0);
-//         phik[1] = phi.slice(k).col(1);
-//         phik[2] = phi.slice(k).col(2);
+//         if (OPDIM > 1) {
+//             phik[1] = phi.slice(k).col(1);
+//         }
+//         if (OPDIM > 2) {
+//             phik[2] = phi.slice(k).col(2);
+//         }
 //    	MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
-//    	MatNum propK_whole(4*N, 4*N);
+//    	MatNum propK_whole(MSF*N, MSF*N);
 //    	propK_whole.zeros();
 // #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 //    	block(propK_whole, 0, 0) = propKx;
 //    	block(propK_whole, 1, 1) = propKy;   // !
-//    	block(propK_whole, 2, 2) = propKx;   // !
-//    	block(propK_whole, 3, 3) = propKy;
+//         if (OPDIM == 3) {
+//             block(propK_whole, 2, 2) = propKx;   // !
+//             block(propK_whole, 3, 3) = propKy;
+//         }
 //    	MatData bk_ref = emv * propK_whole;
 //    	print_matrix_diff(bk, bk_ref, "bk_ref");
 // #undef block

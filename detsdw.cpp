@@ -195,7 +195,8 @@ DetSDW<CB>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
 
 template<CheckerboardMethod CB>
 void DetSDW<CB>::setupUdVStorage_and_calculateGreen() {
-    setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+    //setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+    setupUdVStorage_and_calculateGreen_skeleton(sdwLeftMultiplyBmat(this));
 }
 
 template<CheckerboardMethod CB>

@@ -296,14 +296,26 @@ protected:
         }
     }
 
+    // //call in a derived class:
+    // //  Callable_GC_k2_k1: take arguments green component, timeslices k2 > k1,
+    // //  and give the corresponding B-matrix
+    // //
+    // //This will setup the UdV storage used to compute Green's functions from scratch
+    // //in the following sweep-down and also compute the Green's function G(\beta)
+    // template<class Callable_GC_k2_k1>
+    // void setupUdVStorage_and_calculateGreen_skeleton(Callable_GC_k2_k1 computeBmat);
+
+
     //call in a derived class:
-    //  Callable_GC_k2_k1: take arguments green component, timeslices k2 > k1,
-    //  and give the corresponding B-matrix
+    //Callable_GC_mat_k2_k1: take arguments green-component, some matrix,
+    //                       time slices k2 > k1
+    //      -> return left product of matrix with Bmat: Bmat(k2,k1) * matrix
     //
     //This will setup the UdV storage used to compute Green's functions from scratch
     //in the following sweep-down and also compute the Green's function G(\beta)
-    template<class Callable_GC_k2_k1>
-    void setupUdVStorage_and_calculateGreen_skeleton(Callable_GC_k2_k1 computeBmat);
+    template<class Callable_GC_mat_k2_k1>
+    void setupUdVStorage_and_calculateGreen_skeleton(Callable_GC_mat_k2_k1 leftMultiplyBmat);
+    
 
 
     //helpers for sweep_skeleton(), sweepThermalization_skeleton():
@@ -499,16 +511,17 @@ std::vector<KeyValueObservable> DetModelGC<GC,V,TimeDisplaced>::getKeyValueObser
 
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class Callable_GC_k2_k1>
+template<class Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton(
-        Callable_GC_k2_k1 computeBmat) {
+        Callable_GC_mat_k2_k1 leftMultiplyBmat) {
     timing.start("setupUdVStorage");
-    auto setup = [this, &computeBmat](uint32_t gc) {
+    auto setup = [this, &leftMultiplyBmat](uint32_t gc) {
         std::vector<UdVV>& storage = (*UdVStorage)[gc];
         storage = std::vector<UdVV>(n + 1);
 
         storage[0] = eye_UdV; 
-        storage[1] = udvDecompose(computeBmat(gc, s, 0));
+        // storage[1] = udvDecompose(computeBmat(gc, s, 0));
+        storage[1] = udvDecompose(leftMultiplyBmat(gc, eye_gc, s, 0));
 
         for (uint32_t l = 1; l <= n - 1; ++l) {
             const MatV&   U_l   = storage[l].U;
@@ -516,7 +529,8 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
             const MatV&   V_t_l = storage[l].V_t;
             const uint32_t k_l   = s*l;
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
-            MatV B_lp1_times_U_l = computeBmat(gc, k_lp1, k_l) * U_l;
+//            MatV B_lp1_times_U_l = computeBmat(gc, k_lp1, k_l) * U_l;
+            MatV B_lp1_times_U_l = leftMultiplyBmat(gc, U_l, k_lp1, k_l);
             storage[l+1] = udvDecompose<V>(B_lp1_times_U_l * arma::diagmat(d_l));
             storage[l+1].V_t =  V_t_l * storage[l+1].V_t;
         }
@@ -758,17 +772,23 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
     const uint32_t k_l   = ((l < n) ? (s*l) : (m));
     const uint32_t k_lm1 = s*(l-1);
 
-    //U_l, d_l, V_l correspond to B(beta,k_l*dtau) [set in the last step]
-    const MatV&   U_l   = storage[l].U;
-    const VecNum& d_l   = storage[l].d;
-    const MatV&   V_t_l = storage[l].V_t;
-
     //UdV_L will correspond to B(beta,k_lm1*dtau)
-    UdVV UdV_L = udvDecompose<V>(
-    		arma::diagmat(d_l) *
-    		rightMultiplyBmat(gc, trans(V_t_l), k_l, k_lm1)
-    );
-    UdV_L.U = U_l * UdV_L.U;
+    UdVV UdV_L;
+    if (l < n) {
+        //U_l, d_l, V_l correspond to B(beta,k_l*dtau) [set in the last step]
+        const MatV&   U_l   = storage[l].U;
+        const VecNum& d_l   = storage[l].d;
+        const MatV&   V_t_l = storage[l].V_t;
+
+        UdV_L = udvDecompose<V>(
+            arma::diagmat(d_l) *
+            rightMultiplyBmat(gc, trans(V_t_l), k_l, k_lm1)
+            );
+        UdV_L.U = U_l * UdV_L.U;
+    } else {
+        // special case l==n, can compute UdV_L from scratch
+        UdV_L = udvDecompose<V>(rightMultiplyBmat(gc, eye_gc, k_l, k_lm1));
+    }
 
     // //Accuracy check:
     // MatV g_wrapped = green[gc];
@@ -1122,9 +1142,11 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 
     // Handle the remaining timeslices, including advanceDown steps to refresh
     // the Green's function
-    for (uint32_t gc = 0; gc < GC; ++gc) {
-        (*UdVStorage)[gc][n] = eye_UdV;
-    }
+
+    // for (uint32_t gc = 0; gc < GC; ++gc) {
+    //     (*UdVStorage)[gc][n] = eye_UdV;
+    // }
+
     for (uint32_t l = n - 1; l >= 1; --l) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
             advanceDownGreen(rightMultiplyBmat, l + 1, gc);

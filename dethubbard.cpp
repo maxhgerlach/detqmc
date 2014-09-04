@@ -66,7 +66,8 @@ DetHubbard::DetHubbard(RngWrapper& rng_, const ModelParams<DetHubbard>& pars) :
     } else {
         setupPropTmat_direct();
     }
-    setupUdVStorage_and_calculateGreen_skeleton(hubbardComputeBmat(this));
+    // setupUdVStorage_and_calculateGreen_skeleton(hubbardComputeBmat(this));
+    setupUdVStorage_and_calculateGreen_skeleton(hubbardLeftMultiplyBmat(this));
 
     lastSweepDir = Base::SweepDirection::Up;        //first sweep will be downwards
 
