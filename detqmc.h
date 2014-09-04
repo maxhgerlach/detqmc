@@ -398,8 +398,10 @@ void DetQMC<Model, ModelParams>::run() {
 
     const uint32_t SavetyMinutes = 35;
 
-    const std::string abortFilename1 = "ABORT." + jobid;
-    const std::string abortFilename2 = "../" + abortFilename1;
+    const std::string abortFilenames[] = { "ABORT." + jobid,
+                                           "../ABORT." + jobid,
+                                           "ABORT.all",
+                                           "../ABORT.all" };
 
     while (stage != F) {                //big loop
     	if (swCounter % 2 == 0) {
@@ -407,10 +409,13 @@ void DetQMC<Model, ModelParams>::run() {
             if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
                 std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
                 stop_now = true;
-            } else if (boost::filesystem::exists(abortFilename1) or
-                       boost::filesystem::exists(abortFilename2)) {
-                std::cout << "Found file " << abortFilename1 << ".\n";
-                stop_now = true;
+            } else {
+                for (auto abortfn : abortFilenames) {
+                    if (boost::filesystem::exists(abortfn)) {
+                        std::cout << "Found file " << abortfn << ".\n";
+                        stop_now = true;
+                    }
+                }
             }
             if (stop_now) {
                 //close to exceeded walltime or we find that a file has been placed,

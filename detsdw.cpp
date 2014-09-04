@@ -2107,7 +2107,7 @@ num DetSDW<CB>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalU
             std::tie(changed, newphi, new_cdwl) = proposeLocalUpdate(site, timeslice);
 
             if (changed != NONE) {
-                //local update is not rejected immeadiately, figure out if we should accept it
+                //local update is not rejected immediately, figure out if we should accept it
             	num probSPhi = 1.0;
             	if (changed == PHI) {
             		num dsphi = deltaSPhi(site, timeslice, newphi);

@@ -675,8 +675,10 @@ void DetQMCPT<Model, ModelParams>::run() {
 
     const uint32_t SavetyMinutes = 35;
 
-    const std::string abortFilename1 = "ABORT." + jobid;
-    const std::string abortFilename2 = "../" + abortFilename1;
+    const std::string abortFilenames[] = { "ABORT." + jobid,
+                                           "../ABORT." + jobid,
+                                           "ABORT.all",
+                                           "../ABORT.all" };
 
     namespace mpi = boost::mpi;
     mpi::communicator world;
@@ -689,10 +691,13 @@ void DetQMCPT<Model, ModelParams>::run() {
                 if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
                     std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
                     stop_now = true;
-                } else if (boost::filesystem::exists(abortFilename1) or
-                           boost::filesystem::exists(abortFilename2)) {
-                    std::cout << "Found file " << abortFilename1 << ".\n";
-                    stop_now = true;
+                } else {
+                    for (auto abortfn : abortFilenames) {
+                        if (boost::filesystem::exists(abortfn)) {
+                            std::cout << "Found file " << abortfn << ".\n";
+                            stop_now = true;
+                        }
+                    }
                 }
             }
             // MPI_Bcast( &stop_now, 1, MPI_CHAR,
