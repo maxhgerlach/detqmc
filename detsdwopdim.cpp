@@ -2652,6 +2652,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
 
     //DEBUG test:
     //  just always recompute the whole Green's function
+    updateCoshSinhTermsPhi();
     setupUdVStorage_and_calculateGreen();
     
 //     // compute current weight
