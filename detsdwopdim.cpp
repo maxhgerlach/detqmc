@@ -2650,82 +2650,86 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     timing.start("sdw-attemptGlobalShiftMove");
 
-    // compute current weight
-    num old_scalar_action = phiAction();
-    //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
-    //after sweepUp.
-    assert(currentTimeslice == pars.m);
-
-    VecNum old_green_sv;
-    if (not pars.turnoffFermions) {
-        // The product of the singular values of g is equal to the
-        // absolute value of its determinant.  Don't compute the whole
-        // product explicitly because it contains both very large and
-        // very small numbers --> over/underflows!  Instead use the
-        // fact that the SV's are sorted by magnitude and compare them
-        // term by term with the SV's of the updated Green's function.
-        MatData U, V_t;         // TODO: avoid needless allocations
-        arma::svd(U, old_green_sv, V_t, g, "std");
-    }
+    //DEBUG test:
+    //  just always recompute the whole Green's function
+    setupUdVStorage_and_calculateGreen();
     
-    globalMoveStoreBackups();
+//     // compute current weight
+//     num old_scalar_action = phiAction();
+//     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
+//     //after sweepUp.
+//     assert(currentTimeslice == pars.m);
 
-    // shift fields by a random, constant displacement
-    addGlobalRandomDisplacement();
-
-    if (not pars.turnoffFermions) {
+//     VecNum old_green_sv;
+//     if (not pars.turnoffFermions) {
+//         // The product of the singular values of g is equal to the
+//         // absolute value of its determinant.  Don't compute the whole
+//         // product explicitly because it contains both very large and
+//         // very small numbers --> over/underflows!  Instead use the
+//         // fact that the SV's are sorted by magnitude and compare them
+//         // term by term with the SV's of the updated Green's function.
+//         MatData U, V_t;         // TODO: avoid needless allocations
+//         arma::svd(U, old_green_sv, V_t, g, "std");
+//     }
     
-        updateCoshSinhTermsPhi();
+//     globalMoveStoreBackups();
 
-        //recompute Green's function
-        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+//     // shift fields by a random, constant displacement
+//     addGlobalRandomDisplacement();
 
-    }
+//     if (not pars.turnoffFermions) {
+    
+//         updateCoshSinhTermsPhi();
+
+//         //recompute Green's function
+//         setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+
+//     }
         
-    //compute new weight, transition probability
-    num new_scalar_action = phiAction();
+//     //compute new weight, transition probability
+//     num new_scalar_action = phiAction();
 
-    num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
+//     num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
     
-    num prob_fermion = 1.0;
+//     num prob_fermion = 1.0;
 
-    if (not pars.turnoffFermions) {
+//     if (not pars.turnoffFermions) {
     
-        //num new_green_det = Base::abs_det_green_from_storage();
-        //std::cout << new_green_det << "\n";
-        VecNum new_green_sv;
-        MatData U, V_t;         // TODO: avoid needless allocations
-        arma::svd(U, new_green_sv, V_t, g, "std");
+//         //num new_green_det = Base::abs_det_green_from_storage();
+//         //std::cout << new_green_det << "\n";
+//         VecNum new_green_sv;
+//         MatData U, V_t;         // TODO: avoid needless allocations
+//         arma::svd(U, new_green_sv, V_t, g, "std");
 
-        //compute transition probability
-//    num prob_fermion = old_green_det / new_green_det;
-        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-        prob_fermion = 1.0;
-        for (num sv_ratio : green_sv_ratios) {
-            prob_fermion *= sv_ratio;
-        }
-        if (OPDIM < 3) {
-            //      /G 0 \              .
-            //  det \0 G*/ = |det G|^2
-            prob_fermion = std::pow(prob_fermion, 2);
-        }
+//         //compute transition probability
+// //    num prob_fermion = old_green_det / new_green_det;
+//         VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+//         prob_fermion = 1.0;
+//         for (num sv_ratio : green_sv_ratios) {
+//             prob_fermion *= sv_ratio;
+//         }
+//         if (OPDIM < 3) {
+//             //      /G 0 \              .
+//             //  det \0 G*/ = |det G|^2
+//             prob_fermion = std::pow(prob_fermion, 2);
+//         }
         
-    }
+//     }
 
-    num prob = prob_scalar * prob_fermion;
+//     num prob = prob_scalar * prob_fermion;
 
-//    std::cout << prob_scalar << "  " << prob_fermion << "\n";
+// //    std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
-    us.attemptedGlobalShifts += 1;
-    if (prob >= 1. or rng.rand01() < prob) {
-        //update accepted
-        us.acceptedGlobalShifts += 1;
-        // std::cout << "\naccept globalShift\n\n";
-    } else {
-        //update rejected, restore previous state
-        globalMoveRestoreBackups();
-        // std::cout << "\nreject globalShift\n\n";
-    }
+//     us.attemptedGlobalShifts += 1;
+//     if (prob >= 1. or rng.rand01() < prob) {
+//         //update accepted
+//         us.acceptedGlobalShifts += 1;
+//         // std::cout << "\naccept globalShift\n\n";
+//     } else {
+//         //update rejected, restore previous state
+//         globalMoveRestoreBackups();
+//         // std::cout << "\nreject globalShift\n\n";
+//     }
 
     timing.stop("sdw-attemptGlobalShiftMove");
 }
