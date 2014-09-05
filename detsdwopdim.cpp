@@ -2720,11 +2720,11 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         us.acceptedGlobalShifts += 1;
-        std::cout << "\naccept globalShift\n\n";
+        // std::cout << "\naccept globalShift\n\n";
     } else {
         //update rejected, restore previous state
         globalMoveRestoreBackups();
-        std::cout << "\nreject globalShift\n\n";
+        // std::cout << "\nreject globalShift\n\n";
     }
 
     timing.stop("sdw-attemptGlobalShiftMove");
