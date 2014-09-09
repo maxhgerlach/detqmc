@@ -134,7 +134,13 @@ std::vector<std::string> glob(const std::string& path);
 // pass this as a default do-nothing function parameter in cases
 // where no return value is expected
 struct VoidNoOp {
-	void operator()(...) const { };
+    void operator()() const { };
+    template<class A>
+    void operator()(A a) const { (void)(a); };
+    template<class A, class B>
+    void operator()(A a, B b) const { (void)(a); (void)(b); };
+    template<class A, class B, class C>
+    void operator()(A a, B b, C c) const { (void)(a); (void)(b); (void)(c); };
 };
 
 
