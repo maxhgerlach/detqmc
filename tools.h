@@ -135,13 +135,19 @@ std::vector<std::string> glob(const std::string& path);
 // where no return value is expected
 struct VoidNoOp {
     void operator()() const { };
-    template<class A>
-    void operator()(A a) const { (void)(a); };
-    template<class A, class B>
-    void operator()(A a, B b) const { (void)(a); (void)(b); };
-    template<class A, class B, class C>
-    void operator()(A a, B b, C c) const { (void)(a); (void)(b); (void)(c); };
+    template<typename P1, typename... Params>
+    void operator()(P1 p1, Params... parameters) {
+        (void)(p1);             // we do this just to remove warnings -- we need the recursion for that
+        operator()(parameters...);
+    }
+    // template<class A>
+    // void operator()(A a) const { (void)(a); }
+    // template<class A, class B>
+    // void operator()(A a, B b) const { (void)(a); (void)(b); }
+    // template<class A, class B, class C>
+    // void operator()(A a, B b, C c) const { (void)(a); (void)(b); (void)(c); }
 };
+
 
 
 typedef double num;
