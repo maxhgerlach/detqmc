@@ -3508,6 +3508,8 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
                        [this]() {this->finishMeasurements();},
                        [this]() {this->globalMove();});
 
+        ++performedSweeps;
+
     } else {
 
         if (lastSweepDir == SweepDirection::Up) {
@@ -3521,7 +3523,6 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
         
     }
 
-    ++performedSweeps;
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -3536,6 +3537,8 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
                                      },
                                      [this]() {this->globalMove();});
 
+        ++performedSweeps;
+
     } else {
         
         if (lastSweepDir == SweepDirection::Up) {
@@ -3549,7 +3552,6 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
 
     }
     
-    ++performedSweeps;
 }
 
 
