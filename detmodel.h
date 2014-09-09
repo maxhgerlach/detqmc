@@ -521,7 +521,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
 
         storage[0] = eye_UdV; 
         // storage[1] = udvDecompose(computeBmat(gc, s, 0));
-        storage[1] = udvDecompose(leftMultiplyBmat(gc, eye_gc, s, 0));
+        udvDecompose(storage[1], leftMultiplyBmat(gc, eye_gc, s, 0));
 
         for (uint32_t l = 1; l <= n - 1; ++l) {
             const MatV&   U_l   = storage[l].U;
@@ -531,7 +531,7 @@ void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_skeleton
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
 //            MatV B_lp1_times_U_l = computeBmat(gc, k_lp1, k_l) * U_l;
             MatV B_lp1_times_U_l = leftMultiplyBmat(gc, U_l, k_lp1, k_l);
-            storage[l+1] = udvDecompose<V>(B_lp1_times_U_l * arma::diagmat(d_l));
+            udvDecompose<V>(storage[l+1], B_lp1_times_U_l * arma::diagmat(d_l));
             storage[l+1].V_t =  V_t_l * storage[l+1].V_t;
         }
     };
@@ -618,7 +618,8 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
     MatV VU_rl_product = trans(V_t_r) * U_l;
     MatV UtVt_rl_product = trans(U_r) * V_t_l;
     
-    UdVV UdV_temp = udvDecompose<V>(
+    UdVV UdV_temp;
+    udvDecompose<V>(UdV_temp,
         UtVt_rl_product +
         diagmat(d_r) * VU_rl_product * diagmat(d_l)
         );
@@ -647,7 +648,8 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
 
     using arma::diagmat; using arma::trans;
 
-    UdVV UdV_temp = udvDecompose<V>(
+    UdVV UdV_temp;
+    udvDecompose<V>(UdV_temp,
         trans(U_r) * V_t_r + diagmat(d_r)
         );
     
@@ -780,14 +782,14 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
         const VecNum& d_l   = storage[l].d;
         const MatV&   V_t_l = storage[l].V_t;
 
-        UdV_L = udvDecompose<V>(
+        udvDecompose<V>(UdV_L,
             arma::diagmat(d_l) *
             rightMultiplyBmat(gc, trans(V_t_l), k_l, k_lm1)
             );
         UdV_L.U = U_l * UdV_L.U;
     } else {
         // special case l==n, can compute UdV_L from scratch
-        UdV_L = udvDecompose<V>(rightMultiplyBmat(gc, eye_gc, k_l, k_lm1));
+        udvDecompose<V>(UdV_L, rightMultiplyBmat(gc, eye_gc, k_l, k_lm1));
     }
 
     // //Accuracy check:
@@ -918,8 +920,9 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     const MatV&   V_t_l = storage[l].V_t;
 
     //UdV_temp will be the new B(k_lp1*dtau, 0):
-    UdVV UdV_temp = udvDecompose<V>(leftMultiplyBmat(gc, U_l, k_lp1, k_l) *
-                                    arma::diagmat(d_l));
+    UdVV UdV_temp;
+    udvDecompose<V>(UdV_temp,
+                    leftMultiplyBmat(gc, U_l, k_lp1, k_l) * arma::diagmat(d_l));
     UdV_temp.V_t = V_t_l * UdV_temp.V_t;
     
     if (k_lp1 != m) {
