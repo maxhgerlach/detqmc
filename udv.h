@@ -53,63 +53,88 @@ UdV<std::complex<double>>::UdV(uint32_t size) :
     V_t(arma::eye(size,size), arma::zeros(size,size))
 { }
 
-template <typename Val>
-UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
+
+// this version potentially avoids needless copies
+//[probably not important, since allocated matrix memory is behind a
+// pointer in any case]
+template<typename Val>
+void udvDecompose(UdV<Val>& udv_out, const arma::Mat<Val>& mat) {
     timing.start("udvDecompose");
-
-    typedef UdV<Val> UdV;
-    UdV result;
-
-//  ArmaMat V_transpose;
-//  arma::svd(result.U, result.d, V_transpose, mat, "standard");
-//  result.V = V_transpose.t();         //potentially it may be advisable to not do this generally
-
-    //svd-call should use divide-and-conquer algorithm.
-    //mat == U * diag(d) * trans(V_t)
-
-/*
-    
-    bool ok = arma::svd(result.U, result.d, result.V_t, mat, "dc");
-    
-    if (not ok) {
-    	// try the standard method instead of divide-and-conquer
-    	bool ok2 = arma::svd(result.U, result.d, result.V_t, mat, "std");
-    	if (not (ok2)) {
-            throw GeneralError("SVD failed (dc, then std)");
-    	}
-    }
-
-*/
-    
-
-    //Use std algorithm instead -- more precise -- this leads to
-    //much higher stability, with actually not much longer runtimes
-    bool ok = arma::svd(result.U, result.d, result.V_t, mat, "std");
+    //Use std algorithm -- more precise than divide&conquer -- this
+    //leads to much higher stability, with actually not much longer
+    //runtimes
+    bool ok = arma::svd(udv_out.U, udv_out.d, udv_out.V_t, mat, "std");
     if (not ok) {
         throw GeneralError("SVD failed (std)");
     }
+    timing.stop("udvDecompose");
+}
+
+template<typename Val>
+UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
+    UdV<Val> result;
+    udvDecompose(result, mat);
+    return result;
+}
+
+
+// template<typename Val>
+// UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
+//     timing.start("udvDecompose");
+
+//     typedef UdV<Val> UdV;
+//     UdV result;
+
+// //  ArmaMat V_transpose;
+// //  arma::svd(result.U, result.d, V_transpose, mat, "standard");
+// //  result.V = V_transpose.t();         //potentially it may be advisable to not do this generally
+
+//     //svd-call should use divide-and-conquer algorithm.
+//     //mat == U * diag(d) * trans(V_t)
+
+// /*
+    
+//     bool ok = arma::svd(result.U, result.d, result.V_t, mat, "dc");
+    
+//     if (not ok) {
+//     	// try the standard method instead of divide-and-conquer
+//     	bool ok2 = arma::svd(result.U, result.d, result.V_t, mat, "std");
+//     	if (not (ok2)) {
+//             throw GeneralError("SVD failed (dc, then std)");
+//     	}
+//     }
+
+// */
+    
+
+//     //Use std algorithm instead -- more precise -- this leads to
+//     //much higher stability, with actually not much longer runtimes
+//     bool ok = arma::svd(result.U, result.d, result.V_t, mat, "std");
+//     if (not ok) {
+//         throw GeneralError("SVD failed (std)");
+//     }
 
 
     
-//    print_matrix_diff(mat,
-//    		(result.U * arma::diagmat(result.d) * result.V_t.t()).eval(),
-//    		"SVD");
+// //    print_matrix_diff(mat,
+// //    		(result.U * arma::diagmat(result.d) * result.V_t.t()).eval(),
+// //    		"SVD");
 
-//    timing.start("qr");
-//    arma::qr(result.U, result.V, mat);
-//    timing.stop("qr");
-//    //normalize rows of V to obtain scales in d:
-//    result.d.set_size(mat.n_rows);
-//    for (uint32_t rown = 0; rown < mat.n_rows; ++rown) {
-//        const Val norm = arma::norm(result.V.row(rown), 2);
-//        result.d[rown] = norm;
-//        result.V.row(rown) /= norm;
-//    }
+// //    timing.start("qr");
+// //    arma::qr(result.U, result.V, mat);
+// //    timing.stop("qr");
+// //    //normalize rows of V to obtain scales in d:
+// //    result.d.set_size(mat.n_rows);
+// //    for (uint32_t rown = 0; rown < mat.n_rows; ++rown) {
+// //        const Val norm = arma::norm(result.V.row(rown), 2);
+// //        result.d[rown] = norm;
+// //        result.V.row(rown) /= norm;
+// //    }
 
-    timing.stop("udvDecompose");
+//     timing.stop("udvDecompose");
 
-    return result;
-}
+//     return result;
+// }
 
 
 
