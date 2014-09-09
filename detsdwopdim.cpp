@@ -2657,6 +2657,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     assert(currentTimeslice == pars.m);
 
     VecNum old_green_sv;
+    // num olddet;
     if (not pars.turnoffFermions) {
         // The product of the singular values of g is equal to the
         // absolute value of its determinant.  Don't compute the whole
@@ -2666,6 +2667,15 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         // term by term with the SV's of the updated Green's function.
         MatData U, V_t;         // TODO: avoid needless allocations
         arma::svd(U, old_green_sv, V_t, g, "std");
+        // debugSaveMatrixCpx(g, "oldg");
+        // olddet = std::abs(arma::det(g));
+        // std::cout << "old det:        " << olddet << "\n";
+        // num prod = 1.0;
+        // uint32_t count = 0;
+        // for (auto sv: old_green_sv) {
+        //     prod *= sv;
+        // }
+        // std::cout << "old sv product:   " << prod << "\n";
     }
     
     globalMoveStoreBackups();
@@ -2696,6 +2706,17 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         VecNum new_green_sv;
         MatData U, V_t;         // TODO: avoid needless allocations
         arma::svd(U, new_green_sv, V_t, g, "std");
+        // debugSaveMatrixCpx(g, "newg");
+        // num newdet = std::abs(arma::det(g));
+        // std::cout << "new det:        " << newdet << "\n";
+        // std::cout << "old det / new det: " << olddet / newdet << "\n";
+
+        // num prod = 1.0;
+        // uint32_t count = 0;
+        // for (auto sv: new_green_sv) {
+        //     prod *= sv;
+        // }
+        // std::cout << "new sv product:   " << prod << "\n";
 
         //compute transition probability
         // num prob_fermion = old_green_det / new_green_det;
@@ -2704,6 +2725,20 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         for (num sv_ratio : green_sv_ratios) {
             prob_fermion *= sv_ratio;
         }
+
+        // std::cout << "prob_fermion (not squared): " << prob_fermion << "\n";
+
+        // // avoid mixing large and small numbers -> use logarithms!
+        // num exponent = 0.;
+
+        // for (uint32_t k = 0; k < MatrixSizeFactor*pars.N; ++k) {
+        //     num old_sv  = old_green_sv[k];
+        //     num new_sv  = new_green_sv[k];
+        //     exponent += std::log(old_sv) - std::log(new_sv);
+        // }
+        // num ratio_with_logarithms = std::exp(exponent);
+        // std::cout << "ratio_with_logarithms: " << ratio_with_logarithms << "\n";
+
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
