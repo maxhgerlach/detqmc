@@ -12,6 +12,7 @@
 #include <vector>
 #include <complex>
 #include <type_traits>          // std::conditional
+#include <string>
 #include "rngwrapper.h"
 #include "detmodel.h"
 #include "detsdwparams.h"
@@ -36,7 +37,10 @@ template<CheckerboardMethod CBM, int OPDIM> class DetSDW;
 
 template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
-                   RngWrapper& rng, ModelParamsDetSDW pars);
+                   RngWrapper& rng, ModelParamsDetSDW pars,
+                   // optionally allow passing a directory, where this
+                   // replica is allowed to write output into a logfile
+                   const std::string& logfiledir = "");
 
 
 // template parameters:
@@ -56,11 +60,12 @@ public:
                   "Supported order parameter dimensions: 1, 2, or 3");
     typedef ModelParamsDetSDW ModelParams;
 private:
-    DetSDW(RngWrapper& rng, const ModelParams& pars);
+    DetSDW(RngWrapper& rng, const ModelParams& pars, const std::string& logfiledir = "");
 public:
     template<CheckerboardMethod CBM, int OrderParameterDimension>
     friend void createReplica(std::unique_ptr<DetSDW<CBM, OrderParameterDimension>>& replica_out,
-                              RngWrapper& rng, ModelParams pars);
+                              RngWrapper& rng, ModelParams pars,
+                              const std::string& logfiledir);
 
     virtual ~DetSDW();
     virtual uint32_t getSystemN() const;
@@ -732,6 +737,11 @@ protected:
     //several checks, many are normally commented out
     virtual void consistencyCheck();
 
+    // will be used in DetModelGC::advance{Up,Down} functions
+
+    // Compares the Green's function as computed from scratch with the
+    // wrapped version.
+    void greenConsistencyCheck(const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir);
 
 
 /*
@@ -890,6 +900,14 @@ protected:
     struct sdwRightMultiplyBmat;
     struct sdwLeftMultiplyBmat;
     struct sdwComputeBmat;
+
+
+/*
+
+     For debugging / consistency purposes:
+  
+ */
+    std::string logfiledir;
 public:
 /*
 

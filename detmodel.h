@@ -16,6 +16,7 @@
 #include <tuple>
 #include <armadillo>
 #include <cassert>
+#include <type_traits>          // std::is_same
 
 #include "tools.h"
 #include "rngwrapper.h"
@@ -208,7 +209,7 @@ public:
     //of Green functions, alternate between sweeping up and down in imaginary time.
     //  /* at some point Will give equal-time and time-displaced Green functions if TimeDisplace == ture */.
     //if takeMeasurements == true : perform observable measurements
-    //
+     //
     //*_Callable_GC_mat_k2_k1: take arguments green-component, some matrix,
     //                         time slices k2 > k1
     //      -> return left/right product of matrix with Bmat or Bmat-inverse
@@ -223,11 +224,18 @@ public:
     //          and may be used to provide a global update encompassing all
     //          imaginary time slices
     //          By default: do nothing
+    //optional:
+    //  Callable_GreenConsistency:
+    //    Arguments: const Mat& g1, const Mat& g2, SweepDirection cursweepdir.
+    //    Perform some sort of consistency check, comparing the two matrices,
+    //    also be informed about whether we are sweeping up or down.
+    //    By default: do nothing
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
              class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
              class Callable_UpdateInSlice_k,
              class Callable_init, class Callable_measure_k, class Callable_finish,
-             class Callable_GlobalUpdate = VoidNoOp>
+             class Callable_GlobalUpdate = VoidNoOp,
+             class Callable_GreenConsistency = VoidNoOp>
     void sweep_skeleton(bool takeMeasurements,
     					a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
@@ -236,20 +244,23 @@ public:
                         Callable_UpdateInSlice_k updateInSlice,
                         Callable_init initMeasurement, Callable_measure_k measure,
                         Callable_finish finishMeasurement,
-                        Callable_GlobalUpdate globalUpdate = VoidNoOp());
+                        Callable_GlobalUpdate globalUpdate = VoidNoOp(),
+                        Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
     //the same to be called during thermalization, may do the same or iteratively
     //adjust parameters, but does not take any measurements ever
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
              class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
              class Callable_UpdateInSlice_k,
-             class Callable_GlobalUpdate = VoidNoOp>
+             class Callable_GlobalUpdate = VoidNoOp,
+             class Callable_GreenConsistency = VoidNoOp>
     void sweepThermalization_skeleton(
                         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
                         Callable_UpdateInSlice_k updateInSlice,
-                        Callable_GlobalUpdate globalUpdate = VoidNoOp());
+                        Callable_GlobalUpdate globalUpdate = VoidNoOp(),
+                        Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
 protected:
     typedef arma::Mat<ValueType> MatV;
     typedef arma::Col<ValueType> VecV;
@@ -323,19 +334,29 @@ protected:
     //Callable_GC_mat_k2_k1: take arguments green-component, some matrix,
     //                       time slices k2 > k1
     //      -> return left/right product of matrix with Bmat or Bmat-inverse
+    //optional:
+    //  Callable_GreenConsistency:
+    //    Arguments: const Mat& g1, const Mat& g2, SweepDirection cursweepdir.
+    //    Perform some sort of consistency check, comparing the two matrices,
+    //    also be informed about whether we are sweeping up or down.
+    //    By default: do nothing
 
-    template<class Callable_GC_mat_k2_k1>
+    template<class Callable_GC_mat_k2_k1,
+             class Callable_GreenConsistency = VoidNoOp>
     void advanceDownGreen(Callable_GC_mat_k2_k1 rightMultiplyBmat,
-                          uint32_t l, uint32_t gc);
+                          uint32_t l, uint32_t gc,
+                          Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
 
     template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1>
     void wrapDownGreen(a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                        b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                        uint32_t k, uint32_t gc);
 
-    template<class Callable_GC_mat_k2_k1>
+    template<class Callable_GC_mat_k2_k1,
+             class Callable_GreenConsistency = VoidNoOp>
     void advanceUpGreen(Callable_GC_mat_k2_k1 leftMultiplyBmat,
-                        uint32_t l, uint32_t gc);
+                        uint32_t l, uint32_t gc,
+                        Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
 
 //    template<class Callable_GC_mat_k2_k1>
 //    void advanceUpUpdateStorage(Callable_GC_mat_k2_k1 leftMultiplyBmat,
@@ -350,22 +371,26 @@ protected:
     //as well as B-Mat multiplicators like above
     template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
               class CallableUpdateInSlice,
-              class Callable_init, class Callable_measure_k, class Callable_finish>
+              class Callable_init, class Callable_measure_k, class Callable_finish,
+              class Callable_GreenConsistency = VoidNoOp>
     void sweepUp(bool takeMeasurements,
                  a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
                  b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
                  CallableUpdateInSlice funcUpdateInSlice,
                  Callable_init initMeasurement, Callable_measure_k measure,
-                 Callable_finish finishMeasurement);
+                 Callable_finish finishMeasurement,
+                 Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
     template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
               class CallableUpdateInSlice,
-              class Callable_init, class Callable_measure_k, class Callable_finish>
+              class Callable_init, class Callable_measure_k, class Callable_finish,
+              class Callable_GreenConsistency = VoidNoOp>
     void sweepDown(bool takeMeasurements,
                    a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
                    b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
                    CallableUpdateInSlice funcUpdateInSlice,
                    Callable_init initMeasurement, Callable_measure_k measure,
-                   Callable_finish finishMeasurement);
+                   Callable_finish finishMeasurement,
+                   Callable_GreenConsistency greenConsistencyCheck = VoidNoOp());
 
     // This method is called after each sweep.
     // A derived class, which implements the model, may overload it to check
@@ -755,10 +780,12 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunction_Eye_UdV(
 //postconditions: storage[l - 1] contains B(beta, (l-1)*s*dtau)
 //                green is G((l-1)*s*dtau)
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class Callable_GC_mat_k2_k1>
+template<class Callable_GC_mat_k2_k1,
+         class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
         Callable_GC_mat_k2_k1 rightMultiplyBmat,
-        uint32_t l, uint32_t gc)
+        uint32_t l, uint32_t gc,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     timing.start("advanceDownGreen");
 
@@ -793,7 +820,10 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
     }
 
     // //Accuracy check:
-    // MatV g_wrapped = green[gc];
+    MatV g_wrapped;
+    if ( not std::is_same<Callable_GreenConsistency, VoidNoOp>::value ) {
+        g_wrapped = green[gc];
+    }
 
     if (l - 1 > 0) {
         //UdV_R corresponds to B(k_lm1*dtau,0) [set in last sweep]
@@ -804,8 +834,9 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceDownGreen(
         updateGreenFunction_Eye_UdV(gc, UdV_L);
     }
     
-    // //Accuracy check:
+    //Accuracy check:
     // print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Down" + numToString(currentTimeslice));
+    greenConsistencyCheck(g_wrapped, green[gc], SweepDirection::Down);
 
     storage[l - 1] = UdV_L;
 
@@ -892,10 +923,12 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
 // postconditions: storage[l + 1] contains B((l+1)*s*dtau, 0)
 //                 green is G((l+1)*s*dtau)
 template<uint32_t GC, typename V, bool TimeDisplaced>
-template<class Callable_GC_mat_k2_k1>
+template<class Callable_GC_mat_k2_k1,
+         class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
         Callable_GC_mat_k2_k1 leftMultiplyBmat,
-        uint32_t l, uint32_t gc)
+        uint32_t l, uint32_t gc,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     timing.start("advanceUpGreen");
 
@@ -912,7 +945,10 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
     assert(currentTimeslice == k_lp1);
 
     // //Accuracy check:
-    // MatV g_wrapped = green[gc];
+    MatV g_wrapped;
+    if ( not std::is_same<Callable_GreenConsistency, VoidNoOp>::value ) {
+        g_wrapped = green[gc];
+    }
     
     //from the last step the following are B(k_l*dtau, 0):
     const MatV&   U_l   = storage[l].U;
@@ -936,8 +972,9 @@ void DetModelGC<GC,V,TimeDisplaced>::advanceUpGreen(
 
     storage[l + 1] = UdV_temp;
     
-    // //Accuracy check:
+    //Accuracy check:
     // print_matrix_rel_diff(g_wrapped, green[gc], "Adv-Up" + numToString(currentTimeslice));
+    greenConsistencyCheck(g_wrapped, green[gc], SweepDirection::Up);
 
     currentTimeslice = k_lp1;
 
@@ -1043,14 +1080,16 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapUpGreen(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
 	  class CallableUpdateInSlice,
-	  class Callable_init, class Callable_measure_k, class Callable_finish>
+	  class Callable_init, class Callable_measure_k, class Callable_finish,
+          class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
         bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
         CallableUpdateInSlice funcUpdateInSlice,
         Callable_init initMeasurement, Callable_measure_k measure,
-        Callable_finish finishMeasurement)
+        Callable_finish finishMeasurement,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     if (takeMeasurements) {
         initMeasurement();
@@ -1082,7 +1121,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
             updateInSliceAndMaybeMeasure(k);
         }
         for (uint32_t gc = 0; gc < GC; ++gc) {
-            advanceUpGreen(leftMultiplyBmat, l, gc);        //new version
+            advanceUpGreen(leftMultiplyBmat, l, gc, greenConsistencyCheck);        //new version
         }
     }
     //special handling for the highest time-slices
@@ -1094,7 +1133,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
     }
     //refresh Green's function at highest time-slice
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        advanceUpGreen(leftMultiplyBmat, n - 1, gc);        //new version
+        advanceUpGreen(leftMultiplyBmat, n - 1, gc, greenConsistencyCheck);        //new version
     }
 
     if (takeMeasurements) {
@@ -1108,14 +1147,16 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepUp(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template <class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
           class CallableUpdateInSlice,
-          class Callable_init, class Callable_measure_k, class Callable_finish>
+          class Callable_init, class Callable_measure_k, class Callable_finish,
+          class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
         bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
         CallableUpdateInSlice funcUpdateInSlice,
         Callable_init initMeasurement, Callable_measure_k measure,
-        Callable_finish finishMeasurement)
+        Callable_finish finishMeasurement,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     if (takeMeasurements) {
         initMeasurement();
@@ -1152,7 +1193,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 
     for (uint32_t l = n - 1; l >= 1; --l) {
         for (uint32_t gc = 0; gc < GC; ++gc) {
-            advanceDownGreen(rightMultiplyBmat, l + 1, gc);
+            advanceDownGreen(rightMultiplyBmat, l + 1, gc, greenConsistencyCheck);
         }
         for (uint32_t k = l*s; k >= (l-1)*s + 1; --k) {
             updateInSliceAndMaybeMeasure(k);
@@ -1163,7 +1204,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
     }
     // refresh the Green's function at k=0 so we are ready to sweep-up
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        advanceDownGreen(rightMultiplyBmat, 1, gc);
+        advanceDownGreen(rightMultiplyBmat, 1, gc, greenConsistencyCheck);
     }
 
     if (takeMeasurements) {
@@ -1178,7 +1219,8 @@ template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
          class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
          class Callable_UpdateInSlice_k,
          class Callable_init, class Callable_measure_k, class Callable_finish,
-         class Callable_GlobalUpdate>
+         class Callable_GlobalUpdate,
+         class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
         bool takeMeasurements,
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
@@ -1188,7 +1230,8 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
         Callable_UpdateInSlice_k updateInSlice,
         Callable_init initMeasurement, Callable_measure_k measure,
         Callable_finish finishMeasurement,
-        Callable_GlobalUpdate globalUpdate)
+        Callable_GlobalUpdate globalUpdate,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     timing.start("sweep");
 
@@ -1197,13 +1240,15 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
         sweepDown(takeMeasurements,
                   leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSlice,
-                  initMeasurement, measure, finishMeasurement);
+                  initMeasurement, measure, finishMeasurement,
+                  greenConsistencyCheck);
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
         sweepUp(takeMeasurements,
                 leftMultiplyBmat, rightMultiplyBmatInv,
                 updateInSlice,
-                initMeasurement, measure, finishMeasurement);
+                initMeasurement, measure, finishMeasurement,
+                greenConsistencyCheck);
         lastSweepDir = SweepDirection::Up;
     }
 
@@ -1213,14 +1258,16 @@ void DetModelGC<GC,V,TimeDisplaced>::sweep_skeleton(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class a_Callable_GC_mat_k2_k1, class b_Callable_GC_mat_k2_k1,
          class c_Callable_GC_mat_k2_k1, class d_Callable_GC_mat_k2_k1,
-         class Callable_UpdateInSlice_k, class Callable_GlobalUpdate>
+         class Callable_UpdateInSlice_k, class Callable_GlobalUpdate,
+         class Callable_GreenConsistency>
 void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
         a_Callable_GC_mat_k2_k1 leftMultiplyBmat,
         b_Callable_GC_mat_k2_k1 rightMultiplyBmat,
         c_Callable_GC_mat_k2_k1 leftMultiplyBmatInv,
         d_Callable_GC_mat_k2_k1 rightMultiplyBmatInv,
         Callable_UpdateInSlice_k updateInSliceThermalization,
-        Callable_GlobalUpdate globalUpdate)
+        Callable_GlobalUpdate globalUpdate,
+        Callable_GreenConsistency greenConsistencyCheck)
 {
     timing.start("sweep");
 
@@ -1229,14 +1276,16 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
         sweepDown(false,                                    //no measurements
                   leftMultiplyBmatInv, rightMultiplyBmat,
                   updateInSliceThermalization,
-                  VoidNoOp(), VoidNoOp(), VoidNoOp()        //no measurements
+                  VoidNoOp(), VoidNoOp(), VoidNoOp(),       //no measurements
+                  greenConsistencyCheck
                   );
         lastSweepDir = SweepDirection::Down;
     } else if (lastSweepDir == SweepDirection::Down) {
         sweepUp(false,
-                leftMultiplyBmat, rightMultiplyBmatInv,        //no measurements
+                leftMultiplyBmat, rightMultiplyBmatInv,     //no measurements
                 updateInSliceThermalization,
-                VoidNoOp(), VoidNoOp(), VoidNoOp()        //no measurements
+                VoidNoOp(), VoidNoOp(), VoidNoOp(),         //no measurements
+                greenConsistencyCheck
                 );
         lastSweepDir = SweepDirection::Up;
     }

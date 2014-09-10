@@ -41,7 +41,8 @@ namespace fs = boost::filesystem;
 
 template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
-                   RngWrapper& rng, ModelParamsDetSDW pars) {
+                   RngWrapper& rng, ModelParamsDetSDW pars,
+                   const std::string& logfiledir) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
@@ -51,26 +52,33 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
         );
     assert(pars.opdim == OPDIM);
     
-    replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(new DetSDW<CBM, OPDIM>(rng, pars));
+    replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(
+        new DetSDW<CBM, OPDIM>(rng, pars, logfiledir));
 }
 //explicit instantiations:
 #ifndef DETSDW_NO_O1
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 1>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 1>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 #endif //DETSDW_NO_O1
 #ifndef DETSDW_NO_O2
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 2>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 2>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 #endif //DETSDW_NO_O2
 #ifndef DETSDW_NO_O3
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 3>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 3>>& replica_out,
-                            RngWrapper& rng, ModelParamsDetSDW pars);
+                            RngWrapper& rng, ModelParamsDetSDW pars,
+                            const std::string& logfiledir);
 #endif //DETSDW_NO_O3
 
 
@@ -80,7 +88,8 @@ const num PhiHigh = 1;
 
 
 template<CheckerboardMethod CB, int OPDIM>
-DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
+DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
+                          const std::string& logfiledir_) :
     Base(pars_, MatrixSizeFactor * pars_.L*pars_.L),
     smalleye(arma::eye<MatData>(MatrixSizeFactor, MatrixSizeFactor)),
     rng(rng_), normal_distribution(rng),
@@ -108,7 +117,8 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_) :
     fermionEkinetic(0), fermionEcouple(0),
     occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
-    dud(pars.N, pars.delaySteps), gmd(pars.N, m)
+    dud(pars.N, pars.delaySteps), gmd(pars.N, m),
+    logfiledir(logfiledir_)
 {
     //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
@@ -2665,8 +2675,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         // very small numbers --> over/underflows!  Instead use the
         // fact that the SV's are sorted by magnitude and compare them
         // term by term with the SV's of the updated Green's function.
-        MatData U, V_t;         // TODO: avoid needless allocations
-        arma::svd(U, old_green_sv, V_t, g, "std");
+        UdVV udv_oldgreen;         // TODO: avoid needless allocations
+        udvDecompose(udv_oldgreen, g);
         // debugSaveMatrixCpx(g, "oldg");
         // olddet = std::abs(arma::det(g));
         // std::cout << "old det:        " << olddet << "\n";
@@ -2704,8 +2714,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         //num new_green_det = Base::abs_det_green_from_storage();
         //std::cout << new_green_det << "\n";
         VecNum new_green_sv;
-        MatData U, V_t;         // TODO: avoid needless allocations
-        arma::svd(U, new_green_sv, V_t, g, "std");
+        UdVV udv_newgreen;         // TODO: avoid needless allocations
+        udvDecompose(udv_newgreen, g);
         // debugSaveMatrixCpx(g, "newg");
         // num newdet = std::abs(arma::det(g));
         // std::cout << "new det:        " << newdet << "\n";
@@ -3506,7 +3516,10 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
                        [this]() {this->initMeasurements();},
                        [this](uint32_t timeslice) {this->measure(timeslice);},
                        [this]() {this->finishMeasurements();},
-                       [this]() {this->globalMove();});
+                       [this]() {this->globalMove();},
+                       [this](const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
+                           this->greenConsistencyCheck(g1, g2, cur_sweep_dir);
+                       });
 
         ++performedSweeps;
 
@@ -3535,7 +3548,10 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
                                      [this](uint32_t timeslice) {
                                          this->updateInSliceThermalization(timeslice);
                                      },
-                                     [this]() {this->globalMove();});
+                                     [this]() {this->globalMove();},
+                                     [this](const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
+                                         this->greenConsistencyCheck(g1, g2, cur_sweep_dir);
+                                     });
 
         ++performedSweeps;
 
@@ -3821,6 +3837,26 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
    // 			"V l=" + numToString(l)
    // 	);
    // }
+}
+
+
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::greenConsistencyCheck(const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
+    const auto N = pars.N;
+    // log max total difference, mean difference, max difference on the block diagonals
+    num diag_diff = 0.0;
+    for (uint32_t colblock = 0; colblock < MatrixSizeFactor; ++colblock) {
+        for (uint32_t rowblock = 0; rowblock < MatrixSizeFactor; ++rowblock) {
+            for (uint32_t site = 0; site < N; ++ site) {
+                uint32_t colentry = site + colblock*N;
+                uint32_t rowentry = site + rowblock*N;
+                num diff = std::abs(g1(rowentry, colentry) - g2(rowentry, colentry));
+                if (diff > diag_diff) {
+                    diag_diff = diff;
+                }
+            }
+        }
+    }
 }
 
 

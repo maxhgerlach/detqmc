@@ -298,7 +298,13 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
     parsmodel.check();
 
-    createReplica(replica, rng, parsmodel);
+    // the replicaLogfiledir is for some consistency checks, and is most likely
+    // to be unused in later production runs.  Replicas to be used with this
+    // replica-exchange code therefore are required to support this parameter
+    // in the createReplica function associated to them.
+    std::string replicaLogfiledir = "log_proc_" + numToString(processIndex);
+    
+    createReplica(replica, rng, parsmodel, replicaLogfiledir);
     
     // at rank 0 keep track of which process has which control parameter currently
     // and track exchange action contributions
