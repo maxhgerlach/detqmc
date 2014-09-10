@@ -289,13 +289,16 @@ protected:
     // computes G(tau) = [Id + B(tau,0).B(beta,tau)]^{-1}
     //                 = [Id + U_r d_r V_r U_l d_l V_l]^{-1}
     //                 = (V_t_L V_t_x) D_x^{-1} (U_R U_x)^{dagger}
-    void greenFromUdV(MatV& green_out, const UdVV& UdV_l, const UdVV& UdV_r) const;
+        // and stores the singular values of G^{-1} [their product yields
+    // the absolute value of the inverse determinant of G]
+    void greenFromUdV(MatV& green_out, VecNum& green_inv_sv, const UdVV& UdV_l, const UdVV& UdV_r) const;
     //The following is useful to compute G(\beta) = [1 + B(\beta, 0)]^{-1}
-    void greenFromEye_and_UdV(MatV& green_out, const UdVV& UdV_r) const;
+    void greenFromEye_and_UdV(MatV& green_out, VecNum& green_inv_sv, const UdVV& UdV_r) const;
 
     //compute Green function from UdV-decomposed matrices L/R
     //for a single timeslice and update the member variables green --
-    //and if desired -- greenFwd and greenBwd
+    //and if desired -- greenFwd and greenBwd.
+    //Also updates green_inv_sv.
     void updateGreenFunctionUdV(uint32_t gc, const UdVV& UdV_L, const UdVV& UdV_R);
     void updateGreenFunction_Eye_UdV(uint32_t gc, const UdVV& UdV_R);    
 
@@ -428,6 +431,10 @@ protected:
     // current timeslice
     checkarray<MatV, GreenComponents> green;
     uint32_t currentTimeslice;					//currently green is valid for this timeslice
+    // This stores the singular values of G^{-1} (assuming that det(G) > 0).  This is only valid after
+    // updateGreenFunction[_Eye_]UdV
+    checkarray<VecNum, GreenComponents> green_inv_sv;
+    
 
     //The UdV-instances in UdVStorage will not move around after setup, so storing
     //the (rather big) objects in the vector is fine.
@@ -468,7 +475,7 @@ public:
     template<class Archive>
     void loadContents(SerializeContentsKey const &sck, Archive &ar) {
         DetModel::loadContents(sck, ar);        //base class
-        //UdV-storage, green, greenFwd, greenBwd still need to be recast into a valid state
+        //UdV-storage, green, green_inv_sv, greenFwd, greenBwd still need to be recast into a valid state
         //by a derived class!
         //TODO: this is a mess!
     }
@@ -485,6 +492,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     dtau(pars.dtau),
     green(), //greenFwd(), greenBwd(),
     currentTimeslice(),
+    green_inv_sv(),
     eye_UdV(sz), eye_gc(arma::eye<MatV>(sz, sz)),
     UdVStorage(new checkarray<std::vector<UdVV>, GC>),
     lastSweepDir(SweepDirection::Up),
@@ -628,6 +636,7 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepSimpleThermalization_skeleton(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 		MatV& green_out,
+                VecNum& green_inv_sv,
 		const UdVV& UdV_l,
 		const UdVV& UdV_r) const {
     timing.start("greenFromUdV");
@@ -649,6 +658,11 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
         diagmat(d_r) * VU_rl_product * diagmat(d_l)
         );
 
+    // UdV_temp.d are the singular values of G^{-1}
+    // TODO: avoid this copy -- just let a udvDecompose-function perform the
+    // decomposition directly into the vector of singular values
+    green_inv_sv = UdV_temp.d;
+
     MatV Vt_product = V_t_l * UdV_temp.V_t;
     MatV U_product  = U_r * UdV_temp.U;
     
@@ -664,6 +678,7 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 template<uint32_t GC, typename V, bool TimeDisplaced>
 void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
 		MatV& green_out,
+                VecNum& green_inv_sv,
 		const UdVV& UdV_r) const {
     timing.start("greenFromUdV");
     //Here we consider the special case U_l*d_l*V_t_l.t() = 1
@@ -677,6 +692,11 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
     udvDecompose<V>(UdV_temp,
         trans(U_r) * V_t_r + diagmat(d_r)
         );
+
+    // UdV_temp.d are the singular values of G^{-1}
+    // TODO: avoid this copy -- just let a udvDecompose-function perform the
+    // decomposition directly into the vector of singular values
+    green_inv_sv = UdV_temp.d;
     
     MatV V_t_product = V_t_r * UdV_temp.V_t;
     MatV U_product = U_r * UdV_temp.U;
@@ -757,7 +777,7 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunctionUdV(
 //                greenFwd[gc].slice(targetSlice), green[gc].slice(targetSlice))
 //            = greenFromUdV_timedisplaced(UdV_L, UdV_R);
     } else {
-        greenFromUdV(green[gc], UdV_L, UdV_R);
+        greenFromUdV(green[gc], green_inv_sv[gc], UdV_L, UdV_R);
     }
 }
 
@@ -767,7 +787,7 @@ void DetModelGC<GC,V,TimeDisplaced>::updateGreenFunction_Eye_UdV(
     if (TimeDisplaced) {
         // no-op
     } else {
-        greenFromEye_and_UdV(green[gc], UdV_R);
+        greenFromEye_and_UdV(green[gc], green_inv_sv[gc], UdV_R);
     }
 }
 

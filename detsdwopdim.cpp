@@ -101,7 +101,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
     propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
     propK_half_inv(), propKx_half_inv(propK_half_inv[XBAND]), propKy_half_inv(propK_half_inv[YBAND]),
-    g(green[0]),
+    g(green[0]), g_inv_sv(green_inv_sv[0]),
     phi(pars.N, OPDIM, pars.m+1), cdwl(pars.N, pars.m+1),
     coshTermPhi(pars.N, pars.m+1), sinhTermPhi(pars.N, pars.m+1),
     coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
@@ -2666,7 +2666,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     //after sweepUp.
     assert(currentTimeslice == pars.m);
 
-    VecNum old_green_sv;
+    // VecNum old_green_sv;
+    VecNum old_g_inv_sv;
     // num olddet;
     if (not pars.turnoffFermions) {
         // The product of the singular values of g is equal to the
@@ -2675,8 +2676,9 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         // very small numbers --> over/underflows!  Instead use the
         // fact that the SV's are sorted by magnitude and compare them
         // term by term with the SV's of the updated Green's function.
-        UdVV udv_oldgreen;         // TODO: avoid needless allocations
-        udvDecompose(udv_oldgreen, g);
+        
+        // UdVV udv_oldgreen;         // TODO: avoid needless allocations
+        // udvDecompose(udv_oldgreen, g);
         // debugSaveMatrixCpx(g, "oldg");
         // olddet = std::abs(arma::det(g));
         // std::cout << "old det:        " << olddet << "\n";
@@ -2686,6 +2688,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         //     prod *= sv;
         // }
         // std::cout << "old sv product:   " << prod << "\n";
+
+        old_g_inv_sv = g_inv_sv;
     }
     
     globalMoveStoreBackups();
@@ -2697,8 +2701,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     
         updateCoshSinhTermsPhi();
 
-        //recompute Green's function
-        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+        //recompute Green's function and its singular values
+        setupUdVStorage_and_calculateGreen();
 
     }
         
@@ -2713,9 +2717,9 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     
         //num new_green_det = Base::abs_det_green_from_storage();
         //std::cout << new_green_det << "\n";
-        VecNum new_green_sv;
-        UdVV udv_newgreen;         // TODO: avoid needless allocations
-        udvDecompose(udv_newgreen, g);
+        // VecNum new_green_sv;
+        // UdVV udv_newgreen;         // TODO: avoid needless allocations
+        // udvDecompose(udv_newgreen, g);
         // debugSaveMatrixCpx(g, "newg");
         // num newdet = std::abs(arma::det(g));
         // std::cout << "new det:        " << newdet << "\n";
@@ -2730,9 +2734,15 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
 
         //compute transition probability
         // num prob_fermion = old_green_det / new_green_det;
-        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+        // VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
+        // prob_fermion = 1.0;
+        // for (num sv_ratio : green_sv_ratios) {
+        //     prob_fermion *= sv_ratio;
+        // }
+
+        VecNum g_inv_sv_ratios =  g_inv_sv / old_g_inv_sv;		// g ~ [weight]^-1
         prob_fermion = 1.0;
-        for (num sv_ratio : green_sv_ratios) {
+        for (num sv_ratio : g_inv_sv_ratios) {
             prob_fermion *= sv_ratio;
         }
 
@@ -3002,6 +3012,7 @@ void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
         gmd.coshTermPhi = coshTermPhi;
         gmd.sinhTermPhi = sinhTermPhi;
         gmd.g.swap(g);
+        gmd.g_inv_sv.swap(g_inv_sv);
         gmd.UdVStorage.swap(UdVStorage);
 
     }
@@ -3017,6 +3028,7 @@ void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
         coshTermPhi.swap(gmd.coshTermPhi);
         sinhTermPhi.swap(gmd.sinhTermPhi);
         g.swap(gmd.g);
+        g_inv_sv.swap(gmd.g_inv_sv);
         UdVStorage.swap(gmd.UdVStorage);
         
     }

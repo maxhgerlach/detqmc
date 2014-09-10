@@ -193,6 +193,7 @@ protected:
     using Base::m;
     using Base::n;
     using Base::green;
+    using Base::green_inv_sv;
     // using Base::greenFwd;
     // using Base::greenBwd;
     using Base::UdVStorage;
@@ -353,6 +354,10 @@ protected:
     given by the squared absolute value of the determinant of g.
 */    
     MatData& g;
+
+    // Singular values of g^{-1}, valid after advance-steps /
+    // setupudvstorage
+    VecNum& g_inv_sv;
 
 
 /*
@@ -862,6 +867,7 @@ protected:
     	MatNum coshTermPhi;
     	MatNum sinhTermPhi;
     	MatData g;
+        VecNum  g_inv_sv;
     	std::unique_ptr<checkarray<std::vector<UdVV>, 1>> UdVStorage;
 
     	//for the cluster update: mark visited sites by 1, else 0
@@ -873,6 +879,7 @@ protected:
             phi(N, OPDIM, m+1),
             coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
             g(MatrixSizeFactor*N, MatrixSizeFactor*N),
+            g_inv_sv(MatrixSizeFactor*N),
             UdVStorage(new checkarray<std::vector<UdVV>, 1>),
             visited(N, m+1), next_sites()
         { }
