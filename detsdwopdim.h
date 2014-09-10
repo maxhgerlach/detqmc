@@ -907,7 +907,13 @@ protected:
      For debugging / consistency purposes:
   
  */
-    std::string logfiledir;
+    struct Logger {
+        std::string logfiledir;
+        // greenConsistency results during sweep up / down:
+        std::ofstream up_log, down_log;
+        
+        Logger(const std::string& logfiledir_);
+    } logger;
 public:
 /*
 
