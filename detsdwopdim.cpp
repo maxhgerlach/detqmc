@@ -2992,52 +2992,33 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
-    // // Backup phi, Green's function and UdV-storage.  For Quantities
-    // // which are recomputed entirely in each global update, we just
-    // // swap the contents.
-    // gmd.phi = phi;
-
-    // if (not pars.turnoffFermions) {
-    
-    //     gmd.coshTermPhi = coshTermPhi;
-    //     gmd.sinhTermPhi = sinhTermPhi;
-    //     gmd.g.swap(g);
-    //     gmd.UdVStorage.swap(UdVStorage);
-
-    // }
-
-    // DEBUG: test copying instead of swapping
+    // Backup phi, Green's function and UdV-storage.  For Quantities
+    // which are recomputed entirely in each global update, we just
+    // swap the contents.
     gmd.phi = phi;
+
     if (not pars.turnoffFermions) {
-        gmd.coshTermPhi = coshTermPhi; 
+    
+        gmd.coshTermPhi = coshTermPhi;
         gmd.sinhTermPhi = sinhTermPhi;
-        gmd.g = g;
-        // copy whole vector:
-        (*gmd.UdVStorage)[0] = (*UdVStorage)[0];
+        gmd.g.swap(g);
+        gmd.UdVStorage.swap(UdVStorage);
+
     }
+
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
-    // phi.swap(gmd.phi);
+    phi.swap(gmd.phi);
 
-    // if (not pars.turnoffFermions) {
-        
-    //     coshTermPhi.swap(gmd.coshTermPhi);
-    //     sinhTermPhi.swap(gmd.sinhTermPhi);
-    //     g.swap(gmd.g);
-    //     UdVStorage.swap(gmd.UdVStorage);
-        
-    // }
-
-    // DEBUG: test copying instead of swapping
-    phi = gmd.phi;
     if (not pars.turnoffFermions) {
-        coshTermPhi = gmd.coshTermPhi; 
-        sinhTermPhi = gmd.sinhTermPhi;
-        g = gmd.g;
-        // copy whole vector:
-        (*UdVStorage)[0] = (*gmd.UdVStorage)[0];
+        
+        coshTermPhi.swap(gmd.coshTermPhi);
+        sinhTermPhi.swap(gmd.sinhTermPhi);
+        g.swap(gmd.g);
+        UdVStorage.swap(gmd.UdVStorage);
+        
     }
 }
 
