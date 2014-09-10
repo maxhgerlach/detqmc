@@ -3837,6 +3837,7 @@ template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::Logger::Logger(const std::string& logfiledir_)
     : logfiledir(logfiledir_) {
     if (logfiledir == "") logfiledir = ".";
+    fs::create_directories(logfiledir);
     fs::path up_log_path = fs::path(logfiledir) /
         fs::path("up_log.txt");
     fs::path down_log_path = fs::path(logfiledir) /
