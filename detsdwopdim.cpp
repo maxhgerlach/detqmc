@@ -2740,11 +2740,23 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         //     prob_fermion *= sv_ratio;
         // }
 
-        VecNum g_inv_sv_ratios =  g_inv_sv / old_g_inv_sv;		// g ~ [weight]^-1
-        prob_fermion = 1.0;
-        for (num sv_ratio : g_inv_sv_ratios) {
-            prob_fermion *= sv_ratio;
+        
+        // VecNum g_inv_sv_ratios =  g_inv_sv / old_g_inv_sv;		// g ~ [weight]^-1
+        // prob_fermion = 1.0;
+        // for (num sv_ratio : g_inv_sv_ratios) {
+        //     prob_fermion *= sv_ratio;
+        // }
+
+        
+        uint32_t count = MatrixSizeFactor * pars.N;
+        num log_prob = 0.;
+        for (uint32_t j = 0; j < count; ++j) {
+            // log of g_inv_sv[j] / old_g_inv_sv[j]        {   g ~ [weight]^-1 --> g^{-1} ~ [weight]   }
+            num log_diff = std::log(g_inv_sv[j]) - std::log(old_g_inv_sv[j]);
+            log_prob += log_diff;
         }
+        prob_fermion = std::exp(log_prob);
+        
 
         // std::cout << "prob_fermion (not squared): " << prob_fermion << "\n";
 
