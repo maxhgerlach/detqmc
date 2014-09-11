@@ -54,20 +54,24 @@ UdV<std::complex<double>>::UdV(uint32_t size) :
 { }
 
 
-// this version potentially avoids needless copies
-//[probably not important, since allocated matrix memory is behind a
-// pointer in any case]
 template<typename Val>
-void udvDecompose(UdV<Val>& udv_out, const arma::Mat<Val>& mat) {
+void udvDecompose(arma::Mat<Val>& U, arma::Col<num>& d, arma::Mat<Val>& V_t,
+                  const arma::Mat<Val>& input_matrix) {
     timing.start("udvDecompose");
     //Use std algorithm -- more precise than divide&conquer -- this
     //leads to much higher stability, with actually not much longer
     //runtimes
-    bool ok = arma::svd(udv_out.U, udv_out.d, udv_out.V_t, mat, "std");
+    // bool ok = arma::svd(udv_out.U, udv_out.d, udv_out.V_t, mat, "std");
+    bool ok = arma::svd(U, d, V_t, input_matrix, "std");
     if (not ok) {
         throw GeneralError("SVD failed (std)");
     }
     timing.stop("udvDecompose");
+}
+
+template<typename Val>
+void udvDecompose(UdV<Val>& udv_out, const arma::Mat<Val>& mat) {
+    udvDecompose(udv_out.U, udv_out.d, udv_out.V_t, mat);
 }
 
 template<typename Val>
@@ -76,6 +80,9 @@ UdV<Val> udvDecompose(const arma::Mat<Val>& mat) {
     udvDecompose(result, mat);
     return result;
 }
+
+
+
 
 
 // template<typename Val>

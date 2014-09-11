@@ -651,23 +651,21 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
 
     MatV VU_rl_product = trans(V_t_r) * U_l;
     MatV UtVt_rl_product = trans(U_r) * V_t_l;
-    
-    UdVV UdV_temp;
-    udvDecompose<V>(UdV_temp,
+
+
+    // here we get just the singular values of G^{-1}
+    MatV U_temp, V_t_temp;
+    udvDecompose<V>(U_temp, green_inv_sv, V_t_temp,
         UtVt_rl_product +
         diagmat(d_r) * VU_rl_product * diagmat(d_l)
         );
-
-    // UdV_temp.d are the singular values of G^{-1}
-    // TODO: avoid this copy -- just let a udvDecompose-function perform the
-    // decomposition directly into the vector of singular values
-    green_inv_sv = UdV_temp.d;
-
-    MatV Vt_product = V_t_l * UdV_temp.V_t;
-    MatV U_product  = U_r * UdV_temp.U;
+    
+    
+    MatV Vt_product = V_t_l * V_t_temp;
+    MatV U_product  = U_r * U_temp;
     
     green_out = Vt_product *
-        diagmat(1.0 / UdV_temp.d) *
+        diagmat(1.0 / green_inv_sv) *
         trans(U_product);
 
     timing.stop("greenFromUdV");
@@ -688,21 +686,17 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
 
     using arma::diagmat; using arma::trans;
 
-    UdVV UdV_temp;
-    udvDecompose<V>(UdV_temp,
+    // here we get just the singular values of G^{-1}
+    MatV U_temp, V_t_temp;
+    udvDecompose<V>(U_temp, green_inv_sv, V_t_temp,
         trans(U_r) * V_t_r + diagmat(d_r)
         );
 
-    // UdV_temp.d are the singular values of G^{-1}
-    // TODO: avoid this copy -- just let a udvDecompose-function perform the
-    // decomposition directly into the vector of singular values
-    green_inv_sv = UdV_temp.d;
-    
-    MatV V_t_product = V_t_r * UdV_temp.V_t;
-    MatV U_product = U_r * UdV_temp.U;
+    MatV V_t_product = V_t_r * V_t_temp;
+    MatV U_product = U_r * U_temp;
     
     green_out = V_t_product *
-    		diagmat(1.0 / UdV_temp.d) *
+    		diagmat(1.0 / green_inv_sv) *
                 trans(U_product);
 
     timing.stop("greenFromUdV");
