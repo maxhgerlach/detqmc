@@ -3793,14 +3793,14 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::Logger::Logger(const std::string& logfiledir_)
     : logfiledir(logfiledir_) {
-    if (logfiledir == "") logfiledir = ".";
-    fs::create_directories(logfiledir);
-    fs::path up_log_path = fs::path(logfiledir) /
-        fs::path("up_log.txt");
-    fs::path down_log_path = fs::path(logfiledir) /
-        fs::path("down_log.txt");
-    up_log.open(up_log_path.c_str(), std::ios::app);
-    down_log.open(down_log_path.c_str(), std::ios::app);
+    // if (logfiledir == "") logfiledir = ".";
+    // fs::create_directories(logfiledir);
+    // fs::path up_log_path = fs::path(logfiledir) /
+    //     fs::path("up_log.txt");
+    // fs::path down_log_path = fs::path(logfiledir) /
+    //     fs::path("down_log.txt");
+    // up_log.open(up_log_path.c_str(), std::ios::app);
+    // down_log.open(down_log_path.c_str(), std::ios::app);
 }
 
 
