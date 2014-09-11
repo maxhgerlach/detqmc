@@ -2599,20 +2599,18 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     //after sweepUp.
     assert(currentTimeslice == pars.m);
 
-    VecNum old_green_sv;
-    if (not pars.turnoffFermions) {
-        // compute current fermion weight (implicitly given by singular values)
-
-        // The product of the singular values of g is equal to the
-        // absolute value of its determinant.  Don't compute the whole
-        // product explicitly because it contains both very large and
-        // very small numbers --> over/underflows!  Instead use the
-        // fact that the SV's are sorted by magnitude and compare them
-        // term by term with the SV's of the updated Green's function.
-        old_green_sv = arma::svd(g);
-    }
+    // The product of the singular values of g^{-1} is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and very
+    // small numbers --> over/underflows!  Instead use the fact that
+    // the SV's are sorted by magnitude and compare them term by term
+    // with the SV's of the updated inverse Green's function.
+    // Do this computation logarithmically for stability, else scales
+    // would be mixed even if ordered.
 
     globalMoveStoreBackups();
+
+    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
     
     uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
 
@@ -2623,14 +2621,19 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
         //recompute Green's function
         setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
-        //compute fermion transition probability; new weight given implicitly:
-        VecNum new_green_sv = arma::svd(g);
-        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-        //green_sv_ratios.print(std::cout);
-        prob_fermion = 1.0;
-        for (num sv_ratio : green_sv_ratios) {
-            prob_fermion *= sv_ratio;
+        // compute transition probability.
+        // avoid mixing large and small numbers -> use logarithms!
+        
+        uint32_t count = MatrixSizeFactor * pars.N;
+        num log_prob = 0.;
+        for (uint32_t j = 0; j < count; ++j) {
+            // log of g_inv_sv[j] / old_g_inv_sv[j]        {   g ~ [weight]^-1 --> g^{-1} ~ [weight]   }
+            num log_diff = std::log(g_inv_sv[j]) - std::log(old_g_inv_sv[j]);
+            log_prob += log_diff;
         }
+        prob_fermion = std::exp(log_prob);
+        
+
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
@@ -2672,7 +2675,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     // small numbers --> over/underflows!  Instead use the fact that
     // the SV's are sorted by magnitude and compare them term by term
     // with the SV's of the updated inverse Green's function.
-    // Do this computation logarithmically for statbility, else scales
+    // Do this computation logarithmically for stability, else scales
     // would be mixed even if ordered.
     
     globalMoveStoreBackups();
@@ -2712,6 +2715,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         }
         prob_fermion = std::exp(log_prob);
         
+
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
@@ -2743,23 +2747,23 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
     assert(currentTimeslice == pars.m);
-    
-    VecNum old_green_sv;
-    if (not pars.turnoffFermions) {
-        // The product of the singular values of g is equal to the
-        // absolute value of its determinant.  Don't compute the whole
-        // product explicitly because it contains both very large and
-        // very small numbers --> over/underflows!  Instead use the
-        // fact that the SV's are sorted by magnitude and compare them
-        // term by term with the SV's of the updated Green's function.
-        old_green_sv = arma::svd(g);
-    }
+
+    // The product of the singular values of g^{-1} is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and very
+    // small numbers --> over/underflows!  Instead use the fact that
+    // the SV's are sorted by magnitude and compare them term by term
+    // with the SV's of the updated inverse Green's function.
+    // Do this computation logarithmically for stability, else scales
+    // would be mixed even if ordered.
     
     globalMoveStoreBackups();
+
+    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
     
     uint32_t cluster_size = buildAndFlipCluster(false);
     
-    // compute current bosonic weight
+    // compute current bosonic weight [after having flipped the cluster]
     num old_scalar_action = phiAction();
 
     addGlobalRandomDisplacement();
@@ -2772,23 +2776,25 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     num prob_fermion = 1.0;
 
     if (not pars.turnoffFermions) {
-    
+
         updateCoshSinhTermsPhi();
 
         //recompute Green's function
-        setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
+        setupUdVStorage_and_calculateGreen();
 
-        //num new_green_det = Base::abs_det_green_from_storage();
-        //std::cout << new_green_det << "\n";
-        VecNum new_green_sv = arma::svd(g);
-
-        //compute transition probability
-//    num prob_fermion = old_green_det / new_green_det;
-        VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-        prob_fermion = 1.0;
-        for (num sv_ratio : green_sv_ratios) {
-            prob_fermion *= sv_ratio;
+        // compute transition probability.
+        // avoid mixing large and small numbers -> use logarithms!
+        
+        uint32_t count = MatrixSizeFactor * pars.N;
+        num log_prob = 0.;
+        for (uint32_t j = 0; j < count; ++j) {
+            // log of g_inv_sv[j] / old_g_inv_sv[j]        {   g ~ [weight]^-1 --> g^{-1} ~ [weight]   }
+            num log_diff = std::log(g_inv_sv[j]) - std::log(old_g_inv_sv[j]);
+            log_prob += log_diff;
         }
+        prob_fermion = std::exp(log_prob);
+        
+
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
