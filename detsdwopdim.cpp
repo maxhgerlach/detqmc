@@ -3861,27 +3861,28 @@ DetSDW<CB, OPDIM>::Logger::Logger(const std::string& logfiledir_)
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::greenConsistencyCheck(const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
-    const auto N = pars.N;
-    // log max total difference, mean difference, max difference on the block diagonals
-    num diag_diff = 0.0;
-    for (uint32_t colblock = 0; colblock < MatrixSizeFactor; ++colblock) {
-        for (uint32_t rowblock = 0; rowblock < MatrixSizeFactor; ++rowblock) {
-            for (uint32_t site = 0; site < N; ++ site) {
-                uint32_t colentry = site + colblock*N;
-                uint32_t rowentry = site + rowblock*N;
-                num diff = std::abs(g1(rowentry, colentry) - g2(rowentry, colentry));
-                if (diff > diag_diff) {
-                    diag_diff = diff;
-                }
-            }
-        }
-    }
-    if (cur_sweep_dir == SweepDirection::Up) {
-        logger.up_log << diag_diff << '\n';
-    }
-    else {
-        logger.down_log << diag_diff << '\n';
-    }
+    (void)(g1); (void)(g2); (void)(cur_sweep_dir);
+    // const auto N = pars.N;
+    // // log max total difference, mean difference, max difference on the block diagonals
+    // num diag_diff = 0.0;
+    // for (uint32_t colblock = 0; colblock < MatrixSizeFactor; ++colblock) {
+    //     for (uint32_t rowblock = 0; rowblock < MatrixSizeFactor; ++rowblock) {
+    //         for (uint32_t site = 0; site < N; ++ site) {
+    //             uint32_t colentry = site + colblock*N;
+    //             uint32_t rowentry = site + rowblock*N;
+    //             num diff = std::abs(g1(rowentry, colentry) - g2(rowentry, colentry));
+    //             if (diff > diag_diff) {
+    //                 diag_diff = diff;
+    //             }
+    //         }
+    //     }
+    // }
+    // if (cur_sweep_dir == SweepDirection::Up) {
+    //     logger.up_log << diag_diff << '\n';
+    // }
+    // else {
+    //     logger.down_log << diag_diff << '\n';
+    // }
 }
 
 
