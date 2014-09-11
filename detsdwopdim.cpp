@@ -2666,33 +2666,18 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     //after sweepUp.
     assert(currentTimeslice == pars.m);
 
-    // VecNum old_green_sv;
-    VecNum old_g_inv_sv;
-    // num olddet;
-    if (not pars.turnoffFermions) {
-        // The product of the singular values of g is equal to the
-        // absolute value of its determinant.  Don't compute the whole
-        // product explicitly because it contains both very large and
-        // very small numbers --> over/underflows!  Instead use the
-        // fact that the SV's are sorted by magnitude and compare them
-        // term by term with the SV's of the updated Green's function.
-        
-        // UdVV udv_oldgreen;         // TODO: avoid needless allocations
-        // udvDecompose(udv_oldgreen, g);
-        // debugSaveMatrixCpx(g, "oldg");
-        // olddet = std::abs(arma::det(g));
-        // std::cout << "old det:        " << olddet << "\n";
-        // num prod = 1.0;
-        // uint32_t count = 0;
-        // for (auto sv: old_green_sv) {
-        //     prod *= sv;
-        // }
-        // std::cout << "old sv product:   " << prod << "\n";
-
-        old_g_inv_sv = g_inv_sv;
-    }
+    // The product of the singular values of g^{-1} is equal to the
+    // absolute value of its determinant.  Don't compute the whole
+    // product explicitly because it contains both very large and very
+    // small numbers --> over/underflows!  Instead use the fact that
+    // the SV's are sorted by magnitude and compare them term by term
+    // with the SV's of the updated inverse Green's function.
+    // Do this computation logarithmically for statbility, else scales
+    // would be mixed even if ordered.
     
     globalMoveStoreBackups();
+
+    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
 
     // shift fields by a random, constant displacement
     addGlobalRandomDisplacement();
@@ -2715,38 +2700,8 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
 
     if (not pars.turnoffFermions) {
     
-        //num new_green_det = Base::abs_det_green_from_storage();
-        //std::cout << new_green_det << "\n";
-        // VecNum new_green_sv;
-        // UdVV udv_newgreen;         // TODO: avoid needless allocations
-        // udvDecompose(udv_newgreen, g);
-        // debugSaveMatrixCpx(g, "newg");
-        // num newdet = std::abs(arma::det(g));
-        // std::cout << "new det:        " << newdet << "\n";
-        // std::cout << "old det / new det: " << olddet / newdet << "\n";
-
-        // num prod = 1.0;
-        // uint32_t count = 0;
-        // for (auto sv: new_green_sv) {
-        //     prod *= sv;
-        // }
-        // std::cout << "new sv product:   " << prod << "\n";
-
-        //compute transition probability
-        // num prob_fermion = old_green_det / new_green_det;
-        // VecNum green_sv_ratios = old_green_sv / new_green_sv;		// g ~ [weight]^-1
-        // prob_fermion = 1.0;
-        // for (num sv_ratio : green_sv_ratios) {
-        //     prob_fermion *= sv_ratio;
-        // }
-
-        
-        // VecNum g_inv_sv_ratios =  g_inv_sv / old_g_inv_sv;		// g ~ [weight]^-1
-        // prob_fermion = 1.0;
-        // for (num sv_ratio : g_inv_sv_ratios) {
-        //     prob_fermion *= sv_ratio;
-        // }
-
+        // compute transition probability.
+        // avoid mixing large and small numbers -> use logarithms!
         
         uint32_t count = MatrixSizeFactor * pars.N;
         num log_prob = 0.;
@@ -2757,20 +2712,6 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
         }
         prob_fermion = std::exp(log_prob);
         
-
-        // std::cout << "prob_fermion (not squared): " << prob_fermion << "\n";
-
-        // // avoid mixing large and small numbers -> use logarithms!
-        // num exponent = 0.;
-
-        // for (uint32_t k = 0; k < MatrixSizeFactor*pars.N; ++k) {
-        //     num old_sv  = old_green_sv[k];
-        //     num new_sv  = new_green_sv[k];
-        //     exponent += std::log(old_sv) - std::log(new_sv);
-        // }
-        // num ratio_with_logarithms = std::exp(exponent);
-        // std::cout << "ratio_with_logarithms: " << ratio_with_logarithms << "\n";
-
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
@@ -2780,8 +2721,6 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     }
 
     num prob = prob_scalar * prob_fermion;
-
-    // std::cout << prob_scalar << "  " << prob_fermion << "\n";
 
     us.attemptedGlobalShifts += 1;
     if (prob >= 1. or rng.rand01() < prob) {
