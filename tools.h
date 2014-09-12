@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <armadillo>
+#include <unistd.h>             // gethostname, getpid, sleep
 #include "boost/mpl/assert.hpp" // for not_defined, as introduced below
 
 //instantiate this to get a nice compile-time error message stating that
@@ -201,6 +202,21 @@ template<> inline
 void debugSaveMatrixRealOrCpx(const arma::Mat<cpx>& matrix, const std::string& basename) {
     debugSaveMatrixCpx(matrix, basename);
 }
+
+// as suggested by
+//   http://www.open-mpi.org/faq/?category=debugging
+// this can be used to attach to one running MPI process
+// via
+//   ssh $hostname gdb $executable --pid $pid
+#define FREEZE_FOR_DEBUGGER() \
+do { \
+    int i = 0; \
+    char hostname[256]; \
+    gethostname(hostname, sizeof(hostname)); \
+    std::cout << "PID " << getpid() << " on " << hostname << " ready for attach" << std::endl;  \
+    while (0 == i) \
+        sleep(5); \
+} while(false)
 
 
 #endif /* TOOLS_H_ */
