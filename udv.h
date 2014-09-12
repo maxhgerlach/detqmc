@@ -71,6 +71,8 @@ void udvDecompose(arma::Mat<Val>& U, arma::Col<num>& d, arma::Mat<Val>& V_t,
         debugSaveMatrixRealOrCpx(d, "failedSVD_d");
         debugSaveMatrixRealOrCpx(V_t, "failedSVD_V_t");
         debugSaveMatrixRealOrCpx(input_matrix, "failedSVD_input_matrix");
+
+        FREEZE_FOR_DEBUGGER();
         
         throw GeneralError("SVD failed (std)");
     }
