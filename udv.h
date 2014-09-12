@@ -8,6 +8,7 @@
 #ifndef UDV_H_
 #define UDV_H_
 
+#include <iostream>
 #include <complex>
 #include <armadillo>
 #include "timing.h"
@@ -64,6 +65,13 @@ void udvDecompose(arma::Mat<Val>& U, arma::Col<num>& d, arma::Mat<Val>& V_t,
     // bool ok = arma::svd(udv_out.U, udv_out.d, udv_out.V_t, mat, "std");
     bool ok = arma::svd(U, d, V_t, input_matrix, "std");
     if (not ok) {
+        std::cerr << "SVD failed!  I will now save the output of the routine and its input, then abort.\n";
+
+        debugSaveMatrixRealOrCpx(U, "failedSVD_U");
+        debugSaveMatrixRealOrCpx(d, "failedSVD_d");
+        debugSaveMatrixRealOrCpx(V_t, "failedSVD_V_t");
+        debugSaveMatrixRealOrCpx(input_matrix, "failedSVD_input_matrix");
+        
         throw GeneralError("SVD failed (std)");
     }
     timing.stop("udvDecompose");
