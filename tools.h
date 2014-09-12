@@ -175,17 +175,31 @@ inline void print_matrix_rel_diff(Matrix mat1, Matrix mat2,
 }
 
 
-template <typename Matrix> inline
+template<typename Matrix> inline
 void debugSaveMatrix(const Matrix& matrix, const std::string& basename) {
     matrix.eval().save(basename + ".csv", arma::csv_ascii);
 }
 
-template <typename Matrix> inline
+template<typename Matrix> inline
 void debugSaveMatrixCpx(const Matrix& matrix, const std::string& basename) {
     MatNum r = arma::real(matrix);
     r.save(basename + "_real.csv", arma::csv_ascii);
     MatNum i = arma::imag(matrix);
     i.save(basename + "_imag.csv", arma::csv_ascii);
+}
+
+template<typename Val> inline
+void debugSaveMatrixRealOrCpx(const arma::Mat<Val>& matrix, const std::string& basename) {
+}
+
+template<> inline
+void debugSaveMatrixRealOrCpx(const arma::Mat<num>& matrix, const std::string& basename) {
+    debugSaveMatrix(matrix, basename);
+}
+
+template<> inline
+void debugSaveMatrixRealOrCpx(const arma::Mat<cpx>& matrix, const std::string& basename) {
+    debugSaveMatrixCpx(matrix, basename);
 }
 
 
