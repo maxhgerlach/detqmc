@@ -19,6 +19,7 @@
 #include <type_traits>          // std::is_same
 
 #include "tools.h"
+#include "toolsdebug.h"
 #include "rngwrapper.h"
 #include "checkarray.h"
 #include "detmodelparams.h"
@@ -501,6 +502,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
 	//init Green's functions with zeros
 	for(uint32_t gc = 0; gc < GC; ++gc) {
             green[gc].zeros(greenComponentSize, greenComponentSize);
+            green_inv_sv[gc].zeros(greenComponentSize);            
 //            if (TimeDisplaced) {
 //                greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
 //                greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
