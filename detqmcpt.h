@@ -602,8 +602,11 @@ void DetQMCPT<Model, ModelParams>::saveReplicaExchangeStatistics() {
     for (int cpi = 0; cpi < numProcesses; ++cpi) {
         int countAccepted = es.par_swapUpAccepted[cpi];
         int countProposed = es.par_swapUpProposed[cpi];
-        double ar = static_cast<double>(countAccepted)
-                  / static_cast<double>(countProposed); 
+        double ar = 0.0;
+        if (countProposed != 0) {
+            ar = static_cast<double>(countAccepted)
+                / static_cast<double>(countProposed);
+        }
         (*cpiAccRates)[cpi] = ar;
     }
     IntDoubleMapWriter cpiAccRatesWriter = mapWriter;
@@ -618,8 +621,11 @@ void DetQMCPT<Model, ModelParams>::saveReplicaExchangeStatistics() {
     for (int cpi = 0; cpi < numProcesses; ++cpi) {
         int countUp = es.par_countGoingUp[cpi];
         int countDown = es.par_countGoingDown[cpi];
-        double df = static_cast<double>(countUp)
-                  / static_cast<double>(countUp + countDown);
+        double df = 0.0;
+        if (countUp + countDown != 0) {
+            df = static_cast<double>(countUp)
+                / static_cast<double>(countUp + countDown);
+        }
         (*dfractions)[cpi] = df;
     }
     IntDoubleMapWriter dfractionsWriter = mapWriter;

@@ -233,26 +233,41 @@ MetadataMap DetSDW<CB, OPDIM>::prepareModelMetadataMap() const {
     MetadataMap meta = pars.prepareMetadataMap();
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}    
     if (pars.globalShift) {
-    	num globalShiftAccRatio =
+    	num globalShiftAccRatio = 0.;
+        if (us.attemptedGlobalShifts > 0) {
+            globalShiftAccRatio =
             num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
+        }
     	META_INSERT(globalShiftAccRatio);
     }
     if (pars.wolffClusterUpdate) {
-    	num wolffClusterUpdateAccRatio =
-            num(us.acceptedWolffClusterUpdates) /
-            num(us.attemptedWolffClusterUpdates);
+        num wolffClusterUpdateAccRatio = 0.0;
+        if (us.attemptedWolffClusterUpdates) {
+            wolffClusterUpdateAccRatio =
+                num(us.acceptedWolffClusterUpdates) /
+                num(us.attemptedWolffClusterUpdates);
+        }
     	META_INSERT(wolffClusterUpdateAccRatio);
-    	num averageAcceptedWolffClusterSize =
-            us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
+        num averageAcceptedWolffClusterSize = 0.0;
+        if (us.acceptedWolffClusterUpdates) {
+            averageAcceptedWolffClusterSize =
+                us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
+        }
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
     if (pars.wolffClusterShiftUpdate) {
-    	num wolffClusterShiftUpdateAccRatio =
-            num(us.acceptedWolffClusterShiftUpdates) /
-            num(us.attemptedWolffClusterShiftUpdates);
+        num wolffClusterShiftUpdateAccRatio = 0.;
+        if (us.attemptedWolffClusterShiftUpdates) {
+             wolffClusterShiftUpdateAccRatio =
+                 num(us.acceptedWolffClusterShiftUpdates) /
+                 num(us.attemptedWolffClusterShiftUpdates);
+        }
     	META_INSERT(wolffClusterShiftUpdateAccRatio);
-    	num averageAcceptedWolffClusterSize =
-            us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
+        num averageAcceptedWolffClusterSize = 0.;
+        if (us.acceptedWolffClusterShiftUpdates) {
+            averageAcceptedWolffClusterSize =
+                us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
+        }
     	META_INSERT(averageAcceptedWolffClusterSize);
     }
 #undef META_INSERT
@@ -3622,21 +3637,30 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
             num coshTermCDWlBefore = coshTermCDWl(site, k);
             num sinhTermCDWlBefore = sinhTermCDWl(site, k);
             updateCoshSinhTerms(site, k);
-            num relDiffCosh = std::abs((coshTermPhi(site, k) - coshTermPhiBefore) / coshTermPhiBefore);
-            if (relDiffCosh > 1E-10) {
-                throw GeneralError("coshTermPhi is inconsistent");
+            num relDiffSinh, relDiffCosh;
+            if (std::abs(coshTermPhiBefore) > 1E-10) {
+                relDiffCosh = std::abs((coshTermPhi(site, k) - coshTermPhiBefore) / coshTermPhiBefore);
+                if (relDiffCosh > 1E-10) {
+                    throw GeneralError("coshTermPhi is inconsistent");
+                }
             }
-            num relDiffSinh = std::abs((sinhTermPhi(site, k) - sinhTermPhiBefore) / sinhTermPhiBefore);
-            if (relDiffSinh > 1E-10) {
-                throw GeneralError("sinhTermPhi is inconsistent");
+            if (std::abs(sinhTermPhiBefore) > 1E-10) {
+                relDiffSinh = std::abs((sinhTermPhi(site, k) - sinhTermPhiBefore) / sinhTermPhiBefore);
+                if (relDiffSinh > 1E-10) {
+                    throw GeneralError("sinhTermPhi is inconsistent");
+                }
             }
-            relDiffCosh = std::abs((coshTermCDWl(site, k) - coshTermCDWlBefore) / coshTermCDWlBefore);
-            if (relDiffCosh > 1E-10) {
-                throw GeneralError("coshTermCDWl is inconsistent");
+            if (std::abs(coshTermCDWlBefore) > 1E-10) {
+                relDiffCosh = std::abs((coshTermCDWl(site, k) - coshTermCDWlBefore) / coshTermCDWlBefore);
+                if (relDiffCosh > 1E-10) {
+                    throw GeneralError("coshTermCDWl is inconsistent");
+                }
             }
-            relDiffSinh = std::abs((sinhTermCDWl(site, k) - sinhTermCDWlBefore) / sinhTermCDWlBefore);
-            if (relDiffSinh > 1E-10) {
-                throw GeneralError("sinhTermCDWl is inconsistent");
+            if (std::abs(sinhTermCDWlBefore) > 1E-10) {            
+                relDiffSinh = std::abs((sinhTermCDWl(site, k) - sinhTermCDWlBefore) / sinhTermCDWlBefore);
+                if (relDiffSinh > 1E-10) {
+                    throw GeneralError("sinhTermCDWl is inconsistent");
+                }
             }
         }
     }
