@@ -124,6 +124,15 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
     assert(pars.N == pars.L*pars.L);
     assert(pars.d == 2);
+
+    //zero some dynamic data
+    phi.zeros();
+    cdwl.zeros();
+    coshTermPhi.zeros();
+    sinhTermPhi.zeros();
+    coshTermCDWl.zeros();
+    sinhTermCDWl.zeros();
+    
     
     setupRandomField();
 
