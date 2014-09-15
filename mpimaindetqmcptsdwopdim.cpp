@@ -20,6 +20,8 @@
 #include "detqmcpt.h"
 #include "detsdwopdim.h"
 #include "detsdwparams.h"
+#include "toolsdebug.h"
+
 
 // for versions of the program restricted to only one or two
 // variations of O(1), O(2), O(3), define one or two of the macros
@@ -239,6 +241,10 @@ int main(int argc, char **argv) {
                   << metadataToString(collectVersionInfo())
                   << "\n";
     }
+    // if (processRank == 0) {
+    //     FREEZE_FOR_DEBUGGER();  // TEMP
+    // }
+
 
     ModelParamsDetSDW parmodel;
     DetQMCParams parmc;

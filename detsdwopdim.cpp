@@ -30,6 +30,7 @@
 #include "timing.h"
 #include "checkarray.h"
 #include "tools.h"
+#include "toolsdebug.h"
 #include "pytools.h"
 
 #if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
@@ -176,7 +177,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
     // output some different sectors of the Green's function in the
     // momentum space representation
-    obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+   obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
         VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
         VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
         VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
@@ -1417,15 +1418,22 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
     const auto& kphi0 = phi.slice(k).col(0);
     b.set_size( N);
     bc.set_size(N);
-    b.set_real( kphi0);
-    bc.set_real(kphi0);
+    // b.set_real( kphi0);
+    // bc.set_real(kphi0);
+    setVectorReal(b,  kphi0);
+    setVectorReal(bc, kphi0);
     if (OPDIM >  1) {
         const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
-        b.set_imag( -kphi1);
-        bc.set_imag( kphi1);
+        // b.set_imag( -kphi1);
+        // bc.set_imag( kphi1);
+        setVectorImag(b, -kphi1);
+        setVectorImag(bc, kphi1);
     }
     VecData mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
     VecData mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
+
+    // CHECK_VEC_NAN(mbx);
+    // CHECK_VEC_NAN(mbcx);
 
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
@@ -1505,12 +1513,16 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     VecData b, bc;
     b.set_size( N);
     bc.set_size(N);
-    b.set_real( kphi0);
-    bc.set_real(kphi0);
+    // b.set_real( kphi0);
+    // bc.set_real(kphi0);
+    setVectorReal(b,  kphi0);
+    setVectorReal(bc, kphi0);
     if (OPDIM >  1) {
         const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
-        b.set_imag( -kphi1);
-        bc.set_imag( kphi1);
+        // b.set_imag( -kphi1);
+        // bc.set_imag( kphi1);
+        setVectorReal(b,  -kphi1);
+        setVectorReal(bc,  kphi1);
     }
     VecData bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
     VecData bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
@@ -1577,28 +1589,74 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     const auto& kcoshTermPhi = coshTermPhi.col(k); 
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
+    // // define is safer than auto...
+    // #define ksinhTermPhi sinhTermPhi.col(k)
+    // #define kcoshTermPhi coshTermPhi.col(k) 
+    // #define ksinhTermCDWl sinhTermCDWl.col(k)
+    // #define kcoshTermCDWl coshTermCDWl.col(k)
+    
     const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
     const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
 
     VecNum ax, max;
     if (OPDIM == 3) {
-        const auto& kphi2 = phi.slice(k).col(2);
+        #define kphi2  phi.slice(k).col(2)
         ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
         max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        #undef kphi2
     }
-    const auto& kphi0 = phi.slice(k).col(0);
+    #define kphi0 phi.slice(k).col(0)
+    // CHECK_VEC_NAN(phi.slice(k).col(0));
     VecData b, bc;
     b.set_size( N);
     bc.set_size(N);
-    b.set_real( kphi0);
-    bc.set_real(kphi0);
+//    b.set_real( kphi0);
+//    bc.set_real(kphi0);
+    setVectorReal(b,  kphi0);
+    setVectorReal(bc, kphi0);
+    #undef kphi0
+    //DEBUG
+    // for (uint32_t count = 0; count < N; ++count) {
+    //     b[count].real(kphi0[count]);
+    //     bc[count].real(kphi0[count]);
+    // }
+    // CHECK_VEC_NAN(b);
+    // CHECK_VEC_NAN(bc);            
+    //ENDDEBUG
     if (OPDIM >  1) {
-        const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
-        b.set_imag( -kphi1);
-        bc.set_imag( kphi1);
+#define kphi1 (phi.slice(k).col(OPDIM >  1 ? 1 : 0))
+        // CHECK_VEC_NAN(phi.slice(k).col(OPDIM >  1 ? 1 : 0))
+        // b.set_imag( -kphi1);
+        // bc.set_imag( kphi1);
+        setVectorImag(b, -kphi1);
+        setVectorImag(bc, kphi1);
+        // CHECK_VEC_NAN(b);
+        // CHECK_VEC_NAN(bc);
+        #undef kphi1
     }
     VecData mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
     VecData mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
+
+    // #undef ksinhTermPhi
+    // #undef kcoshTermPhi
+    // #undef ksinhTermCDWl
+    // #undef kcoshTermCDWl
+
+    //DEBUG
+    // CHECK_VEC_NAN(ksinhTermPhi);
+    // CHECK_VEC_NAN(kcoshTermPhi);
+    // CHECK_VEC_NAN(ksinhTermPhi);
+    // CHECK_VEC_NAN(kcoshTermCDWl);
+    // CHECK_VEC_NAN(ksinhTermCDWl);
+    // CHECK_VEC_NAN(cd);
+    // CHECK_VEC_NAN(cmd);
+    // CHECK_VEC_NAN(ax);
+    // CHECK_VEC_NAN(max);
+    // CHECK_VEC_NAN(b);
+    // CHECK_VEC_NAN(bc);
+    // CHECK_VEC_NAN(mbx);
+    // CHECK_VEC_NAN(mbcx);
+    //END DEBUG
 
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
@@ -1637,8 +1695,11 @@ DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmat(const typename DetSDW<CB, OPDIM
 
     MatData result = rightMultiplyBk(A, k2);
 
+    // std::cout << k2 << " "; CHECK_NAN(result);
+    
     for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
         result = rightMultiplyBk(result, k);
+        // std::cout << k << " "; CHECK_NAN(result);        
     }
 
     //chemical potential terms included above
@@ -1675,12 +1736,16 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
     VecData b, bc;
     b.set_size( N);
     bc.set_size(N);
-    b.set_real( kphi0);
-    bc.set_real(kphi0);
+    // b.set_real( kphi0);
+    // bc.set_real(kphi0);
+    setVectorReal(b,  kphi0);
+    setVectorReal(bc, kphi0);
     if (OPDIM >  1) {
         const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
-        b.set_imag( -kphi1);
-        bc.set_imag( kphi1);
+        // b.set_imag( -kphi1);
+        // bc.set_imag( kphi1);
+        setVectorImag(b, -kphi1);
+        setVectorImag(bc, kphi1);
     }
     VecData bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
     VecData bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
@@ -3481,34 +3546,50 @@ void DetSDW<CB, OPDIM>::sweepSimpleThermalization() {
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
 
-    if (not pars.turnoffFermions) {
+    // temp. DEBUG
+    try {
+
+        //std::cout << "sweep " << performedSweeps << '\n';
+        // CHECK_NAN(g);           // temp. DEBUG
     
-        sweep_skeleton(takeMeasurements,
-                       sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
-                       sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
-                       [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
-                       [this]() {this->initMeasurements();},
-                       [this](uint32_t timeslice) {this->measure(timeslice);},
-                       [this]() {this->finishMeasurements();},
-                       [this]() {this->globalMove();},
-                       [this](const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
-                           this->greenConsistencyCheck(g1, g2, cur_sweep_dir);
-                       });
+        if (not pars.turnoffFermions) {
+    
+            sweep_skeleton(takeMeasurements,
+                           sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
+                           sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
+                           [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
+                           [this]() {this->initMeasurements();},
+                           [this](uint32_t timeslice) {this->measure(timeslice);},
+                           [this]() {this->finishMeasurements();},
+                           [this]() {this->globalMove();},
+                           [this](const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
+                               this->greenConsistencyCheck(g1, g2, cur_sweep_dir);
+                           });
 
-        ++performedSweeps;
+            ++performedSweeps;
 
-    } else {
-
-        if (lastSweepDir == SweepDirection::Up) {
-            this->globalMove();
-            sweepSimple(takeMeasurements);
-            lastSweepDir = SweepDirection::Down;
         } else {
-            sweepSimple(takeMeasurements);
-            lastSweepDir = SweepDirection::Up;
+
+            if (lastSweepDir == SweepDirection::Up) {
+                this->globalMove();
+                sweepSimple(takeMeasurements);
+                lastSweepDir = SweepDirection::Down;
+            } else {
+                sweepSimple(takeMeasurements);
+                lastSweepDir = SweepDirection::Up;
+            }
+         
         }
         
-    }
+    } catch (const GeneralError& err) {
+        std::cerr << "Caught GeneralError. Failed SVD? Saving field configurations to disk! \n"
+                  << "The message is: " << err.what() << "\n";
+        for (uint32_t k = 0; k <= m; ++k) {
+            std::string fname = "phi_k" + numToString(k);
+            debugSaveMatrixRealOrCpx(phi.slice(k), fname);
+        }
+        throw err;
+    } 
 
 }
 

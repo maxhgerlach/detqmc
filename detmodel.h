@@ -916,9 +916,19 @@ void DetModelGC<GC,V,TimeDisplaced>::wrapDownGreen(
     timing.start("wrapDownGreen");
 
     assert(currentTimeslice == k);
+    // //DEBUG
+    // CHECK_NAN(green[0]);
+    // MatV mat1 = rightMultiplyBmat(gc, green[gc], k, k-1);
+    // CHECK_NAN(mat1);        
+    // green[gc] = leftMultiplyBmatInv(gc, mat1,
+    //                                 k, k-1);
+    // CHECK_NAN(green[gc]);    
+    // //DEBUG
 
+    //ORIG
     green[gc] = leftMultiplyBmatInv(gc, rightMultiplyBmat(gc, green[gc], k, k-1),
     								k, k-1);
+                                                                
     if (TimeDisplaced) {
 //        greenFwd[gc].slice(k - 1) = leftMultiplyBmatInv(gc, greenFwd[gc].slice(k), k, k-1);
 //        greenBwd[gc].slice(k - 1) = rightMultiplyBmat(gc, greenBwd[gc].slice(k), k, k-1);
@@ -1180,6 +1190,9 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepDown(
 
     auto updateInSliceAndMaybeMeasure = [&,this](uint32_t timeslice) -> void {
         assert(currentTimeslice == timeslice);
+        // //DEBUG
+        // CHECK_NAN(green[0]);
+        // //DEBUG
         funcUpdateInSlice(timeslice);
         if (takeMeasurements) {
             measure(timeslice);
