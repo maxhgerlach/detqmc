@@ -820,10 +820,12 @@ protected:
     	MatSmall tempBlock;
 	MatSmall Mj;
     	DelayedUpdatesData(uint32_t N, uint32_t delaySteps)
-            : X(MatrixSizeFactor*delaySteps, MatrixSizeFactor*N),
-              Y(MatrixSizeFactor*N, MatrixSizeFactor*delaySteps),
+            : X(MatrixSizeFactor*N, MatrixSizeFactor*delaySteps),
+              Y(MatrixSizeFactor*delaySteps, MatrixSizeFactor*N),
               Rj(MatrixSizeFactor, MatrixSizeFactor*N),
               Cj(MatrixSizeFactor*N, MatrixSizeFactor) {
+            X.zeros();
+            Y.zeros();
     	}
     } dud;
 
