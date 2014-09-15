@@ -203,20 +203,44 @@ void debugSaveMatrixRealOrCpx(const arma::Mat<cpx>& matrix, const std::string& b
     debugSaveMatrixCpx(matrix, basename);
 }
 
-// as suggested by
-//   http://www.open-mpi.org/faq/?category=debugging
-// this can be used to attach to one running MPI process
-// via
-//   ssh $hostname gdb $executable --pid $pid
-#define FREEZE_FOR_DEBUGGER() \
-do { \
-    int i = 0; \
-    char hostname[256]; \
-    gethostname(hostname, sizeof(hostname)); \
-    std::cout << "PID " << getpid() << " on " << hostname << " ready for attach" << std::endl;  \
-    while (0 == i) \
-        sleep(5); \
-} while(false)
+
+// these can be called from the debugger)
+void printMatrixReal(const arma::Mat<num>& mat);
+void printMatrixComplex(const arma::Mat<cpx>& mat);
+
+
+
+// setting the real part of a vector
+template<typename VectorInRealPart>
+void setVectorReal(arma::Col<cpx>& out, const VectorInRealPart& in) {
+    const uint32_t N = out.n_elem;
+    for (uint32_t i = 0; i < N; ++i) {
+        out[i].real(in[i]);
+    }
+}
+
+template<typename VectorInRealPart>
+void setVectorReal(arma::Col<num>& out, const VectorInRealPart& in) {
+    const uint32_t N = out.n_elem;
+    for (uint32_t i = 0; i < N; ++i) {
+        out[i] = in[i];
+    }
+}
+
+// setting the imaginary part of a vector
+template<typename VectorInImagPart>
+void setVectorImag(arma::Col<cpx>& out, const VectorInImagPart& in) {
+    const uint32_t N = out.n_elem;
+    for (uint32_t i = 0; i < N; ++i) {
+        out[i].imag(in[i]);
+    }
+}
+
+template<typename VectorInImagPart>
+void setVectorImag(arma::Col<num>& out, const VectorInImagPart& in) {
+    (void)out; (void)in;
+}
+
 
 
 #endif /* TOOLS_H_ */

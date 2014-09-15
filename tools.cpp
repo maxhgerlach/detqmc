@@ -7,6 +7,7 @@
 
 #include "tools.h"
 #include <glob.h>           //POSIX glob()
+#include <iostream>
 
 // Taken from:
 // http://stackoverflow.com/questions/8401777/simple-glob-in-c-on-unix-system
@@ -22,6 +23,17 @@ std::vector<std::string> glob(const std::string& path){
     globfree(&glob_result);
     return ret;
 }
+
+
+
+// these can be called from the debugger)
+void printMatrixReal(const arma::Mat<num>& mat) {
+    mat.print(std::cout);
+}
+void printMatrixComplex(const arma::Mat<cpx>& mat) {
+    mat.print(std::cout);
+}
+
 
 
 
