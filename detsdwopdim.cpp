@@ -3455,24 +3455,39 @@ void DetSDW<CB, OPDIM>::thermalizationOver(int processIndex) {
               << "recent local accRatio = " << ad.accRatioLocal_box_RA.get()
               << std::endl;
     if (pars.globalShift) {
-        num ratio = num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
+        num ratio = 0;
+        if (us.attemptedGlobalShifts) {
+            ratio = num(us.acceptedGlobalShifts) / num(us.attemptedGlobalShifts);
+        }
         std::cout << prefix
                   << "globalShiftMove acceptance ratio = " << ratio
                   << std::endl;
     }
     if (pars.wolffClusterUpdate) {
-        num ratio = num(us.acceptedWolffClusterUpdates) /
-            num(us.attemptedWolffClusterUpdates);
-        num avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
+        num ratio = 0;
+        if (us.attemptedWolffClusterUpdates) {
+            ratio = num(us.acceptedWolffClusterUpdates) /
+                num(us.attemptedWolffClusterUpdates);
+        }
+        num avgsize = 0.;
+        if (us.acceptedWolffClusterUpdates) {
+            avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
+        }
         std::cout << prefix
                   << "wolffClusterUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
                   << std::endl;
     }
     if (pars.wolffClusterShiftUpdate) {
-        num ratio = num(us.acceptedWolffClusterShiftUpdates) /
-            num(us.attemptedWolffClusterShiftUpdates);
-        num avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
+        num ratio = 0.;
+        if (us.attemptedWolffClusterShiftUpdates != 0) {
+            ratio = num(us.acceptedWolffClusterShiftUpdates) /
+                num(us.attemptedWolffClusterShiftUpdates);
+        }
+        num avgsize = 0;
+        if (us.acceptedWolffClusterShiftUpdates != 0) {
+            avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
+        }
         std::cout << prefix
                   << "wolffClusterShiftUpdate acceptance ratio = " << ratio
                   << ", average accepted size = " << avgsize << "\n"
