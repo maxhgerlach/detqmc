@@ -1521,8 +1521,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         const auto& kphi1 = (OPDIM >  1 ? phi.slice(k).col(1) : kphi0);
         // b.set_imag( -kphi1);
         // bc.set_imag( kphi1);
-        setVectorReal(b,  -kphi1);
-        setVectorReal(bc,  kphi1);
+        setVectorImag(b,  -kphi1);
+        setVectorImag(bc,  kphi1);
     }
     VecData bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
     VecData bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
