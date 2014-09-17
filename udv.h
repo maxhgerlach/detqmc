@@ -14,6 +14,7 @@
 #include "timing.h"
 #include "exceptions.h"
 #include "tools.h"
+#include "toolsdebug.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
