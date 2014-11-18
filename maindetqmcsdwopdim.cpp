@@ -203,7 +203,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
             }
         }
     };
-    record(loggingOptions, loggingpar.specified);    
+    record(loggingOptions, loggingpar.specified);
     record(modelOptions, modelpar.specified);
     record(mcOptions, mcpar.specified);
 

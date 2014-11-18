@@ -20,6 +20,7 @@
 #include "detqmcpt.h"
 #include "detsdwopdim.h"
 #include "detsdwparams.h"
+#include "detmodelloggingparams.h"
 #include "toolsdebug.h"
 
 
@@ -33,9 +34,10 @@ namespace mpi = boost::mpi;
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
 //return a tuple (runSimulation = true or false, simulationParameterStructs)
-std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSimulation(int argc, char **argv) {
+std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSimulation(int argc, char **argv) {
     bool runSimulation = true;
     bool resumeSimulation = false;
+    DetModelLoggingParams loggingpar;    
     ModelParamsDetSDW modelpar;
     DetQMCParams mcpar;
     DetQMCPTParams ptpar;
@@ -61,7 +63,13 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     const uint32_t default_opdim = 3;
 #else
     const uint32_t default_opdim = 3;
-#endif 
+#endif
+
+    po::options_description loggingOptions("DetModel logging parameters, specify via command line or config file");
+    loggingOptions.add_options()
+        ("logSV", po::value<bool>(&loggingpar.logSV)->default_value(true), "log Green's function singular value range")
+        ;
+    
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("sdw"), "only the sdw model is supported")
@@ -138,7 +146,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     // short options like -v are disabled to not confuse the multitoken parser
     // for option rValues in case of negative options
     po::options_description cmdlineOptions;
-    cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions).add(ptOptions);
+    cmdlineOptions.add(genericOptions).add(loggingOptions).add(modelOptions).add(mcOptions).add(ptOptions);
     po::parsed_options parsed = po::command_line_parser(argc, argv)
         .options(cmdlineOptions)
         .allow_unregistered()   // do not throw an exception for unknown program options
@@ -189,7 +197,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
 
     //parse config file, options specified there have lower precedence
     po::options_description confFileOptions;
-    confFileOptions.add(modelOptions).add(mcOptions).add(ptOptions);
+    confFileOptions.add(loggingOptions).add(modelOptions).add(mcOptions).add(ptOptions);
     std::ifstream ifsConf(confFileName);
     po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
     po::notify(vm);
@@ -218,6 +226,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
             }
         }
     };
+    record(loggingOptions, loggingpar.specified);
     record(modelOptions, modelpar.specified);
     record(mcOptions, mcpar.specified);
     record(ptOptions, ptpar.specified);
@@ -226,7 +235,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams,DetQMCPTParams> configureSim
     }
     ptpar.specified.insert("controlParameterName");
 
-    return std::make_tuple(runSimulation, resumeSimulation, modelpar, mcpar, ptpar);
+    return std::make_tuple(runSimulation, resumeSimulation, loggingpar, modelpar, mcpar, ptpar);
 }
 
 
@@ -246,17 +255,18 @@ int main(int argc, char **argv) {
     // }
 
 
+    DetModelLoggingParams parlogging;
     ModelParamsDetSDW parmodel;
     DetQMCParams parmc;
     DetQMCPTParams parpt;
     bool runSimulation;
     bool resumeSimulation;
-    std::tie(runSimulation, resumeSimulation, parmodel, parmc, parpt) = configureSimulation(argc, argv);
+    std::tie(runSimulation, resumeSimulation, parlogging, parmodel, parmc, parpt) = configureSimulation(argc, argv);
 
     int return_code = 0;
 
 #define RUN_CASE(cb, opdim) case opdim: {                               \
-                                DetQMCPT<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt); \
+                                DetQMCPT<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt, parlogging); \
                                 simulation.run();                       \
                                 break;                                  \
                             }
