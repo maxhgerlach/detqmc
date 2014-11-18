@@ -42,7 +42,8 @@ class SerializeContentsKey;
 // factory function to init DetHubbard from parameter struct
 //
 // will do parameter checking etc
-void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars);
+void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars,
+                   DetModelLoggingParams logpar = DetModelLoggingParams() /*ignore this one*/);
 
 
 
@@ -52,7 +53,8 @@ private:
     //Give a reference to the RNG instance to be used
     DetHubbard(RngWrapper& rng, const ModelParams<DetHubbard>& pars);
 public:
-    friend void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars);
+    friend void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars,
+                              DetModelLoggingParams /*ignored*/);
     virtual ~DetHubbard();
 
     virtual uint32_t getSystemN() const;

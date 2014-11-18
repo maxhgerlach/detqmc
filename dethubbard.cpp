@@ -24,7 +24,8 @@
 //using std::acosh;    //Intel compiler chokes with std::acosh
 
 
-void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars) {
+void createReplica(std::unique_ptr<DetHubbard>& replica_out, RngWrapper& rng, ModelParams<DetHubbard> pars,
+                   DetModelLoggingParams /*ignored*/) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();

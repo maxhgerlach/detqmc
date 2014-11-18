@@ -67,29 +67,31 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
 #ifndef DETSDW_NO_O1
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
-                            DetModelLoggingParams loggingPars /*def arg*/,                            
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
-                            DetModelLoggingParams loggingPars /*def arg*/,                            
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O1
 #ifndef DETSDW_NO_O2
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
-                            DetModelLoggingParams loggingPars /*def arg*/,                            
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
-                            DetModelLoggingParams loggingPars /*def arg*/,                            
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O2
 #ifndef DETSDW_NO_O3
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 3>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 3>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O3
 
