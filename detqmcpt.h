@@ -34,6 +34,7 @@
 #include "datamapwriter.h"
 #include "detqmcparams.h"
 #include "detmodelparams.h"
+#include "detmodelloggingparams.h"
 #include "detmodel.h"
 #include "mpiobservablehandlerpt.h"
 #include "rngwrapper.h"
@@ -52,7 +53,8 @@ class DetQMCPT {
 public:
     //constructor to init a new simulation:
     DetQMCPT(const ModelParams& parsmodel, const DetQMCParams& parsmc,
-             const DetQMCPTParams& parspt);
+             const DetQMCPTParams& parspt,
+             const DetModelLoggingParams& loggingParams = DetModelLoggingParams());
 
     //constructor to resume a simulation from a dumped state file:
     //we allow to change some MC parameters at this point:
@@ -78,7 +80,8 @@ public:
 protected:
     //helper for constructors -- set all parameters and initialize contained objects
     void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc,
-                            const DetQMCPTParams& parspt);
+                            const DetQMCPTParams& parspt,
+                            const DetModelLoggingParams& loggingParams = DetModelLoggingParams());
 
     void replicaExchangeStep();
     void replicaExchangeConsistencyCheck(); // verify that processes have the right control parameters
@@ -91,6 +94,7 @@ protected:
     ModelParams parsmodel;
     DetQMCParams parsmc;
     DetQMCPTParams parspt;
+    DetModelLoggingParams parslogging;
     typedef DetQMCParams::GreenUpdateType GreenUpdateType;
     
     MetadataMap modelMeta;
@@ -259,14 +263,17 @@ class SerializeContentsKey {
 
 template<class Model, class ModelParams>
 void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
-                                                     const DetQMCPTParams& parspt_) {
+                                                     const DetQMCPTParams& parspt_,
+                                                     const DetModelLoggingParams& loggingParams /*default argument*/) {
     parsmodel = parsmodel_;
     parsmodel = updateTemperatureParameters(parsmodel);    
     parsmc = parsmc_;
     parspt = parspt_;
+    parslogging = loggingParams;
 
     parsmc.check();
     parspt.check();
+    parslogging.check();
 
     // Set up MPI info
     namespace mpi = boost::mpi;
@@ -304,7 +311,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     // in the createReplica function associated to them.
     std::string replicaLogfiledir = "log_proc_" + numToString(processIndex);
     
-    createReplica(replica, rng, parsmodel, replicaLogfiledir);
+    createReplica(replica, rng, parsmodel, parslogging, replicaLogfiledir);
     
     // at rank 0 keep track of which process has which control parameter currently
     // and track exchange action contributions
@@ -406,9 +413,10 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
 template<class Model, class ModelParams>
 DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
-                                       const DetQMCPTParams& parspt_)
+                                       const DetQMCPTParams& parspt_,
+                                       const DetModelLoggingParams& parslogging_ /* default argument */)
     :
-    parsmodel(), parsmc(), parspt(),
+    parsmodel(), parsmc(), parspt(), parslogging(),
     //proper initialization of default initialized members done in initFromParameters
     modelMeta(), mcMeta(), ptMeta(), rng(), replica(),
     obsHandlers(), vecObsHandlers(),
@@ -427,12 +435,12 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     local_control_data_buffer(),
     es()
 {
-    initFromParameters(parsmodel_, parsmc_, parspt_);
+    initFromParameters(parsmodel_, parsmc_, parspt_, parslogging_);
 }
 
 template<class Model, class ModelParams>
 DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const DetQMCParams& newParsmc) :
-    parsmodel(), parsmc(), parspt(),
+    parsmodel(), parsmc(), parspt(), parslogging(),
     //proper initialization of default initialized members done by loading from archive
     modelMeta(), mcMeta(), rng(), replica(),
     obsHandlers(), vecObsHandlers(),
@@ -455,10 +463,11 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
     ifs.open(stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_iarchive ia(ifs);
+    DetModelLoggingParams parslogging_;    
     ModelParams parsmodel_;
     DetQMCParams parsmc_;
     DetQMCPTParams parspt_;
-    ia >> parsmodel_ >> parsmc_ >> parspt_;
+    ia >> parslogging_ >> parsmodel_ >> parsmc_ >> parspt_;
 
     if (newParsmc.sweeps > parsmc_.sweeps) {
         if (processIndex == 0) {
@@ -492,7 +501,7 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const std::string& stateFileName, const D
         parsmc_.specified.insert("greenUpdateType");
     }
     
-    initFromParameters(parsmodel_, parsmc_, parspt_);
+    initFromParameters(parsmodel_, parsmc_, parspt_, parslogging_);
     loadContents(ia);
 
     if (processIndex == 0) {
@@ -515,7 +524,7 @@ void DetQMCPT<Model, ModelParams>::saveState() {
     ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
     ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_oarchive oa(ofs);
-    oa << parsmodel << parsmc << parspt;
+    oa << parslogging << parsmodel << parsmc << parspt;
     saveContents(oa);
 
     //write out info about state of simulation to "info.dat"
