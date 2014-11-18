@@ -160,6 +160,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
     if (vm.count("help")) {
         cout << "Usage:" << endl << endl
              << genericOptions << endl
+             << loggingOptions << endl
              << modelOptions << endl
              << mcOptions << endl;
         runSimulation = false;

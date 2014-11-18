@@ -179,6 +179,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         if (processRank == 0) {
             cout << "Usage:" << endl << endl
                  << genericOptions << endl
+                 << loggingOptions << endl                
                  << modelOptions << endl
                  << mcOptions << endl
                  << ptOptions << endl;
