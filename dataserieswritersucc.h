@@ -30,6 +30,8 @@
  * This version allows to successively add data to the file.
  *
  * Slight modification, less pointer handling [2012.12.14]
+ * 
+ * add writing of single data entries [2014.11.18]
  *
  */
 
@@ -64,6 +66,9 @@ public:
     //write the whole data from the two containers to the file
     void writeData(const Container& dataSeries);
     void writeData(const Container& dataSeries, uint32_t floatPrecision);
+    //write a single data point to the file
+    void writeData(typename Container::value_type value);
+    void writeData(typename Container::value_type value, uint32_t floatPrecision);    
 private:
     std::ofstream output;
     std::string header;
@@ -142,6 +147,23 @@ void DataSeriesWriterSuccessive<Container>
     }
     output.flush();
 }
+
+template <class Container>
+void DataSeriesWriterSuccessive<Container>
+::writeData(typename Container::value_type value) {
+    output << value << '\n';
+    output.flush();
+}
+
+template <class Container>
+void DataSeriesWriterSuccessive<Container>
+::writeData(typename Container::value_type value, uint32_t floatPrecision) {
+    output.precision(floatPrecision);
+    output.setf(std::ios::scientific, std::ios::floatfield);
+    output << value << '\n';
+    output.flush();
+}
+
 
 typedef DataSeriesWriterSuccessive<std::vector<double>> DoubleVectorWriterSuccessive;
 typedef DataSeriesWriterSuccessive<std::vector<int>> IntVectorWriterSuccessive;
