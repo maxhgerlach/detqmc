@@ -43,10 +43,17 @@ namespace fs = boost::filesystem;
 template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
                    RngWrapper& rng, ModelParamsDetSDW pars,
-                   const std::string& logfiledir) {
+                   DetModelLoggingParams loggingPars /*def arg*/,
+                   const std::string& logfiledir_ /*def arg*/) {
     pars = updateTemperatureParameters(pars);
 
     pars.check();
+    
+    std::string logfiledir = ((logfiledir_ != "") ? logfiledir : "./");
+    
+    loggingPars.logSV_filename = (fs::path(logfiledir) /
+                                  fs::path("sv.log")).string();
+    loggingPars.check();
 
     assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
            (not pars.checkerboard and (CBM == CB_NONE))
@@ -54,23 +61,27 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
     assert(pars.opdim == OPDIM);
     
     replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(
-        new DetSDW<CBM, OPDIM>(rng, pars, logfiledir));
+        new DetSDW<CBM, OPDIM>(rng, pars, loggingPars, logfiledir));
 }
 //explicit instantiations:
 #ifndef DETSDW_NO_O1
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,                            
                             const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 1>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,                            
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O1
 #ifndef DETSDW_NO_O2
 template void createReplica(std::unique_ptr<DetSDW<CB_NONE, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,                            
                             const std::string& logfiledir);
 template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 2>>& replica_out,
                             RngWrapper& rng, ModelParamsDetSDW pars,
+                            DetModelLoggingParams loggingPars /*def arg*/,                            
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O2
 #ifndef DETSDW_NO_O3
@@ -90,8 +101,9 @@ const num PhiHigh = 1;
 
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
-                          const std::string& logfiledir_) :
-    Base(pars_, MatrixSizeFactor * pars_.L*pars_.L),
+                          const DetModelLoggingParams& loggingPars /*def arg*/,
+                          const std::string& logfiledir_ /*def arg*/) :
+    Base(pars_, MatrixSizeFactor * pars_.L*pars_.L, loggingPars),
     smalleye(arma::eye<MatData>(MatrixSizeFactor, MatrixSizeFactor)),
     rng(rng_), normal_distribution(rng),
     pars(pars_),

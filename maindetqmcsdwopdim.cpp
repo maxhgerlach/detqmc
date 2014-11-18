@@ -20,6 +20,7 @@
 #include "detqmc.h"
 #include "detsdwopdim.h"
 #include "detsdwparams.h"
+#include "detmodelloggingparams.h"
 
 
 // for versions of the program restricted to only one or two
@@ -31,9 +32,10 @@
 //Parse command line and configuration file to configure the parameters of our simulation.
 //In case of invocation with --help or --version, only print some info.
 //return a tuple (runSimulation = true or false, simulationParameterStructs)
-std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int argc, char **argv) {
+std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> configureSimulation(int argc, char **argv) {
     bool runSimulation = true;
     bool resumeSimulation = false;
+    DetModelLoggingParams loggingpar;
     ModelParamsDetSDW modelpar;
     DetQMCParams mcpar;
 
@@ -58,7 +60,12 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
     const uint32_t default_opdim = 3;
 #else
     const uint32_t default_opdim = 3;
-#endif 
+#endif
+
+    po::options_description loggingOptions("DetModel logging parameters, specify via command line or config file");
+    loggingOptions.add_options()
+        ("logSV", po::value<bool>(&loggingpar.logSV)->default_value(true), "log Green's function singular value range")
+        ;
 
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
@@ -127,7 +134,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
 
     //parse command line
     po::options_description cmdlineOptions;
-    cmdlineOptions.add(genericOptions).add(modelOptions).add(mcOptions);
+    cmdlineOptions.add(genericOptions).add(loggingOptions).add(modelOptions).add(mcOptions);
     po::parsed_options parsed = po::command_line_parser(argc, argv)
         .options(cmdlineOptions)
         .allow_unregistered()   // do not throw an exception for unknown program options
@@ -167,7 +174,7 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
 
     //parse config file, options specified there have lower precedence
     po::options_description confFileOptions;
-    confFileOptions.add(modelOptions).add(mcOptions);
+    confFileOptions.add(loggingOptions).add(modelOptions).add(mcOptions);
     std::ifstream ifsConf(confFileName);
     po::store(po::parse_config_file(ifsConf, confFileOptions), vm);
     po::notify(vm);
@@ -196,12 +203,13 @@ std::tuple<bool,bool,ModelParamsDetSDW,DetQMCParams> configureSimulation(int arg
             }
         }
     };
+    record(loggingOptions, loggingpar.specified);    
     record(modelOptions, modelpar.specified);
     record(mcOptions, mcpar.specified);
 
 
 
-    return std::make_tuple(runSimulation, resumeSimulation, modelpar, mcpar);
+    return std::make_tuple(runSimulation, resumeSimulation, loggingpar, modelpar, mcpar);
 }
 
 
@@ -210,17 +218,18 @@ int main(int argc, char **argv) {
               << metadataToString(collectVersionInfo())
               << "\n";
 
+    DetModelLoggingParams parlogging;
     ModelParamsDetSDW parmodel;
     DetQMCParams parmc;
     bool runSimulation;
     bool resumeSimulation;
-    std::tie(runSimulation, resumeSimulation, parmodel, parmc) = configureSimulation(argc, argv);
+    std::tie(runSimulation, resumeSimulation, parlogging, parmodel, parmc) = configureSimulation(argc, argv);
 
     int return_code = 0;
 
     timing.start("total");
 #define RUN_CASE(cb, opdim) case opdim: {                               \
-                                DetQMC<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc); \
+                                DetQMC<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc, parlogging); \
                                 simulation.run();                       \
                                 break;                                  \
                             }

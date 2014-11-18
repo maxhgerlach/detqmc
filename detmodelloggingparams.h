@@ -23,17 +23,16 @@
 
 struct DetModelLoggingParams {
     bool logSV;                 // log Green's function singular value range
-    std::string logSV_filename; // the filename associated to that log
-
-
+    std::string logSV_filename; // the filename associated to that log  -- we set this in createReplica()
 
     std::set<std::string> specified;
-    
+
+
     DetModelLoggingParams() :
         logSV(false), logSV_filename(""),
         specified()
     { }
-    
+    void check();
 private:
     friend class boost::serialization::access;
 
@@ -43,9 +42,6 @@ private:
         ar  & logSV & logSV_filename
             & specified;
     }
-
-    void check();
-    MetadataMap prepareMetadataMap() const;
 };
 
 

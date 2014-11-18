@@ -38,6 +38,7 @@ template<CheckerboardMethod CBM, int OPDIM> class DetSDW;
 template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
                    RngWrapper& rng, ModelParamsDetSDW pars,
+                   DetModelLoggingParams loggingPars = DetModelLoggingParams(),
                    // optionally allow passing a directory, where this
                    // replica is allowed to write output into a logfile
                    const std::string& logfiledir = "");
@@ -60,11 +61,14 @@ public:
                   "Supported order parameter dimensions: 1, 2, or 3");
     typedef ModelParamsDetSDW ModelParams;
 private:
-    DetSDW(RngWrapper& rng, const ModelParams& pars, const std::string& logfiledir = "");
+    DetSDW(RngWrapper& rng, const ModelParams& pars,
+           const DetModelLoggingParams& loggingPars = DetModelLoggingParams(),
+           const std::string& logfiledir = "");
 public:
     template<CheckerboardMethod CBM, int OrderParameterDimension>
     friend void createReplica(std::unique_ptr<DetSDW<CBM, OrderParameterDimension>>& replica_out,
                               RngWrapper& rng, ModelParams pars,
+                              DetModelLoggingParams loggingPars,
                               const std::string& logfiledir);
 
     virtual ~DetSDW();

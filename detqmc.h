@@ -32,6 +32,7 @@
 #pragma GCC diagnostic pop
 #include "metadata.h"
 #include "detqmcparams.h"
+#include "detmodelloggingparams.h"
 #include "detmodelparams.h"
 #include "detmodel.h"
 #include "observablehandler.h"
@@ -50,7 +51,8 @@ template<class Model, class ModelParams = ModelParams<Model> >
 class DetQMC {
 public:
     //constructor to init a new simulation:
-    DetQMC(const ModelParams& parsmodel, const DetQMCParams& parsmc);
+    DetQMC(const ModelParams& parsmodel, const DetQMCParams& parsmc,
+           const DetModelLoggingParams& loggingParams = DetModelLoggingParams());
 
     //constructor to resume a simulation from a dumped state file:
     //we allow to change some MC parameters at this point:
@@ -75,10 +77,12 @@ public:
     virtual ~DetQMC();
 protected:
     //helper for constructors -- set all parameters and initialize contained objects
-    void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc);
+    void initFromParameters(const ModelParams& parsmodel, const DetQMCParams& parsmc,
+                            const DetModelLoggingParams& loggingParams = DetModelLoggingParams());
 
     ModelParams parsmodel;
     DetQMCParams parsmc;
+    DetModelLoggingParams parslogging;
     typedef DetQMCParams::GreenUpdateType GreenUpdateType;
     
     MetadataMap modelMeta;
@@ -171,13 +175,16 @@ class SerializeContentsKey {
 
 
 template<class Model, class ModelParams>
-void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) {
+void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
+                                                   const DetModelLoggingParams& loggingParams /*default argument*/) {
     parsmodel = parsmodel_;
     parsmodel = updateTemperatureParameters(parsmodel);
     parsmc = parsmc_;
+    parslogging = loggingParams;
 
     parsmc.check();
     parsmodel.check();
+    parslogging.check();
 
     if (parsmc.specified.count("rngSeed") == 0) {
         std::cout << "No rng seed specified, will use std::time(0)" << std::endl;
@@ -185,7 +192,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
     }
     rng = RngWrapper(parsmc.rngSeed);
 
-    createReplica(replica, rng, parsmodel);    
+    createReplica(replica, rng, parsmodel, parslogging);    
 
     //prepare metadata
     modelMeta = parsmodel.prepareMetadataMap();
@@ -250,8 +257,9 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
 
 
 template<class Model, class ModelParams>
-DetQMC<Model, ModelParams>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_) :
-    parsmodel(), parsmc(),
+DetQMC<Model, ModelParams>::DetQMC(const ModelParams& parsmodel_, const DetQMCParams& parsmc_,
+                                   const DetModelLoggingParams& parslogging_ /* default argument */) :
+    parsmodel(), parsmc(), parslogging(),
     //proper initialization of default initialized members done in initFromParameters
     modelMeta(), mcMeta(), rng(), replica(),
     obsHandlers(), vecObsHandlers(),
@@ -261,12 +269,12 @@ DetQMC<Model, ModelParams>::DetQMC(const ModelParams& parsmodel_, const DetQMCPa
     totalWalltimeSecs(0), walltimeSecsLastSaveResults(0),
     grantedWalltimeSecs(0)
 {
-    initFromParameters(parsmodel_, parsmc_);
+    initFromParameters(parsmodel_, parsmc_, parslogging_);
 }
 
 template<class Model, class ModelParams>
 DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const DetQMCParams& newParsmc) :
-    parsmodel(), parsmc(),
+    parsmodel(), parsmc(), parslogging(),
     //proper initialization of default initialized members done by loading from archive
     modelMeta(), mcMeta(), rng(), replica(),
     obsHandlers(), vecObsHandlers(),
@@ -280,9 +288,10 @@ DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const DetQM
     ifs.exceptions(std::ifstream::badbit | std::ifstream::failbit);
     ifs.open(stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_iarchive ia(ifs);
+    DetModelLoggingParams parslogging_;
     ModelParams parsmodel_;
     DetQMCParams parsmc_;
-    ia >> parsmodel_ >> parsmc_;
+    ia >> parslogging_ >> parsmodel_ >> parsmc_;
 
     if (newParsmc.sweeps > parsmc_.sweeps) {
         std::cout << "Target sweeps will be changed from " << parsmc_.sweeps
@@ -312,7 +321,7 @@ DetQMC<Model, ModelParams>::DetQMC(const std::string& stateFileName, const DetQM
         parsmc_.specified.insert("greenUpdateType");
     }
     
-    initFromParameters(parsmodel_, parsmc_);
+    initFromParameters(parsmodel_, parsmc_, parslogging_);
     loadContents(ia);
 
     std::cout << "\n"
@@ -330,7 +339,7 @@ void DetQMC<Model, ModelParams>::saveState() {
     ofs.exceptions(std::ofstream::badbit | std::ofstream::failbit);
     ofs.open(parsmc.stateFileName.c_str(), std::ios::binary);
     boost::archive::binary_oarchive oa(ofs);
-    oa << parsmodel << parsmc;
+    oa << parslogging << parsmodel << parsmc;
     saveContents(oa);
 
     //write out info about state of simulation to "info.dat"
