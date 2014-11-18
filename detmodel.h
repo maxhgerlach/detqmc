@@ -12,6 +12,7 @@
 #include <functional>
 #include <utility>
 #include <memory>               // unique_ptr
+#include <algorithm>            // minmax_element
 #include <vector>
 #include <tuple>
 #include <armadillo>
@@ -22,6 +23,7 @@
 #include "toolsdebug.h"
 #include "rngwrapper.h"
 #include "checkarray.h"
+#include "dataserieswritersucc.h"
 #include "detmodelparams.h"
 #include "detmodelloggingparams.h"
 #include "observable.h"
@@ -422,6 +424,7 @@ protected:
     // this struct contains parameters related to logging that should
     // be done in this class
     DetModelLoggingParams loggingParams;
+    std::unique_ptr<DoubleVectorWriterSuccessive> svLogging;
 
 
 //    //equal-imaginary-time and time-displaced Green's functions
@@ -499,6 +502,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
     loggingParams(loggingParams_),
+    svLogging(),
     green(), //greenFwd(), greenBwd(),
     currentTimeslice(),
     green_inv_sv(),
@@ -507,15 +511,27 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     lastSweepDir(SweepDirection::Up),
     obsScalar(), obsVector(), obsKeyValue()
 {
-	//init Green's functions with zeros
-	for(uint32_t gc = 0; gc < GC; ++gc) {
-            green[gc].zeros(greenComponentSize, greenComponentSize);
-            green_inv_sv[gc].zeros(greenComponentSize);            
-//            if (TimeDisplaced) {
-//                greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
-//                greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
-//            }
-	}
+    //init Green's functions with zeros
+    for(uint32_t gc = 0; gc < GC; ++gc) {
+        green[gc].zeros(greenComponentSize, greenComponentSize);
+        green_inv_sv[gc].zeros(greenComponentSize);            
+//        if (TimeDisplaced) {
+//            greenFwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+//            greenBwd[gc].zeros(greenComponentSize, greenComponentSize, m+1);
+//        }
+    }
+
+    if (loggingParams.logSV) {
+        svLogging = std::unique_ptr<DoubleVectorWriterSuccessive>(
+            new DoubleVectorWriterSuccessive(
+                loggingParams.logSV_filename,
+                false // append to file = false: always start a new file for this
+                )
+            );
+        svLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
+        svLogging->addHeaderText("Here we log the logarithmic range of the singular values: log(max sv) - log(min sv), each time the (inverse) Green's function is computed from the singular values.");
+        svLogging->writeHeader();
+    }
 
 //  // Default functors for multiplication with B-matrices
 //  for_each_gc( [this](uint32_t gc) {
@@ -669,6 +685,14 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
         UtVt_rl_product +
         diagmat(d_r) * VU_rl_product * diagmat(d_l)
         );
+
+    
+    if (loggingParams.logSV) {
+        auto min_max_pair = std::minmax_element(green_inv_sv.begin(), green_inv_sv.end());
+        num log_min_sv = std::log(*min_max_pair.first);
+        num log_max_sv = std::log(*min_max_pair.second); 
+        svLogging->writeData( log_max_sv - log_min_sv );        
+    }
     
     
     MatV Vt_product = V_t_l * V_t_temp;
@@ -701,6 +725,15 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
     udvDecompose<V>(U_temp, green_inv_sv, V_t_temp,
         trans(U_r) * V_t_r + diagmat(d_r)
         );
+
+
+    if (loggingParams.logSV) {
+        auto min_max_pair = std::minmax_element(green_inv_sv.begin(), green_inv_sv.end());
+        num log_min_sv = std::log(*min_max_pair.first);
+        num log_max_sv = std::log(*min_max_pair.second); 
+        svLogging->writeData( log_max_sv - log_min_sv );        
+    }
+    
 
     MatV V_t_product = V_t_r * V_t_temp;
     MatV U_product = U_r * U_temp;
