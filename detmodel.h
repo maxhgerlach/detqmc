@@ -23,6 +23,7 @@
 #include "rngwrapper.h"
 #include "checkarray.h"
 #include "detmodelparams.h"
+#include "detmodelloggingparams.h"
 #include "observable.h"
 #include "udv.h"
 #include "metadata.h"
@@ -169,7 +170,8 @@ template<uint32_t GreenComponents, typename ValueType = num, bool TimeDisplaced 
 class DetModelGC: public DetModel {
 protected:
     template<class ModelParams>
-    DetModelGC(const ModelParams& pars, uint32_t greenComponentSize);
+    DetModelGC(const ModelParams& pars, uint32_t greenComponentSize,
+               const DetModelLoggingParams& loggingParams = DetModelLoggingParams());
 public:
     virtual ~DetModelGC()
     { }
@@ -417,6 +419,10 @@ protected:
     const uint32_t n;   //number of time slices where the Green-function is calculated from scratch == ceil(m/s)
     const num dtau;     // beta / m
 
+    // this struct contains parameters related to logging that should
+    // be done in this class
+    DetModelLoggingParams loggingParams;
+
 
 //    //equal-imaginary-time and time-displaced Green's functions
 //    //slices indexed k=0..m correspond to time slices at dtau*k,
@@ -485,12 +491,14 @@ public:
 
 template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class ModelParams>
-DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize) :
+DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t greenComponentSize,
+                                           const DetModelLoggingParams& loggingParams_ /* default argument */) :
     sz(greenComponentSize),
     timedisplaced(TimeDisplaced),
     beta(pars.beta), m(pars.m), s(pars.s),
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
+    loggingParams(loggingParams_),
     green(), //greenFwd(), greenBwd(),
     currentTimeslice(),
     green_inv_sv(),
