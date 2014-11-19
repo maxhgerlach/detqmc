@@ -424,7 +424,7 @@ protected:
     // this struct contains parameters related to logging that should
     // be done in this class
     DetModelLoggingParams loggingParams;
-    std::unique_ptr<DoubleVectorWriterSuccessive> svLogging;
+    std::unique_ptr<DoubleVectorWriterSuccessive> svLogging, svMaxLogging, svMinLogging;
 
 
 //    //equal-imaginary-time and time-displaced Green's functions
@@ -531,6 +531,24 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
         svLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
         svLogging->addHeaderText("Here we log the logarithmic range of the singular values: log(max sv) - log(min sv), each time the (inverse) Green's function is computed from the singular values.");
         svLogging->writeHeader();
+        svMaxLogging = std::unique_ptr<DoubleVectorWriterSuccessive>(
+            new DoubleVectorWriterSuccessive(
+                loggingParams.logSV_max_filename,
+                false // append to file = false: always start a new file for this
+                )
+            );
+        svMaxLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
+        svMaxLogging->addHeaderText("Here we log the max logarithmic singular values: log(max sv), each time the (inverse) Green's function is computed from the singular values.");
+        svMaxLogging->writeHeader();
+        svMinLogging = std::unique_ptr<DoubleVectorWriterSuccessive>(
+            new DoubleVectorWriterSuccessive(
+                loggingParams.logSV_min_filename,
+                false // append to file = false: always start a new file for this
+                )
+            );
+        svMinLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
+        svMinLogging->addHeaderText("Here we log the min logarithmic singular values: log(min sv), each time the (inverse) Green's function is computed from the singular values.");
+        svMinLogging->writeHeader();
     }
 
 //  // Default functors for multiplication with B-matrices
@@ -691,7 +709,9 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
         auto min_max_pair = std::minmax_element(green_inv_sv.begin(), green_inv_sv.end());
         num log_min_sv = std::log(*min_max_pair.first);
         num log_max_sv = std::log(*min_max_pair.second); 
-        svLogging->writeData( log_max_sv - log_min_sv );        
+        svLogging->writeData( log_max_sv - log_min_sv );
+        svMinLogging->writeData ( log_min_sv );
+        svMaxLogging->writeData ( log_max_sv );        
     }
     
     
@@ -732,6 +752,8 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromEye_and_UdV(
         num log_min_sv = std::log(*min_max_pair.first);
         num log_max_sv = std::log(*min_max_pair.second); 
         svLogging->writeData( log_max_sv - log_min_sv );        
+        svMinLogging->writeData ( log_min_sv );
+        svMaxLogging->writeData ( log_max_sv );        
     }
     
 

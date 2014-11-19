@@ -22,9 +22,11 @@
 // struct holding parameters concering the logging of specific data in DetModelGC derived classes
 
 struct DetModelLoggingParams {
-    bool logSV;                 // log Green's function singular value range
-    std::string logSV_filename; // the filename associated to that log  -- we set this in createReplica()
-
+    bool logSV;                 // log Green's function singular value range, max, min
+    std::string logSV_filename; // the filename associated to that range log  -- we set this in createReplica()
+    std::string logSV_max_filename; // for the max sv
+    std::string logSV_min_filename; // for the min sv
+    
     std::set<std::string> specified;
 
 

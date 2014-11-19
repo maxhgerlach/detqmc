@@ -53,6 +53,10 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
     
     loggingPars.logSV_filename = (fs::path(logfiledir) /
                                   fs::path("sv.log")).string();
+    loggingPars.logSV_max_filename = (fs::path(logfiledir) /
+                                      fs::path("svmax.log")).string();
+    loggingPars.logSV_min_filename = (fs::path(logfiledir) /
+                                      fs::path("svmin.log")).string();
     loggingPars.check();
 
     assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
