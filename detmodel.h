@@ -502,7 +502,7 @@ DetModelGC<GC,V,TimeDisplaced>::DetModelGC(const ModelParams& pars, uint32_t gre
     n(uint32_t(std::ceil(double(m) / s))),
     dtau(pars.dtau),
     loggingParams(loggingParams_),
-    svLogging(),
+    svLogging(), svMaxLogging(), svMinLogging(),
     green(), //greenFwd(), greenBwd(),
     currentTimeslice(),
     green_inv_sv(),
@@ -708,7 +708,11 @@ void DetModelGC<GC,V,TimeDisplaced>::greenFromUdV(
     if (loggingParams.logSV) {
         auto min_max_pair = std::minmax_element(green_inv_sv.begin(), green_inv_sv.end());
         num log_min_sv = std::log(*min_max_pair.first);
-        num log_max_sv = std::log(*min_max_pair.second); 
+        num log_max_sv = std::log(*min_max_pair.second);
+        // for(auto& i : green_inv_sv)
+        //     std::cout << i << ' ';
+        // std::cout << '\n';
+
         svLogging->writeData( log_max_sv - log_min_sv );
         svMinLogging->writeData ( log_min_sv );
         svMaxLogging->writeData ( log_max_sv );        
