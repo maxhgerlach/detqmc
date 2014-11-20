@@ -26,12 +26,18 @@ struct DetModelLoggingParams {
     std::string logSV_filename; // the filename associated to that range log  -- we set this in createReplica()
     std::string logSV_max_filename; // for the max sv
     std::string logSV_min_filename; // for the min sv
+
+    bool checkAndLogDetRatio;   // verify correctness of local spin update transition probabilities
+    std::string logDetRatio_filename;
+    bool checkAndLogGreen;      // verify correctness of updated Green's functions in local spin update
+    std::string logGreen_filename;
     
     std::set<std::string> specified;
 
-
     DetModelLoggingParams() :
-        logSV(false), logSV_filename(""),
+        logSV(false), logSV_filename(""), logSV_max_filename(""), logSV_min_filename(""),
+        checkAndLogDetRatio(false), logDetRatio_filename(""),
+        checkAndLogGreen(false), logGreen_filename(""),
         specified()
     { }
     void check();
@@ -41,7 +47,9 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar  & logSV & logSV_filename
+        ar  & logSV & logSV_filename & logSV_max_filename & logSV_min_filename
+            & checkAndLogDetRatio & logDetRatio_filename
+            & checkAndLogGreen & logGreen_filename
             & specified;
     }
 };

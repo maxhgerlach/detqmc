@@ -190,6 +190,7 @@ protected:
     using Base::beta;
     using Base::s;
     using Base::currentTimeslice;
+    using Base::loggingParams;
     // also for typedefs:
     typedef typename Base::UdVV UdVV;
     typedef typename Base::SweepDirection SweepDirection;
@@ -224,7 +225,9 @@ protected:
     // this contains the simulation parameters relevant to our model.
     // There is some duplication: the base class also has "free
     // standing" member variables dtau, m, beta, s
-    ModelParams pars; 
+    ModelParams pars;
+    // also in use: loggingParams from base class (see "using"
+    // statement above)
     
     enum Band {XBAND = 0, YBAND = 1};
     enum Spin {SPINUP = 0, SPINDOWN = 1};
@@ -922,6 +925,8 @@ protected:
         
         Logger(const std::string& logfiledir_);
     } logger;
+    
+    std::unique_ptr<DoubleVectorWriterSuccessive> detRatioLogging, greenLogging;
 public:
 /*
 

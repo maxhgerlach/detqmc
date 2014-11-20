@@ -57,6 +57,10 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
                                       fs::path("svmax.log")).string();
     loggingPars.logSV_min_filename = (fs::path(logfiledir) /
                                       fs::path("svmin.log")).string();
+    loggingPars.logDetRatio_filename = (fs::path(logfiledir) /
+                                        fs::path("detratio.log")).string();
+    loggingPars.logGreen_filename = (fs::path(logfiledir) /
+                                     fs::path("green.log")).string();
     loggingPars.check();
 
     assert((pars.checkerboard and (CBM == CB_ASSAAD_BERG)) or
@@ -137,7 +141,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
     dud(pars.N, pars.delaySteps), gmd(pars.N, m),
-    logger(logfiledir_)
+    logger(logfiledir_), detRatioLogging(), greenLogging()
 {
     //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
@@ -235,6 +239,30 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");   
     
     consistencyCheck();
+
+    // for consistency checks:
+    if (loggingParams.checkAndLogDetRatio) {
+        detRatioLogging = std::unique_ptr<DoubleVectorWriterSuccessive>(
+            new DoubleVectorWriterSuccessive(
+                loggingParams.logDetRatio_filename,
+                false // append to file = false: always start a new file for this
+                )
+            );
+        detRatioLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
+        detRatioLogging->addHeaderText("Here we log the difference of two possible evaluations of the Green's function determinant ratio");
+        detRatioLogging->writeHeader();
+    }
+    if (loggingParams.checkAndLogGreen) {
+        greenLogging = std::unique_ptr<DoubleVectorWriterSuccessive>(
+            new DoubleVectorWriterSuccessive(
+                loggingParams.logGreen_filename,
+                false // append to file = false: always start a new file for this
+                )
+            );
+        greenLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
+        greenLogging->addHeaderText("Here we log the maximum absolute difference of two possible evaluations of the updated Green's function");
+        greenLogging->writeHeader();
+    }    
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -2321,7 +2349,18 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
             //of the following matrix M
             M = smalleye + (smalleye - g_sub) * delta_forsite;
             DataType det = arma::det(M);
-        
+
+
+            // consistency check
+            if (loggingParams.checkAndLogDetRatio and changed == PHI) {
+                num det_abs = std::abs(det);
+                num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
+                num diff = ref_det - det_abs;
+                
+                detRatioLogging->writeData(diff);
+            }
+
+            
             if (OPDIM == 3) {
                 probSFermion = dataReal(det);
             } else {    
@@ -2347,7 +2386,13 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
             }
 
             if (not pars.turnoffFermions) {
-            
+
+                //consistency check
+                std::unique_ptr<MatData> ref_g;
+                if (loggingParams.checkAndLogGreen and changed == PHI) {
+                    ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(site, timeslice, newphi)));
+                }
+                
                 cdwl(site, timeslice) = new_cdwl;
                 updateCoshSinhTerms(site, timeslice);
 
@@ -2368,7 +2413,13 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 g_times_mat_U = g_times_mat_U * delta_forsite;
 
                 g += (g_times_mat_U) * (arma::inv(M) * mat_V);
-                
+
+                //consistency check
+                if (loggingParams.checkAndLogGreen and changed == PHI) {
+                    num max_diff = arma::max(arma::max(arma::abs(g - *ref_g)));
+                    greenLogging->writeData(max_diff);
+                    delete ref_g.release();
+                }
             }
         }
     }
@@ -4020,7 +4071,7 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t site, uint32_t t
 // reference computation of the new Green's function after
 // switching to the new phi-spin configuration
 template<CheckerboardMethod CB, int OPDIM>
-MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(const CubeNum& newPhi) {
+typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(const CubeNum& newPhi) {
     // store data for the situation before switching to newPhi
     globalMoveStoreBackups();
 
@@ -4040,7 +4091,7 @@ MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(const CubeNum& newPhi) {
 
 // helper wrapping the above for a single spin update
 template<CheckerboardMethod CB, int OPDIM>
-MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi) {
+typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi) {
     CubeNum newPhi = phi;
     for (uint32_t dim = 0; dim < OPDIM; ++dim) {
         newPhi(site, dim, timeslice) = singleNewPhi[dim];

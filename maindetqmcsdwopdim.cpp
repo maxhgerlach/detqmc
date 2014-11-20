@@ -65,6 +65,8 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
     po::options_description loggingOptions("DetModel logging parameters, specify via command line or config file");
     loggingOptions.add_options()
         ("logSV", po::value<bool>(&loggingpar.logSV)->default_value(false), "log Green's function singular value range, max, min")
+        ("checkAndLogDetRatio", po::value<bool>(&loggingpar.checkAndLogDetRatio)->default_value(false), "verify correctness of local spin update transition probabilities")
+        ("checkAndLogGreen", po::value<bool>(&loggingpar.checkAndLogGreen)->default_value(false), "verify correctness of updated Green's functions in local spin update")
         ;
 
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
