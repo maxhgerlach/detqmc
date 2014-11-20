@@ -3978,6 +3978,78 @@ void DetSDW<CB, OPDIM>::greenConsistencyCheck(const MatData& g1, const MatData& 
 }
 
 
+template<CheckerboardMethod CB, int OPDIM>
+num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(const CubeNum& newPhi) {
+    // store data for the situation before switching to newPhi
+    globalMoveStoreBackups();
+    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
+
+    // temporarily go to newPhi
+    phi = newPhi;
+    
+    // recompute new Green's function and its singular values
+    setupUdVStorage_and_calculateGreen();
+
+    // compute determinant ratio: (new weight) / (old weight) = det(G_old) / det(G_new)
+    uint32_t count = MatrixSizeFactor * pars.N;
+    num log_prob = 0.;
+    for (uint32_t j = 0; j < count; ++j) {
+        // log of g_inv_sv[j] / old_g_inv_sv[j]        {   g ~ [weight]^-1 --> g^{-1} ~ [weight]   }
+        num log_diff = std::log(g_inv_sv[j]) - std::log(old_g_inv_sv[j]);
+        log_prob += log_diff;
+    }
+    num det_ratio = std::exp(log_prob);
+
+    // restore original situation
+    globalMoveRestoreBackups();
+
+    return det_ratio;
+}
+
+
+template<CheckerboardMethod CB, int OPDIM>
+num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi) {
+    CubeNum newPhi = phi;
+    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+        newPhi(site, dim, timeslice) = singleNewPhi[dim];
+    }
+    return computeGreenDetRatioFromScratch(newPhi);
+}
+
+
+// reference computation of the new Green's function after
+// switching to the new phi-spin configuration
+template<CheckerboardMethod CB, int OPDIM>
+MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(const CubeNum& newPhi) {
+    // store data for the situation before switching to newPhi
+    globalMoveStoreBackups();
+
+    // temporarily go to newPhi
+    phi = newPhi;
+
+    // recompute new Green's function and its singular values
+    setupUdVStorage_and_calculateGreen();
+    MatData new_green = g;
+
+    // restore original situation
+    globalMoveRestoreBackups();
+
+    return new_green;
+}
+
+
+// helper wrapping the above for a single spin update
+template<CheckerboardMethod CB, int OPDIM>
+MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi) {
+    CubeNum newPhi = phi;
+    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+        newPhi(site, dim, timeslice) = singleNewPhi[dim];
+    }
+    return computeGreenFromScratch(newPhi);    
+}
+
+
+
 
 //Write out current system configuration samples to disk: ASCII or
 //binary.
