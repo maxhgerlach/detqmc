@@ -2352,12 +2352,16 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
 
             // consistency check
-            if (loggingParams.checkAndLogDetRatio and changed == PHI) {
+            if (loggingParams.checkAndLogDetRatio and performedSweeps >= 100 and changed == PHI) {
                 num det_abs = std::abs(det);
                 num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
                 num diff = ref_det - det_abs;
+                num reldiff = diff / ref_det;
                 
-                detRatioLogging->writeData(diff);
+                detRatioLogging->writeData(numToString(ref_det) + " - " +
+                                           numToString(det_abs) + " = " +
+                                           numToString(diff) + ", relative: " +
+                                           numToString(reldiff));
             }
 
             
@@ -2389,7 +2393,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
                 //consistency check
                 std::unique_ptr<MatData> ref_g;
-                if (loggingParams.checkAndLogGreen and changed == PHI) {
+                if (loggingParams.checkAndLogGreen and performedSweeps >= 100 and changed == PHI) {
                     ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(site, timeslice, newphi)));
                 }
                 
@@ -2415,9 +2419,14 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 g += (g_times_mat_U) * (arma::inv(M) * mat_V);
 
                 //consistency check
-                if (loggingParams.checkAndLogGreen and changed == PHI) {
-                    num max_diff = arma::max(arma::max(arma::abs(g - *ref_g)));
-                    greenLogging->writeData(max_diff);
+                if (loggingParams.checkAndLogGreen and performedSweeps >= 100 and changed == PHI) {
+                    MatNum abs_diff = arma::abs(g - *ref_g);
+                    num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
+                    num max_diff = arma::max(arma::max(abs_diff));
+                    num mean_diff = arma::mean(arma::mean(abs_diff));                    
+                    greenLogging->writeData("max diff: " + numToString(max_diff) +
+                                            " mean diff: " + numToString(mean_diff) +
+                                            " mean rel diff: " + numToString(mean_rel_abs_diff));
                     delete ref_g.release();
                 }
             }
