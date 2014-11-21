@@ -741,7 +741,7 @@ protected:
     // ratio.  Compare this during the estimation of the fermionic
     // transition probability for going from the current to a new
     // phi-spin configuration
-    num computeGreenDetRatioFromScratch(const CubeNum& newPhi);
+    num computeGreenDetRatioFromScratch(uint32_t timeslice, const CubeNum& newPhi);
     // helper wrapping the above for a single spin update
     num computeGreenDetRatioFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi);
 

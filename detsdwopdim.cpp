@@ -2364,7 +2364,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
 
             // consistency check
-            if (loggingParams.checkAndLogDetRatio and performedSweeps >= 100 and changed == PHI) {
+            if (loggingParams.checkAndLogDetRatio and performedSweeps >= 10 and changed == PHI) {
                 num det_abs = std::abs(det);
                 num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
                 num diff = ref_det - det_abs;
@@ -2407,7 +2407,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
                 //consistency check
                 std::unique_ptr<MatData> ref_g;
-                if (loggingParams.checkAndLogGreen and performedSweeps >= 100 and changed == PHI) {
+                if (loggingParams.checkAndLogGreen and performedSweeps >= 10 and changed == PHI) {
                     ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(site, timeslice, newphi)));
                 }
                 
@@ -2433,7 +2433,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 g += (g_times_mat_U) * (arma::inv(M) * mat_V);
 
                 //consistency check
-                if (loggingParams.checkAndLogGreen and performedSweeps >= 100 and changed == PHI) {
+                if (loggingParams.checkAndLogGreen and performedSweeps >= 10 and changed == PHI) {
                     MatNum abs_diff = arma::abs(g - *ref_g);
                     num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
                     num max_diff = arma::max(arma::max(abs_diff));
@@ -4055,13 +4055,13 @@ void DetSDW<CB, OPDIM>::greenConsistencyCheck(const MatData& g1, const MatData& 
 
 
 template<CheckerboardMethod CB, int OPDIM>
-num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(const CubeNum& newPhi) {
+num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t timeslice, const CubeNum& newPhi) {
     // store data for the situation before switching to newPhi
     globalMoveStoreBackups();
 
-    // compute the old Green's function at (tau=beta) from scratch to
-    // get its singular values
-    setupUdVStorage_and_calculateGreen();
+    // compute the old Green's function from scratch to get its
+    // singular values
+    setupUdVStorage_and_calculateGreen_forTimeslice(timeslice);
     VecNum old_g_inv_sv = g_inv_sv;    
 
     // temporarily go to newPhi
@@ -4069,7 +4069,7 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(const CubeNum& newPhi) {
     updateCoshSinhTerms();
     
     // recompute new Green's function and its singular values
-    setupUdVStorage_and_calculateGreen();
+    setupUdVStorage_and_calculateGreen_forTimeslice(timeslice);
 
     // compute determinant ratio: (new weight) / (old weight) = det(G_old) / det(G_new)
     uint32_t count = MatrixSizeFactor * pars.N;
@@ -4094,7 +4094,7 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t site, uint32_t t
     for (uint32_t dim = 0; dim < OPDIM; ++dim) {
         newPhi(site, dim, timeslice) = singleNewPhi[dim];
     }
-    return computeGreenDetRatioFromScratch(newPhi);
+    return computeGreenDetRatioFromScratch(timeslice, newPhi);
 }
 
 

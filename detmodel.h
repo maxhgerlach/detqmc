@@ -595,50 +595,68 @@ template<uint32_t GC, typename V, bool TimeDisplaced>
 template<class Callable_GC_mat_k2_k1>
 void DetModelGC<GC,V,TimeDisplaced>::setupUdVStorage_and_calculateGreen_forTimeslice_skeleton(
     uint32_t timeslice, Callable_GC_mat_k2_k1 leftMultiplyBmat) {
+
+    // handle the timeslice == beta case separately
+    if (timeslice == m) {
+        setupUdVStorage_and_calculateGreen_skeleton(leftMultiplyBmat);
+        return;
+    }
+
+    
     timing.start("setupUdVStorage");
 
-    auto setup = [this, timeslice, &leftMultiplyBmat](uint32_t gc) {
+    auto setup = [this, timeslice, &leftMultiplyBmat](uint32_t gc) -> uint32_t {
         std::vector<UdVV>& storage = (*UdVStorage)[gc];
         storage = std::vector<UdVV>(n + 1);
 
-        uint32_t lk = uint32_t(std::ceil(num(timeslice) / s));
+        uint32_t lk = uint32_t(std::floor(num(timeslice) / s));
         uint32_t k_lkp1 = ((lk < n - 1) ? (s*(lk+1)) : (m));
-        
-        storage[0] = eye_UdV; 
-        udvDecompose(storage[1], leftMultiplyBmat(gc, eye_gc, k_lkp1, timeslice));
 
-        uint32_t storageCounter = 1;
+        // std::cout << "timeslice: " << timeslice << " lk: " << lk << " k_lkp1: " << k_lkp1 << "\n";
+        
+        // std::cout << "(" << k_lkp1 << ", " << timeslice << ")\n";
+        udvDecompose(storage[0], leftMultiplyBmat(gc, eye_gc, k_lkp1, timeslice));
+
+        uint32_t storageCounter = 0;
         for (uint32_t l = lk + 1; l <= n - 1; ++l) {
+            // std::cout << "l = " << l << ", storageCounter = " << storageCounter << "\n";
             const MatV&   U_l   = storage[storageCounter].U;
             const VecNum& d_l   = storage[storageCounter].d;
             const MatV&   V_t_l = storage[storageCounter].V_t;
             const uint32_t k_l   = s*l;
             const uint32_t k_lp1 = ((l < n - 1) ? (s*(l+1)) : (m));
+            // std::cout << "(" << k_lp1 << ", " << k_l << ")\n";
             MatV B_lp1_times_U_l = leftMultiplyBmat(gc, U_l, k_lp1, k_l);
             udvDecompose<V>(storage[storageCounter+1], B_lp1_times_U_l * arma::diagmat(d_l));
             storage[storageCounter+1].V_t =  V_t_l * storage[storageCounter+1].V_t;
             ++storageCounter;
         }
 
-        for (uint32_t l = 0; l <= lk; ++l) {
+        uint32_t target = ( (lk * s == timeslice) ? lk - 1 : lk );
+        // std::cout << "target = (lk * s ==  timeslice) ? lk - 1 : lk ... "
+        // << target << " = ( (" << lk << " == " << s << " * " << timeslice << ") ? "
+        // << lk - 1 << " : " << lk << " );\n";
+
+        for (uint32_t l = 0; l <= target; ++l) {
+            // std::cout << "l = " << l << ", storageCounter = " << storageCounter << "\n";
             const MatV&   U_l   = storage[storageCounter].U;
             const VecNum& d_l   = storage[storageCounter].d;
             const MatV&   V_t_l = storage[storageCounter].V_t;
             const uint32_t k_l   = s*l;
-            const uint32_t k_lp1 = ((l < lk - 1) ? (s*(l+1)) : (timeslice));
+            const uint32_t k_lp1 = ((l < lk) ? (s*(l+1)) : (timeslice));
+            // std::cout << "(" << k_lp1 << ", " << k_l << ")\n";
             MatV B_lp1_times_U_l = leftMultiplyBmat(gc, U_l, k_lp1, k_l);
             udvDecompose<V>(storage[storageCounter+1], B_lp1_times_U_l * arma::diagmat(d_l));
             storage[storageCounter+1].V_t =  V_t_l * storage[storageCounter+1].V_t;            
             ++storageCounter;
         }
 
-        // the two for loops together comprise n steps
+        return storageCounter;  // return the highest index in the storage
     };
 
-    for_each_gc(setup);
-
     for (uint32_t gc = 0; gc < GC; ++gc) {
-        updateGreenFunction_Eye_UdV(gc, (*UdVStorage)[gc][n]);
+        uint32_t index = setup(gc);
+        updateGreenFunction_Eye_UdV(gc, (*UdVStorage)[gc][index]);
     }
     
     timing.stop("setupUdVStorage");
