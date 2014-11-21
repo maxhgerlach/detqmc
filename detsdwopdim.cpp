@@ -4046,7 +4046,11 @@ template<CheckerboardMethod CB, int OPDIM>
 num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(const CubeNum& newPhi) {
     // store data for the situation before switching to newPhi
     globalMoveStoreBackups();
-    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
+
+    // compute the old Green's function at (tau=beta) from scratch to
+    // get its singular values
+    setupUdVStorage_and_calculateGreen();
+    VecNum old_g_inv_sv = g_inv_sv;    
 
     // temporarily go to newPhi
     phi = newPhi;
