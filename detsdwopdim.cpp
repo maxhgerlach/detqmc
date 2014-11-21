@@ -4101,7 +4101,7 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t site, uint32_t t
 // reference computation of the new Green's function after
 // switching to the new phi-spin configuration
 template<CheckerboardMethod CB, int OPDIM>
-typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(const CubeNum& newPhi) {
+typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(uint32_t timeslice, const CubeNum& newPhi) {
     // store data for the situation before switching to newPhi
     globalMoveStoreBackups();
 
@@ -4110,7 +4110,7 @@ typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(c
     updateCoshSinhTerms();
 
     // recompute new Green's function and its singular values
-    setupUdVStorage_and_calculateGreen();
+    setupUdVStorage_and_calculateGreen_forTimeslice(timeslice);
     MatData new_green = g;
 
     // restore original situation
@@ -4127,7 +4127,7 @@ typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(u
     for (uint32_t dim = 0; dim < OPDIM; ++dim) {
         newPhi(site, dim, timeslice) = singleNewPhi[dim];
     }
-    return computeGreenFromScratch(newPhi);    
+    return computeGreenFromScratch(timeslice, newPhi);    
 }
 
 

@@ -748,7 +748,7 @@ protected:
 
     // reference computation of the new Green's function after
     // switching to the new phi-spin configuration
-    MatData computeGreenFromScratch(const CubeNum& newPhi);
+    MatData computeGreenFromScratch(uint32_t timeslice, const CubeNum& newPhi);
     // helper wrapping the above for a single spin update
     MatData computeGreenFromScratch(uint32_t site, uint32_t timeslice, Phi singleNewPhi);    
 /*
