@@ -4046,6 +4046,7 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(const CubeNum& newPhi) {
 
     // temporarily go to newPhi
     phi = newPhi;
+    updateCoshSinhTerms();
     
     // recompute new Green's function and its singular values
     setupUdVStorage_and_calculateGreen();
@@ -4086,6 +4087,7 @@ typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(c
 
     // temporarily go to newPhi
     phi = newPhi;
+    updateCoshSinhTerms();
 
     // recompute new Green's function and its singular values
     setupUdVStorage_and_calculateGreen();
