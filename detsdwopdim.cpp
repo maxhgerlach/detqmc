@@ -271,7 +271,19 @@ void DetSDW<CB, OPDIM>::setupUdVStorage_and_calculateGreen() {
         //setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
         setupUdVStorage_and_calculateGreen_skeleton(sdwLeftMultiplyBmat(this));
     } else {
-        g .zeros();
+        g.zeros();
+    }
+}
+
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::setupUdVStorage_and_calculateGreen_forTimeslice(
+    uint32_t timeslice) {
+    if (not pars.turnoffFermions) {
+        //setupUdVStorage_and_calculateGreen_skeleton(sdwComputeBmat(this));
+        setupUdVStorage_and_calculateGreen_forTimeslice_skeleton(
+            timeslice, sdwLeftMultiplyBmat(this));
+    } else {
+        g.zeros();
     }
 }
 

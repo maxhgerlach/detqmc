@@ -641,7 +641,7 @@ protected:
     void updateCoshSinhTerms(uint32_t site, uint32_t timeslice);
     void setupPropK();          //compute e^(-dtau*K..) matrices by diagonalization
     void setupUdVStorage_and_calculateGreen();
-
+    void setupUdVStorage_and_calculateGreen_forTimeslice(uint32_t timeslice);
 
     
 /*
