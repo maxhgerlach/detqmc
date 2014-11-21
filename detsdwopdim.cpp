@@ -2515,6 +2515,22 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
 
                 DataType det = arma::det(dud.Mj);
+
+                // consistency check
+                if (loggingParams.checkAndLogDetRatio and performedSweeps >= 10 and changed == PHI) {
+                    num det_abs = std::abs(det);
+                    num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
+                    num diff = ref_det - det_abs;
+                    num reldiff = diff / ref_det;
+                
+                    detRatioLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
+                                               " ref - delayed: " +
+                                               numToString(ref_det) + " - " +
+                                               numToString(det_abs) + " = " +
+                                               numToString(diff) + ", relative: " +
+                                               numToString(reldiff));
+                }
+                
                 num probSFermion;
                 if (OPDIM == 3) {
                     probSFermion = dataReal(det);
@@ -2562,8 +2578,29 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 dud.X.resize(MSF*N, MSF*j);
                 dud.Y.resize(MSF*j, MSF*N);
             }
+
+            //consistency check
+            std::unique_ptr<MatData> ref_g;
+            if (loggingParams.checkAndLogGreen and performedSweeps >= 10) {
+                ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(timeslice, phi)));
+            }
+            
             //carry out the delayed updates of the Green's function
             g += dud.X*dud.Y;
+
+            //consistency check
+            if (loggingParams.checkAndLogGreen and performedSweeps >= 10) {
+                MatNum abs_diff = arma::abs(g - *ref_g);
+                num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
+                num max_diff = arma::max(arma::max(abs_diff));
+                num mean_diff = arma::mean(arma::mean(abs_diff));                    
+                greenLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
+                                        " ref - delayed: " +
+                                        "max diff: " + numToString(max_diff) +
+                                        " mean diff: " + numToString(mean_diff) +
+                                        " mean rel diff: " + numToString(mean_rel_abs_diff));
+                delete ref_g.release();
+            }
         }
     }
     accratio /= num(N);
