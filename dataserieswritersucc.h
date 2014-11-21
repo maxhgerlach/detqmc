@@ -68,7 +68,9 @@ public:
     void writeData(const Container& dataSeries, uint32_t floatPrecision);
     //write a single data point to the file
     void writeData(typename Container::value_type value);
-    void writeData(typename Container::value_type value, uint32_t floatPrecision);    
+    void writeData(typename Container::value_type value, uint32_t floatPrecision);
+    // or just a preformatted line:
+    void writeData(const std::string& line);    
 private:
     std::ofstream output;
     std::string header;
@@ -154,6 +156,14 @@ void DataSeriesWriterSuccessive<Container>
     output << value << '\n';
     output.flush();
 }
+
+template <class Container>
+void DataSeriesWriterSuccessive<Container>
+::writeData(const std::string& line) {
+    output << line << '\n';
+    output.flush();
+}
+
 
 template <class Container>
 void DataSeriesWriterSuccessive<Container>
