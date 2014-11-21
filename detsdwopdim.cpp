@@ -2358,7 +2358,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 num diff = ref_det - det_abs;
                 num reldiff = diff / ref_det;
                 
-                detRatioLogging->writeData(numToString(ref_det) + " - " +
+                detRatioLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
+                                           " ref - woodbury: " +
+                                           numToString(ref_det) + " - " +
                                            numToString(det_abs) + " = " +
                                            numToString(diff) + ", relative: " +
                                            numToString(reldiff));
@@ -2424,7 +2426,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                     num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
                     num max_diff = arma::max(arma::max(abs_diff));
                     num mean_diff = arma::mean(arma::mean(abs_diff));                    
-                    greenLogging->writeData("max diff: " + numToString(max_diff) +
+                    greenLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
+                                            " ref - woodbury: " +
+                                            "max diff: " + numToString(max_diff) +
                                             " mean diff: " + numToString(mean_diff) +
                                             " mean rel diff: " + numToString(mean_rel_abs_diff));
                     delete ref_g.release();
