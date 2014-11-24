@@ -49,7 +49,7 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
 
     pars.check();
     
-    std::string logfiledir = ((logfiledir_ != "") ? logfiledir : "./");
+    std::string logfiledir = ((logfiledir_ != "") ? logfiledir_ : "./");
     
     loggingPars.logSV_filename = (fs::path(logfiledir) /
                                   fs::path("sv.log")).string();
