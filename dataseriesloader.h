@@ -47,7 +47,11 @@ class DataSeriesLoader {
 public:
     DataSeriesLoader();
     void readFromFile(const std::string& filename, uint32_t subsample = 1,
-            uint32_t discardData = 0, uint32_t sizeHint = 0) throw (ReadError);
+                      uint32_t discardData = 0, // data points to discard at beginning
+                      uint32_t readMaxData = 0, // If > 0: maximum number of data points to read,
+                                                // starting after the discarded part.
+                                                // If = 0: don't stop reading ever
+                      uint32_t sizeHint = 0) throw (ReadError);
 
     int getColumns();
     std::vector<ValueType>* getData(int column = 0);
@@ -78,9 +82,10 @@ int DataSeriesLoader<ValueType>::getColumns() {
 
 
 template <typename ValueType>
-void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
-        uint32_t subsample, uint32_t discardData, uint32_t sizeHint)
-        throw (ReadError) {
+void DataSeriesLoader<ValueType>::readFromFile(
+    const std::string& filename, uint32_t subsample, uint32_t discardData,
+      uint32_t readMaxData, uint32_t sizeHint)
+      throw (ReadError) {
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
@@ -131,9 +136,10 @@ void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
     }
 
     //read in the remaining data
+    uint32_t linesRead = 0;
     if (subsample > 1) {
         uint32_t samples = 1;
-        while (getline(input, line)) {
+        while (getline(input, line) and (readMaxData == 0 or ((linesRead++) < readMaxData))) {
             if (samples == subsample) {
                 samples = 0;
             }
@@ -148,7 +154,7 @@ void DataSeriesLoader<ValueType>::readFromFile(const std::string& filename,
             ++samples;
         }
     } else if (subsample == 1) {
-        while (getline(input, line)) {
+        while (getline(input, line) and (readMaxData == 0 or ((linesRead++) < readMaxData))) {
             stringstream ss(line);
             for (int c = 0; c < columns; ++c) {
                 ValueType val;
@@ -184,9 +190,10 @@ typedef DataSeriesLoader<double> DoubleSeriesLoader;
 
 //for doubles use a faster implementation
 template<> inline
-void DataSeriesLoader<double>::readFromFile(const std::string& filename,
-        uint32_t subsample, uint32_t discardData, uint32_t sizeHint)
-        throw (ReadError) {
+void DataSeriesLoader<double>::readFromFile(
+       const std::string& filename, uint32_t subsample, uint32_t discardData,
+       uint32_t readMaxData, uint32_t sizeHint)
+       throw (ReadError) {
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
@@ -250,7 +257,16 @@ void DataSeriesLoader<double>::readFromFile(const std::string& filename,
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
-    std::size_t length = input.tellg() - startPos + 1;     //length of data to be read in
+    //length of data to be read in
+    std::size_t length = 0;
+    if (readMaxData == 0) {
+        // all the remaining time series
+        length = input.tellg() - startPos + 1;
+    } else {
+        // read at most readMaxData entries
+        length = std::min( readMaxData,
+                           static_cast<uint32_t>(input.tellg() - startPos + 1) );
+    }
 #pragma GCC diagnostic pop
     input.seekg(startPos);
     char* buffer = new char[length + 1];

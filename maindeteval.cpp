@@ -31,6 +31,7 @@
 
 int main(int argc, char **argv) {
     uint32_t discard = 0;
+    uint32_t read = 0;
     uint32_t subsample = 1;
     uint32_t jkBlocks = 1;
     bool notau = false;
@@ -40,19 +41,21 @@ int main(int argc, char **argv) {
     namespace po = boost::program_options;
     po::options_description evalOptions("Time series evaluation options");
     evalOptions.add_options()
-            ("help", "print help on allowed options and exit")
-            ("version,v", "print version information (git hash, build date) and exit")
-            ("discard,d", po::value<uint32_t>(&discard)->default_value(0),
-                    "number of initial time series entries to discard (additional thermalization)")
-            ("subsample,s", po::value<uint32_t>(&subsample)->default_value(1),
-                    "take only every s'th sample into account")
-            ("jkblocks,j", po::value<uint32_t>(&jkBlocks)->default_value(1),
-                    "number of jackknife blocks to use")
-            ("notau", po::bool_switch(&notau)->default_value(false),
-                    "switch of estimation of integrated autocorrelation times")
-            ("noexp", po::bool_switch(&noexp)->default_value(false),
-                    "switch of estimation of expectation values and errorbars")
-            ;
+        ("help", "print help on allowed options and exit")
+        ("version,v", "print version information (git hash, build date) and exit")
+        ("discard,d", po::value<uint32_t>(&discard)->default_value(0),
+         "number of initial time series entries to discard (additional thermalization)")
+        ("read,r", po::value<uint32_t>(&read)->default_value(0),
+         "maximum number of time series entries to read (after discarded initial samples, before subsampling).  Default value of 0: read all entries")
+        ("subsample,s", po::value<uint32_t>(&subsample)->default_value(1),
+         "take only every s'th sample into account")
+        ("jkblocks,j", po::value<uint32_t>(&jkBlocks)->default_value(1),
+         "number of jackknife blocks to use")
+        ("notau", po::bool_switch(&notau)->default_value(false),
+         "switch of estimation of integrated autocorrelation times")
+        ("noexp", po::bool_switch(&noexp)->default_value(false),
+         "switch of estimation of expectation values and errorbars")
+        ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, evalOptions), vm);
     po::notify(vm);
