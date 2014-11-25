@@ -112,7 +112,7 @@ int main(int argc, char **argv) {
     for (std::string fn : filenames) {
         std::cout << "Processing " << fn << ", ";
         DoubleSeriesLoader reader;
-        reader.readFromFile(fn, subsample, discard, guessedLength);
+        reader.readFromFile(fn, subsample, discard, read, guessedLength);
         if (reader.getColumns() != 1) {
             throw GeneralError("File " + fn + " does not have exactly 1 column");
         }
@@ -218,6 +218,7 @@ int main(int argc, char **argv) {
         resultsWriter.addMetadataMap(meta);
         resultsWriter.addMeta("eval-jackknife-blocks", jkBlocks);
         resultsWriter.addMeta("eval-discard", discard);
+        resultsWriter.addMeta("eval-read", read);
         resultsWriter.addMeta("eval-subsample", subsample);
         resultsWriter.addMeta("eval-samples", evalSamples);
         if (jkBlocks > 1) {
@@ -235,6 +236,7 @@ int main(int argc, char **argv) {
         StringDoubleMapWriter tauintWriter;
         tauintWriter.addMetadataMap(meta);
         tauintWriter.addMeta("eval-discard", discard);
+        tauintWriter.addMeta("eval-read", read);
         tauintWriter.addMeta("eval-subsample", subsample);
         tauintWriter.addMeta("eval-samples", evalSamples);
         tauintWriter.addHeaderText("Tauint estimates computed from time series");
