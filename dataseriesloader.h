@@ -256,16 +256,8 @@ void DataSeriesLoader<double>::readFromFile(
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
-    //length of data to be read in
-    std::size_t length = 0;
-    if (readMaxData == 0) {
-        // all the remaining time series
-        length = input.tellg() - startPos + 1;
-    } else {
-        // read at most readMaxData entries
-        length = std::min( readMaxData,
-                           static_cast<uint32_t>(input.tellg() - startPos + 1) );
-    }
+    //max length of data to be read in (in char's !)
+    std::size_t length = input.tellg() - startPos + 1;
 #pragma GCC diagnostic pop
     input.seekg(startPos);
     char* buffer = new char[length + 1];
@@ -288,10 +280,12 @@ void DataSeriesLoader<double>::readFromFile(
 //      }
 //  } else {
 
+    // the following is zero if we have discarded initial entries, one otherwise
+    uint32_t valuesRead = data->at(0)->size(); 
     //number of samples not known beforehand, resize on the go:
     if (subsample > 1) {
         uint32_t samples = 1;
-        while (tokenPointer < buffer + length) {
+        while (tokenPointer < buffer + length and (readMaxData == 0 or (valuesRead < readMaxData))) {
             if (samples == subsample) {
                 samples = 0;
             }
@@ -301,14 +295,16 @@ void DataSeriesLoader<double>::readFromFile(
                     (*data)[c]->push_back(val);
                 }
             }
+            ++valuesRead;
             ++samples;
         }
     } else if (subsample == 1) {
-        while (tokenPointer < buffer + length) {
+        while (tokenPointer < buffer + length and (readMaxData == 0 or (valuesRead < readMaxData))) {
             for (int c = 0; c < columns; ++c) {
                 double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
                 (*data)[c]->push_back(val);
             }
+            ++valuesRead;
         }
     }
 //  }
