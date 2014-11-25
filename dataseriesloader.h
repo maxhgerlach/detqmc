@@ -51,14 +51,14 @@ public:
                       uint32_t readMaxData = 0, // If > 0: maximum number of data points to read,
                                                 // starting after the discarded part.
                                                 // If = 0: don't stop reading ever
-                      uint32_t sizeHint = 0) throw (ReadError);
+                      uint32_t sizeHint = 0);
 
     int getColumns();
     std::vector<ValueType>* getData(int column = 0);
     void deleteData();
 
     template<typename MetaValueType>
-    void getMeta(const std::string& key, MetaValueType& value) throw(KeyUndefined);
+    void getMeta(const std::string& key, MetaValueType& value);
 
     MetadataMap getMetadataMap();
 };
@@ -85,7 +85,7 @@ template <typename ValueType>
 void DataSeriesLoader<ValueType>::readFromFile(
     const std::string& filename, uint32_t subsample, uint32_t discardData,
       uint32_t readMaxData, uint32_t sizeHint)
-      throw (ReadError) {
+      {
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
@@ -172,7 +172,7 @@ std::vector<ValueType>* DataSeriesLoader<ValueType>::getData(int column) {
 
 template<typename ValueType>
 template<typename MetaValueType>
-void DataSeriesLoader<ValueType>::getMeta(const std::string& key, MetaValueType& value) throw(KeyUndefined) {
+void DataSeriesLoader<ValueType>::getMeta(const std::string& key, MetaValueType& value) {
     if (meta.count(key) == 0) {
         throw KeyUndefined(key);
     } else {
@@ -192,8 +192,7 @@ typedef DataSeriesLoader<double> DoubleSeriesLoader;
 template<> inline
 void DataSeriesLoader<double>::readFromFile(
        const std::string& filename, uint32_t subsample, uint32_t discardData,
-       uint32_t readMaxData, uint32_t sizeHint)
-       throw (ReadError) {
+       uint32_t readMaxData, uint32_t sizeHint) {
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
