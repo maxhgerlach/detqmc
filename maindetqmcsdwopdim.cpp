@@ -80,6 +80,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
         ("updateMethod", po::value<std::string>(&modelpar.updateMethod_string)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
         ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "parameter to use with delayedUpdates")
         ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
+        ("u", po::value<num>(&modelpar.u)->default_value(1.0), "non-linear self-coupling of phi")
         ("lambda", po::value<num>(&modelpar.lambda)->default_value(1.0), "fermion-boson coupling")
         ("mu", po::value<num>(&modelpar.mu)->default_value(0.5), "chemical potential")
         ("L", po::value<uint32_t>(&modelpar.L), "linear spatial extent")

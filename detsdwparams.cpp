@@ -158,6 +158,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     }
     META_INSERT(accRatio);
     META_INSERT(r);
+    META_INSERT(u);
     META_INSERT(lambda);
     META_INSERT(txhor);
     META_INSERT(txver);

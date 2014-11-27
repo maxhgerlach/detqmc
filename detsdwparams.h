@@ -32,7 +32,7 @@ struct ModelParamsDetSDW {
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     num r;
     num c;                      // currently fixed to 1.0
-    num u;                      // currently fixed to 1.0
+    num u;
     num lambda;	//fermion-boson coupling strength
     num txhor;	//hopping constants depending on direction and band
     num txver;	
