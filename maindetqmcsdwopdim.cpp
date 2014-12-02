@@ -79,6 +79,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
         ("adaptScaleVariance", po::value<bool>(&modelpar.adaptScaleVariance)->default_value(true), "valid unless spinProposalMethod=='box' -- this controls if the variance of the spin updates should be adapted during thermalization")
         ("updateMethod", po::value<std::string>(&modelpar.updateMethod_string)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
         ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "parameter to use with delayedUpdates")
+        ("phi2bosons", po::value<bool>(&modelpar.phi2bosons)->default_value(false), "if this is true: run calculations with a simple theory (r/2)\\sum_i \\phi_i^2 -- ignores parameter u and spatial terms in the bosonic action")
         ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
         ("u", po::value<num>(&modelpar.u)->default_value(1.0), "non-linear self-coupling of phi")
         ("lambda", po::value<num>(&modelpar.lambda)->default_value(1.0), "fermion-boson coupling")

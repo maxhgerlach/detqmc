@@ -30,6 +30,7 @@ struct ModelParamsDetSDW {
     uint32_t delaySteps;             //parameter in case updateMethod is "delayed"
 
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
+    bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
     num r;
     num c;                      // currently fixed to 1.0
     num u;
@@ -69,7 +70,7 @@ struct ModelParamsDetSDW {
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
         adaptScaleVariance(), delaySteps(),
-        opdim(3), r(), c(1.0), u(1.0), lambda(),
+        opdim(3), phi2bosons(false), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
         globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatUpdateInSlice(),
@@ -95,7 +96,8 @@ private:
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
-            & opdim & r & c & u & lambda & txhor & txver & tyhor & tyver
+            & opdim & phi2bosons & r & c & u & lambda
+            & txhor & txver & tyhor & tyver
             & cdwU & mu & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate

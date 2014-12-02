@@ -3481,6 +3481,12 @@ template<CheckerboardMethod CB, int OPDIM>
 num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi newphi) {
     using arma::dot;
 
+    const auto dtau = pars.dtau;
+    const auto r = pars.r;
+    const auto u = pars.u;
+    const auto c = pars.c;
+    const auto z = pars.d * 2;
+    
     Phi oldphi = getPhi(site, timeslice);
 
     Phi phiDiff = newphi - oldphi;
@@ -3489,42 +3495,42 @@ num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi ne
     num newphiSq = dot(newphi, newphi);
     num phiSqDiff = newphiSq - oldphiSq;
 
-    num oldphiPow4 = oldphiSq * oldphiSq;
-    num newphiPow4 = newphiSq * newphiSq;
-    num phiPow4Diff = newphiPow4 - oldphiPow4;
+    if (pars.phi2bosons) {
+        num delta = dtau * 0.5 * r * phiSqDiff;
+        return delta;
+    }
+    else {    
+        num oldphiPow4 = oldphiSq * oldphiSq;
+        num newphiPow4 = newphiSq * newphiSq;
+        num phiPow4Diff = newphiPow4 - oldphiPow4;
 
-    uint32_t kEarlier = timeNeigh(ChainDir::MINUS, timeslice);
-    Phi phiEarlier = getPhi(site, kEarlier);
-    uint32_t kLater = timeNeigh(ChainDir::PLUS, timeslice);
-    Phi phiLater = getPhi(site, kLater);
-    Phi phiTimeNeigh = phiLater + phiEarlier;
+        uint32_t kEarlier = timeNeigh(ChainDir::MINUS, timeslice);
+        Phi phiEarlier = getPhi(site, kEarlier);
+        uint32_t kLater = timeNeigh(ChainDir::PLUS, timeslice);
+        Phi phiLater = getPhi(site, kLater);
+        Phi phiTimeNeigh = phiLater + phiEarlier;
 
-    Phi phiZero;
-    phiZero.zeros();
-    Phi phiSpaceNeigh = std::accumulate(
-        spaceNeigh.beginNeighbors(site),
-        spaceNeigh.endNeighbors(site),
-        phiZero,
-        [this, timeslice] (Phi accum, uint32_t neighSite) -> Phi{
-            typedef DetSDW<CB,OPDIM> D;
-            accum += D::getPhi(neighSite, timeslice);
-            return accum;
-        }
-        );
+        Phi phiZero;
+        phiZero.zeros();
+        Phi phiSpaceNeigh = std::accumulate(
+            spaceNeigh.beginNeighbors(site),
+            spaceNeigh.endNeighbors(site),
+            phiZero,
+            [this, timeslice] (Phi accum, uint32_t neighSite) -> Phi{
+                typedef DetSDW<CB,OPDIM> D;
+                accum += D::getPhi(neighSite, timeslice);
+                return accum;
+            }
+            );
 
-    const auto dtau = pars.dtau;
-    const auto r = pars.r;
-    const auto u = pars.u;
-    const auto c = pars.c;
-    const auto z = pars.d * 2;
-    
-    num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
+        num delta1 = (1.0 / (c * c * dtau)) * (phiSqDiff - dot(phiTimeNeigh, phiDiff));
 
-    num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiSpaceNeigh, phiDiff));
+        num delta2 = 0.5 * dtau * (z * phiSqDiff - 2.0 * dot(phiSpaceNeigh, phiDiff));
 
-    num delta3 = dtau * (0.5 * r * phiSqDiff + 0.25 * u * phiPow4Diff);
+        num delta3 = dtau * (0.5 * r * phiSqDiff + 0.25 * u * phiPow4Diff);
 
-    return delta1 + delta2 + delta3;
+        return delta1 + delta2 + delta3;
+    }
 }
 
 
@@ -3548,23 +3554,27 @@ num DetSDW<CB, OPDIM>::phiAction() {
     num action = 0;
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
         for (uint32_t site = 0; site < N; ++site) {
-            Phi timeDerivative =
-                (phiCopy(site, timeslice) - phiCopy(site, timeNeigh(ChainDir::MINUS, timeslice)))
-                / dtau;
-            action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
+            if (not pars.phi2bosons) {
+                Phi timeDerivative =
+                    (phiCopy(site, timeslice) - phiCopy(site, timeNeigh(ChainDir::MINUS, timeslice)))
+                    / dtau;
+                action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
-            //count only neighbors in PLUS-directions: no global overcounting of bonds
-            Phi xneighDiff = phiCopy(site, timeslice) -
-                phiCopy(spaceNeigh(XPLUS, site), timeslice);
-            action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
-            Phi yneighDiff = phiCopy(site, timeslice) -
-                phiCopy(spaceNeigh(YPLUS, site), timeslice);
-            action += 0.5 * dtau * arma::dot(yneighDiff, yneighDiff);
+                //count only neighbors in PLUS-directions: no global overcounting of bonds
+                Phi xneighDiff = phiCopy(site, timeslice) -
+                    phiCopy(spaceNeigh(XPLUS, site), timeslice);
+                action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
+                Phi yneighDiff = phiCopy(site, timeslice) -
+                    phiCopy(spaceNeigh(YPLUS, site), timeslice);
+                action += 0.5 * dtau * arma::dot(yneighDiff, yneighDiff);
+            }
 
             num phisq = arma::dot(phiCopy(site, timeslice), phiCopy(site, timeslice));
             action += 0.5 * dtau * r * phisq;
 
-            action += 0.25 * dtau * u * std::pow(phisq, 2);
+            if (not pars.phi2bosons) {
+                action += 0.25 * dtau * u * std::pow(phisq, 2);
+            }
         }
     }
     return action;

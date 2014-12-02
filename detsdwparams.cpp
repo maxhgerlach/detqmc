@@ -138,6 +138,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     meta["model"] = "sdw";
     meta["opdim"] = numToString(opdim);
     meta["checkerboard"] = (checkerboard ? "true" : "false");
+    meta["phi2bosons"] = (phi2bosons ? "true" : "false");
     meta["turnoffFermions"] = (turnoffFermions ? "true" : "false");
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
