@@ -48,9 +48,9 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
     pars = updateTemperatureParameters(pars);
 
     pars.check();
-    
+
     std::string logfiledir = ((logfiledir_ != "") ? logfiledir_ : "./");
-    
+
     loggingPars.logSV_filename = (fs::path(logfiledir) /
                                   fs::path("sv.log")).string();
     loggingPars.logSV_max_filename = (fs::path(logfiledir) /
@@ -67,7 +67,7 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
            (not pars.checkerboard and (CBM == CB_NONE))
         );
     assert(pars.opdim == OPDIM);
-    
+
     replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(
         new DetSDW<CBM, OPDIM>(rng, pars, loggingPars, logfiledir));
 }
@@ -133,6 +133,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     meanPhi(), normMeanPhi(0),
     kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
     greenXUP_summed(), greenYDOWN_summed(), greenXDOWN_summed(), greenYUP_summed(),
+    greenK0(), greenLocal(),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
     occ(), occX(occ[XBAND]), occY(occ[YBAND]),
     pairPlusMax(0.0), pairMinusMax(0.0),
@@ -155,8 +156,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     sinhTermPhi.zeros();
     coshTermCDWl.zeros();
     sinhTermCDWl.zeros();
-    
-    
+
     setupRandomField();
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
@@ -199,7 +199,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
     // output some different sectors of the Green's function in the
     // momentum space representation
-   obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+    obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
         VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
         VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
         VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
@@ -207,7 +207,10 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     kgreenYDOWN.zeros(pars.N);
     kgreenXDOWN.zeros(pars.N);
     kgreenYUP.zeros(pars.N);
-        
+
+    obsScalar += ScalarObservable(cref(greenK0), "greenK0", ""),
+        ScalarObservable(cref(greenLocal), "greenLocal", "");
+
     occX.zeros(pars.N);
     occY.zeros(pars.N);
     obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
@@ -236,8 +239,8 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
 
     occDiffSq = 0.0;
-    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");   
-    
+    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");
+
     consistencyCheck();
 
     // for consistency checks:
@@ -262,7 +265,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         greenLogging->addHeaderText("Attention: this file is recreated and the log restarted for each run of the program. It is not continued if the simulation is resumed from a saved state.");
         greenLogging->addHeaderText("Here we log the maximum absolute difference of two possible evaluations of the updated Green's function");
         greenLogging->writeHeader();
-    }    
+    }
 }
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -299,7 +302,7 @@ uint32_t DetSDW<CB, OPDIM>::getSystemN() const {
 template<CheckerboardMethod CB, int OPDIM>
 MetadataMap DetSDW<CB, OPDIM>::prepareModelMetadataMap() const {
     MetadataMap meta = pars.prepareMetadataMap();
-#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}    
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     if (pars.globalShift) {
     	num globalShiftAccRatio = 0.;
         if (us.attemptedGlobalShifts > 0) {
@@ -362,7 +365,11 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
             greenXDOWN_summed.zeros(pars.N, pars.N);
             greenYUP_summed.zeros(pars.N, pars.N);
         }
-    
+
+        // scalar functions of the Green's function
+        greenK0 = 0.;
+        greenLocal = 0.;
+
         //fermion occupation number -- real space
         occX.zeros(pars.N);
         occY.zeros(pars.N);
@@ -396,6 +403,12 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
+
+    // This function *adds* the measurements for the current timeslice
+    // to the observable variable, which must have been zero'ed in
+    // initMeasurements.  Then finishMeasurements() will divide the
+    // observable variable to get the average over all timeslices.
+
     timing.start("sdw-measure");
 
     // to ease notation in here
@@ -411,7 +424,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     }
 
     if (not pars.turnoffFermions) {
-    
+
         MatData gshifted = shiftGreenSymmetric();
 
         // some sectors of the momentum space Green's function
@@ -425,6 +438,32 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         if (OPDIM == 3) {
             greenXDOWN_summed += gblock(2, 2);
             greenYUP_summed   += gblock(3, 3);
+        }
+
+        // scalar functions of the Green's function
+        if (OPDIM == 3) {
+            greenK0 += std::real(arma::accu( gshifted ));
+        }
+        else {
+            // only the 2x2 top-left and 2x2 bottom-right blocks of G are non-zero
+            //
+            // Sum [ Green ] = Sum [ Green_XUP_YDOWN ] + Sum [ Green_XDOWN_YUP ]
+            //               = Sum [ Green_XUP_YDOWN ] + Sum [ Green_XUP_YDOWN^(*) ]
+            //               = 2 * Sum [ Real ( Green_XUP_YDOWN ) ]
+            greenK0 += 2 * std::real( arma::accu( gshifted ) );
+        }
+        
+        
+        if (OPDIM == 3) {
+            // cpx local_with_imag = arma::trace(gshifted) / (4. * N);
+            // assert( std::abs(std::imag(local_with_imag)) < 1E-14 );
+            greenLocal += std::real(arma::trace(gshifted)) / (4. * N);
+        }
+        else {
+            // Trace [ Green ] = Trace [ Green_XUP_YDOWN ] + Trace [ Green_XDOWN_YUP ]
+            //                 = Trace [ Green_XUP_YDOWN ] + Trace [ Green_XUP_YDOWN^(*) ]
+            //                 = 2 * Trace [ Real ( Green_XUP_YDOWN ) ]
+            greenLocal += 2. * std::real(arma::trace( gshifted )) / (4. * N);
         }
 
         //helper function to access the Green's function elements for the
@@ -463,7 +502,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
             occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
         }
- 
+
         //fermion occupation number -- k-space
         static const num pi = M_PI;
         //offset k-components for antiperiodic bc
@@ -480,7 +519,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             uint32_t ksitex = ksite % L;
             num ky = -pi + (num(ksitey) + offset_y) * 2*pi / num(L);
             num kx = -pi + (num(ksitex) + offset_x) * 2*pi / num(L);
- 
+
             for (uint32_t i = 0; i < N; ++i) {
                 num iy = num(i / L);
                 num ix = num(i % L);
@@ -563,9 +602,9 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                       site2, band, spin);
         };
         const auto txhor = pars.txhor;
-        const auto txver = pars.txver;    
+        const auto txver = pars.txver;
         const auto tyhor = pars.tyhor;
-        const auto tyver = pars.tyver;    
+        const auto tyver = pars.tyver;
         for (uint32_t i = 0; i < N; ++i) {
             //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
             Spin spins[] = {SPINUP, SPINDOWN};
@@ -659,7 +698,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
                         (-3.0 + 2.0*
                          gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
                     occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
-                
+
                     DataType contribxy = 4.0 -
                         gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
                         gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
@@ -726,17 +765,17 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         }
         occDiffSq += (std::real(occDiffSqContrib)) / num(N);
     }
-    
+
     timing.stop("sdw-measure");
 }
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::finishMeasurements() {
     //to ease notation:
-    const auto L = pars.L;        
+    const auto L = pars.L;
     const auto N = pars.N;
     const auto m = pars.m;
-    
+
     assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
@@ -744,7 +783,7 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     normMeanPhi = arma::norm(meanPhi, 2);
 
     if (not pars.turnoffFermions) {
-    
+
         // some sectors of the momentum space Green's function
         greenXUP_summed /= num(m);
         greenYDOWN_summed /= num(m);
@@ -761,6 +800,10 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
             kgreenXDOWN = kgreenXUP;
             kgreenYUP = kgreenYDOWN;
         }
+
+        // scalar functions of the Green's function
+        greenK0 /= num(m);
+        greenLocal /= num(m);
 
         //fermion occupation number -- real space
         occX /= num(m * N);
@@ -817,7 +860,7 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
             }
         }
         computeStructureFactor(chargeCorrFT, chargeCorr);
-    
+
         occDiffSq /= num(m);
 
     }
@@ -834,7 +877,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::computeStructureFactor(VecNum& out_k, const MatNum& in_r) {
     static const num pi = M_PI;
     const auto L = pars.L;
-    const auto N = pars.N;    
+    const auto N = pars.N;
     // //offset k-components for antiperiodic bc
     // num offset_x = 0.0;
     // num offset_y = 0.0;
@@ -874,7 +917,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::computeStructureFactor(VecNum& out_k, const MatCpx& in_r) {
     static const num pi = M_PI;
     const auto L = pars.L;
-    const auto N = pars.N;    
+    const auto N = pars.N;
     out_k.zeros(N);
     for (uint32_t ksite = 0; ksite < N; ++ksite) {
         uint32_t ksitey = ksite / L;
@@ -997,7 +1040,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupPropK() {
     const uint32_t dim = 2;
     const uint32_t z = 2*dim;
-    
+
     checkarray<checkarray<num,z>, 2> t;
     t[XBAND][XPLUS] = t[XBAND][XMINUS] = hopHor[XBAND];
     t[XBAND][YPLUS] = t[XBAND][YMINUS] = hopVer[XBAND];
@@ -1032,7 +1075,7 @@ void DetSDW<CB, OPDIM>::setupPropK() {
             }
         }
         //debugSaveMatrix(k, "k" + bandstr(band));
-        
+
         propK[band] = computePropagator(pars.dtau, k);
 
         propK_half[band] = computePropagator(pars.dtau / 2.0, k);
@@ -1101,7 +1144,7 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
                            diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
                            zeros(N, N));
             // code setting the imaginary parts should just be fully ignored for OPDIM==1
-            D::setRealImag(block(0, 1), 
+            D::setRealImag(block(0, 1),
                            diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
                            diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
             D::setRealImag(block(1, 0),
@@ -1187,14 +1230,14 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
         a.set_real(phi[2]);
         a.set_imag(arma::zeros<VecNum>(N));
     }
-    
+
     VecData b;
     b.set_size(N);
     b.set_real(phi[0]);
     if (OPDIM == 2 or OPDIM == 3) {
         b.set_imag(-phi[1]);
     } // else b is real
-    
+
     VecData bc;
     bc.set_size(N);
     bc.set_real(phi[0]);
@@ -1208,7 +1251,7 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
     if (OPDIM == 2 or OPDIM == 3) {
         d.set_imag(arma::zeros<VecNum>(N));
     } // else d is of (real) type VecNum anyway
-    
+
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
     MatData V(MatrixSizeFactor*N, MatrixSizeFactor*N);
     V.zeros(MatrixSizeFactor*N, MatrixSizeFactor*N);
@@ -1453,14 +1496,14 @@ template<CheckerboardMethod CB, int OPDIM> inline
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& orig, uint32_t k) {
     const auto N = pars.N;
-    //helper: submatrix block for a matrix 
+    //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
     //overall factor for entire matrix for chemical potential
     num ovFac = std::exp(pars.dtau*pars.mu);
 
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
-    const auto& kcoshTermPhi = coshTermPhi.col(k); 
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
     const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
@@ -1506,7 +1549,7 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
         if (OPDIM == 3) {
             block(result, 0, col) += diagmat(max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
             block(result, 1, col) += diagmat(ax)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false);
-            
+
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
             block(result, 2, col) = diagmat(ax)   * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false)
                                   + diagmat(cd)   * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
@@ -1554,7 +1597,7 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     num ovFac = std::exp(-pars.dtau*pars.mu);
 
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
-    const auto& kcoshTermPhi = coshTermPhi.col(k); 
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
     const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
@@ -1598,18 +1641,18 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         if (OPDIM == 3) {
             block(result, 0, col) += cbLMultHoppingExp(diagmat(ax)  * block(orig, 3, col), XBAND, +1, true);
             block(result, 1, col) += cbLMultHoppingExp(diagmat(max) * block(orig, 2, col), YBAND, +1, true);
-            
+
             //only a total of three terms each time because of zero blocks in the E^(+dtau*V) matrix
             block(result, 2, col) = cbLMultHoppingExp(diagmat(max)  * block(orig, 1, col), XBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(cmd)  * block(orig, 2, col), XBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(bcx)  * block(orig, 3, col), XBAND, +1, true);
-                                                  
+
             block(result, 3, col) = cbLMultHoppingExp(diagmat(ax)   * block(orig, 0, col), YBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(bx)   * block(orig, 2, col), YBAND, +1, true)
                                   + cbLMultHoppingExp(diagmat(cd)   * block(orig, 3, col), YBAND, +1, true);
         }
     }
-    
+
 #undef block
     return result;
 }
@@ -1644,15 +1687,15 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     num ovFac = std::exp(pars.dtau*pars.mu);
 
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
-    const auto& kcoshTermPhi = coshTermPhi.col(k); 
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
     // // define is safer than auto...
     // #define ksinhTermPhi sinhTermPhi.col(k)
-    // #define kcoshTermPhi coshTermPhi.col(k) 
+    // #define kcoshTermPhi coshTermPhi.col(k)
     // #define ksinhTermCDWl sinhTermCDWl.col(k)
     // #define kcoshTermCDWl coshTermCDWl.col(k)
-    
+
     const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
     const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
 
@@ -1679,7 +1722,7 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     //     bc[count].real(kphi0[count]);
     // }
     // CHECK_VEC_NAN(b);
-    // CHECK_VEC_NAN(bc);            
+    // CHECK_VEC_NAN(bc);
     //ENDDEBUG
     if (OPDIM >  1) {
 #define kphi1 (phi.slice(k).col(OPDIM >  1 ? 1 : 0))
@@ -1722,19 +1765,19 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
         using arma::diagmat;
         block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), XBAND, -1, false);
-                  
+
         block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
                               + cbRMultHoppingExp(block(orig, row, 1) * diagmat(cmd),  YBAND, -1, false);
 
         if (OPDIM == 3) {
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
             block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1, false);
-            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  YBAND, -1, false);            
-            
+            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  YBAND, -1, false);
+
             block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cd),   XBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbx),  XBAND, -1, false);
-                  
+
             block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbcx), YBAND, -1, false)
                                   + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
@@ -1754,10 +1797,10 @@ DetSDW<CB, OPDIM>::checkerboardRightMultiplyBmat(const typename DetSDW<CB, OPDIM
     MatData result = rightMultiplyBk(A, k2);
 
     // std::cout << k2 << " "; CHECK_NAN(result);
-    
+
     for (uint32_t k = k2 - 1; k >= k1 +1; --k) {
         result = rightMultiplyBk(result, k);
-        // std::cout << k << " "; CHECK_NAN(result);        
+        // std::cout << k << " "; CHECK_NAN(result);
     }
 
     //chemical potential terms included above
@@ -1777,7 +1820,7 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
     num ovFac = std::exp(-pars.dtau*pars.mu);
 
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
-    const auto& kcoshTermPhi = coshTermPhi.col(k); 
+    const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
     const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
@@ -1810,12 +1853,12 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
 
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
-    
+
     for (uint32_t row = 0; row < MatrixSizeFactor; ++row) {
         using arma::diagmat;
         block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(cmd)
                               + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * diagmat(bcx);
-                  
+
         block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(bx)
                               + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * diagmat(cd);
 
@@ -1823,11 +1866,11 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
             block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(ax);
             block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2), XBAND, +1, true) * diagmat(max);
-            
+
             block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1),  YBAND, +1, true) * diagmat(max)
                                   + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * diagmat(cmd)
                                   + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * diagmat(bx);
-                  
+
             block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0),  XBAND, +1, true) * diagmat(ax)
                                   + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * diagmat(bcx)
                                   + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * diagmat(cd);
@@ -1916,9 +1959,9 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
             [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
                 return this->proposeNewCDWl(site, timeslice);
             } );
-        
+
     }
-    
+
     timing.stop("sdw-updateInSlice");
 }
 
@@ -1966,12 +2009,12 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
         num prob_cdwl = 1.0;
 
         checkarray<VecData, MatrixSizeFactor> rows;
-        
+
         if (not pars.turnoffFermions) {
-        
+
             MatSmall delta_forsite =
                 get_delta_forsite(newphi, new_cdwl, timeslice, site);
-        
+
             //****
             //Compute the determinant and inverse of I + Delta*(I - G)
             //based on Sherman-Morrison formula / Matrix-Determinant lemma
@@ -2091,7 +2134,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 
             if (OPDIM == 3) {
                 probSFermion = dataReal(det);
-            } else {    
+            } else {
                 //      /G 0 \                .
                 //  det \0 G*/ = |det G|^2
                 probSFermion = std::pow(std::abs(det), 2);
@@ -2109,12 +2152,12 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             //END-DEBUG: relative difference: 0 or at most ~E-16 --> results are equal
 
             prob_cdwl = cdwl_gamma(new_cdwl) / cdwl_gamma(cdwl(site, timeslice));
-           
+
         } else {
             probSFermion = 1.0;
             prob_cdwl = 1.0;
         }
-        
+
         num prob = probSPhi * probSFermion * prob_cdwl;
 
         if (prob > 1.0 or rng.rand01() < prob) {
@@ -2127,7 +2170,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             }
 
             if (not pars.turnoffFermions) {
-            
+
                 cdwl(site, timeslice) = new_cdwl;
                 updateCoshSinhTerms(site, timeslice);
 //          num phisAfter = phiAction();
@@ -2305,8 +2348,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
 //                  (arma::abs(gPrimeRef - g.slice(timeslice))))) << std::endl;
                 //END DEBUG
                 //****
-                
-            } // if (not pars.turnoffFermions) 
+
+            } // if (not pars.turnoffFermions)
         }
     }
     accratio /= num(pars.N);
@@ -2338,11 +2381,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
         num probSFermion = 1.0;
         num prob_cdwl = 1.0;
-        
+
         MatSmall delta_forsite;
         MatSmall M;
         if (not pars.turnoffFermions) {
-        
+
             //delta = e^(-dtau*V_new)*e^(+dtau*V_old) - 1
 
             delta_forsite = get_delta_forsite(
@@ -2369,7 +2412,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
                 num diff = ref_det - det_abs;
                 num reldiff = diff / ref_det;
-                
+
                 detRatioLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
                                            " ref - woodbury: " +
                                            numToString(ref_det) + " - " +
@@ -2378,10 +2421,10 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                                            numToString(reldiff));
             }
 
-            
+
             if (OPDIM == 3) {
                 probSFermion = dataReal(det);
-            } else {    
+            } else {
                 //      /G 0 \             .
                 //  det \0 G*/ = |det G|^2
                 probSFermion = std::pow(std::abs(det), 2);
@@ -2398,7 +2441,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
         if (prob > 1.0 or rng.rand01() < prob) {
             //count accepted update
             accratio += 1.0;
-            
+
             for (uint32_t dim = 0; dim < OPDIM; ++dim) {
                 phi(site, dim, timeslice) = newphi[dim];
             }
@@ -2410,7 +2453,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                 if (loggingParams.checkAndLogGreen and performedSweeps >= 10 and changed == PHI) {
                     ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(site, timeslice, newphi)));
                 }
-                
+
                 cdwl(site, timeslice) = new_cdwl;
                 updateCoshSinhTerms(site, timeslice);
 
@@ -2437,7 +2480,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
                     MatNum abs_diff = arma::abs(g - *ref_g);
                     num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
                     num max_diff = arma::max(arma::max(abs_diff));
-                    num mean_diff = arma::mean(arma::mean(abs_diff));                    
+                    num mean_diff = arma::mean(arma::mean(abs_diff));
                     greenLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
                                             " ref - woodbury: " +
                                             "max diff: " + numToString(max_diff) +
@@ -2456,7 +2499,7 @@ template<CheckerboardMethod CB, int OPDIM>
 template<class Callable>
 num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable proposeLocalUpdate) {
     assert(not pars.turnoffFermions); // makes no sense to use delayed updates
-    
+
     constexpr auto MSF = MatrixSizeFactor;
     const auto N = pars.N;
     num accratio = 0.;
@@ -2522,7 +2565,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                     num ref_det = computeGreenDetRatioFromScratch(site, timeslice, newphi);
                     num diff = ref_det - det_abs;
                     num reldiff = diff / ref_det;
-                
+
                     detRatioLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
                                                " ref - delayed: " +
                                                numToString(ref_det) + " - " +
@@ -2530,11 +2573,11 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                                                numToString(diff) + ", relative: " +
                                                numToString(reldiff));
                 }
-                
+
                 num probSFermion;
                 if (OPDIM == 3) {
                     probSFermion = dataReal(det);
-                } else {    
+                } else {
                     //      /G 0 \             .
                     //  det \0 G*/ = |det G|^2
                     probSFermion = std::pow(std::abs(det), 2);
@@ -2584,7 +2627,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
             if (loggingParams.checkAndLogGreen and performedSweeps >= 10) {
                 ref_g = std::unique_ptr<MatData>(new MatData(computeGreenFromScratch(timeslice, phi)));
             }
-            
+
             //carry out the delayed updates of the Green's function
             g += dud.X*dud.Y;
 
@@ -2593,7 +2636,7 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
                 MatNum abs_diff = arma::abs(g - *ref_g);
                 num mean_rel_abs_diff = arma::mean(arma::mean(abs_diff / arma::abs(*ref_g)));
                 num max_diff = arma::max(arma::max(abs_diff));
-                num mean_diff = arma::mean(arma::mean(abs_diff));                    
+                num mean_diff = arma::mean(arma::mean(abs_diff));
                 greenLogging->writeData("t=" + numToString(timeslice) + ",i=" + numToString(site) +
                                         " ref - delayed: " +
                                         "max diff: " + numToString(max_diff) +
@@ -2623,7 +2666,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
         Phi kphi,
         num kcoshTermPhi, num ksinhTermPhi,
         num kcoshTermCDWl, num ksinhTermCDWl) -> MatSmall {
-        
+
         MatSmall ev;
 
         typedef DetSDW<CB,OPDIM> D;
@@ -2656,8 +2699,8 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
                 ev_imag(3,2) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
             }
             ev.set_imag(ev_imag);
-        }        
-        
+        }
+
         return ev;
     };
     MatSmall evOld = evMatrix(
@@ -2700,7 +2743,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
     // MatData::fixed<MSF,MSF> emvNew_big_sub = emvNew_big.submat(indices, indices);
     // print_matrix_diff(emvNew, emvNew_big_sub, "emvNew diff");
     // //DEBUG -- OK now
-    
+
     MatSmall delta_forsite = emvNew * evOld;
     delta_forsite.diag() -= DataType(1);
     return delta_forsite;
@@ -2831,19 +2874,19 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     globalMoveStoreBackups();
 
     const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
-    
+
     uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
 
     num prob_fermion = 1.0;
-    
+
     if (not pars.turnoffFermions) {
-    
+
         //recompute Green's function
         setupUdVStorage_and_calculateGreen();  //    g = greenFromEye_and_UdV((*UdVStorage)[0][n]);
 
         // compute transition probability.
         // avoid mixing large and small numbers -> use logarithms!
-        
+
         uint32_t count = MatrixSizeFactor * pars.N;
         num log_prob = 0.;
         for (uint32_t j = 0; j < count; ++j) {
@@ -2852,7 +2895,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
             log_prob += log_diff;
         }
         prob_fermion = std::exp(log_prob);
-        
+
 
         if (OPDIM < 3) {
             //      /G 0 \              .
@@ -2897,7 +2940,7 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     // with the SV's of the updated inverse Green's function.
     // Do this computation logarithmically for stability, else scales
     // would be mixed even if ordered.
-    
+
     globalMoveStoreBackups();
 
     const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
@@ -2906,26 +2949,26 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     addGlobalRandomDisplacement();
 
     if (not pars.turnoffFermions) {
-    
+
         updateCoshSinhTermsPhi();
 
         //recompute Green's function and its singular values
         setupUdVStorage_and_calculateGreen();
 
     }
-        
+
     //compute new weight, transition probability
     num new_scalar_action = phiAction();
 
     num prob_scalar = std::exp(-(new_scalar_action - old_scalar_action));
-    
+
     num prob_fermion = 1.0;
 
     if (not pars.turnoffFermions) {
-    
+
         // compute transition probability.
         // avoid mixing large and small numbers -> use logarithms!
-        
+
         uint32_t count = MatrixSizeFactor * pars.N;
         num log_prob = 0.;
         for (uint32_t j = 0; j < count; ++j) {
@@ -2934,14 +2977,14 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
             log_prob += log_diff;
         }
         prob_fermion = std::exp(log_prob);
-        
+
 
         if (OPDIM < 3) {
             //      /G 0 \              .
             //  det \0 G*/ = |det G|^2
             prob_fermion = std::pow(prob_fermion, 2);
         }
-        
+
     }
 
     num prob = prob_scalar * prob_fermion;
@@ -2976,13 +3019,13 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     // with the SV's of the updated inverse Green's function.
     // Do this computation logarithmically for stability, else scales
     // would be mixed even if ordered.
-    
+
     globalMoveStoreBackups();
 
     const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
-    
+
     uint32_t cluster_size = buildAndFlipCluster(false);
-    
+
     // compute current bosonic weight [after having flipped the cluster]
     num old_scalar_action = phiAction();
 
@@ -3004,7 +3047,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
 
         // compute transition probability.
         // avoid mixing large and small numbers -> use logarithms!
-        
+
         uint32_t count = MatrixSizeFactor * pars.N;
         num log_prob = 0.;
         for (uint32_t j = 0; j < count; ++j) {
@@ -3013,7 +3056,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
             log_prob += log_diff;
         }
         prob_fermion = std::exp(log_prob);
-        
+
 
         if (OPDIM < 3) {
             //      /G 0 \              .
@@ -3022,7 +3065,7 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
         }
 
     }
-        
+
     num prob = prob_scalar * prob_fermion;
 
     // std::cout << "Shift + Cluster: " << cluster_size << "\n";
@@ -3039,8 +3082,8 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
         globalMoveRestoreBackups();
         //std::cout << "reject cluster and shift\n";
     }
-    
-    timing.stop("sdw-attemptWolffClusterShiftMove");     
+
+    timing.stop("sdw-attemptWolffClusterShiftMove");
 }
 
 //helper functions for global updates:
@@ -3185,7 +3228,7 @@ void DetSDW<CB, OPDIM>::globalMoveStoreBackups() {
     gmd.phi = phi;
 
     if (not pars.turnoffFermions) {
-    
+
         gmd.coshTermPhi = coshTermPhi;
         gmd.sinhTermPhi = sinhTermPhi;
         gmd.g.swap(g);
@@ -3201,13 +3244,13 @@ void DetSDW<CB, OPDIM>::globalMoveRestoreBackups() {
     phi.swap(gmd.phi);
 
     if (not pars.turnoffFermions) {
-        
+
         coshTermPhi.swap(gmd.coshTermPhi);
         sinhTermPhi.swap(gmd.sinhTermPhi);
         g.swap(gmd.g);
         g_inv_sv.swap(gmd.g_inv_sv);
         UdVStorage.swap(gmd.UdVStorage);
-        
+
     }
 }
 
@@ -3289,7 +3332,7 @@ struct proposeRandomRotatedVector<3> {
 template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::changedPhiInt
 DetSDW<CB, OPDIM>::proposeRotatedPhi(uint32_t site, uint32_t timeslice) {
-    assert(OPDIM == 3); 
+    assert(OPDIM == 3);
     Phi newphi = proposeRandomRotatedVector<OPDIM>::give(
         rng, ad.angleDelta, getPhi(site, timeslice));
     return std::make_tuple(PHI, newphi, cdwl(site,timeslice));
@@ -3350,7 +3393,7 @@ template<> struct proposeRandomScaledVector<3> {
         vec[0] = new_x;
         vec[1] = new_y;
         vec[2] = new_z;
-    
+
         return std::make_tuple(vec, valid);
     }
 };
@@ -3371,7 +3414,7 @@ template<int OPDIM>
 struct proposeRandomRotatedScaledVector {
     static std::tuple<VecNum::fixed<OPDIM>, bool> give(NormalDistribution& normal_distribution,
                                                 RngWrapper& rng, num angleDelta, num scaleDelta,
-                                                VecNum::fixed<OPDIM> vec) {    
+                                                VecNum::fixed<OPDIM> vec) {
         (void) normal_distribution; (void) rng;
         (void) scaleDelta; (void) angleDelta; (void) vec;
         throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
@@ -3486,7 +3529,7 @@ num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi ne
     const auto u = pars.u;
     const auto c = pars.c;
     const auto z = pars.d * 2;
-    
+
     Phi oldphi = getPhi(site, timeslice);
 
     Phi phiDiff = newphi - oldphi;
@@ -3499,7 +3542,7 @@ num DetSDW<CB, OPDIM>::deltaSPhi(uint32_t site, uint32_t timeslice, const Phi ne
         num delta = dtau * 0.5 * r * phiSqDiff;
         return delta;
     }
-    else {    
+    else {
         num oldphiPow4 = oldphiSq * oldphiSq;
         num newphiPow4 = newphiSq * newphiSq;
         num phiPow4Diff = newphiPow4 - oldphiPow4;
@@ -3589,7 +3632,7 @@ void DetSDW<CB, OPDIM>::thermalizationOver(int processIndex) {
         prefix = "p" + numToString(processIndex) + ": r"
             + numToString(pars.r) + " ";
     }
-    
+
     std::cout << prefix
               << "After thermalization: phiDelta = " << ad.phiDelta << '\n'
               << prefix
@@ -3647,7 +3690,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepSimple(bool takeMeasurements) {
 
     if (not pars.turnoffFermions) {
-    
+
         sweepSimple_skeleton(takeMeasurements,
                              sdwComputeBmat(this),
                              [this](uint32_t timeslice) {this->updateInSlice(timeslice);},
@@ -3657,7 +3700,7 @@ void DetSDW<CB, OPDIM>::sweepSimple(bool takeMeasurements) {
 
     } else {
         // sweepSimple_skeleton without the Green's function updates
-        
+
         if (takeMeasurements) {
             initMeasurements();
         }
@@ -3670,9 +3713,9 @@ void DetSDW<CB, OPDIM>::sweepSimple(bool takeMeasurements) {
         if (takeMeasurements) {
             finishMeasurements();
         }
-        
+
     }
-    
+
     ++performedSweeps;
 }
 
@@ -3680,7 +3723,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepSimpleThermalization() {
 
     if (not pars.turnoffFermions) {
-    
+
         sweepSimpleThermalization_skeleton(
             sdwComputeBmat(this),
             [this](uint32_t timeslice) {
@@ -3688,7 +3731,7 @@ void DetSDW<CB, OPDIM>::sweepSimpleThermalization() {
             });
 
     } else {
-        
+
         // sweepSimple_skeleton without the Green's function updates
         for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
             this->updateInSliceThermalization(timeslice);
@@ -3707,9 +3750,9 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
 
         //std::cout << "sweep " << performedSweeps << '\n';
         // CHECK_NAN(g);           // temp. DEBUG
-    
+
         if (not pars.turnoffFermions) {
-    
+
             sweep_skeleton(takeMeasurements,
                            sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                            sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
@@ -3734,9 +3777,9 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
                 sweepSimple(takeMeasurements);
                 lastSweepDir = SweepDirection::Up;
             }
-         
+
         }
-        
+
     } catch (const GeneralError& err) {
         std::cerr << "Caught GeneralError. Failed SVD? Saving field configurations to disk! \n"
                   << "The message is: " << err.what() << "\n";
@@ -3745,7 +3788,7 @@ void DetSDW<CB, OPDIM>::sweep(bool takeMeasurements) {
             debugSaveMatrixRealOrCpx(phi.slice(k), fname);
         }
         throw err;
-    } 
+    }
 
 }
 
@@ -3753,7 +3796,7 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::sweepThermalization() {
 
     if (not pars.turnoffFermions) {
-    
+
         sweepThermalization_skeleton(sdwLeftMultiplyBmat(this), sdwRightMultiplyBmat(this),
                                      sdwLeftMultiplyBmatInv(this), sdwRightMultiplyBmatInv(this),
                                      [this](uint32_t timeslice) {
@@ -3767,7 +3810,7 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
         ++performedSweeps;
 
     } else {
-        
+
         if (lastSweepDir == SweepDirection::Up) {
             this->globalMove();
             sweepSimpleThermalization();
@@ -3778,7 +3821,7 @@ void DetSDW<CB, OPDIM>::sweepThermalization() {
         }
 
     }
-    
+
 }
 
 
@@ -3786,7 +3829,7 @@ template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
     typedef arma::subview<DataType> SubMatData;            //don't do references or const-references of this type
-    if (CB == CB_NONE){ 
+    if (CB == CB_NONE){
         //non-checkerboard
         return shiftGreenSymmetric_impl(
             //rightMultiply
@@ -3872,7 +3915,7 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
     if (pars.turnoffFermions) {
         return;
     }
-    
+
     const auto N = pars.N;
     const auto m = pars.m;
     // phi*, coshTerm*, sinhTerm*
@@ -3902,7 +3945,7 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
                     throw GeneralError("coshTermCDWl is inconsistent");
                 }
             }
-            if (std::abs(sinhTermCDWlBefore) > 1E-10) {            
+            if (std::abs(sinhTermCDWlBefore) > 1E-10) {
                 relDiffSinh = std::abs((sinhTermCDWl(site, k) - sinhTermCDWlBefore) / sinhTermCDWlBefore);
                 if (relDiffSinh > 1E-10) {
                     throw GeneralError("sinhTermCDWl is inconsistent");
@@ -4109,12 +4152,12 @@ num DetSDW<CB, OPDIM>::computeGreenDetRatioFromScratch(uint32_t timeslice, const
     // compute the old Green's function from scratch to get its
     // singular values
     setupUdVStorage_and_calculateGreen_forTimeslice(timeslice);
-    VecNum old_g_inv_sv = g_inv_sv;    
+    VecNum old_g_inv_sv = g_inv_sv;
 
     // temporarily go to newPhi
     phi = newPhi;
     updateCoshSinhTerms();
-    
+
     // recompute new Green's function and its singular values
     setupUdVStorage_and_calculateGreen_forTimeslice(timeslice);
 
@@ -4174,7 +4217,7 @@ typename DetSDW<CB, OPDIM>::MatData DetSDW<CB, OPDIM>::computeGreenFromScratch(u
     for (uint32_t dim = 0; dim < OPDIM; ++dim) {
         newPhi(site, dim, timeslice) = singleNewPhi[dim];
     }
-    return computeGreenFromScratch(timeslice, newPhi);    
+    return computeGreenFromScratch(timeslice, newPhi);
 }
 
 
@@ -4196,7 +4239,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamText(const std::string& directory
     } else {
         phi_output.precision(14);
         phi_output.setf(std::ios::scientific, std::ios::floatfield);
-    
+
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -4217,7 +4260,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamText(const std::string& directory
     if (not cdwl_output) {
         std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
         std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {    
+    } else {
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -4261,7 +4304,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinary(const std::string& directo
     if (not cdwl_output) {
         std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
         std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {    
+    } else {
         for (uint32_t ix = 0; ix < pars.L; ++ix) {
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
@@ -4281,18 +4324,18 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamTextHeader(
     fs::path phi_filepath = fs::path(directory) /
         fs::path("configs-phi.textstream");
     // only write the header if the file does not exist yet
-    if (not fs::exists(phi_filepath)) {    
+    if (not fs::exists(phi_filepath)) {
         std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
         if (not phi_output) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
         } else {
             phi_output << simInfoHeaderText;
-            phi_output << "## phi configuration stream\n";        
+            phi_output << "## phi configuration stream\n";
             phi_output.flush();
         }
     }
-    
+
     fs::path cdwl_filepath = fs::path(directory) /
         fs::path("configs-l.textstream");
     // only write the header if the file does not exist yet
@@ -4301,9 +4344,9 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamTextHeader(
         if (not cdwl_output) {
             std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {        
+        } else {
             cdwl_output << simInfoHeaderText;
-            cdwl_output << "## l configuration stream\n";        
+            cdwl_output << "## l configuration stream\n";
             cdwl_output.flush();
         }
     }
@@ -4316,7 +4359,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
     fs::path phi_filepath = fs::path(directory) /
         fs::path("configs-phi.infoheader");
     // only write the header if the file does not exist yet
-    if (not fs::exists(phi_filepath)) {    
+    if (not fs::exists(phi_filepath)) {
         std::ofstream phi_output(phi_filepath.c_str(), std::ios::out);
         if (not phi_output) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
@@ -4327,7 +4370,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
             phi_output.flush();
         }
     }
-    
+
     fs::path cdwl_filepath = fs::path(directory) /
         fs::path("configs-l.infoheader");
     // only write the header if the file does not exist yet
@@ -4336,13 +4379,13 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
         if (not cdwl_output) {
             std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {        
+        } else {
             cdwl_output << simInfoHeaderText;
             cdwl_output << "## binary l configuration stream (32 bit signed integers) in file configs-l.binarystream\n";
             cdwl_output.flush();
         }
     }
-  
+
 }
 
 //Methods to implement a replica-exchange / parallel tempering scheme
@@ -4431,7 +4474,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE, 1> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 template<>
@@ -4441,7 +4484,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 1> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 
@@ -4452,7 +4495,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE, 2> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 template<>
@@ -4462,7 +4505,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 2> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 
@@ -4473,7 +4516,7 @@ num get_replica_exchange_probability<DetSDW<CB_NONE, 3> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 template<>
@@ -4483,7 +4526,7 @@ num get_replica_exchange_probability<DetSDW<CB_ASSAAD_BERG, 3> >(
 {
     return get_replica_exchange_probability_implementation_detsdw(
         parameter_1, action_contribution_1,
-        parameter_2, action_contribution_2);         
+        parameter_2, action_contribution_2);
 }
 
 
@@ -4504,5 +4547,3 @@ template class DetSDW<CB_ASSAAD_BERG,2>;
 template class DetSDW<CB_NONE,3>;
 template class DetSDW<CB_ASSAAD_BERG,3>;
 #endif //DETSDW_NO_O3
-
-

@@ -503,7 +503,11 @@ protected:
     // imaginary time during a sweep
     MatData greenXUP_summed, greenYDOWN_summed,
         greenXDOWN_summed, greenYUP_summed;
-    
+    // greenK0 is the sum over all entries of G
+    num greenK0;
+    // greenLocal is the trace of G divided by the size of G
+    num greenLocal;
+        
     
     checkarray<VecNum, 2> kOcc;     //Fermion occupation number in momentum space for x/y-band; site-index: k-vectors
     VecNum& kOccX;
