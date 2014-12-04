@@ -68,6 +68,12 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
         );
     assert(pars.opdim == OPDIM);
 
+    // Update chemical potential setting -- if mux and muy are given, they supersede mu
+    if (not (pars.specified.count("mux") and pars.specified.count("muy"))) {
+        pars.mux = pars.mu;
+        pars.muy = pars.mu;
+    }
+
     replica_out = std::unique_ptr<DetSDW<CBM, OPDIM>>(
         new DetSDW<CBM, OPDIM>(rng, pars, loggingPars, logfiledir));
 }
@@ -120,6 +126,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     us(),                       // UpdateStatistics
     hopHor(), hopVer(), sinhHopHor(), sinhHopVer(), coshHopHor(), coshHopVer(),
     sinhHopHorHalf(), sinhHopVerHalf(), coshHopHorHalf(), coshHopVerHalf(),
+    mu(),
     spaceNeigh(pars.L), timeNeigh(pars.m),
     propK(), propKx(propK[XBAND]), propKy(propK[YBAND]),
     propK_half(), propKx_half(propK_half[XBAND]), propKy_half(propK_half[YBAND]),
@@ -180,6 +187,11 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
             sinhHopVerHalf[band] = sinh(-0.5*dtauHere * hopVer[band]);
             coshHopVerHalf[band] = cosh(-0.5*dtauHere * hopVer[band]);
         } );
+    //chemical potential
+    //These are the \mu in sum_<i> -\mu c^+_i c_i
+    //So for actual calculations an additional minus-sign needs to be included.
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
 
     setupPropK();
 
@@ -1047,10 +1059,14 @@ void DetSDW<CB, OPDIM>::setupPropK() {
     t[YBAND][XPLUS] = t[YBAND][XMINUS] = hopHor[YBAND];
     t[YBAND][YPLUS] = t[YBAND][YMINUS] = hopVer[YBAND];
 
+    checkarray<num, 2> mu;
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
+    
 //  for (auto band : {XBAND, YBAND}) {
     Band bands[2] = {XBAND, YBAND};
     for (Band band : bands) {
-        MatNum k = -pars.mu * arma::eye(pars.N,pars.N);
+        MatNum k = -mu[band] * arma::eye(pars.N,pars.N);
         for (uint32_t site = 0; site < pars.N; ++site) {
             for (uint32_t dir = 0; dir < z; ++dir) {
                 uint32_t neigh = spaceNeigh(dir, site);
@@ -1465,7 +1481,7 @@ typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                           const Matrix& A, Band band, int sign, bool) {
     typename DetSDW<CB, OPDIM>::MatData
- result = A;      //can't avoid this copy
+        result = A;      //can't avoid this copy
 
     //order of matrix multiplications symmetric
     //perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
@@ -1499,21 +1515,18 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    //overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(pars.dtau*pars.mu);
-
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
-    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
+    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
-        max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        max = -ax;
     }
     VecData b, bc;
     const auto& kphi0 = phi.slice(k).col(0);
@@ -1530,9 +1543,17 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbx  = -b  % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbcx = -bc % ksinhTermPhi % kcoshTermCDWl;
 
+    //overall factor for entire matrix for chemical potential
+//    num ovFac = std::exp(pars.dtau*pars.mu);
+    checkarray<num, 2> mu;
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
+    num ovFacXBAND = std::exp(pars.dtau*mu[XBAND]);
+    num ovFacYBAND = std::exp(pars.dtau*mu[YBAND]);
+    
     // CHECK_VEC_NAN(mbx);
     // CHECK_VEC_NAN(mbcx);
 
@@ -1540,24 +1561,24 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
 
     for (uint32_t col = 0; col < MatrixSizeFactor; ++col) {
         using arma::diagmat;
-        block(result, 0, col) = diagmat(cd)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
-                              + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false);
+        block(result, 0, col) = diagmat(ovFacXBAND * cd)   * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
+                              + diagmat(ovFacYBAND * mbx)  * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false);
 
-        block(result, 1, col) = diagmat(mbcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
-                              + diagmat(cmd)  * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false);
+        block(result, 1, col) = diagmat(ovFacXBAND * mbcx) * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
+                              + diagmat(ovFacYBAND * cmd)  * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false);
 
         if (OPDIM == 3) {
-            block(result, 0, col) += diagmat(max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
-            block(result, 1, col) += diagmat(ax)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false);
+            block(result, 0, col) += diagmat(ovFacYBAND * max) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
+            block(result, 1, col) += diagmat(ovFacXBAND * ax)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false);
 
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, 2, col) = diagmat(ax)   * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false)
-                                  + diagmat(cd)   * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
-                                  + diagmat(mbcx) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
+            block(result, 2, col) = diagmat(ovFacYBAND * ax)   * cbLMultHoppingExp(block(orig, 1, col), YBAND, -1, false)
+                                  + diagmat(ovFacXBAND * cd)   * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
+                                  + diagmat(ovFacYBAND * mbcx) * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
 
-            block(result, 3, col) = diagmat(max)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
-                                  + diagmat(mbx)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
-                                  + diagmat(cmd)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
+            block(result, 3, col) = diagmat(ovFacXBAND * max)  * cbLMultHoppingExp(block(orig, 0, col), XBAND, -1, false)
+                                  + diagmat(ovFacXBAND * mbx)  * cbLMultHoppingExp(block(orig, 2, col), XBAND, -1, false)
+                                  + diagmat(ovFacYBAND * cmd)  * cbLMultHoppingExp(block(orig, 3, col), YBAND, -1, false);
         }
     }
 
@@ -1593,21 +1614,18 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    //overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(-pars.dtau*pars.mu);
-
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
-    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
+    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
-        max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        max = -ax;
     }
 
     const auto& kphi0 = phi.slice(k).col(0);
@@ -1625,31 +1643,39 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         setVectorImag(b,  -kphi1);
         setVectorImag(bc,  kphi1);
     }
-    VecData bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData bx  = b  % ksinhTermPhi % kcoshTermCDWl;
+    VecData bcx = bc % ksinhTermPhi % kcoshTermCDWl;
 
+    //overall factor for entire matrix for chemical potential
+//    num ovFac = std::exp(-pars.dtau*pars.mu);
+    checkarray<num, 2> mu;
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
+    num ovFacXBAND = std::exp(-pars.dtau*mu[XBAND]);
+    num ovFacYBAND = std::exp(-pars.dtau*mu[YBAND]);
+    
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
     for (uint32_t col = 0; col < MatrixSizeFactor; ++col) {
         using arma::diagmat;
-        block(result, 0, col) = cbLMultHoppingExp(diagmat(cmd) * block(orig, 0, col), XBAND, +1, true)
-                              + cbLMultHoppingExp(diagmat(bx)  * block(orig, 1, col), XBAND, +1, true);
+        block(result, 0, col) = cbLMultHoppingExp(diagmat(ovFacXBAND * cmd) * block(orig, 0, col), XBAND, +1, true)
+                              + cbLMultHoppingExp(diagmat(ovFacXBAND * bx)  * block(orig, 1, col), XBAND, +1, true);
 
-        block(result, 1, col) = cbLMultHoppingExp(diagmat(bcx) * block(orig, 0, col), YBAND, +1, true)
-                              + cbLMultHoppingExp(diagmat(cd)  * block(orig, 1, col), YBAND, +1, true);
+        block(result, 1, col) = cbLMultHoppingExp(diagmat(ovFacYBAND * bcx) * block(orig, 0, col), YBAND, +1, true)
+                              + cbLMultHoppingExp(diagmat(ovFacYBAND * cd)  * block(orig, 1, col), YBAND, +1, true);
 
         if (OPDIM == 3) {
-            block(result, 0, col) += cbLMultHoppingExp(diagmat(ax)  * block(orig, 3, col), XBAND, +1, true);
-            block(result, 1, col) += cbLMultHoppingExp(diagmat(max) * block(orig, 2, col), YBAND, +1, true);
+            block(result, 0, col) += cbLMultHoppingExp(diagmat(ovFacXBAND * ax)  * block(orig, 3, col), XBAND, +1, true);
+            block(result, 1, col) += cbLMultHoppingExp(diagmat(ovFacYBAND * max) * block(orig, 2, col), YBAND, +1, true);
 
             //only a total of three terms each time because of zero blocks in the E^(+dtau*V) matrix
-            block(result, 2, col) = cbLMultHoppingExp(diagmat(max)  * block(orig, 1, col), XBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(cmd)  * block(orig, 2, col), XBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(bcx)  * block(orig, 3, col), XBAND, +1, true);
+            block(result, 2, col) = cbLMultHoppingExp(diagmat(ovFacXBAND * max)  * block(orig, 1, col), XBAND, +1, true)
+                                  + cbLMultHoppingExp(diagmat(ovFacXBAND * cmd)  * block(orig, 2, col), XBAND, +1, true)
+                                  + cbLMultHoppingExp(diagmat(ovFacXBAND * bcx)  * block(orig, 3, col), XBAND, +1, true);
 
-            block(result, 3, col) = cbLMultHoppingExp(diagmat(ax)   * block(orig, 0, col), YBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(bx)   * block(orig, 2, col), YBAND, +1, true)
-                                  + cbLMultHoppingExp(diagmat(cd)   * block(orig, 3, col), YBAND, +1, true);
+            block(result, 3, col) = cbLMultHoppingExp(diagmat(ovFacYBAND * ax)   * block(orig, 0, col), YBAND, +1, true)
+                                  + cbLMultHoppingExp(diagmat(ovFacYBAND * bx)   * block(orig, 2, col), YBAND, +1, true)
+                                  + cbLMultHoppingExp(diagmat(ovFacYBAND * cd)   * block(orig, 3, col), YBAND, +1, true);
         }
     }
 
@@ -1683,9 +1709,6 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    //overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(pars.dtau*pars.mu);
-
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
@@ -1696,14 +1719,14 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     // #define ksinhTermCDWl sinhTermCDWl.col(k)
     // #define kcoshTermCDWl coshTermCDWl.col(k)
 
-    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
-    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
+    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
 
     VecNum ax, max;
     if (OPDIM == 3) {
         #define kphi2  phi.slice(k).col(2)
-        ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
-        max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        max = -ax;
         #undef kphi2
     }
     #define kphi0 phi.slice(k).col(0)
@@ -1735,8 +1758,8 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
         // CHECK_VEC_NAN(bc);
         #undef kphi1
     }
-    VecData mbx  = ovFac * -b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData mbcx = ovFac * -bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbx  = -b  % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbcx = -bc % ksinhTermPhi % kcoshTermCDWl;
 
     // #undef ksinhTermPhi
     // #undef kcoshTermPhi
@@ -1759,28 +1782,36 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     // CHECK_VEC_NAN(mbcx);
     //END DEBUG
 
+    //overall factor for entire matrix for chemical potential
+//    num ovFac = std::exp(pars.dtau*pars.mu);
+    checkarray<num, 2> mu;
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
+    num ovFacXBAND = std::exp(pars.dtau*mu[XBAND]);
+    num ovFacYBAND = std::exp(pars.dtau*mu[YBAND]);
+
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
 
     for (uint32_t row = 0; row < MatrixSizeFactor; ++row) {
         using arma::diagmat;
-        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(cd),   XBAND, -1, false)
-                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(mbcx), XBAND, -1, false);
+        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0) * ovFacXBAND * diagmat(cd),   XBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 1) * ovFacXBAND * diagmat(mbcx), XBAND, -1, false);
 
-        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(mbx),  YBAND, -1, false)
-                              + cbRMultHoppingExp(block(orig, row, 1) * diagmat(cmd),  YBAND, -1, false);
+        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0) * ovFacYBAND * diagmat(mbx),  YBAND, -1, false)
+                              + cbRMultHoppingExp(block(orig, row, 1) * ovFacYBAND * diagmat(cmd),  YBAND, -1, false);
 
         if (OPDIM == 3) {
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3) * diagmat(max), XBAND, -1, false);
-            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * diagmat(ax),  YBAND, -1, false);
+            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3) * ovFacXBAND * diagmat(max), XBAND, -1, false);
+            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2) * ovFacYBAND * diagmat(ax),  YBAND, -1, false);
 
-            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1) * diagmat(ax),   XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(cd),   XBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(mbx),  XBAND, -1, false);
+            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1) * ovFacXBAND * diagmat(ax),   XBAND, -1, false)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * ovFacXBAND * diagmat(cd),   XBAND, -1, false)
+                                  + cbRMultHoppingExp(block(orig, row, 3) * ovFacXBAND * diagmat(mbx),  XBAND, -1, false);
 
-            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * diagmat(max),  YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 2) * diagmat(mbcx), YBAND, -1, false)
-                                  + cbRMultHoppingExp(block(orig, row, 3) * diagmat(cmd),  YBAND, -1, false);
+            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0) * ovFacYBAND * diagmat(max),  YBAND, -1, false)
+                                  + cbRMultHoppingExp(block(orig, row, 2) * ovFacYBAND * diagmat(mbcx), YBAND, -1, false)
+                                  + cbRMultHoppingExp(block(orig, row, 3) * ovFacYBAND * diagmat(cmd),  YBAND, -1, false);
         }
     }
 
@@ -1816,21 +1847,18 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
     //helper: submatrix block for a matrix
 #define block(mat,row,col) mat.submat( (row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
 
-    //overall factor for entire matrix for chemical potential
-    num ovFac = std::exp(-pars.dtau*pars.mu);
-
     const auto& ksinhTermPhi = sinhTermPhi.col(k);
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = ovFac * (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl);
-    const VecNum cmd = ovFac * (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl);
+    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
+    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
-        max = -ovFac * kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        max = -ax;
     }
 
     const auto& kphi0 = phi.slice(k).col(0);
@@ -1848,32 +1876,39 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData bx  = ovFac * b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData bcx = ovFac * bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData bx  = b  % ksinhTermPhi % kcoshTermCDWl;
+    VecData bcx = bc % ksinhTermPhi % kcoshTermCDWl;
 
+    //overall factor for entire matrix for chemical potential
+//    num ovFac = std::exp(-pars.dtau*pars.mu);
+    checkarray<num, 2> mu;
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
+    num ovFacXBAND = std::exp(-pars.dtau*mu[XBAND]);
+    num ovFacYBAND = std::exp(-pars.dtau*mu[YBAND]);
+    
     MatData result(MatrixSizeFactor*N, MatrixSizeFactor*N);
-
 
     for (uint32_t row = 0; row < MatrixSizeFactor; ++row) {
         using arma::diagmat;
-        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(cmd)
-                              + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * diagmat(bcx);
+        block(result, row, 0) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * ovFacXBAND * diagmat(cmd)
+                              + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * ovFacYBAND * diagmat(bcx);
 
-        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * diagmat(bx)
-                              + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * diagmat(cd);
+        block(result, row, 1) = cbRMultHoppingExp(block(orig, row, 0), XBAND, +1, true) * ovFacXBAND * diagmat(bx)
+                              + cbRMultHoppingExp(block(orig, row, 1), YBAND, +1, true) * ovFacYBAND * diagmat(cd);
 
         if (OPDIM == 3) {
             //only a total of three terms each time because of zero blocks in the E^(-dtau*V) matrix
-            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * diagmat(ax);
-            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2), XBAND, +1, true) * diagmat(max);
+            block(result, row, 0) += cbRMultHoppingExp(block(orig, row, 3), YBAND, +1, true) * ovFacYBAND * diagmat(ax);
+            block(result, row, 1) += cbRMultHoppingExp(block(orig, row, 2), XBAND, +1, true) * ovFacXBAND * diagmat(max);
 
-            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1),  YBAND, +1, true) * diagmat(max)
-                                  + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * diagmat(cmd)
-                                  + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * diagmat(bx);
+            block(result, row, 2) = cbRMultHoppingExp(block(orig, row, 1),  YBAND, +1, true) * ovFacYBAND * diagmat(max)
+                                  + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * ovFacXBAND * diagmat(cmd)
+                                  + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * ovFacYBAND * diagmat(bx);
 
-            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0),  XBAND, +1, true) * diagmat(ax)
-                                  + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * diagmat(bcx)
-                                  + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * diagmat(cd);
+            block(result, row, 3) = cbRMultHoppingExp(block(orig, row, 0),  XBAND, +1, true) * ovFacXBAND * diagmat(ax)
+                                  + cbRMultHoppingExp(block(orig, row, 2),  XBAND, +1, true) * ovFacXBAND * diagmat(bcx)
+                                  + cbRMultHoppingExp(block(orig, row, 3),  YBAND, +1, true) * ovFacYBAND * diagmat(cd);
         }
 
     }

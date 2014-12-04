@@ -13,7 +13,7 @@ void ModelParamsDetSDW::check() {
     //check parameters: passed all that are necessary
     using namespace boost::assign;
     std::vector<std::string> neededModelPars;
-    neededModelPars += "mu", "L", "r", "lambda", "accRatio", "bc", "txhor", "txver", "tyhor",
+    neededModelPars += "L", "r", "lambda", "accRatio", "bc", "txhor", "txver", "tyhor",
         "tyver", "updateMethod", "spinProposalMethod", "repeatUpdateInSlice",
         "globalShift", "wolffClusterUpdate", "wolffClusterShiftUpdate";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
@@ -21,6 +21,11 @@ void ModelParamsDetSDW::check() {
             throw ParameterMissing(*p);
         }
     }
+    // need mu or (mux and muy)
+    if (not (specified.count("mu") or (specified.count("mux") and specified.count("muy")))) {
+        throw ParameterMissing("mu or (mux and muy)");
+    }
+    
     //Check parameters chosen correctly
     if (model != "sdw") {
         throw ParameterWrong("Parameters specify model: " + model + " instead of sdw");
@@ -134,7 +139,7 @@ void ModelParamsDetSDW::check() {
 
 MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     MetadataMap meta;
-    #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
+#define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
     meta["model"] = "sdw";
     meta["opdim"] = numToString(opdim);
     meta["checkerboard"] = (checkerboard ? "true" : "false");
@@ -166,7 +171,14 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     META_INSERT(tyhor);
     META_INSERT(tyver);
     META_INSERT(cdwU);
-    META_INSERT(mu);
+
+    if (specified.count("mux") and specified.count("muy")) {
+        META_INSERT(mux);
+        META_INSERT(muy);    
+    }
+    else {
+        META_INSERT(mu);
+    }
     META_INSERT(L);
     META_INSERT(d);
     META_INSERT(N);

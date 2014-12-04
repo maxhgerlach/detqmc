@@ -299,6 +299,13 @@ protected:
     checkarray<num,2> coshHopVerHalf;
 
 
+/*
+
+    Per-orbital chemical potential
+
+*/  
+    checkarray<num, 2> mu;
+
 
 /*    
 
