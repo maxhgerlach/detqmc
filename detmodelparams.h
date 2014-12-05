@@ -94,9 +94,8 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
     if (pars.specified.count("m")) {
     	pars.beta = pars.m * pars.dtau;
     } else if (pars.specified.count("beta")) {
-    	//this may result in a slightly lower inverse temperature beta
-    	//if dtau is not chosen to match well
-    	pars.m = uint32_t(pars.beta / pars.dtau);
+        // the rounding hopefully yields a close value for beta
+    	pars.m = uint32_t(std::round(pars.beta / pars.dtau));
     	pars.beta = pars.m * pars.dtau;
     }
 
