@@ -1286,6 +1286,9 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
         block(V,3,0).diag() =  a;
     }
 
+    // prefactor: coupling constant
+    V *= pars.lambda;
+
     MatData D(MatrixSizeFactor*N, MatrixSizeFactor*N);
     D.zeros(MatrixSizeFactor*N, MatrixSizeFactor*N);
     //OPDIM == 1 or OPDIM == 2: just two non-zero blocks of a 2Nx2N matrix
