@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         ("noexp", po::bool_switch(&noexp)->default_value(false),
          "switch of estimation of expectation values and errorbars")
         ("outputDirectory", po::value<std::string>(&outputDirectory)->default_value("."))
-        ("inputDirectories", po::value< std::vector<std::string> >(&inputDirectories),
+        ("inputDirectories", po::value< std::vector<std::string> >(),
          "4 directories containing timeseries [positional arguments]")
         ;
     
@@ -81,6 +81,15 @@ int main(int argc, char **argv) {
               .options(evalOptions)
               .positional(positionalArguments).run(), vm);
     po::notify(vm);
+
+    uint32_t dircount = 0;
+    if (vm.count("inputDirectories")) {
+        inputDirectories = vm["inputDirectories"].as<std::vector< std::string > >();
+        dircount = inputDirectories.size();
+    }
+    if (dircount != 4) {
+        throw GeneralError("Number of passed input directories " + numToString(dircount) + " is not 4.");
+    }
 
     bool earlyExit = false;
     if (vm.count("help")) {
