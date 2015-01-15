@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         ;
     
     po::positional_options_description positionalArguments; // specify which options are positional
-    positionalArguments.add("directories", 4);
+    positionalArguments.add("inputDirectories", 4);
     
     po::variables_map vm;
     //po::store(po::parse_command_line(argc, argv, evalOptions), vm);
