@@ -39,6 +39,7 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
         const std::string& leadingCommentsBlock = "",
         bool appendToEndOfFile = false);
 
-
+// return a map with the (key, value) pairs that are equal in meta1 and meta2
+MetadataMap getCommonMetadata(const MetadataMap& meta1, const MetadataMap& meta2);
 
 #endif /* METADATA_H_ */

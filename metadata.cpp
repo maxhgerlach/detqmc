@@ -109,3 +109,29 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
 }
 
 
+MetadataMap getCommonMetadata(const MetadataMap& meta1, const MetadataMap& meta2) {
+    MetadataMap result;
+        
+    typedef MetadataMap::const_iterator Iter;
+    Iter it1 = meta1.cbegin();
+    Iter it2 = meta2.cbegin();
+    while (it1 != meta1.end() and it2 != meta2.end()) {
+        // make use of the lexicographic ordering of std::map keys.
+        // skip unequal keys:
+        if (it1->first < it2->first) {
+            ++it1;
+        } else if (it2->first < it1->first) {
+            ++it2;
+        } else {
+            // equal keys
+            if (it1->second == it2->second) {
+                // equal values
+                result[it1->first] = it2->second;
+            }
+            ++it1;
+            ++it2;
+        }            
+    }
+
+    return result;
+}
