@@ -194,12 +194,13 @@ protected:
     // also for typedefs:
     typedef typename Base::UdVV UdVV;
     typedef typename Base::SweepDirection SweepDirection;
-    // also for methods (g++ 4.8)
+    // also for methods (g++ 4.7+)
     using Base::sweep_skeleton;
     using Base::sweepThermalization_skeleton;
     using Base::sweepSimple_skeleton;
     using Base::sweepSimpleThermalization_skeleton;
     using Base::setupUdVStorage_and_calculateGreen_skeleton;
+    using Base::setupUdVStorage_and_calculateGreen_forTimeslice_skeleton;    
 /*
 
     More type definitions
