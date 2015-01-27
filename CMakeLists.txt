@@ -74,7 +74,7 @@ find_package(MPI)
 if (NOT ${MPI_CXX_FOUND})
   message("No MPI CXX compiler found!")
 else (NOT ${MPI_CXX_FOUND})
-  include_directories(MPI_CXX_INCLUDE_PATH)
+  include_directories(${MPI_CXX_INCLUDE_PATH})
 endif (NOT ${MPI_CXX_FOUND})
 # -> remember to link ${MPI_CXX_LIBRARIES} for the respective
 #    executables
@@ -90,14 +90,14 @@ add_definitions(-DDUMA_NO_DUMA) # TODO SOMETIME reenable
 # CXX flags:
 # -march settings
 if (NOT ${THP_DOMAIN})
-  MARCH_FLAGS = "-march=native"
+  set(MARCH_FLAGS "-march=native")
 else (NOT ${THP_DOMAIN})
   # setting to use instead of --march=native -- to be able to run on Core2 computers in the thp domain
   # use a safer setting
   # [obtained via `cc -march=native -E -v - </dev/null 2>&1 | grep cc1` on l07]
-  MARCH_FLAGS = "-march=core2 -mcx16 -msahf -mno-movbe -mno-aes -mno-pclmul -mno-popcnt -mno-abm -mno-lwp -mno-fma -mno-fma4 -mno-xop -mno-bmi -mno-tbm -mno-avx -mno-sse4.2 -msse4.1 --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=6144 -mtune=core2 -fstack-protector"
+  set(MARCH_FLAGS "-march=core2 -mcx16 -msahf -mno-movbe -mno-aes -mno-pclmul -mno-popcnt -mno-abm -mno-lwp -mno-fma -mno-fma4 -mno-xop -mno-bmi -mno-tbm -mno-avx -mno-sse4.2 -msse4.1 --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=6144 -mtune=core2 -fstack-protector")
 endif (NOT ${THP_DOMAIN})
-WARNING_FLAGS = "-Wall -Winit-self -Wextra -Woverloaded-virtual -Wconversion"
+set(WARNING_FLAGS "-Wall -Winit-self -Wextra -Woverloaded-virtual -Wconversion")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${MARCH_FLAGS} ${WARNING_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++0x")
 
@@ -215,7 +215,7 @@ execute_process(
 
 configure_file(
   git-revision.c.in             # in source tree
-  git-revision.c                # in binary tree - is this then found automatically?
+  ${PROJECT_BINARY_DIR}/git-revision.c                # in binary tree - is this then found automatically?
 )
 
 
@@ -223,170 +223,152 @@ configure_file(
 
 ## Executables
 
-set(detqmchubbard_SRC
-  dethubbard.cpp dethubbardparams.cpp
-  detqmcparams.cpp maindetqmchubbard.cpp rngwrapper.cpp
-  observablehandler.cpp metadata.cpp detmodel.cpp timing.cpp
-  detmodelloggingparams.cpp)
-set(detqmcsdwopdim_SRC
-  maindetqmcsdwopdim.cpp rngwrapper.cpp observablehandler.cpp
-  metadata.cpp detmodel.cpp detsdwopdim.cpp detsdwparams.cpp
-  detmodelloggingparams.cpp detqmcparams.cpp timing.cpp)
-set(detqmcsdwo1_SRC
-  maindetqmcsdwo1.cpp rngwrapper.cpp
-  observablehandler.cpp metadata.cpp detmodel.cpp detsdwo1.cpp
-  detsdwparams.cpp detmodelloggingparams.cpp detqmcparams.cpp
-  timing.cpp)
-set(detqmcsdwo2_SRC
-  maindetqmcsdwo2.cpp rngwrapper.cpp
-  observablehandler.cpp metadata.cpp detmodel.cpp detsdwo2.cpp
-  detsdwparams.cpp detmodelloggingparams.cpp detqmcparams.cpp
-  timing.cpp)
-set(detqmcsdwo3_SRC
-  maindetqmcsdwo3.cpp rngwrapper.cpp
-  observablehandler.cpp metadata.cpp detmodel.cpp detsdwo3.cpp
-  detsdwparams.cpp detmodelloggingparams.cpp detqmcparams.cpp
-  timing.cpp)
-set(detqmcptsdwopdim_SRC
-  mpimaindetqmcptsdwopdim.cpp
-  rngwrapper.cpp mpiobservablehandlerpt.cpp metadata.cpp detmodel.cpp
-  detsdwopdim.cpp detsdwparams.cpp detmodelloggingparams.cpp
-  detqmcparams.cpp detqmcptparams.cpp timing.cpp)
-set(detqmcptsdwo1_SRC
-  mpimaindetqmcptsdwo1.cpp rngwrapper.cpp mpiobservablehandlerpt.cpp
-  metadata.cpp detmodel.cpp detsdwo1.cpp detsdwparams.cpp
-  detmodelloggingparams.cpp detqmcparams.cpp detqmcptparams.cpp
-  timing.cpp)
-set(detqmcptsdwo2_SRC
-  mpimaindetqmcptsdwo2.cpp
-  rngwrapper.cpp mpiobservablehandlerpt.cpp metadata.cpp detmodel.cpp
-  detsdwo2.cpp detsdwparams.cpp detmodelloggingparams.cpp
-  detqmcparams.cpp detqmcptparams.cpp timing.cpp)
-set(detqmcptsdwo3_SRC
-  mpimaindetqmcptsdwo3.cpp rngwrapper.cpp mpiobservablehandlerpt.cpp
-  metadata.cpp detmodel.cpp detsdwo3.cpp detsdwparams.cpp
-  detmodelloggingparams.cpp detqmcparams.cpp detqmcptparams.cpp
-  timing.cpp)
-set(binarystreamtotext_SRC
-  mainbinarystreamtotext.cpp)
-set(tauintsimple_SRC
-  maintauintsimple.cpp metadata.cpp)
-set(deteval_SRC
-  maindeteval.cpp tools.cpp metadata.cpp)
-set(detevalbc_SRC
-  maindetevalbc.cpp tools.cpp metadata.cpp)
-set(testspheresampling_SRC
-  maintestspheresampling.cpp rngwrapper.cpp)
+# Compile all the source files that are going to be compiled into
+# multiple executables in a single static library; then the linker
+# will only pull out the necessary object files.  Otherwise CMake will
+# recompile all source files separately for each target!
+# [Unfortunately, in this respect, for this use case, CMake is
+# actually less convenient than rolling one's own makefiles]
+#
+# We do this separetely for a couple of the source files to limit
+# unnecessary recompilations.
 
+set(general_common_SRC rngwrapper.cpp metadata.cpp tools.cpp
+    ${PROJECT_BINARY_DIR}/git-revision.c)
+add_library(general_common ${general_common_SRC})
+
+set(detqmc_common_SRC detqmcparams.cpp detmodel.cpp timing.cpp
+   detmodelloggingparams.cpp ${PYTOOLS_SRC})
+add_library(detqmc_common ${detqmc_common_SRC})
+
+set(detqmc_nonmpi_common_SRC observablehandler.cpp)
+add_library(detqmc_nonmpi_common ${detqmc_nonmpi_common_SRC})
+
+set(dethubbard_common_SRC dethubbard.cpp dethubbardparams.cpp)
+add_library(dethubbard_common ${dethubbard_common_SRC})
+
+set(detsdw_common_SRC detsdwparams.cpp)
+add_library(detsdw_common ${detsdw_common_SRC})
+
+set(detsdwo1_common_SRC detsdwo1.cpp)
+add_library(detsdwo1_common ${detsdwo1_common_SRC})
+
+set(detsdwo2_common_SRC detsdwo2.cpp)
+add_library(detsdwo2_common ${detsdwo2_common_SRC})
+
+set(detsdwo3_common_SRC detsdwo3.cpp)
+add_library(detsdwo3_common ${detsdwo3_common_SRC})
+
+set(detsdwopdim_common_SRC detsdwopdim.cpp)
+add_library(detsdwopdim_common ${detsdwopdim_common_SRC})
+
+
+
+set(detqmchubbard_SRC maindetqmchubbard.cpp)
 add_executable(detqmchubbard
-  git-revision.c
-  ${detqmchubbard_SRC}
-  ${PYTOOLS_SRC}
-  )
+  ${detqmchubbard_SRC})
 target_link_libraries(detqmchubbard
+  general_common detqmc_common detqmc_nonmpi_common dethubbard_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
-
-add_executable(detqmcsdwopdim
-  git-revision.c
-  ${detqmcsdwopdim_SRC}
-  ${PYTOOLS_SRC}
-  )
-target_link_libraries(detqmcsdwopdim
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
-
+set(detqmcsdwo1_SRC maindetqmcsdwo1.cpp)
 add_executable(detqmcsdwo1
-  git-revision.c
-  ${detqmcsdwo1_SRC}
-  ${PYTOOLS_SRC}
-  )
+  ${detqmcsdwo1_SRC})
 target_link_libraries(detqmcsdwo1
+  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo1_common  
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
+set(detqmcsdwo2_SRC maindetqmcsdwo2.cpp)
 add_executable(detqmcsdwo2
-  git-revision.c
-  ${detqmcsdwo2_SRC}
-  ${PYTOOLS_SRC}
-  )
+  ${detqmcsdwo2_SRC})
 target_link_libraries(detqmcsdwo2
+  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo2_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
+set(detqmcsdwo3_SRC maindetqmcsdwo3.cpp)
 add_executable(detqmcsdwo3
-  git-revision.c
-  ${detqmcsdwo3_SRC}
-  ${PYTOOLS_SRC}
-  )
+  ${detqmcsdwo3_SRC})
 target_link_libraries(detqmcsdwo3
+  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo3_common
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+
+set(detqmcptsdwopdim_SRC mpimaindetqmcptsdwopdim.cpp)
+add_executable(detqmcsdwopdim
+  ${detqmcsdwopdim_SRC})
+target_link_libraries(detqmcsdwopdim
+  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwopdim_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
 
 if ("${MPI_CXX_FOUND}")
-  set(PT_SIM_LIBS
-    ${MPI_CXX_LIBRARIES} dsfmt ${ARMADILLO_LIBRARIES}
-    ${BOOST_LIBS} boost_mpi ${PYTHON_LIB})
-  
-  add_executable(detqmcptsdwopdim
-    git-revision.c
-    ${detqmcptsdwopdim_SRC}
-    ${PYTOOLS_SRC}
-    )
-  target_link_libraries(detqmcptsdwopdim
-    ${PT_SIM_LIBRARIES})
+  set(detqmc_mpi_common_SRC mpiobservablehandlerpt.cpp
+    observablehandler.cpp detqmcptparams.cpp)
+  add_library(detqmc_mpi_common ${detqmc_mpi_common_SRC})
 
+  set(PT_SIM_LIBRARIES ${MPI_CXX_LIBRARIES} dsfmt
+    ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} boost_mpi ${PYTHON_LIB}
+    general_common detqmc_common detqmc_nonmpi_common
+    detqmc_mpi_common)
+
+  set(detqmcptsdwo1_SRC mpimaindetqmcptsdwo1.cpp)
   add_executable(detqmcptsdwo1
-    git-revision.c
-    ${detqmcptsdwo1_SRC}
-    ${PYTOOLS_SRC}
-    )
+    ${detqmcptsdwo1_SRC})
   target_link_libraries(detqmcptsdwo1
-    ${PT_SIM_LIBRARIES})
+    ${PT_SIM_LIBRARIES} detsdw_common detsdwo1_common)
 
+  set(detqmcptsdwo2_SRC mpimaindetqmcptsdwo2.cpp)
   add_executable(detqmcptsdwo2
-    git-revision.c
-    ${detqmcptsdwo2_SRC}
-    ${PYTOOLS_SRC}
-    )
+    ${detqmcptsdwo2_SRC})
   target_link_libraries(detqmcptsdwo2
-    ${PT_SIM_LIBRARIES})
+    ${PT_SIM_LIBRARIES} detsdw_common detsdwo2_common)
 
+  set(detqmcptsdwo3_SRC mpimaindetqmcptsdwo3.cpp)
   add_executable(detqmcptsdwo3
-    git-revision.c
-    ${detqmcptsdwo3_SRC}
-    ${PYTOOLS_SRC}
-    )
+    ${detqmcptsdwo3_SRC})
   target_link_libraries(detqmcptsdwo3
-    ${PT_SIM_LIBRARIES})
+    ${PT_SIM_LIBRARIES} detsdw_common detsdwo3_common)
+
+  set(detqmcptsdwopdim_SRC mpimaindetqmcptsdwopdim.cpp)
+  add_executable(detqmcptsdwopdim
+    ${detqmcptsdwopdim_SRC})
+  target_link_libraries(detqmcptsdwopdim
+    ${PT_SIM_LIBRARIES} detsdw_common detsdwopdim_common)
 
   # Compile / Link flags
   set(MPI_EXECUTABLES
     detqmcptsdwopdim detqmcptsdwo1 detqmcptsdwo2 detqmcptsdwo3)
   set_target_properties(${MPI_EXECUTABLES} PROPERTIES
-    COMPILE_FLAGS ${MPI_CXX_COMPILE_FLAGS}
-    LINK_FLAGS ${MPI_CXX_LINK_FLAGS})
+    COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}"
+    LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
+  
 endif ("${MPI_CXX_FOUND}")
 
+set(binarystreamtotext_SRC mainbinarystreamtotext.cpp)
 add_executable(binarystreamtotext
   ${binarystreamtotext_SRC})
+target_link_libraries(binarystreamtotext general_common)
 
+set(tauintsimple_SRC maintauintsimple.cpp)
 add_executable(tauintsimple
   ${tauintsimple_SRC})
+target_link_libraries(tauintsimple general_common)
 
-add_executable(deteval
-  git-revision.c
-  ${deteval_SRC}
-  )
-target_link_libraries(deteval
-  boost_program_options)
+set(deteval_SRC maindeteval.cpp)
+add_executable(deteval ${deteval_SRC})
+target_link_libraries(deteval general_common boost_program_options)
 
-add_executable(detevalbc
-  git-revision.c
-  ${detevalbc_SRC}
-  )
-target_link_libraries(detevalbc
+set(detevalbc_SRC maindetevalbc.cpp)
+add_executable(detevalbc ${detevalbc_SRC})
+target_link_libraries(detevalbc general_common
   boost_program_options boost_filesystem boost_system)
 
-add_executable(testspheresampling
-  ${testspheresampling_SRC}
-  )
-taget_link_libraries(testspheresampling
+
+set(testspheresampling_SRC maintestspheresampling.cpp)
+add_executable(testspheresampling ${testspheresampling_SRC})
+target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt)
+
+
+
+
+
