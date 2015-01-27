@@ -29,7 +29,7 @@ if ("${THINKPAD_POSITION}" LESS 0)
 else ("${THINKPAD_POSITION}" LESS 0)
   set(THINKPAD_FOUND "TRUE")
 endif ("${THINKPAD_POSITION}" LESS 0)
-
+# some specific settings for thp domain computers:
 execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
 string(FIND "${DOMAIN_NAME}" "thp" THP_POSITION)
 if ("${THP_POSITION}" LESS 0)
@@ -42,10 +42,18 @@ endif ("${THP_POSITION}" LESS 0)
 
 # g++ 4.8 and 4.9 currently still have a bug preventing them to
 # compile this code. So on the Thinkpad just use g++-4.7 manually
-if (${THINKPAD_FOUND})
-  set(CMAKE_C_COMPILER "gcc-4.7")
-  set(CMAKE_CXX_COMPILER "g++-4.7")
-endif (${THINKPAD_FOUND})
+# unless we prefer Clang.
+option(USE_CLANG
+  "Use the clang compiler" OFF)
+if (${USE_CLANG})
+  set(CMAKE_C_COMPILER "clang-3.4")
+  set(CMAKE_CXX_COMPILER "clang++-3.4")  
+else (${USE_CLANG})
+  if (${THINKPAD_FOUND})
+    set(CMAKE_C_COMPILER "gcc-4.7")
+    set(CMAKE_CXX_COMPILER "g++-4.7")
+  endif (${THINKPAD_FOUND})
+endif (${USE_CLANG})
 
 
 
