@@ -268,35 +268,35 @@ set(detqmchubbard_SRC maindetqmchubbard.cpp)
 add_executable(detqmchubbard
   ${detqmchubbard_SRC})
 target_link_libraries(detqmchubbard
-  general_common detqmc_common detqmc_nonmpi_common dethubbard_common
+  dethubbard_common detqmc_nonmpi_common detqmc_common general_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
 set(detqmcsdwo1_SRC maindetqmcsdwo1.cpp)
 add_executable(detqmcsdwo1
   ${detqmcsdwo1_SRC})
 target_link_libraries(detqmcsdwo1
-  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo1_common  
+  detsdwo1_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
 set(detqmcsdwo2_SRC maindetqmcsdwo2.cpp)
 add_executable(detqmcsdwo2
   ${detqmcsdwo2_SRC})
 target_link_libraries(detqmcsdwo2
-  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo2_common
+  detsdwo2_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
 set(detqmcsdwo3_SRC maindetqmcsdwo3.cpp)
 add_executable(detqmcsdwo3
   ${detqmcsdwo3_SRC})
 target_link_libraries(detqmcsdwo3
-  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwo3_common
+  detsdwo3_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
-set(detqmcptsdwopdim_SRC mpimaindetqmcptsdwopdim.cpp)
+set(detqmcsdwopdim_SRC maindetqmcsdwopdim.cpp)
 add_executable(detqmcsdwopdim
   ${detqmcsdwopdim_SRC})
 target_link_libraries(detqmcsdwopdim
-  general_common detqmc_common detqmc_nonmpi_common detsdw_common detsdwopdim_common
+  detsdwopdim_common detsdw_common detqmc_nonmpi_common detqmc_common general_common  
   dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
 
 
@@ -305,34 +305,33 @@ if ("${MPI_CXX_FOUND}")
     observablehandler.cpp detqmcptparams.cpp)
   add_library(detqmc_mpi_common ${detqmc_mpi_common_SRC})
 
-  set(PT_SIM_LIBRARIES ${MPI_CXX_LIBRARIES} dsfmt
-    ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} boost_mpi ${PYTHON_LIB}
-    general_common detqmc_common detqmc_nonmpi_common
-    detqmc_mpi_common)
+  set(PT_SIM_LIBRARIES general_common detqmc_mpi_common
+    detqmc_nonmpi_common detqmc_common dsfmt ${ARMADILLO_LIBRARIES}
+    boost_mpi ${BOOST_LIBS} ${PYTHON_LIB} ${MPI_CXX_LIBRARIES} )
 
   set(detqmcptsdwo1_SRC mpimaindetqmcptsdwo1.cpp)
   add_executable(detqmcptsdwo1
     ${detqmcptsdwo1_SRC})
   target_link_libraries(detqmcptsdwo1
-    ${PT_SIM_LIBRARIES} detsdw_common detsdwo1_common)
+    detsdwo1_common detsdw_common ${PT_SIM_LIBRARIES})
 
   set(detqmcptsdwo2_SRC mpimaindetqmcptsdwo2.cpp)
   add_executable(detqmcptsdwo2
     ${detqmcptsdwo2_SRC})
   target_link_libraries(detqmcptsdwo2
-    ${PT_SIM_LIBRARIES} detsdw_common detsdwo2_common)
+    detsdwo2_common detsdw_common ${PT_SIM_LIBRARIES})
 
   set(detqmcptsdwo3_SRC mpimaindetqmcptsdwo3.cpp)
   add_executable(detqmcptsdwo3
     ${detqmcptsdwo3_SRC})
   target_link_libraries(detqmcptsdwo3
-    ${PT_SIM_LIBRARIES} detsdw_common detsdwo3_common)
+    detsdwo3_common detsdw_common ${PT_SIM_LIBRARIES})
 
   set(detqmcptsdwopdim_SRC mpimaindetqmcptsdwopdim.cpp)
   add_executable(detqmcptsdwopdim
     ${detqmcptsdwopdim_SRC})
   target_link_libraries(detqmcptsdwopdim
-    ${PT_SIM_LIBRARIES} detsdw_common detsdwopdim_common)
+    detsdwopdim_common detsdw_common ${PT_SIM_LIBRARIES})
 
   # Compile / Link flags
   set(MPI_EXECUTABLES
