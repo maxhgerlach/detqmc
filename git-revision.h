@@ -6,8 +6,8 @@ extern const char GIT_REVISION_HASH[];
 extern const char HOST_NAME[];
 extern const char BUILD_DATE[];
 extern const char BUILD_TIME[];
-extern const char CPPFLAGS[];
-extern const char CXXFLAGS[];
+// extern const char CPPFLAGS[];
+// extern const char CXXFLAGS[];
 
 #include "metadata.h"
 #include "tools.h"
@@ -18,8 +18,8 @@ inline MetadataMap collectVersionInfo() {
     meta["buildHost"] = numToString(HOST_NAME);
     meta["buildDate"] = numToString(BUILD_DATE);
     meta["buildTime"] = numToString(BUILD_TIME);
-    meta["cppflags"] = numToString(CPPFLAGS);
-    meta["cxxflags"] = numToString(CXXFLAGS);
+    // meta["cppflags"] = numToString(CPPFLAGS);
+    // meta["cxxflags"] = numToString(CXXFLAGS);
 #ifdef BOOST_LIB_VERSION
     meta["BOOST_LIB_VERSION"] = BOOST_LIB_VERSION;
 #endif  //BOOST_LIB_VERSION
