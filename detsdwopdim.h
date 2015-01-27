@@ -102,7 +102,7 @@ public:
     // get / set pars.r
     num  get_exchange_parameter_value() const;
     void set_exchange_parameter_value(num r);
-    constexpr std::string get_exchange_parameter_name() const;
+    constexpr char* get_exchange_parameter_name() const;
     // return 1/2 \int_0^\beta d\tau \sum_i [\vec{\phi}_i(\tau)]^2
     num get_exchange_action_contribution() const;
     // get/set control parameter [r] specific data -- here:
@@ -393,16 +393,18 @@ protected:
 */   
     struct AdjustmentData {
         //adjustment of phiDelta, angleDelta, scaleDelta:
-        static constexpr num InitialPhiDelta = 0.5;
-        static constexpr num InitialAngleDelta = 0.0;
-        static constexpr num InitialScaleDelta = 0.1;
-        static constexpr num MinScaleDelta = 0.0;
-        static constexpr num MaxScaleDelta = 1.0;
-        static constexpr num MinAngleDelta = -1.0;
-        static constexpr num MaxAngleDelta = 1.0;
-        static constexpr uint32_t AccRatioAdjustmentSamples = 100;
-        static constexpr num phiDeltaGrowFactor = 1.05;
-        static constexpr num phiDeltaShrinkFactor = 0.95;
+        // [these const's must also be defined in a source file, detsdwopdim.cpp;
+        //  but the values are set here in the struct definition]
+        constexpr static const num InitialPhiDelta = 0.5;
+        constexpr static const num InitialAngleDelta = 0.0;
+        constexpr static const num InitialScaleDelta = 0.1;
+        constexpr static const num MinScaleDelta = 0.0;
+        constexpr static const num MaxScaleDelta = 1.0;
+        constexpr static const num MinAngleDelta = -1.0;
+        constexpr static const num MaxAngleDelta = 1.0;
+        constexpr static const uint32_t AccRatioAdjustmentSamples = 100;
+        constexpr static const num phiDeltaGrowFactor = 1.05;
+        constexpr static const num phiDeltaShrinkFactor = 0.95;
 
         num phiDelta;   //MC step size for field components (box update)
         num angleDelta; //  for rotation update (this is the minimal cos\theta)

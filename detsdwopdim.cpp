@@ -39,7 +39,6 @@
 
 namespace fs = boost::filesystem;
 
-
 template<CheckerboardMethod CBM, int OPDIM>
 void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
                    RngWrapper& rng, ModelParamsDetSDW pars,
@@ -108,6 +107,33 @@ template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 3>>& replica_
                             DetModelLoggingParams loggingPars /*def arg*/,
                             const std::string& logfiledir);
 #endif //DETSDW_NO_O3
+
+
+// define these constants, values are set in the header file
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialPhiDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialAngleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialScaleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinScaleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxScaleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinAngleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxAngleDelta;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const uint32_t DetSDW<Checkerboard, OPDIM>::AdjustmentData::AccRatioAdjustmentSamples;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaGrowFactor;
+template<CheckerboardMethod Checkerboard, int OPDIM>
+const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaShrinkFactor;
+
+
+
+
 
 
 //initial values for field components chosen from this range:
@@ -4439,7 +4465,7 @@ void DetSDW<CB, OPDIM>::set_exchange_parameter_value(num r) {
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-constexpr std::string DetSDW<CB, OPDIM>::get_exchange_parameter_name() const {
+constexpr char* DetSDW<CB, OPDIM>::get_exchange_parameter_name() const {
     return "r";
 }
 
