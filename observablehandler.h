@@ -26,8 +26,6 @@
 #include "datamapwriter.h"
 #include "statistics.h"
 
-class SerializeContentsKey;
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -120,10 +118,9 @@ protected:
     std::vector<ObsType> jkBlockValues;         // running counts of jackknife block values
     ObsType total;                              // running accumulation regardless of jackknife block
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // serialization by DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &, Archive &ar) {
+    void serializeContents(Archive &ar) {
         ar & lastSweepLogged;
         ar & countValues;
         ar & jkBlockValues;
@@ -218,11 +215,10 @@ protected:
     bool storageFileStarted;
 
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // serialization by DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-        ObservableHandlerCommon<num>::serializeContents(sck, ar);
+    void serializeContents(Archive &ar) {
+        ObservableHandlerCommon<num>::serializeContents(ar);
         ar & timeseriesBuffer;
         ar & storageFileStarted;
         //*storage should not need to be serialized.  It will always write to the end

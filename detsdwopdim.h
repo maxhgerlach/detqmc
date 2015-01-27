@@ -28,8 +28,6 @@ typedef arma::SpMat<cpx> SpMatCpx;
 typedef arma::Col<cpx> VecCpx;
 typedef arma::Cube<cpx> CubeCpx;
 
-class SerializeContentsKey;
-
 std::string cbmToString(CheckerboardMethod cbm);
 
 
@@ -945,20 +943,19 @@ public:
     Serialization
 
 */
-    // only functions that can pass the key to these functions have access
-    // -- in this way access is granted only to select DetQMC methods
+    // serialization by DetQMC methods
     template<class Archive>
-    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-        Base::saveContents(sck, ar);            //base class
-        serializeContentsCommon(sck, ar);
+    void saveContents(Archive &ar) {
+        Base::saveContents(ar);            //base class
+        serializeContentsCommon(ar);
     }
 
     //after loadContents() a sweep must be performed before any measurements are taken:
     //else the green function would not be in a valid state
     template<class Archive>
-    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-        Base::loadContents(sck, ar);            //base class
-        serializeContentsCommon(sck, ar);
+    void loadContents(Archive &ar) {
+        Base::loadContents(ar);            //base class
+        serializeContentsCommon(ar);
         //the fields now have a valid state, update UdV-storage to start
         //sweeping again
         setupUdVStorage_and_calculateGreen();
@@ -966,8 +963,7 @@ public:
     }
 
     template<class Archive>
-    void serializeContentsCommon(SerializeContentsKey const& sck, Archive& ar) {
-    	(void)sck;
+    void serializeContentsCommon(Archive& ar) {
     	// ar & acceptedGlobalShifts;
     	// ar & attemptedGlobalShifts;
     	// ar & acceptedWolffClusterUpdates;

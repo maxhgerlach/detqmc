@@ -20,8 +20,6 @@
 #include "datamapwriter.h"
 #include "statistics.h"
 
-class SerializeContentsKey;
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -102,10 +100,9 @@ protected:
     // separate MetadataMap with just that entry replaced
     std::vector<MetadataMap> par_metaModel;
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // serialization by DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &, Archive &ar) {
+    void serializeContents(Archive &ar) {
         ar & lastSweepLogged;
         ar & countValues;
         ar & par_jkBlockValues;
@@ -254,11 +251,10 @@ protected:
     std::vector<std::unique_ptr<DoubleVectorWriterSuccessive>> par_storage;
     std::vector<char> par_storageFileStarted; // avoiding vector<bool>, but using it equivalently [true/false]
 public:
-    // only functions that can pass the key to this function have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // serialization by DetQMC::serializeContents
     template<class Archive>
-    void serializeContents(SerializeContentsKey const &sck, Archive &ar) {
-        ObservableHandlerPTCommon<double>::serializeContents(sck, ar);
+    void serializeContents(Archive &ar) {
+        ObservableHandlerPTCommon<double>::serializeContents(ar);
         ar & par_timeseriesBuffer;
         ar & par_storageFileStarted;
         //*storage should not need to be serialized.  It will always write to the end

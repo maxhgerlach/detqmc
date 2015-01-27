@@ -37,8 +37,6 @@
 #include "observable.h"
 #include "udv.h"
 
-class SerializeContentsKey;
-
 // factory function to init DetHubbard from parameter struct
 //
 // will do parameter checking etc
@@ -330,33 +328,32 @@ protected:
     };
 
 public:
-    // only functions that can pass the key to these functions have access
-    // -- in this way access is granted only to select DetQMC methods
+    // serialization by selected DetQMC methods
     template<class Archive>
-      void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-      Base::saveContents(sck, ar);      //base class
-      serializeContentsCommon(sck, ar);
+    void saveContents(Archive &ar) {
+        Base::saveContents(ar);      //base class
+        serializeContentsCommon(ar);
     }
 
     //after loadContents() a sweep must be performed before any measurements are taken:
     //else the green function would not be in a valid state
     template<class Archive>
-      void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-      Base::loadContents(sck, ar);      //base class
-      serializeContentsCommon(sck, ar);
-      //the fields now have a valid state, update UdV-storage to start
-      //sweeping again
-      //setupUdVStorage_and_calculateGreen_skeleton(hubbardComputeBmat(this));
-      setupUdVStorage_and_calculateGreen_skeleton(hubbardLeftMultiplyBmat(this));      
-      //now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
+    void loadContents(Archive &ar) {
+        Base::loadContents(ar);      //base class
+        serializeContentsCommon(ar);
+        //the fields now have a valid state, update UdV-storage to start
+        //sweeping again
+        //setupUdVStorage_and_calculateGreen_skeleton(hubbardComputeBmat(this));
+        setupUdVStorage_and_calculateGreen_skeleton(hubbardLeftMultiplyBmat(this));      
+        //now: lastSweepDir == SweepDirection::Up --> the next sweep will be downwards
     }
 
     template<class Archive>
-      void serializeContentsCommon(SerializeContentsKey const &, Archive &ar) {
-      ar & auxfield;
-      ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
-        & occDouble & localMoment & suscq0;
-      ar & zcorr & gf & gf_dt;
+    void serializeContentsCommon(Archive &ar) {
+        ar & auxfield;
+        ar & occUp & occDn & occTotal & eKinetic & ePotential & eTotal
+            & occDouble & localMoment & suscq0;
+        ar & zcorr & gf & gf_dt;
     }
     
 };

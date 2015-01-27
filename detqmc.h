@@ -44,7 +44,6 @@
 
 
 
-class SerializeContentsKey;
 
 // Class handling the simulation
 template<class Model, class ModelParams = ModelParams<Model> >
@@ -117,14 +116,14 @@ private:
     void loadContents(Archive& ar) {
         serializeContentsCommon(ar);
 
-        replica->loadContents(SerializeContentsKey(), ar);
+        replica->loadContents(ar);
     }
 
     template<class Archive>
     void saveContents(Archive& ar) {
         serializeContentsCommon(ar);
 
-        replica->saveContents(SerializeContentsKey(), ar);
+        replica->saveContents(ar);
     }
 
 
@@ -134,11 +133,11 @@ private:
 
         for (auto p = obsHandlers.begin(); p != obsHandlers.end(); ++p) {
             //ATM no further derived classes of ScalarObservableHandler have a method serializeContents
-            (*p)->serializeContents(SerializeContentsKey(), ar);
+            (*p)->serializeContents(ar);
         }
         for (auto p = vecObsHandlers.begin(); p != vecObsHandlers.end(); ++p) {
             //ATM no further derived classes of VectorObservableHandler have a method serializeContents
-            (*p)->serializeContents(SerializeContentsKey(), ar);
+            (*p)->serializeContents(ar);
         }
         ar & sweepsDone & sweepsDoneThermalization;
         ar & swCounter;
@@ -149,26 +148,6 @@ private:
 
 
 
-//Only few member functions of DetQMC are allowed to make instances of
-//this class.  In this way access to the member functions
-//serializeContents(), saveContents(), loadContents() of other classes
-//is restricted.  Compare to
-//http://stackoverflow.com/questions/6310720/declare-a-member-function-of-a-forward-declared-class-as-friend
-class SerializeContentsKey {
-  SerializeContentsKey() {} // default ctor private
-  SerializeContentsKey(const SerializeContentsKey&) {} // copy ctor private
-
-  // grant access to few methods
-  template<class Model, class ModelParams>  
-  template<class Archive>
-  friend void DetQMC<Model,ModelParams>::saveContents(Archive& ar);
-  template<class Model, class ModelParams>  
-  template<class Archive>
-  friend void DetQMC<Model,ModelParams>::loadContents(Archive& ar);
-  template<class Model, class ModelParams>  
-  template<class Archive>
-  friend void DetQMC<Model,ModelParams>::serializeContentsCommon(Archive& ar);
-};
 
 
 

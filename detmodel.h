@@ -56,8 +56,6 @@ typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
 typedef UdV<num> UdVnum;
 
 
-class SerializeContentsKey;
-
 
 // The previous function template, which was to be specialized
 // explicitly, led to errors that were hard to understand and fix.
@@ -143,13 +141,12 @@ public:
     virtual void thermalizationOver() {
     }
 public:
-    // only functions that can pass the key have access to these methods
-    // -- in this way access is granted only to restricted DetQMC methods
+    // For serialization. To be called by DetQMC methods
     template<class Archive>
-    void saveContents(SerializeContentsKey const&, Archive &) {
+    void saveContents(Archive &) {
     }
     template<class Archive>
-    void loadContents(SerializeContentsKey const&, Archive &) {
+    void loadContents(Archive &) {
     }
 };
 
@@ -476,11 +473,10 @@ protected:
     std::vector<KeyValueObservable> obsKeyValue;
 
 public:
-    // only functions that can pass the key to these functions have access
-    // -- in this way access is granted only to DetQMC::serializeContents
+    // serialization by DetQMC::serializeContents
     template<class Archive>
-    void saveContents(SerializeContentsKey const &sck, Archive &ar) {
-        DetModel::saveContents(sck, ar);        //base class
+    void saveContents(Archive &ar) {
+        DetModel::saveContents(ar);        //base class
 
         //the following commented lines are for contents we no longer
         //serialize as they can be reconstructed from the field configuration
@@ -491,8 +487,8 @@ public:
     }
 
     template<class Archive>
-    void loadContents(SerializeContentsKey const &sck, Archive &ar) {
-        DetModel::loadContents(sck, ar);        //base class
+    void loadContents(Archive &ar) {
+        DetModel::loadContents(ar);        //base class
         //UdV-storage, green, green_inv_sv, greenFwd, greenBwd still need to be recast into a valid state
         //by a derived class!
         //TODO: this is a mess!
