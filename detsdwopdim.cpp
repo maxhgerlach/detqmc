@@ -182,7 +182,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
     dud(pars.N, pars.delaySteps), gmd(pars.N, m),
-    logger(logfiledir_), detRatioLogging(), greenLogging()
+    greenConsistencyLogger(logfiledir_, loggingPars.logGreenConsistency), detRatioLogging(), greenLogging()
 {
     //use contents of ModelParams pars
     assert((pars.checkerboard and CB != CB_NONE) or (not pars.checkerboard and CB == CB_NONE));
@@ -4175,43 +4175,47 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
 
 
 template<CheckerboardMethod CB, int OPDIM>
-DetSDW<CB, OPDIM>::Logger::Logger(const std::string& logfiledir_)
+DetSDW<CB, OPDIM>::GreenConsistencyLogger::GreenConsistencyLogger(const std::string& logfiledir_, bool enabled)
     : logfiledir(logfiledir_) {
-    // if (logfiledir == "") logfiledir = ".";
-    // fs::create_directories(logfiledir);
-    // fs::path up_log_path = fs::path(logfiledir) /
-    //     fs::path("up_log.txt");
-    // fs::path down_log_path = fs::path(logfiledir) /
-    //     fs::path("down_log.txt");
-    // up_log.open(up_log_path.c_str(), std::ios::app);
-    // down_log.open(down_log_path.c_str(), std::ios::app);
+    if (enabled) {
+        if (logfiledir == "") logfiledir = ".";
+        fs::create_directories(logfiledir);
+        fs::path up_log_path = fs::path(logfiledir) /
+            fs::path("up_log.txt");
+        fs::path down_log_path = fs::path(logfiledir) /
+            fs::path("down_log.txt");
+        up_log.open(up_log_path.c_str(), std::ios::app);
+        down_log.open(down_log_path.c_str(), std::ios::app);
+    }
 }
 
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::greenConsistencyCheck(const MatData& g1, const MatData& g2, SweepDirection cur_sweep_dir) {
     (void)(g1); (void)(g2); (void)(cur_sweep_dir);
-    // const auto N = pars.N;
-    // // log max total difference, mean difference, max difference on the block diagonals
-    // num diag_diff = 0.0;
-    // for (uint32_t colblock = 0; colblock < MatrixSizeFactor; ++colblock) {
-    //     for (uint32_t rowblock = 0; rowblock < MatrixSizeFactor; ++rowblock) {
-    //         for (uint32_t site = 0; site < N; ++ site) {
-    //             uint32_t colentry = site + colblock*N;
-    //             uint32_t rowentry = site + rowblock*N;
-    //             num diff = std::abs(g1(rowentry, colentry) - g2(rowentry, colentry));
-    //             if (diff > diag_diff) {
-    //                 diag_diff = diff;
-    //             }
-    //         }
-    //     }
-    // }
-    // if (cur_sweep_dir == SweepDirection::Up) {
-    //     logger.up_log << diag_diff << '\n';
-    // }
-    // else {
-    //     logger.down_log << diag_diff << '\n';
-    // }
+    if (loggingParams.logGreenConsistency) {
+        const auto N = pars.N;
+        // log max total difference, mean difference, max difference on the block diagonals
+        num diag_diff = 0.0;
+        for (uint32_t colblock = 0; colblock < MatrixSizeFactor; ++colblock) {
+            for (uint32_t rowblock = 0; rowblock < MatrixSizeFactor; ++rowblock) {
+                for (uint32_t site = 0; site < N; ++ site) {
+                    uint32_t colentry = site + colblock*N;
+                    uint32_t rowentry = site + rowblock*N;
+                    num diff = std::abs(g1(rowentry, colentry) - g2(rowentry, colentry));
+                    if (diff > diag_diff) {
+                        diag_diff = diff;
+                    }
+                }
+            }
+        }
+        if (cur_sweep_dir == SweepDirection::Up) {
+            greenConsistencyLogger.up_log << diag_diff << '\n';
+        }
+        else {
+            greenConsistencyLogger.down_log << diag_diff << '\n';
+        }
+    }
 }
 
 

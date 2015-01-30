@@ -70,6 +70,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("logSV", po::value<bool>(&loggingpar.logSV)->default_value(false), "log Green's function singular value range, max, min")
         ("checkAndLogDetRatio", po::value<bool>(&loggingpar.checkAndLogDetRatio)->default_value(false), "verify correctness of local spin update transition probabilities")
         ("checkAndLogGreen", po::value<bool>(&loggingpar.checkAndLogGreen)->default_value(false), "verify correctness of updated Green's functions in local spin update")
+        ("logGreenConsistency", po::value<bool>(&loggingpar.logGreenConsistency)->default_value(false), "check green consistency between wrapping / advancing, log differences")
         ;
     
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");

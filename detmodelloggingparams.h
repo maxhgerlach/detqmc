@@ -29,15 +29,19 @@ struct DetModelLoggingParams {
 
     bool checkAndLogDetRatio;   // verify correctness of local spin update transition probabilities
     std::string logDetRatio_filename;
+
     bool checkAndLogGreen;      // verify correctness of updated Green's functions in local spin update
     std::string logGreen_filename;
-    
+
+    bool logGreenConsistency;   // check green consistency between wrapping / advancing, log differences
+
     std::set<std::string> specified;
 
     DetModelLoggingParams() :
         logSV(false), logSV_filename(""), logSV_max_filename(""), logSV_min_filename(""),
         checkAndLogDetRatio(false), logDetRatio_filename(""),
         checkAndLogGreen(false), logGreen_filename(""),
+        logGreenConsistency(false),
         specified()
     { }
     void check();
@@ -50,6 +54,7 @@ private:
         ar  & logSV & logSV_filename & logSV_max_filename & logSV_min_filename
             & checkAndLogDetRatio & logDetRatio_filename
             & checkAndLogGreen & logGreen_filename
+            & logGreenConsistency
             & specified;
     }
 };

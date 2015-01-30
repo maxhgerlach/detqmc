@@ -937,14 +937,16 @@ protected:
      For debugging / consistency purposes:
   
  */
-    struct Logger {
+    // wrapping/advancing green consistency checks (optional)
+    struct GreenConsistencyLogger {
         std::string logfiledir;
         // greenConsistency results during sweep up / down:
         std::ofstream up_log, down_log;
         
-        Logger(const std::string& logfiledir_);
-    } logger;
-    
+        GreenConsistencyLogger(const std::string& logfiledir_, bool enabled);
+    } greenConsistencyLogger;
+
+    // used for further logging / consistency checks
     std::unique_ptr<DoubleVectorWriterSuccessive> detRatioLogging, greenLogging;
 public:
 /*
