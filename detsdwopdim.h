@@ -395,6 +395,10 @@ protected:
         //adjustment of phiDelta, angleDelta, scaleDelta:
         // [these const's must also be defined in a source file, detsdwopdim.cpp;
         //  but the values are set here in the struct definition]
+#if __GNUC__ == 4 && __GNUC_MINOR < 7
+//work around g++ bug
+#define const
+#endif// __GNUC__ == 4 && __GNUC_MINOR < 7
         constexpr static const num InitialPhiDelta = 0.5;
         constexpr static const num InitialAngleDelta = 0.0;
         constexpr static const num InitialScaleDelta = 0.1;
@@ -405,6 +409,9 @@ protected:
         constexpr static const uint32_t AccRatioAdjustmentSamples = 100;
         constexpr static const num phiDeltaGrowFactor = 1.05;
         constexpr static const num phiDeltaShrinkFactor = 0.95;
+#if __GNUC__ == 4 && __GNUC_MINOR < 7
+#undef const
+#endif// __GNUC__ == 4 && __GNUC_MINOR < 7
 
         num phiDelta;   //MC step size for field components (box update)
         num angleDelta; //  for rotation update (this is the minimal cos\theta)

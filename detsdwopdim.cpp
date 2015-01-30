@@ -110,27 +110,34 @@ template void createReplica(std::unique_ptr<DetSDW<CB_ASSAAD_BERG, 3>>& replica_
 
 
 // define these constants, values are set in the header file
+#if __GNUC__ == 4 && __GNUC_MINOR < 7
+//work around g++ bug
+#define const
+#endif// __GNUC__ == 4 && __GNUC_MINOR < 7
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialPhiDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialPhiDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialAngleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialAngleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialScaleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::InitialScaleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinScaleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinScaleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxScaleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxScaleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinAngleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MinAngleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxAngleDelta;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::MaxAngleDelta;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const uint32_t DetSDW<Checkerboard, OPDIM>::AdjustmentData::AccRatioAdjustmentSamples;
+constexpr const uint32_t DetSDW<Checkerboard, OPDIM>::AdjustmentData::AccRatioAdjustmentSamples;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaGrowFactor;
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaGrowFactor;
 template<CheckerboardMethod Checkerboard, int OPDIM>
-const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaShrinkFactor;
-
+constexpr const num DetSDW<Checkerboard, OPDIM>::AdjustmentData::phiDeltaShrinkFactor;
+#if __GNUC__ == 4 && __GNUC_MINOR < 7
+//work around g++ bug
+#undef const
+#endif// __GNUC__ == 4 && __GNUC_MINOR < 7
 
 
 
