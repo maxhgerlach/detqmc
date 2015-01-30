@@ -705,12 +705,16 @@ void DetQMCPT<Model, ModelParams>::run() {
                 //but only save state and exit if we have done an even
                 //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
                 if (processIndex == 0) {
+                    std::cout << "Current stage:\n"
+                              << " sweeps done thermalization: " << sweepsDoneThermalization << "\n"
+                              << " sweeps done measurements:   " << sweepsDone << "\n";
                     std::cout << "Save state / results and exit gracefully." << std::endl;
                 }
                 if (stage == Stage::M) {
                     saveResults();
                 }
                 saveState();
+                std::cout << " OK " << std::endl;
                 break;  //while
             }
     	}
@@ -738,7 +742,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                 //MPI_Barrier(MPI_COMM_WORLD);
                 world.barrier();
                 if (processIndex == 0) {
-                    std::cout << std::endl;
+                    std::cout << " OK" << std::endl;
                 }
             }
             if (sweepsDoneThermalization == parsmc.thermalization) {
@@ -793,7 +797,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                 //MPI_Barrier(MPI_COMM_WORLD);
                 world.barrier();
                 if (processIndex == 0) {
-                    std::cout << std::endl;
+                    std::cout << " OK" << std::endl;
                 }
             }
             if (sweepsDone == parsmc.sweeps) {

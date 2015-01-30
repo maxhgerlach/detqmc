@@ -410,11 +410,15 @@ void DetQMC<Model, ModelParams>::run() {
                 //which signals us to abort this run for some other reason.
                 //but only save state and exit if we have done an even
                 //number of sweeps for ("economic") serialization guarantee [else do one sweep more]
-                std::cout << "Save state / results and exit gracefully." << std::endl;
+                std::cout << "Current stage:\n"
+                          << " sweeps done thermalization: " << sweepsDoneThermalization << "\n"
+                          << " sweeps done measurements:   " << sweepsDone << "\n";
+                std::cout << "Save state / results and exit gracefully... ";
                 if (stage == Stage::M) {
                     saveResults();
                 }
                 saveState();
+                std::cout << " OK " << std::endl;
                 break;  //while
             }
     	}
@@ -437,7 +441,7 @@ void DetQMC<Model, ModelParams>::run() {
                 std::cout  << "  " << sweepsDoneThermalization << " ... saving state...";
                 swCounter = 0;
                 saveState();
-                std::cout << std::endl;
+                std::cout << " OK" << std::endl;
             }
             if (sweepsDoneThermalization == parsmc.thermalization) {
                 std::cout << "Thermalization finished\n" << std::endl;
@@ -482,7 +486,7 @@ void DetQMC<Model, ModelParams>::run() {
                 swCounter = 0;
                 saveResults();
                 saveState();
-                std::cout << std::endl;
+                std::cout << " OK" << std::endl;
             }
             if (sweepsDone == parsmc.sweeps) {
                 swCounter = 0;
