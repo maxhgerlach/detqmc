@@ -60,7 +60,7 @@ endif (${USE_CLANG})
 project (Det)
 
 
-# standard CPPFLAGS etc
+
 
 
 include_directories(
@@ -68,6 +68,12 @@ include_directories(
   "$ENV{HOME}/include"
   "$ENV{HOME}/opt/include"
   )
+
+
+# CLang THP workarounds
+if (${USE_CLANG} AND ${THP_DOMAIN})
+  add_definitions("-D__extern_always_inline=inline")
+endif (${USE_CLANG} AND ${THP_DOMAIN})
 
 
 # MPI
@@ -97,14 +103,14 @@ add_definitions(-DDUMA_NO_DUMA) # TODO SOMETIME reenable
 
 # CXX flags:
 # -march settings
-if (NOT ${THP_DOMAIN})
+if (${USE_CLANG} OR NOT ${THP_DOMAIN})
   set(MARCH_FLAGS "-march=native")
-else (NOT ${THP_DOMAIN})
+else (${USE_CLANG} OR NOT ${THP_DOMAIN})
   # setting to use instead of --march=native -- to be able to run on Core2 computers in the thp domain
   # use a safer setting
   # [obtained via `cc -march=native -E -v - </dev/null 2>&1 | grep cc1` on l07]
   set(MARCH_FLAGS "-march=core2 -mcx16 -msahf -mno-movbe -mno-aes -mno-pclmul -mno-popcnt -mno-abm -mno-lwp -mno-fma -mno-fma4 -mno-xop -mno-bmi -mno-tbm -mno-avx -mno-sse4.2 -msse4.1 --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=6144 -mtune=core2 -fstack-protector")
-endif (NOT ${THP_DOMAIN})
+endif (${USE_CLANG} OR NOT ${THP_DOMAIN})
 set(WARNING_FLAGS "-Wall -Winit-self -Wextra -Woverloaded-virtual -Wconversion")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${MARCH_FLAGS} ${WARNING_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++0x")
