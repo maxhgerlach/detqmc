@@ -15,101 +15,79 @@
 class GeneralError : public std::exception {
     std::string message;
 public:
-    GeneralError(const std::string& msg) : message(msg) {}
+    GeneralError(const std::string& msg, const char* file = 0, int line = -1)
+    {
+        if (file and line >= 0) {
+            message = file + (":" + numToString(line)) + " -> " + msg;
+        } else {
+            message = msg;
+        }
+    }
     virtual ~GeneralError() throw () { }
     virtual const char* what() const throw () {
         return message.c_str();
     }
 };
 
-class WrongObsIndex : public std::exception {
-    int oi;
-    bool vec;
+class WrongObsIndex : public GeneralError {
 public:
-    WrongObsIndex(int obsIndex, bool vector=false) : oi(obsIndex), vec(vector) {}
-    virtual const char* what() const throw () {
-        return ((vec ? "Vector " : "") + std::string("Observable index ") + numToString(oi) +
-                " not supported").c_str();
-    }
+    WrongObsIndex(int obsIndex, bool vector=false, const char* file = 0, int line = -1)
+        : GeneralError(((vector ? "Vector " : "") + std::string("Observable index ") + numToString(obsIndex) +
+                        " not supported"), file, line)
+        { }
 };
 
 
-class ParameterMissing : public std::exception {
-    std::string par;
+class ParameterMissing : public GeneralError {
 public:
-    ParameterMissing(const std::string& par_) : par(par_) {}
-    virtual ~ParameterMissing() throw () { }
-    virtual const char* what() const throw () {
-        return ("Parameter " + par + " not given.").c_str();
-    }
+    ParameterMissing(const std::string& par, const char* file = 0, int line = -1)
+        : GeneralError("Parameter " + par + " not given.", file, line)
+        { }
 };
 
 
-class ParameterWrong : public std::exception {
-    std::string message;
+class ParameterWrong : public GeneralError {
 public:
     template <typename ValType>
-    ParameterWrong(const std::string& par, const ValType& val) :
-            message("Parameter " + par + " has incorrect value "
-                    + numToString(val)) {
-    }
-    ParameterWrong(const std::string& msg) : message(msg) {
-    }
-    virtual ~ParameterWrong() throw () { }
-    virtual const char* what() const throw () {
-        return message.c_str();
-    }
+    ParameterWrong(const std::string& par, const ValType& val, const char* file = 0, int line = -1)
+        : GeneralError("Parameter " + par + " has incorrect value "
+                       + numToString(val), file, line)
+        { }
+    ParameterWrong(const std::string& message, const char* file = 0, int line = -1)
+        : GeneralError(message, file, line)
+        { }
 };
 
 
-class ConfigurationError : public std::exception {
-    std::string message;
+class ConfigurationError : public GeneralError {
 public:
-    ConfigurationError(const std::string& msg) : message(msg) {}
-    virtual ~ConfigurationError() throw () { }
-    virtual const char* what() const throw () {
-        return message.c_str();
-    }
+    ConfigurationError(const std::string& msg, const char* file = 0, int line = -1)
+        : GeneralError(msg, file, line)
+        { }
 };
 
 
-class SerializationError : public std::exception {
-    std::string message;
+class SerializationError : public GeneralError {
 public:
-    SerializationError(const std::string& msg) : message(msg) {}
-    virtual ~SerializationError() throw () { }
-    virtual const char* what() const throw () {
-        return message.c_str();
-    }
+    SerializationError(const std::string& msg, const char* file = 0, int line = -1)
+        : GeneralError(msg, file, line)
+        {}
 };
 
 
 
-class ReadError : public std::exception {
-    std::string filename;
+class ReadError : public GeneralError {
 public:
-    ReadError(std::string filename_) throw ():
-        filename(filename_) {
-    }
-    ~ReadError() throw () { }
-    virtual const char* what() const throw () {
-        return ("Can't read from file " + filename).c_str();
-    }
+    ReadError(std::string filename, const char* file = 0, int line = -1) throw ()
+        : GeneralError("Can't read from file " + filename, file, line)
+        { }
 };
 
-class KeyUndefined : public std::exception {
-    std::string key;
+class KeyUndefined : public GeneralError {
 public:
-    KeyUndefined() : key("")
-    { }
-    KeyUndefined(std::string k) : key(k)
-    { }
-
-    virtual const char* what() const throw () {
-        return ("key undefined: " + key).c_str();
-    }
-
-    ~KeyUndefined() throw() { }
+    KeyUndefined(const std::string& key = "", const char* file = 0, int line = -1)
+        : GeneralError("key undefined: " + key, file, line)
+        { }
 };
 
 
