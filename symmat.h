@@ -36,46 +36,46 @@ struct GenMat {
 
 template<typename T, uint32_t size>
 struct SymMat {
-	static const uint32_t dataSize = size * (size + 1) / 2;
+    static const uint32_t dataSize = size * (size + 1) / 2;
 
-	checkarray<T, dataSize> data;
+    checkarray<T, dataSize> data;
 
-	T& operator()(uint32_t idx1, uint32_t idx2) {
+    T& operator()(uint32_t idx1, uint32_t idx2) {
 #ifdef _GLIBCXX_DEBUG
-		if (idx2 >= size or idx1 >= size) {
-			throw std::out_of_range("SymMat: access outside matrix");
-		}
+        if (idx2 >= size or idx1 >= size) {
+            throw std::out_of_range("SymMat: access outside matrix");
+        }
 #endif //_GLIBCXX_DEBUG
-		if (idx2 < idx1) {
-			std::swap(idx1, idx2);
-		}
-		// computation of dataIndex (0-based like everything):
-		// dataIndex = size + (size-1) + ... + (size-idx1+1) + idx2 - idx1
-		//           = idx1 * size - \sum_{i=1}^{idx1-1} i   + idx2 - idx1
-		//           = idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1
-		return data[idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1];
-	}
+        if (idx2 < idx1) {
+            std::swap(idx1, idx2);
+        }
+        // computation of dataIndex (0-based like everything):
+        // dataIndex = size + (size-1) + ... + (size-idx1+1) + idx2 - idx1
+        //           = idx1 * size - \sum_{i=1}^{idx1-1} i   + idx2 - idx1
+        //           = idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1
+        return data[idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1];
+    }
 };
 
 
 template<typename T, uint32_t size>
 struct SymMatOffdiag {
-	static const uint32_t dataSize = size * (size + 1) / 2 - size;  // subtract diagonal length
+    static const uint32_t dataSize = size * (size + 1) / 2 - size;  // subtract diagonal length
 
-	checkarray<T, dataSize> data;
+    checkarray<T, dataSize> data;
 
-	T& operator()(uint32_t idx1, uint32_t idx2) {
+    T& operator()(uint32_t idx1, uint32_t idx2) {
 #ifdef _GLIBCXX_DEBUG
-		if (idx2 == idx1) {
-			throw std::out_of_range("SymMatOffdiag: access to diagonal elements");
-		}
-		if (idx2 >= size or idx1 >= size) {
-			throw std::out_of_range("SymMatOffdiag: access outside matrix");
-		}
+        if (idx2 == idx1) {
+            throw std::out_of_range("SymMatOffdiag: access to diagonal elements");
+        }
+        if (idx2 >= size or idx1 >= size) {
+            throw std::out_of_range("SymMatOffdiag: access outside matrix");
+        }
 #endif //_GLIBCXX_DEBUG
-		if (idx2 < idx1) {
-			std::swap(idx1, idx2);
-		}
-		return data[idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1 - (idx1 + 1)]; // subtract number of elements that would be on diagonal
-	}
+        if (idx2 < idx1) {
+            std::swap(idx1, idx2);
+        }
+        return data[idx1 * size - (idx1-1)*idx1/2 + idx2 - idx1 - (idx1 + 1)]; // subtract number of elements that would be on diagonal
+    }
 };
