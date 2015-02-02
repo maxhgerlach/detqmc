@@ -60,8 +60,8 @@ public:
         : GeneralError(message, file, line)
         { }
 };
-#define throw_ParameterWrong_message(message) throw ParameterMissing(message, __FILE__, __LINE__)
-#define throw_ParameterWrong(par, val) throw ParameterMissing(par, val, __FILE__, __LINE__)
+#define throw_ParameterWrong_message(message) throw ParameterWrong(message, __FILE__, __LINE__)
+#define throw_ParameterWrong(par, val) throw ParameterWrong(par, val, __FILE__, __LINE__)
 
 
 class ConfigurationError : public GeneralError {

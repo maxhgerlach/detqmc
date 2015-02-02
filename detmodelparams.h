@@ -84,10 +84,10 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 
     //we need exactly one of the parameters 'm' and 'beta'
     if (pars.specified.count("beta") != 0 and pars.specified.count("m") != 0) {
-    	throw_ParameterWrong("Only specify one of the parameters beta and m");
+    	throw_ParameterWrong_message("Only specify one of the parameters beta and m");
     }
     if (pars.specified.count("m") == 0 and pars.specified.count("beta") == 0) {
-    	throw_ParameterWrong("Specify either parameter m or beta");
+    	throw_ParameterWrong_message("Specify either parameter m or beta");
     }
 
 
@@ -106,7 +106,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
         pars.s -= 1;
     }
     if (pars.s < 1) {
-        throw_ParameterWrong("Cannot choose parameter s obeying 0 < s < m =" + numToString(pars.m));
+        throw_ParameterWrong_message("Cannot choose parameter s obeying 0 < s < m =" + numToString(pars.m));
     }
 
     return pars;
