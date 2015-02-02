@@ -102,7 +102,7 @@ public:
     // get / set pars.r
     num  get_exchange_parameter_value() const;
     void set_exchange_parameter_value(num r);
-    constexpr char* get_exchange_parameter_name() const;
+    const char* get_exchange_parameter_name() const;
     // return 1/2 \int_0^\beta d\tau \sum_i [\vec{\phi}_i(\tau)]^2
     num get_exchange_action_contribution() const;
     // get/set control parameter [r] specific data -- here:

@@ -4476,7 +4476,7 @@ void DetSDW<CB, OPDIM>::set_exchange_parameter_value(num r) {
 }
 
 template<CheckerboardMethod CB, int OPDIM>
-constexpr char* DetSDW<CB, OPDIM>::get_exchange_parameter_name() const {
+const char* DetSDW<CB, OPDIM>::get_exchange_parameter_name() const {
     return "r";
 }
 
