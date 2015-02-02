@@ -15,29 +15,29 @@ void ModelParams<DetHubbard>::check() {
     neededModelPars += "t", "U", "mu", "L", "d", "checkerboard";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
+            throw_ParameterMissing(*p);
         }
     }
 
     if (model != "hubbard") {
-        throw ParameterWrong("Parameters specify model: " + model + " instead of hubbard");
+        throw_ParameterWrong_message("Parameters specify model: " + model + " instead of hubbard");
     }
 
     if (checkerboard and L % 2 != 0) {
-        throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
+        throw_ParameterWrong_message("Checker board decomposition only supported for even linear lattice sizes");
     }
     if (checkerboard and d != 2) {
-        throw ParameterWrong("Checker board decomposition only supported for 2d lattices");
+        throw_ParameterWrong_message("Checker board decomposition only supported for 2d lattices");
     }
     if (bc != "pbc") {
-        throw ParameterWrong("Boundary conditions " + bc + " not supported for Hubbard model (only pbc)");
+        throw_ParameterWrong_message("Boundary conditions " + bc + " not supported for Hubbard model (only pbc)");
     }
 
     //check that only positive values are passed for certain parameters
 #define IF_NOT_POSITIVE(x) if (specified.count(#x) > 0 and x <= 0)
 #define CHECK_POSITIVE(x)   {                   \
         IF_NOT_POSITIVE(x) {                    \
-            throw ParameterWrong(#x, x);        \
+            throw_ParameterWrong(#x, x);        \
         }                                       \
     }
     CHECK_POSITIVE(L);

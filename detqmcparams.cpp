@@ -17,7 +17,7 @@ void DetQMCParams::check() {
     neededMCPars += "sweeps", "thermalization", "jkBlocks", "timeseries", "measureInterval";
     for (auto p = neededMCPars.cbegin(); p != neededMCPars.cend(); ++p) {
         if (specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
+            throw_ParameterMissing(*p);
         }
     }
     if (specified.count("saveInterval") == 0) {
@@ -25,13 +25,13 @@ void DetQMCParams::check() {
     }
 
     if (sweeps % 2 != 0) {
-        throw ParameterWrong("Parameter sweeps must be even [else serialization consistency cannot be guaranteed]");
+        throw_ParameterWrong_message("Parameter sweeps must be even [else serialization consistency cannot be guaranteed]");
     }
     if (thermalization % 2 != 0) {
-        throw ParameterWrong("Parameter thermalization must be even [else serialization consistency cannot be guaranteed]");
+        throw_ParameterWrong_message("Parameter thermalization must be even [else serialization consistency cannot be guaranteed]");
     }
     if (saveInterval % 2 != 0) {
-        throw ParameterWrong("Parameter saveInterval must be even [else serialization consistency cannot be guaranteed]");
+        throw_ParameterWrong_message("Parameter saveInterval must be even [else serialization consistency cannot be guaranteed]");
     }
 
     if (greenUpdateType_string == "simple") {
@@ -39,22 +39,22 @@ void DetQMCParams::check() {
     } else if (greenUpdateType_string == "stabilized") {
         greenUpdateType = GreenUpdateTypeStabilized;
     } else {
-        throw ParameterWrong("greenUpdateType", greenUpdateType_string);
+        throw_ParameterWrong("greenUpdateType", greenUpdateType_string);
     }
 
     //some parameter consistency checking:
     if (sweeps % jkBlocks != 0) {
-        throw ParameterWrong("Number of jackknife blocks " + numToString(jkBlocks)
-                             + " does not match number of sweeps " + numToString(sweeps));
+        throw_ParameterWrong_message("Number of jackknife blocks " + numToString(jkBlocks)
+                                     + " does not match number of sweeps " + numToString(sweeps));
     }
     if ((measureInterval > sweeps) or
         (sweeps % measureInterval != 0)) {
-        throw ParameterWrong("Measurement interval " + numToString(measureInterval)
-                             + " ill-chosen for number of sweeps " + numToString(sweeps));
+        throw_ParameterWrong_message("Measurement interval " + numToString(measureInterval)
+                                     + " ill-chosen for number of sweeps " + numToString(sweeps));
     }
     if (sweeps % saveInterval != 0) {
-        throw ParameterWrong("saveInterval (" + numToString(saveInterval) +
-                             ") needs to be a divisor of sweeps (" + numToString(sweeps) + ")");
+        throw_ParameterWrong_message("saveInterval (" + numToString(saveInterval) +
+                                     ") needs to be a divisor of sweeps (" + numToString(sweeps) + ")");
     }
 
 }

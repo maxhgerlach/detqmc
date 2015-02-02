@@ -1357,7 +1357,7 @@ template<class Matrix> inline
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                           const Matrix&, Band, int, bool) {
-    throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+    throw_GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
     //TODO change things so this codepath is not needed
     return MatData();
 }
@@ -1454,7 +1454,7 @@ template<class Matrix> inline
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
                                           const Matrix&, Band, int, bool) {
-    throw GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+    throw_GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
     return MatData();
 }
 
@@ -3344,7 +3344,7 @@ template<int OPDIM>
 struct proposeRandomRotatedVector {
     static VecNum::fixed<OPDIM> give(RngWrapper& rng, num angleDelta, VecNum::fixed<OPDIM> oldvec) {
         (void) rng; (void)angleDelta; (void)oldvec;
-        throw GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
+        throw_GeneralError("proposeRandomRotatedVector is only supported for the O(3) model");
         return oldvec;
     }
 };
@@ -3417,7 +3417,7 @@ struct proposeRandomScaledVector {
     static std::tuple<VecNum::fixed<OPDIM>, bool> give (NormalDistribution& normal_distribution,
                                                         num scaleDelta, VecNum::fixed<OPDIM> vec) {
         (void) normal_distribution; (void) scaleDelta; (void) vec;
-        throw GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
+        throw_GeneralError("proposeRandomScaledVector is only supported for the O(3) model");
         return std::make_tuple(vec, false);
     }
 };
@@ -3488,7 +3488,7 @@ struct proposeRandomRotatedScaledVector {
                                                 VecNum::fixed<OPDIM> vec) {
         (void) normal_distribution; (void) rng;
         (void) scaleDelta; (void) angleDelta; (void) vec;
-        throw GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
+        throw_GeneralError("proposeRandomRotatedScaledVector is only supported for the O(3) model");
         return std::make_tuple(vec, false);
     }
 };
@@ -4001,25 +4001,25 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
             if (std::abs(coshTermPhiBefore) > 1E-10) {
                 relDiffCosh = std::abs((coshTermPhi(site, k) - coshTermPhiBefore) / coshTermPhiBefore);
                 if (relDiffCosh > 1E-10) {
-                    throw GeneralError("coshTermPhi is inconsistent");
+                    throw_GeneralError("coshTermPhi is inconsistent");
                 }
             }
             if (std::abs(sinhTermPhiBefore) > 1E-10) {
                 relDiffSinh = std::abs((sinhTermPhi(site, k) - sinhTermPhiBefore) / sinhTermPhiBefore);
                 if (relDiffSinh > 1E-10) {
-                    throw GeneralError("sinhTermPhi is inconsistent");
+                    throw_GeneralError("sinhTermPhi is inconsistent");
                 }
             }
             if (std::abs(coshTermCDWlBefore) > 1E-10) {
                 relDiffCosh = std::abs((coshTermCDWl(site, k) - coshTermCDWlBefore) / coshTermCDWlBefore);
                 if (relDiffCosh > 1E-10) {
-                    throw GeneralError("coshTermCDWl is inconsistent");
+                    throw_GeneralError("coshTermCDWl is inconsistent");
                 }
             }
             if (std::abs(sinhTermCDWlBefore) > 1E-10) {
                 relDiffSinh = std::abs((sinhTermCDWl(site, k) - sinhTermCDWlBefore) / sinhTermCDWlBefore);
                 if (relDiffSinh > 1E-10) {
-                    throw GeneralError("sinhTermCDWl is inconsistent");
+                    throw_GeneralError("sinhTermCDWl is inconsistent");
                 }
             }
         }
@@ -4029,7 +4029,7 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
         for (uint32_t site = 0; site < N; ++site) {
             int32_t l = cdwl(site, k);
             if (l != +2 and l != -2 and l != +1 and l != -1) {
-                throw GeneralError("cdwl is inconsistent");
+                throw_GeneralError("cdwl is inconsistent");
             }
         }
     }

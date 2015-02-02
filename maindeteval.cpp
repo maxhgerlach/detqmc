@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
         DoubleSeriesLoader reader;
         reader.readFromFile(fn, subsample, discard, read, guessedLength);
         if (reader.getColumns() != 1) {
-            throw GeneralError("File " + fn + " does not have exactly 1 column");
+            throw_GeneralError("File " + fn + " does not have exactly 1 column");
         }
 
         std::vector<double>* data = reader.getData();       //TODO: smart pointers!

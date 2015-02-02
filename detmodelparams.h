@@ -64,7 +64,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
     neededModelPars += "dtau", "s";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (pars.specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
+            throw_ParameterMissing(*p);
         }
     }
 
@@ -72,7 +72,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 #define IF_NOT_POSITIVE(x) if (pars.specified.count(#x) > 0 and pars.x <= 0)
 #define CHECK_POSITIVE(x)   {                   \
         IF_NOT_POSITIVE(x) {                    \
-            throw ParameterWrong(#x, pars.x);   \
+            throw_ParameterWrong(#x, pars.x);   \
         }                                       \
     }
     CHECK_POSITIVE(beta);
@@ -84,10 +84,10 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
 
     //we need exactly one of the parameters 'm' and 'beta'
     if (pars.specified.count("beta") != 0 and pars.specified.count("m") != 0) {
-    	throw ParameterWrong("Only specify one of the parameters beta and m");
+    	throw_ParameterWrong("Only specify one of the parameters beta and m");
     }
     if (pars.specified.count("m") == 0 and pars.specified.count("beta") == 0) {
-    	throw ParameterWrong("Specify either parameter m or beta");
+    	throw_ParameterWrong("Specify either parameter m or beta");
     }
 
 
@@ -106,7 +106,7 @@ ModelParams updateTemperatureParameters(ModelParams pars) {
         pars.s -= 1;
     }
     if (pars.s < 1) {
-        throw ParameterWrong("Cannot choose parameter s obeying 0 < s < m =" + numToString(pars.m));
+        throw_ParameterWrong("Cannot choose parameter s obeying 0 < s < m =" + numToString(pars.m));
     }
 
     return pars;

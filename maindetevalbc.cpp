@@ -107,7 +107,7 @@ int main(int argc, char **argv) {
         dircount = inputDirectories.size();
     }
     if (dircount != 4) {
-        throw GeneralError("Number of passed input directories " + numToString(dircount) + " is not 4.");
+        throw_GeneralError("Number of passed input directories " + numToString(dircount) + " is not 4.");
     }
 
     namespace fs = boost::filesystem;
@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
         MetadataMap this_meta = readOnlyMetadata(info_dat_fname);
         std::string this_bc = this_meta["bc"];
         if (bc_evalSamples.count(this_bc)) {
-            throw GeneralError("Boundary condition " + this_bc + " appears more than one time");
+            throw_GeneralError("Boundary condition " + this_bc + " appears more than one time");
         }
         std::string keys[] = {"buildDate", "buildHost", "buildTime",
                               "cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
@@ -184,7 +184,7 @@ int main(int argc, char **argv) {
             DoubleSeriesLoader reader;
             reader.readFromFile(fn, subsample, discard, read, guessedLength);
             if (reader.getColumns() != 1) {
-                throw GeneralError("File " + fn + " does not have exactly 1 column");
+                throw_GeneralError("File " + fn + " does not have exactly 1 column");
             }
 
             std::vector<double>* data = reader.getData();       //TODO: smart pointers!
@@ -260,13 +260,13 @@ int main(int argc, char **argv) {
     // verify that each bc is present, meta data is present and matches
     for (const std::string& bc : needed_bcs) {
         if (bc_L.count(bc) == 0) {
-            throw GeneralError("No data present for boundary condition: " + bc);
+            throw_GeneralError("No data present for boundary condition: " + bc);
         }        
     }
-    if (not all_map_values_are_equal(bc_L)) throw GeneralError("mismatch for parameter L");
-    if (not all_map_values_are_equal(bc_N)) throw GeneralError("mismatch for parameter N");    
-    if (not all_map_values_are_equal(bc_m)) throw GeneralError("mismatch for parameter m");
-    if (not all_map_values_are_equal(bc_dtau)) throw GeneralError("mismatch for parameter dtau");
+    if (not all_map_values_are_equal(bc_L)) throw_GeneralError("mismatch for parameter L");
+    if (not all_map_values_are_equal(bc_N)) throw_GeneralError("mismatch for parameter N");    
+    if (not all_map_values_are_equal(bc_m)) throw_GeneralError("mismatch for parameter m");
+    if (not all_map_values_are_equal(bc_dtau)) throw_GeneralError("mismatch for parameter dtau");
 
     uint32_t N = bc_N["pbc"];
     uint32_t m = bc_m["pbc"];

@@ -255,7 +255,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     processIndex = world.rank();
     numProcesses = world.size();
     if (numProcesses != int(parspt.controlParameterValues.size())) {
-        throw ConfigurationError("Number of processes " + numToString(numProcesses) +
+        throw_ConfigurationError("Number of processes " + numToString(numProcesses) +
                                  " does not match number of control parameter values " +
                                  numToString(parspt.controlParameterValues.size()));
     }
@@ -986,7 +986,7 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeConsistencyCheck() {
     double diff = local_exchange_parameter_value -
         parspt.controlParameterValues[local_current_parameter_index];
     if ( std::abs(diff) > 1E-10 ) {
-        throw GeneralError("local_current_parameter_index mismatch!");
+        throw_GeneralError("local_current_parameter_index mismatch!");
     }
     std::vector<double> process_par_values(numProcesses, 0.0);
     // MPI_Gather( &local_exchange_parameter_value, // send buf
@@ -1009,7 +1009,7 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeConsistencyCheck() {
             num v1 = process_par_values[pi];
             num v2 = parspt.controlParameterValues[current_process_par[pi]];
             if ( std::abs(v1 - v2) > 1E-10 ) {
-                throw GeneralError("Exchange parameter value mismatch!");
+                throw_GeneralError("Exchange parameter value mismatch!");
             }
         }
     }

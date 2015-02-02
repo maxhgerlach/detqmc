@@ -89,7 +89,7 @@ void DataSeriesLoader<ValueType>::readFromFile(
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
-        throw ReadError(filename);
+        throw_ReadError(filename);
     }
     data = new vector<vector<ValueType>*>();
     string line;
@@ -174,7 +174,7 @@ template<typename ValueType>
 template<typename MetaValueType>
 void DataSeriesLoader<ValueType>::getMeta(const std::string& key, MetaValueType& value) {
     if (meta.count(key) == 0) {
-        throw KeyUndefined(key);
+        throw_KeyUndefined(key);
     } else {
         std::stringstream parseStream(meta[key]);
         parseStream >> value;
@@ -196,7 +196,7 @@ void DataSeriesLoader<double>::readFromFile(
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
-        throw ReadError(filename);
+        throw_ReadError(filename);
     }
     data = new vector<vector<double>*>();
     if (sizeHint > 0) {

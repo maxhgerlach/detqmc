@@ -35,7 +35,7 @@ struct checkarray : public std::array<T,N> {
         //this is not very pretty and lacks compile time
         //bounds checking, but I have not found an easy solution
         if (l.size() != Base::size()) {
-            throw std::out_of_range("Size of initializer_list does not match size of array");
+            throw std::out_of_range("checkarray.h: Size of initializer_list does not match size of array");
         }
         std::copy(std::begin(l), std::end(l), this->begin());
     }

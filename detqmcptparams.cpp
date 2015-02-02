@@ -18,12 +18,12 @@ void DetQMCPTParams::check() {
     neededPars += "exchangeInterval", "controlParameterValues", "controlParameterName";
     for (auto p = neededPars.cbegin(); p != neededPars.cend(); ++p) {
         if (specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
+            throw_ParameterMissing(*p);
         }
     }
 
     if (controlParameterValues.size() == 0) {
-        throw ParameterWrong("No PT control parameters specified");
+        throw_ParameterWrong_message("No PT control parameters specified");
     }
 }
 

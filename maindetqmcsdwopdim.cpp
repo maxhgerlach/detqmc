@@ -189,7 +189,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
 
     if (vm.count("temp")) {
         if (vm.count("beta")) {
-            throw ConfigurationError("Specify either parameter temp or beta, not both");
+            throw_ConfigurationError("Specify either parameter temp or beta, not both");
         } else {
             //manually specify option beta, remove option temp
             num beta = 1.0 / vm["temp"].as<num>();

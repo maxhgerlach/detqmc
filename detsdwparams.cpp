@@ -18,23 +18,23 @@ void ModelParamsDetSDW::check() {
         "globalShift", "wolffClusterUpdate", "wolffClusterShiftUpdate";
     for (auto p = neededModelPars.cbegin(); p != neededModelPars.cend(); ++p) {
         if (specified.count(*p) == 0) {
-            throw ParameterMissing(*p);
+            throw_ParameterMissing(*p);
         }
     }
     // need mu or (mux and muy)
     if (not (specified.count("mu") or (specified.count("mux") and specified.count("muy")))) {
-        throw ParameterMissing("mu or (mux and muy)");
+        throw_ParameterMissing("mu or (mux and muy)");
     }
     
     //Check parameters chosen correctly
     if (model != "sdw") {
-        throw ParameterWrong("Parameters specify model: " + model + " instead of sdw");
+        throw_ParameterWrong_message("Parameters specify model: " + model + " instead of sdw");
     }
     if (d != 2) {
-        throw ParameterWrong("d", d);
+        throw_ParameterWrong("d", d);
     }
     if (not (opdim == 1 or opdim == 2 or opdim == 3)) {
-        throw ParameterWrong("opdim", opdim);
+        throw_ParameterWrong("opdim", opdim);
     }
     std::string possibleBC[] = {"pbc", "apbc-x", "apbc-y", "apbc-xy"};
     bool bc_is_one_of_the_possible = false;
@@ -42,7 +42,7 @@ void ModelParamsDetSDW::check() {
         if (test_bc == bc_string) bc_is_one_of_the_possible = true;
     }
     if (not bc_is_one_of_the_possible) {
-        throw ParameterWrong("bc", bc_string);
+        throw_ParameterWrong("bc", bc_string);
     }
     std::string possibleUpdateMethods[] = {"iterative", "woodbury", "delayed"};
     bool updateMethod_is_one_of_the_possible = false;
@@ -50,15 +50,15 @@ void ModelParamsDetSDW::check() {
         if (test_updateMethod == updateMethod_string) updateMethod_is_one_of_the_possible = true;
     }
     if (not updateMethod_is_one_of_the_possible) {
-        throw ParameterWrong("updateMethod", updateMethod_string);
+        throw_ParameterWrong("updateMethod", updateMethod_string);
     }
     if (specified.count("updateMethod") and updateMethod_string == "delayed") {
         if (not specified.count("delaySteps")) {
-            throw ParameterMissing("delaySteps");
+            throw_ParameterMissing("delaySteps");
         }
         uint32_t N = static_cast<uint32_t>(std::pow(L, 2));
         if (delaySteps <= 0 or delaySteps > N) {
-            throw ParameterWrong("delaySteps", delaySteps);
+            throw_ParameterWrong("delaySteps", delaySteps);
         }
     }    
     
@@ -68,25 +68,25 @@ void ModelParamsDetSDW::check() {
         if (test_spinProposalMethod == spinProposalMethod_string) spinProposalMethod_is_one_of_the_possible = true;
     }
     if (not spinProposalMethod_is_one_of_the_possible) {
-        throw ParameterWrong("spinProposalMethod", spinProposalMethod_string);
+        throw_ParameterWrong("spinProposalMethod", spinProposalMethod_string);
     }
 
     if ((globalShift or wolffClusterUpdate or wolffClusterShiftUpdate)
         and globalUpdateInterval == 0) {
-        throw ParameterWrong("globalUpdateInterval", globalUpdateInterval);
+        throw_ParameterWrong("globalUpdateInterval", globalUpdateInterval);
     }
 
     if (wolffClusterShiftUpdate and (globalShift or wolffClusterUpdate)) {
-        throw ParameterWrong("Either use combined wolffClusterShiftUpdate or individual global updates");
+        throw_ParameterWrong_message("Either use combined wolffClusterShiftUpdate or individual global updates");
     }
 
     if (checkerboard and L % 2 != 0) {
-        throw ParameterWrong("Checker board decomposition only supported for even linear lattice sizes");
+        throw_ParameterWrong_message("Checker board decomposition only supported for even linear lattice sizes");
     }
 #define IF_NOT_POSITIVE(x) if (specified.count(#x) > 0 and x <= 0)
 #define CHECK_POSITIVE(x)   {                   \
         IF_NOT_POSITIVE(x) {                    \
-            throw ParameterWrong(#x, x);   \
+            throw_ParameterWrong(#x, x);   \
         }                                       \
     }
     CHECK_POSITIVE(L);
@@ -129,7 +129,7 @@ void ModelParamsDetSDW::check() {
 
     // if fermions are turned off: no delayed updates
     if (turnoffFermions and updateMethod == DELAYED) {
-        throw ParameterWrong("Cannot turn off fermions and have delayed updates at the same time");
+        throw_ParameterWrong_message("Cannot turn off fermions and have delayed updates at the same time");
     }
 
     // computed parameters

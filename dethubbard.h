@@ -74,21 +74,21 @@ public:
     // that program option is invoked]
     void saveConfigurationStreamText(const std::string& directory = ".") {
         (void)directory;
-        throw GeneralError("DetHubbard::saveConfigurationStreamText not implemented");
+        throw_GeneralError("DetHubbard::saveConfigurationStreamText not implemented");
     }
     void saveConfigurationStreamBinary(const std::string& directory = ".") {
         (void)directory;
-        throw GeneralError("DetHubbard::saveConfigurationStreamBinary not implemented");
+        throw_GeneralError("DetHubbard::saveConfigurationStreamBinary not implemented");
     }
     void saveConfigurationStreamTextHeader(const std::string& simInfoHeaderText,
                                            const std::string& directory = ".") {
         (void)simInfoHeaderText; (void)directory;
-        throw GeneralError("DetHubbard::saveConfigurationStreamTextHeader not implemented");
+        throw_GeneralError("DetHubbard::saveConfigurationStreamTextHeader not implemented");
     }
     void saveConfigurationStreamBinaryHeaderfile(const std::string& simInfoHeaderText,
                                                  const std::string& directory = ".") {
         (void)simInfoHeaderText; (void)directory;
-        throw GeneralError("DetHubbard::saveConfigurationStreamBinaryHeaderfile not implemented");
+        throw_GeneralError("DetHubbard::saveConfigurationStreamBinaryHeaderfile not implemented");
     }
 protected:
     typedef DetModelGC<2, num, false> Base;

@@ -75,7 +75,7 @@ void udvDecompose(arma::Mat<Val>& U, arma::Col<num>& d, arma::Mat<Val>& V_t,
 
         FREEZE_FOR_DEBUGGER();
         
-        throw GeneralError("SVD failed (std)");
+        throw_GeneralError("SVD failed (std)");
     }
     timing.stop("udvDecompose");
 }
