@@ -76,6 +76,15 @@ if (${USE_CLANG} AND ${THP_DOMAIN})
 endif (${USE_CLANG} AND ${THP_DOMAIN})
 
 
+# Cheops, Intel compiler
+if (${CHEOPS_FOUND})
+  set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.6.4/bin/gcc")
+  set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_GCC_LOCATION_FLAGS}")
+endif (${CHEOPS_FOUND})
+
+
+
 # MPI
 find_package(MPI)
 # this will set (lang = C, CXX)
@@ -114,6 +123,7 @@ endif (${USE_CLANG} OR NOT ${THP_DOMAIN})
 set(WARNING_FLAGS "-Wall -Winit-self -Wextra -Woverloaded-virtual -Wconversion")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${MARCH_FLAGS} ${WARNING_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++0x")
+
 
 # build type specific flags:
 # these are appended to ${CMAKE_C[XX]_FLAGS} for DEBUG / RELEASE / ETC builds
@@ -180,6 +190,11 @@ link_directories(${EXTRA_LIBRARY_LOCATIONS})
 # pytools.cpp and link to -lpython2.7
 option(USE_PYTOOLS
   "include some python routines for interactivity (does not work on Cheops cluster)" ON)
+
+if (${CHEOPS_FOUND})
+  set(USE_PYTOOLS OFF)
+endif (${CHEOPS_FOUND})
+
 if (USE_PYTOOLS)
   set(PYTOOLS_SRC "pytools.cpp")
   set(PYTHON_LIB "-lpython2.7")
