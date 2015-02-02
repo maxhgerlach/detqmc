@@ -28,6 +28,7 @@ public:
         return message.c_str();
     }
 };
+#define throw_GeneralError(msg) throw GeneralError(msg, __FILE__, __LINE__)
 
 class WrongObsIndex : public GeneralError {
 public:
@@ -36,6 +37,7 @@ public:
                         " not supported"), file, line)
         { }
 };
+#define throw_WrongObsIndex(obsIndex, vector) throw WrongObsIndex(obsIndex, vector, __FILE__, __LINE__)
 
 
 class ParameterMissing : public GeneralError {
@@ -44,6 +46,7 @@ public:
         : GeneralError("Parameter " + par + " not given.", file, line)
         { }
 };
+#define throw_ParameterMissing(par) throw ParameterMissing(par, __FILE__, __LINE__)
 
 
 class ParameterWrong : public GeneralError {
@@ -57,6 +60,8 @@ public:
         : GeneralError(message, file, line)
         { }
 };
+#define throw_ParameterWrong_message(message) throw ParameterMissing(message, __FILE__, __LINE__)
+#define throw_ParameterWrong(par, val) throw ParameterMissing(par, val, __FILE__, __LINE__)
 
 
 class ConfigurationError : public GeneralError {
@@ -65,6 +70,7 @@ public:
         : GeneralError(msg, file, line)
         { }
 };
+#define throw_ConfigurationError(message) throw ConfigurationError(message, __FILE__, __LINE__)
 
 
 class SerializationError : public GeneralError {
@@ -73,6 +79,7 @@ public:
         : GeneralError(msg, file, line)
         {}
 };
+#define throw_SerializationError(message) throw SerializationError(message, __FILE__, __LINE__)
 
 
 
@@ -82,6 +89,8 @@ public:
         : GeneralError("Can't read from file " + filename, file, line)
         { }
 };
+#define throw_ReadError(message) throw ReadError(message, __FILE__, __LINE__)
+
 
 class KeyUndefined : public GeneralError {
 public:
@@ -89,6 +98,7 @@ public:
         : GeneralError("key undefined: " + key, file, line)
         { }
 };
+#define throw_KeyUndefined(key) throw KeyUndefined(key, __FILE__, __LINE__)
 
 
 #endif /* EXCEPTIONS_H_ */
