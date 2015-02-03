@@ -56,10 +56,14 @@ else (${USE_CLANG})
 endif (${USE_CLANG})
 
 
-
 project (Det)
 
 
+option(BUILD_TIMING
+  "include timing routines into the code" OFF)
+if (${BUILD_TIMING})
+  add_definitions("-DTIMING")
+endif (${BUILD_TIMING})  
 
 
 

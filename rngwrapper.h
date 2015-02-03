@@ -40,7 +40,7 @@ class RngWrapper {
     dsfmt_t dsfmt;
 public:
     RngWrapper(uint32_t seed_ = 0, uint32_t processIndex_ = 0);
-    virtual ~RngWrapper() {}
+    virtual ~RngWrapper() { }
 
     std::string getName() const;
 

@@ -272,7 +272,8 @@ int main(int argc, char **argv) {
     std::tie(runSimulation, resumeSimulation, parlogging, parmodel, parmc, parpt) = configureSimulation(argc, argv);
 
     int return_code = 0;
-
+    
+    timing.start("total");
 #define RUN_CASE(cb, opdim) case opdim: {                               \
                                 DetQMCPT<DetSDW<cb, opdim>, ModelParamsDetSDW> simulation(parmodel, parmc, parpt, parlogging); \
                                 simulation.run();                       \
