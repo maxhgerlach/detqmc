@@ -84,8 +84,8 @@ int DataSeriesLoader<ValueType>::getColumns() {
 template <typename ValueType>
 void DataSeriesLoader<ValueType>::readFromFile(
     const std::string& filename, uint32_t subsample, uint32_t discardData,
-      uint32_t readMaxData, uint32_t sizeHint)
-      {
+    uint32_t readMaxData, uint32_t sizeHint)
+{
     using namespace std;
     ifstream input(filename.c_str());
     if (not input) {
