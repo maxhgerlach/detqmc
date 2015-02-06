@@ -32,7 +32,6 @@ MultireweightHistosPT::MultireweightHistosPT(ostream& outStream) :
         numReplicas(0), systemN(0),
         minEnergyNormalized(0), maxEnergyNormalized(0), binCount(0), binSize(0), lBinSize(1.0),
         basicConfig(false), out(outStream),
-        cei(this)
 {
     out << "max threads: " << omp_get_max_threads() << endl;
 }
@@ -1899,18 +1898,4 @@ void MultireweightHistosPT::obsRelDip(double& relDip, HistogramDouble*& histoRes
     histoResult = reweightObservableHistogramWithoutErrors(targetBeta,
             numBins);
     relDip = histogramRelativeDip(histoResult, tolerance);
-}
-
-
-double MultireweightHistosPT::entropyDifference(
-        double betaLow, double betaHigh, double& outIntegrationError,
-        double eps) {
-    cei.setIntegrationRelError(eps);
-    return cei.entropyDifference(betaLow, betaHigh, outIntegrationError);
-}
-
-BetaRange MultireweightHistosPT::findBetasCEI(
-        int numTemps, double betaMin, double betaMax, double eps) {
-    cei.setIntegrationRelError(eps);
-    return cei.findBetasCEI(numTemps, betaMin, betaMax);
 }

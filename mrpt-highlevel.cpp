@@ -65,7 +65,6 @@ namespace {
 
     string headerSuffix;
 
-    double epsCEI = 1.5e-3;
 }
 
 
@@ -87,10 +86,7 @@ void initFromCommandLine(int argc, char** argv) {
     parser.add_option("non-iterative", "first do a non-iterative estimation of the density of states as in Fenwick, 2008");
 
     parser.add_option("constant-overlap", "iteratively reweight energy histograms until constant overlap is achieved");
-    parser.add_option("cei", "find a range of temperatures with constant entropy increase between neighboring temperatures");
-    parser.add_option("n", "indicates number of target temperatures if --constant-overlap or --cei is passed. Default: same as input.", 1);
-
-    parser.add_option("cei-range", "pass beta-min and beta-max as arguments for the range of temperatures to use the CEI method on", 2);
+    parser.add_option("n", "indicates number of target temperatures if --constant-overlap is passed. Default: same as input.", 1);
 
     parser.add_option("beta-range", "Takes three arguments to determine the range of inverse temperatures to reweight to: the minimum, the maximum and the step size", 3);
     parser.add_option("beta-range-discrete", "Takes three arguments to determine the range of inverse temperatures to discretely reweight energy and heat capacity to: the minimum, the maximum and the step size", 3);
@@ -220,20 +216,6 @@ void initFromCommandLine(int argc, char** argv) {
             targetNumBetas = dlib::sa = nOption.argument();
         }
         reweightConstantOverlap(targetNumBetas);
-    }
-
-    if (parser.option("cei")) {
-        int targetNumBetas = 0;
-        if (const clp::option_type& nOption = parser.option("n")) {
-            targetNumBetas = dlib::sa = nOption.argument();
-        }
-        if (const clp::option_type& opt = parser.option("cei-range")) {
-            double betaMin = dlib::sa = opt.argument(0);
-            double betaMax = dlib::sa = opt.argument(1);
-            findBetasCEIsimple(targetNumBetas, betaMin, betaMax);
-        } else {
-            findBetasCEIsimple(targetNumBetas);
-        }
     }
 
     if (const clp::option_type& fms = parser.option("max-susc")) {
@@ -1138,47 +1120,4 @@ void getOriginalBetas(int *outK, double **outArray1) {
     *outK = mr->numReplicas;
     *outArray1 = mr->betas.vec.data();
 }
-
-double entropyDifference(double betaLow, double betaHigh,
-        double& outIntegrationError) {
-    return mr->entropyDifference(betaLow, betaHigh, outIntegrationError, epsCEI);
-}
-
-void findBetasCEI(double betaMin, double betaMax, int numTemps,
-        int *outK, double **outArray1) {
-    BetaRange* newBetas = new BetaRange;
-    *newBetas = mr->findBetasCEI(numTemps, betaMin, betaMax, epsCEI);
-    *outArray1 = newBetas->vec.data();
-    *outK = numTemps;
-
-    string filename = outputDirPrefix + "mrpt-betas-cei.dat";
-    if (not be_quiet) cout << "Storing final set of inverse temperatures in " << filename << endl;
-    newBetas->saveBetas(filename);
-}
-
-//for command line use: if numTemps == 0: use original number of temperatures
-//always use original min and max temperature
-void findBetasCEIsimple(int numTemps) {
-    double betaMin = mr->betas[0];
-    double betaMax = mr->betas[mr->numReplicas - 1];
-    if (numTemps == 0) numTemps = mr->numReplicas;
-    BetaRange newBetas = mr->findBetasCEI(numTemps, betaMin, betaMax, epsCEI);
-    string filename = outputDirPrefix + "mrpt-betas-cei.dat";
-    if (not be_quiet) cout << "Storing final set of inverse temperatures in " << filename << endl;
-    newBetas.saveBetas(filename);
-}
-
-//for command line use: if numTemps == 0: use original number of temperatures
-void findBetasCEIsimple(int numTemps, double betaMin, double betaMax) {
-    if (numTemps == 0) numTemps = mr->numReplicas;
-    BetaRange newBetas = mr->findBetasCEI(numTemps, betaMin, betaMax, epsCEI);
-    string filename = outputDirPrefix + "mrpt-betas-cei.dat";
-    if (not be_quiet) cout << "Storing final set of inverse temperatures in " << filename << endl;
-    newBetas.saveBetas(filename);
-}
-
-void setEpsCEI(double eps) {
-    epsCEI = eps;
-}
-
 

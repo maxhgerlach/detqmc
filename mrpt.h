@@ -20,13 +20,11 @@
 #include <map>
 #include <string>
 #include <boost/multi_array.hpp>
-#include "myexception.h"
+#include "exceptions.h"
 #include "betarange.h"
 #include "logval.h"
 #include "histogram.h"
 #include "reweightingresult.h"
-#include "mrptcei.h"
-//class MrptCEI;
 
 //internally don't use the HistogramT class, which would use maps internally
 
@@ -257,11 +255,6 @@ public:
     //(do not re-consider the time series)
     virtual ReweightingResult reweightDiscrete(double beta);
 
-    //determine the difference in entropy between betaLow and betaHigh
-    //by numerically integrating C_V / \beta
-    double entropyDifference(double betaLow, double betaHigh, double&
-            outIntegrationError, double eps = 1e-3);
-    BetaRange findBetasCEI(int numTemps, double betaMin, double betaMax, double eps = 1e-2);
 protected:
     //interna
 
@@ -316,9 +309,6 @@ protected:
     void reweightObservableHistogramInternal(double targetBeta, unsigned numBins,
             const DoubleSeriesCollection& w_kn, std::vector<double>& histo);
 
-    //routines for constant entropy increase temperature determination
-    //are inside this (~ [Sabo2008]):
-    MrptCEI cei;
 };
 
 

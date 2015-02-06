@@ -71,18 +71,4 @@ void getNeff_lm(int* outL, int* outM, double** outArray2);
 
 void getOriginalBetas(int* outK, double** outArray1);
 
-//determine the difference in entropy between betaLow and betaHigh
-//by numerically integrating C_V / \beta
-double entropyDifference(double betaLow, double betaHigh, double&
-        outIntegrationError);
-void findBetasCEI(double betaMin, double betaMax, int numTemps,
-        int* outK, double** outArray1);
-void setEpsCEI(double eps);
-
-
-//for command line use: if numTemps == 0: use original number of temperatures
-//always use original min and max temperature
-void findBetasCEIsimple(int numTemps = 0);
-void findBetasCEIsimple(int numTemps, double betaMin, double betaMax);
-
 #endif /* MRPT_HIGHLEVEL_H_ */
