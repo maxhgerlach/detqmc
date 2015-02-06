@@ -242,5 +242,19 @@ void setVectorImag(arma::Col<num>& out, const VectorInImagPart& in) {
 }
 
 
+// given a container of numeric values, find the index of the element
+// that is numerically nearest to a value to search for.  This does
+// *not* require the container to be sorted.
+template<typename Container, typename Value>
+std::size_t findNearest(const Container& c, Value target) {
+    auto it = std::min_element(std::begin(c), std::end(c),
+                               [target](Value x, Value y)
+                               {
+                                   return std::abs(x - target) < std::abs(y - target);
+                               });
+    return std::distance(std::begin(c), it);
+}
+
+
 
 #endif /* TOOLS_H_ */
