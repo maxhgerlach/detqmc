@@ -195,53 +195,53 @@ public:
     virtual double reweightObservableSusceptibility(double targetControlParameter);
     virtual double reweightObservableBinder(double targetControlParameter);
 
-    //find the maximum of the susceptibility between betaStart and betaEnd
-    //put its location into betaMax, its value into suscMax and add all
-    //points evaluated to the map pointsEvaluated
-    //(using time series)
-    void findMaxObservableSusceptibility(double& betaMax, double& suscMax,
+    //find the maximum of the susceptibility between control
+    //parameters cpStart and cpEnd put its location into cpMax,
+    //its value into cpMax and add all points evaluated to the map
+    //pointsEvaluated (using time series)
+    void findMaxObservableSusceptibility(double& cpMax, double& suscMax,
             std::map<double, double>& pointsEvaluated,
-            double betaStart, double betaEnd);
-    void findMaxSpecificHeatDiscrete(double& betaMax, double& suscMax,
+            double cpStart, double cpEnd);
+    void findMaxSpecificHeatDiscrete(double& cpMax, double& suscMax,
             std::map<double, double>& pointsEvaluated,
-            double betaStart, double betaEnd);
-    void findMinBinder(double& betaMin, double& binderMin,
+            double cpStart, double cpEnd);
+    void findMinBinder(double& cpMin, double& binderMin,
             std::map<double, double>& pointsEvaluated,
-            double betaStart, double betaEnd);
+            double cpStart, double cpEnd);
 
-    //Search between betaStart and betaEnd for a double-peak histogram
+    //Search between cpStart and cpEnd for a double-peak histogram
     //with as equal peak-heights as possible, obtain histograms from the
     //reweighting. .0<tolerance<1.0 should be chosen small enough to
     //distinguish the dip from the peaks and large enough to distinguish
     //the dip from noise...
-    //Return the temperature location for this histogram in betaDouble
+    //Return the parameter location for this histogram in cpDouble
     //and the ratio max(max1,max2)/(min) in relativeDip. If no dip is found,
     //relativeDip is set to 1.0. A pointer to the final histogram is put
     //into histo.
     //The function for observable histograms has an additional parameter
     //specifying the number of bins to use for the reweighted histograms.
-    void findEnergyEqualHeight(double& betaDouble, double& relativeDip,
+    void findEnergyEqualHeight(double& cpDouble, double& relativeDip,
             HistogramDouble*& histo,
-            double betaStart, double betaEnd, double tolerance = 0.1);
-    void findObsEqualHeight(double& betaDouble, double& relativeDip,
+            double cpStart, double cpEnd, double tolerance = 0.1);
+    void findObsEqualHeight(double& cpDouble, double& relativeDip,
             HistogramDouble*& histo,
-            double betaStart, double betaEnd, unsigned numBins,
+            double cpStart, double cpEnd, unsigned numBins,
             double tolerance = 0.1);
-
+ 
     //The following optimize for equal peak-*weight* (as in [JankeFirstOrder])
     //Additional input parameter: previously optimized equal *height*
     //histogram --> used to find cut-off
-    void findEnergyEqualWeight(double& betaDouble, double& relativeDip,
+    void findEnergyEqualWeight(double& cpDouble, double& relativeDip,
             HistogramDouble*& histoResult,
             const HistogramDouble* equalHeightHisto,
-            double betaStart, double betaEnd, double tolerance = 0.1);
-    void findObsEqualWeight(double& betaDouble, double& relativeDip,
+            double cpStart, double cpEnd, double tolerance = 0.1);
+    void findObsEqualWeight(double& cpDouble, double& relativeDip,
             HistogramDouble*& histoResult,
             const HistogramDouble* equalHeightHisto,
-            double betaStart, double betaEnd, unsigned numBins,
+            double cpStart, double cpEnd, unsigned numBins,
             double tolerance = 0.1);
 
-    //The following just reweight to obtain the histogram at the target beta,
+    //The following just reweight to obtain the histogram at the target cp,
     //return that and the relative dip
     void energyRelDip(double& relDip, HistogramDouble*& histoResult,
             double targetControlParameter, double tolerance = 0.1);
@@ -289,20 +289,20 @@ protected:
     //return the expectation value of the first moment of some observable
     //with given weights, put the result into firstMoment
     void reweight1stMomentInternalWithoutErrors(
-            const DoubleSeriesCollection& timeSeries,
-            const DoubleSeriesCollection& w_kn, double& firstMoment);
+        const DoubleSeriesCollection& timeSeries,
+        const DoubleSeriesCollection& w_kn, double& firstMoment);
     //return the expectation value of the first and second moments of some
     //observable at a given temperature with given weights, put the result
     //into firstMoment, secondMoment
     void reweight1stMoment2ndMomentInternalWithoutErrors(
-            const DoubleSeriesCollection& timeSeries,
-            const DoubleSeriesCollection& w_kn,
-            double& firstMoment, double& secondMoment);
+        const DoubleSeriesCollection& timeSeries,
+        const DoubleSeriesCollection& w_kn,
+        double& firstMoment, double& secondMoment);
     //likewise:
     void reweight2ndMoment4thMomentInternalWithoutErrors(
-            const DoubleSeriesCollection& timeSeries,
-            const DoubleSeriesCollection& w_kn,
-            double& secondMoment, double& fourthMoment);
+        const DoubleSeriesCollection& timeSeries,
+        const DoubleSeriesCollection& w_kn,
+        double& secondMoment, double& fourthMoment);
 
 
     HistogramDouble* reweightObservableHistogramUsingWeights(double targetControlParameter, unsigned numBins,

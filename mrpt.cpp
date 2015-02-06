@@ -442,9 +442,9 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
     if (addedObservableTimeSeries == 0) {
         cout << "Warning: No observable time series added." << endl;
     }
-    if (numReplicas != betas.getSize() or numReplicas != addedEnergyTimeSeries
-            or (addedObservableTimeSeries > 0 and
-                numReplicas != addedObservableTimeSeries)) {
+    if (numReplicas != controlParameterValues.getSize() or numReplicas != addedEnergyTimeSeries
+        or (addedObservableTimeSeries > 0 and
+            numReplicas != addedObservableTimeSeries)) {
 //        throw GeneralException("Mismatched number of replicas (forgot to add time series? wrong betas?)");
         cout << "Warning: Number of added time series does not match number "
                 "of replicas from simulation info file." << endl;
@@ -583,9 +583,9 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
 
 void MultireweightHistosPT::createHistogramsHelper() {
     out << "Creating energy histograms etc. minEnergyNormalized=" << minEnergyNormalized
-            << " maxEnergyNormalized=" << maxEnergyNormalized
-            << " binSize=" << binSize
-            << " binCount=" << binCount << endl;
+        << " maxEnergyNormalized=" << maxEnergyNormalized
+        << " binSize=" << binSize
+        << " binCount=" << binCount << endl;
 
 //  #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
@@ -1059,7 +1059,7 @@ ReweightingResult MultireweightHistosPT::reweightDiscrete(double targetControlPa
 
     ReweightingResult result;
     result.energyAvg = estEnergyNorm;
-    result.heatCapacity = targetBeta*targetBeta * systemN *
+    result.heatCapacity = targetControlParameter*targetControlParameter * systemN *
             (estEnergySqNorm - estEnergyNorm*estEnergyNorm);
 
     return result;
@@ -1392,7 +1392,8 @@ HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
     result->spacing = binSize;
     result->binCount = binCount;
     result->N = systemN;
-    result->beta = targetControlParameter;
+    result->cp = targetControlParameter;
+    result->controlParameterName = controlParameterName;
     result->total = 0;
 
     vector<LogVal> arguments(binCount);
@@ -1424,6 +1425,7 @@ HistogramDouble* MultireweightHistosPT::reweightObservableHistogramUsingWeights(
 
     result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetControlParameter, systemN);
     result->headerLines += "## MRPT reweighted histogram of normalized " + observable + "\n";
+    result->controlParameterName = controlParameterName;
     result->updateMeta();
 
     return result;
@@ -1600,10 +1602,10 @@ class SuscMinCallable {
 public:
     SuscMinCallable(MultireweightHistosPT* master, map<double, double>& pointsEvaluated) :
         master(master), pointsEvaluated(pointsEvaluated) { }
-    double operator()(double beta) {
-        double susc = master->reweightObservableSusceptibility(beta);
-        pointsEvaluated[beta] = susc;
-        master->out << " beta: " << beta << " => " << susc << endl;
+    double operator()(double cp) {
+        double susc = master->reweightObservableSusceptibility(cp);
+        pointsEvaluated[cp] = susc;
+        master->out << " cp: " << cp << " => " << susc << endl;
         return -susc;
     }
 };
@@ -1613,10 +1615,10 @@ class BinderMinCallable {
 public:
     BinderMinCallable(MultireweightHistosPT* master, map<double, double>& pointsEvaluated) :
         master(master), pointsEvaluated(pointsEvaluated) { }
-    double operator()(double beta) {
-        double binder = master->reweightObservableBinder(beta);
-        pointsEvaluated[beta] = binder;
-        master->out << " beta: " << beta << " => " << binder << endl;
+    double operator()(double cp) {
+        double binder = master->reweightObservableBinder(cp);
+        pointsEvaluated[cp] = binder;
+        master->out << " cp: " << cp << " => " << binder << endl;
         return binder;
     }
 };
@@ -1627,47 +1629,47 @@ class SpecificHeatDiscreteMinCallable {
 public:
     SpecificHeatDiscreteMinCallable (MultireweightHistosPT* master, map<double, double>& pointsEvaluated) :
         master(master), pointsEvaluated(pointsEvaluated) { }
-    double operator()(double beta) {
-        //double specHeat = master->reweightSpecificHeat(beta);
-        double specHeat = static_cast<MultireweightHistosPT*>(master)->reweightDiscrete(beta).heatCapacity;
-        pointsEvaluated[beta] = specHeat;
-        master->out << " beta: " << beta << " => " << specHeat << endl;
+    double operator()(double cp) {
+        //double specHeat = master->reweightSpecificHeat(cp);
+        double specHeat = static_cast<MultireweightHistosPT*>(master)->reweightDiscrete(cp).heatCapacity;
+        pointsEvaluated[cp] = specHeat;
+        master->out << " cp: " << cp << " => " << specHeat << endl;
         return -specHeat;
     }
 };
 
 void MultireweightHistosPT::findMaxObservableSusceptibility(
-        double& betaMax, double& suscMax,
+        double& cpMax, double& suscMax,
         map<double, double>& pointsEvaluated,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     SuscMinCallable f(this, pointsEvaluated);
     out << "Searching max of " << observable << " susceptibility...\n"
         << " intermediate points:" << endl;
-    brentMinimize(betaMax, suscMax, f, betaStart, betaEnd);
+    brentMinimize(cpMax, suscMax, f, cpStart, cpEnd);
     suscMax = -suscMax;
-    out << "final result: beta: " << betaMax << " => " << suscMax << endl;
+    out << "final result: cp: " << cpMax << " => " << suscMax << endl;
 }
 
 void MultireweightHistosPT::findMaxSpecificHeatDiscrete(
-        double& betaMax, double& specificHeatMax,
+        double& cpMax, double& specificHeatMax,
         map<double, double>& pointsEvaluated,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     SpecificHeatDiscreteMinCallable f(this, pointsEvaluated);
     out << "Searching max of specific heat (discrete!)...\n"
         << " intermediate points:" << endl;
-    brentMinimize(betaMax, specificHeatMax, f, betaStart, betaEnd);
+    brentMinimize(cpMax, specificHeatMax, f, cpStart, cpEnd);
     specificHeatMax = -specificHeatMax;
-    out << "final result: beta: " << betaMax << " => " << specificHeatMax << endl;
+    out << "final result: cp: " << cpMax << " => " << specificHeatMax << endl;
 }
 
-void MultireweightHistosPT::findMinBinder(double& betaMin, double& binderMin,
+void MultireweightHistosPT::findMinBinder(double& cpMin, double& binderMin,
         std::map<double, double>& pointsEvaluated,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     BinderMinCallable f(this, pointsEvaluated);
     out << "Searching min of " << observable << " binder cumulant...\n"
         << " intermediate points:" << endl;
-    brentMinimize(betaMin, binderMin, f, betaStart, betaEnd);
-    out << "final result: beta: " << betaMin << " => " << binderMin << endl;
+    brentMinimize(cpMin, binderMin, f, cpStart, cpEnd);
+    out << "final result: cp: " << cpMin << " => " << binderMin << endl;
 }
 
 
@@ -1680,13 +1682,13 @@ public:
             MultireweightHistosPT* master) :
         master(master), foundHistogram(0), tolerance(tolerance)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
         foundHistogram = master->reweightEnergyHistogramWithoutErrors(
-                beta);
+                cp);
         double peakDiff = histogramPeakDiff(foundHistogram, tolerance);
         master->out
-            << " beta: " << beta << " => peakDiff:" << peakDiff << endl;
+            << " cp: " << cp << " => peakDiff:" << peakDiff << endl;
         return peakDiff;
     }
     HistogramDouble* getHistogram() {
@@ -1705,14 +1707,14 @@ public:
         master(master), foundHistogram(0),
         tolerance(tolerance), numBins(numBins)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
         foundHistogram = master->
                 reweightObservableHistogramWithoutErrors(
-                        beta, numBins);
+                        cp, numBins);
         double peakDiff = histogramPeakDiff(foundHistogram, tolerance);
         master->out
-            << " beta: " << beta << " => peakDiff:" << peakDiff << endl;
+            << " cp: " << cp << " => peakDiff:" << peakDiff << endl;
         return peakDiff;
     }
     HistogramDouble* getHistogram() {
@@ -1730,14 +1732,14 @@ public:
             double cutOff, MultireweightHistosPT* master) :
         master(master), foundHistogram(0), tolerance(tolerance), cutOff(cutOff)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
         foundHistogram = master->reweightEnergyHistogramWithoutErrors(
-                beta);
+                cp);
         double weightDiff = histogramWeightDiff(foundHistogram,
                 cutOff);
         master->out
-            << " beta: " << beta << " => weightDiff:" << weightDiff << endl;
+            << " cp: " << cp << " => weightDiff:" << weightDiff << endl;
         return weightDiff;
     }
     HistogramDouble* getHistogram() {
@@ -1776,23 +1778,23 @@ public:
 
 
 void MultireweightHistosPT::findEnergyEqualHeight(
-        double& betaDouble, double& relDip, HistogramDouble*& histoResult,
-        double betaStart, double betaEnd, double tolerance) {
+        double& cpDouble, double& relDip, HistogramDouble*& histoResult,
+        double cpStart, double cpEnd, double tolerance) {
     out << "Searching energy histogram with equal height double peak\n"
         << " intermediate points:" << endl;
     EnergyHistogramPeakDiffMinCallable f(tolerance, this);
     double peakDiff = -1.;
-    brentMinimize(betaDouble, peakDiff, f, betaStart, betaEnd);
+    brentMinimize(cpDouble, peakDiff, f, cpStart, cpEnd);
     histoResult = f.getHistogram();
     relDip = histogramRelativeDip(histoResult, tolerance);
-    out << "final result: beta: " << betaDouble
+    out << "final result: cp: " << cpDouble
         << " => peakDiff:" << peakDiff
         << ", relativeDip: " << relDip << endl;
 }
 
 void MultireweightHistosPT::findObsEqualHeight(
-        double& betaDouble, double& relDip, HistogramDouble*& histoResult,
-        double betaStart, double betaEnd,
+        double& cpDouble, double& relDip, HistogramDouble*& histoResult,
+        double cpStart, double cpEnd,
         unsigned numBins, double tolerance) {
     out << "Searching " << observable
         << " histogram with " << numBins
@@ -1800,35 +1802,35 @@ void MultireweightHistosPT::findObsEqualHeight(
         << " intermediate points:" << endl;
     ObsHistogramPeakDiffMinCallable f(tolerance, numBins, this);
     double peakDiff = -1.;
-    brentMinimize(betaDouble, peakDiff, f, betaStart, betaEnd);
+    brentMinimize(cpDouble, peakDiff, f, cpStart, cpEnd);
     histoResult = f.getHistogram();
     relDip = histogramRelativeDip(histoResult, tolerance);
-    out << "final result: beta: " << betaDouble
+    out << "final result: cp: " << cpDouble
         << " => peakDiff:" << peakDiff
         << ", relativeDip: " << relDip << endl;
 }
 
 void MultireweightHistosPT::findEnergyEqualWeight(
-        double& betaDouble, double& relDip, HistogramDouble*& histoResult,
+        double& cpDouble, double& relDip, HistogramDouble*& histoResult,
         const HistogramDouble* equalHeightHisto,
-        double betaStart, double betaEnd, double tolerance) {
+        double cpStart, double cpEnd, double tolerance) {
     out << "Searching energy histogram with equal weight double peak\n"
         << " intermediate points:" << endl;
     double cutOff = histogramMinimumLocation(equalHeightHisto, tolerance);
     EnergyHistogramWeightDiffMinCallable f(tolerance, cutOff, this);
     double weightDiff = -1.;
-    brentMinimize(betaDouble, weightDiff, f, betaStart, betaEnd);
+    brentMinimize(cpDouble, weightDiff, f, cpStart, cpEnd);
     histoResult = f.getHistogram();
     relDip = histogramRelativeDip(histoResult, tolerance);
-    out << "final result: beta: " << betaDouble
+    out << "final result: cp: " << cpDouble
         << " => weightDiff:" << weightDiff
         << ", relativeDip: " << relDip << endl;
 }
 
 void MultireweightHistosPT::findObsEqualWeight(
-        double& betaDouble, double& relDip, HistogramDouble*& histoResult,
+        double& cpDouble, double& relDip, HistogramDouble*& histoResult,
         const HistogramDouble* equalHeightHisto,
-        double betaStart, double betaEnd, unsigned numBins, double tolerance) {
+        double cpStart, double cpEnd, unsigned numBins, double tolerance) {
     out << "Searching " << observable
         << " histogram with " << numBins
         << " bins with equal weight double peak\n"
@@ -1836,10 +1838,10 @@ void MultireweightHistosPT::findObsEqualWeight(
     double cutOff = histogramMinimumLocation(equalHeightHisto, tolerance);
     ObsHistogramWeightDiffMinCallable f(tolerance, cutOff, numBins, this);
     double weightDiff = -1.;
-    brentMinimize(betaDouble, weightDiff, f, betaStart, betaEnd);
+    brentMinimize(cpDouble, weightDiff, f, cpStart, cpEnd);
     histoResult = f.getHistogram();
     relDip = histogramRelativeDip(histoResult, tolerance);
-    out << "final result: beta: " << betaDouble
+    out << "final result: cp: " << cpDouble
         << " => weightDiff:" << weightDiff
         << ", relativeDip: " << relDip << endl;
 }
