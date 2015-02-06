@@ -709,9 +709,9 @@ void MultireweightHistosPT::writeOutEnergyTauInt(const std::string& filename) {
     map<double, double> tauint;
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        tauint.insert(make_pair(betas[k],
-                tauint_adaptive(energyTimeSeries[k]) *
-                infoSweepsBetweenMeasurements));
+        tauint.insert(make_pair(controlParameterValues[k],
+                                tauint_adaptive(energyTimeSeries[k]) *
+                                infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
     DoubleMapWriter w;
@@ -721,7 +721,8 @@ void MultireweightHistosPT::writeOutEnergyTauInt(const std::string& filename) {
     w.addMeta("observable", "energy");
     w.addMeta("L", systemL);
     w.addMeta("N", systemN);
-    w.addHeaderText("beta \t tau-int");
+    w.addMeta("controlParameterName", controlParameterName);
+    w.addHeaderText("cp \t tau-int");
     w.setData(&tauint);
     w.writeToFile(filename);
     out << " Done." << endl;
@@ -732,9 +733,9 @@ void MultireweightHistosPT::writeOutObsTauInt(const std::string& filename) {
     map<double, double> tauint;
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        tauint.insert(make_pair(betas[k],
-                tauint_adaptive(observableTimeSeries[k]) *
-                infoSweepsBetweenMeasurements));
+        tauint.insert(make_pair(controlParameterValues[k],
+                                tauint_adaptive(observableTimeSeries[k]) *
+                                infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
     DoubleMapWriter w;
@@ -745,7 +746,8 @@ void MultireweightHistosPT::writeOutObsTauInt(const std::string& filename) {
     w.addMeta("observable", observable);
     w.addMeta("L", systemL);
     w.addMeta("N", systemN);
-    w.addHeaderText("beta \t tau-int");
+    w.addMeta("controlParameterName", controlParameterName);
+    w.addHeaderText("cp \t tau-int");
     w.setData(&tauint);
     w.writeToFile(filename);
     out << " Done." << endl;
