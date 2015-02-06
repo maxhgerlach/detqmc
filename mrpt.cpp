@@ -1454,8 +1454,10 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorr() {
         }
     }
 
-    dlib::create_directory("crosscorr");
-    dlib::set_current_dir("crosscorr");
+    namespace fs = boost::filesystem;
+    
+    fs::create_directory("crosscorr");
+    fs::current_path("crosscorr");
     for (unsigned k = 0; k < numReplicas; ++k) {
         unsigned N_k = energyTimeSeries[k]->size();
         if (N_k == 0) {
@@ -1474,7 +1476,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorr() {
             outCrossCorr << '\n';
         }
     }
-    dlib::set_current_dir("..");
+    fs::current_path("..");
 
     out << "done" << endl;
 }
@@ -1533,8 +1535,10 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
         out << "." << flush;
     }
 
-    dlib::create_directory("crosscorr-alt");
-    dlib::set_current_dir("crosscorr-alt");
+    namespace fs = boost::filesystem;
+
+    fs::create_directory("crosscorr-alt");
+    fs::current_path("crosscorr-alt");
     for (unsigned k = 0; k < numReplicas; ++k) {
         unsigned N_k = energyTimeSeries[k]->size();
         if (N_k == 0) {
@@ -1554,7 +1558,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
             outCrossCorr << '\n';
         }
     }
-    dlib::set_current_dir("..");
+    fs::current_path("..");
 
     out << " done" << endl;
 }
