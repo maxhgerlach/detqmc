@@ -11,23 +11,10 @@
  *      Author: gerlach
  */
 
-#include <iostream>
-#include <fstream>
-#include <exception>
 #include "mrpt-highlevel.h"
 
-using namespace std;
-
 int main(int argc, char **argv) {
-    try {
-        initFromCommandLine(argc, argv);
-    } catch (exception& e) {
-        cout << e.what() << endl;
-        return 1;
-    }
-    catch (...) {
-        cout << "Some error occurred" << endl;
-        return 2;
-    }
+    initFromCommandLine(argc, argv);
+
     return 0;
 }
