@@ -1,0 +1,326 @@
+//Code by Max Henner Gerlach, 2010--2012,
+//used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
+//contact: maxgerlach@gmail.com
+
+/*
+ * multireweighthisto-pt.h
+ *
+ *  Created on: Jun 28, 2011
+ *      Author: gerlach
+ */
+
+// generalized for SDW DQMC (2015-02-06 - )
+
+#ifndef MULTIREWEIGHTHISTO_PT_H_
+#define MULTIREWEIGHTHISTO_PT_H_
+
+
+#include <vector>
+#include <iostream>
+#include <map>
+#include <string>
+#include <boost/multi_array.hpp>
+#include "myexception.h"
+#include "betarange.h"
+#include "logval.h"
+#include "histogram.h"
+#include "reweightingresult.h"
+#include "mrptcei.h"
+//class MrptCEI;
+
+//internally don't use the HistogramT class, which would use maps internally
+
+//multiple histogram reweighting adapted for data from parallel tempering as in Chodera 2007
+class MultireweightHistosPT {
+
+public:
+    //Data kept public do make things simple. Handle with care!
+
+    std::string observable;                 //name of second observable (other than energy)
+    int infoNumSamples;                     //number of samples, value taken from info.dat
+    int infoSweepsBetweenMeasurements;      //taken from info.dat
+    typedef std::vector<std::vector<double>*> DoubleSeriesCollection;       //map replica index -> pointer to time series of (floating point) measurements
+    typedef std::vector<std::vector<int>*> IntSeriesCollection;             //map replica index -> pointer to series of integer values
+    DoubleSeriesCollection energyTimeSeries;
+    DoubleSeriesCollection observableTimeSeries;
+    IntSeriesCollection betaIndexTimeSeries;            //currently only used for the Fenwick-estimation of d.o.s. --> can be freed after histograms have been computed
+    BetaRange betas;
+    unsigned numReplicas;
+    unsigned systemN;       // should be systemL ** d
+    unsigned systemL;
+
+    //for energy histograms
+    //energy-bins span: [U_m/N - binsize/2 ... U_m/N ... U_m/N + binsize/2]
+    double minEnergyNormalized, maxEnergyNormalized;
+    unsigned binCount;
+    double binSize;     //Delta_U / N
+    double deltaU;                      //not normalized
+    double minEnergy, maxEnergy;        //not normalized
+    LogVal lBinSize;
+    std::vector<double> U_m;    //energy in the center of bin m (*not* normalized by system volume)
+    typedef boost::multi_array<int, 2> Int2Array;
+    Int2Array H_km;     //energy histogram: H_km[k][m] --> count of bin m from replica k
+    typedef std::vector<int> Histo;
+    Histo H_m;          //H_m = sum_k {H_km}
+    typedef boost::multi_array<double, 2> Double2Array;
+    Double2Array g_km;  //g_km[k][m] --> statistical inefficiency of bin m in replica k
+    IntSeriesCollection m_kn;           //map replica index -> pointer to time series of occupied energy bins
+
+    Int2Array H_lm;     //energy histogram: H_lm[l][m] --> count of bin m at inverse temperature l (accumulated from all replicas)
+
+    Int2Array N_kl;             //counts of samples at temperature l in replica k
+
+    std::vector<double> Heff_m;     // sum_k {(g_mk ^ -1) * H_mk
+    std::vector<LogVal> lHeff_m;
+    typedef boost::multi_array<LogVal, 2> LogVal2Array;
+    Double2Array Neff_lm;           // sum_k {(g_mk ^ -1) * N_kl}
+    LogVal2Array lNeff_lm;
+    std::vector<double> Neff_l;     // sum_m {Neff_lm}
+    LogVal2Array lPrecalc_lm;       // precalculated for updateDensityOfStates
+
+    std::vector<LogVal> lZ_l;       //partition function at beta_l
+
+    std::vector<LogVal> lOmega_m;   //estimate of density of states (up to multiplicative factor)
+
+    //for observable histograms:
+    double minObservableNormalized, maxObservableNormalized;
+
+    std::ostream& out;
+
+
+public:
+    //Interface
+
+    MultireweightHistosPT(std::ostream& outStream = std::cout);
+    virtual ~MultireweightHistosPT();
+
+    void addSimulationInfo(const std::string& filename);        //pass "info.dat"...
+    unsigned getSystemN() const { return systemN; }
+    unsigned getSystemL() const { return systemL; }
+    std::string getObservableName() const { return observable; }
+
+    //distinguishes automatically by observable (denoted in meta data)
+    //also extracts beta index timeseries
+    //optionally subsamples the time series (subsample defines sample size)
+    //optionally leaves out the first @discardEntries entries (extra thermalization)
+    void addInputTimeSeries(const std::string& filename, unsigned subsample = 1,
+            unsigned discardEntries = 0);
+
+    //compute averages directly at the original temperatures, only
+    //from data at the original temperatures -- no reweighting
+    //return a newly allocated map
+    //    beta -> results
+    typedef std::map<double, ReweightingResult> ResultsMap;
+    virtual ResultsMap* directNoReweighting();
+
+    //sort replica time series according to beta index, after this call
+    //the timeseries for replica i only contain measurements at temperature
+    //beta_i.
+    //This will probably hide correlations (the whole idea of the Chodera article).
+    void sortTimeSeriesByBeta();
+
+    //this should be done for the whole time series even when jackkniving
+    //if saveAutocorr = true: store evaluated autocorr function points to (a) file(s)
+    void setBinInefficienciesToUnity();     //most simple choice, results should be the worst
+    void measureBinInefficiencies(bool saveAutocorr = false);        //as in Chodera
+    void measureGlobalInefficiencies(bool saveAutocorr = false);     //as in traditional Ferrenberg-Swendsen
+
+    //only sensible if sorted by temperature:
+    void writeOutEnergyTauInt(const std::string& filename);
+    void writeOutObsTauInt(const std::string& filename);
+
+    void updateEffectiveCounts();       //TODO: currently also called by findDensityOfStates
+
+    virtual void createHistograms(int binCount_);
+    virtual void createHistogramsIsing();      //special version for 2D Ising model (natural binning)
+
+    //compute cross correlations of normalized histogram bin entries (H_km/N_k, H_kn/N_k)
+    //write tables into sub-directories:
+    void computeAndSaveHistogramCrossCorr();
+    //use an alternative estimator (prob. less robust, but maybe less assumptions):
+    void computeAndSaveHistogramCrossCorrAlt();
+
+    void saveH_km(const std::string& filename);
+    void saveg_km(const std::string& filename);
+    void saveNeff_lm(const std::string& filename);
+    void saveNeff_l(const std::string& filename);
+    void savelNeff_lm(const std::string& filename);
+    void saveU_m(const std::string& filename);
+
+    virtual void findDensityOfStatesNonIteratively();       //using the method described in Fenwick, 2008 (uses histograms by temperature)
+    virtual void findPartitionFunctionsAndDensityOfStates(double tolerance = 1E-7, int maxIterations = 1000);
+
+    virtual void saveLogDensityOfStates(const std::string& filename);       //saves the logarithm. normalized to 0 for the central entry
+    virtual void saveLogDensityOfStatesIsing(const std::string& filename);  //saves the logarithm. normalized to ln(2) for the lowest energy entry
+    void savePartitionFunctions(const std::string& filename);
+    void loadPartitionFunctions(const std::string& filename);       //afterwards call findPartitionFunctionsAndDensityOfStates again
+
+    //FS-multi-reweighting without error estimation, all observables known
+    //using time series:
+    virtual ReweightingResult reweight(double targetBeta);
+
+    //FS-multi-reweighting without error estimation, all observables known,
+    // + energy and observable histograms at the target beta
+    //the returned structure holds pointers to newly allocated memory
+    // -- they should be deleted at some point
+    //using time series:
+    virtual ReweightingResult reweightWithHistograms(double targetBeta,
+            unsigned obsBinCount);
+
+    //FS-multi-reweighting without error estimation for one specific observable
+    //using time series:
+    virtual double reweightEnergy(double targetBeta);
+    virtual double reweightSpecificHeat(double targetBeta);
+    virtual double reweightObservable(double targetBeta);
+    virtual double reweightObservableSusceptibility(double targetBeta);
+    virtual double reweightObservableBinder(double targetBeta);
+
+    //find the maximum of the susceptibility between betaStart and betaEnd
+    //put its location into betaMax, its value into suscMax and add all
+    //points evaluated to the map pointsEvaluated
+    //(using time series)
+    void findMaxObservableSusceptibility(double& betaMax, double& suscMax,
+            std::map<double, double>& pointsEvaluated,
+            double betaStart, double betaEnd);
+    void findMaxSpecificHeatDiscrete(double& betaMax, double& suscMax,
+            std::map<double, double>& pointsEvaluated,
+            double betaStart, double betaEnd);
+    void findMinBinder(double& betaMin, double& binderMin,
+            std::map<double, double>& pointsEvaluated,
+            double betaStart, double betaEnd);
+
+    //Search between betaStart and betaEnd for a double-peak histogram
+    //with as equal peak-heights as possible, obtain histograms from the
+    //reweighting. .0<tolerance<1.0 should be chosen small enough to
+    //distinguish the dip from the peaks and large enough to distinguish
+    //the dip from noise...
+    //Return the temperature location for this histogram in betaDouble
+    //and the ratio max(max1,max2)/(min) in relativeDip. If no dip is found,
+    //relativeDip is set to 1.0. A pointer to the final histogram is put
+    //into histo.
+    //The function for observable histograms has an additional parameter
+    //specifying the number of bins to use for the reweighted histograms.
+    void findEnergyEqualHeight(double& betaDouble, double& relativeDip,
+            HistogramDouble*& histo,
+            double betaStart, double betaEnd, double tolerance = 0.1);
+    void findObsEqualHeight(double& betaDouble, double& relativeDip,
+            HistogramDouble*& histo,
+            double betaStart, double betaEnd, unsigned numBins,
+            double tolerance = 0.1);
+
+    //The following optimize for equal peak-*weight* (as in [JankeFirstOrder])
+    //Additional input parameter: previously optimized equal *height*
+    //histogram --> used to find cut-off
+    void findEnergyEqualWeight(double& betaDouble, double& relativeDip,
+            HistogramDouble*& histoResult,
+            const HistogramDouble* equalHeightHisto,
+            double betaStart, double betaEnd, double tolerance = 0.1);
+    void findObsEqualWeight(double& betaDouble, double& relativeDip,
+            HistogramDouble*& histoResult,
+            const HistogramDouble* equalHeightHisto,
+            double betaStart, double betaEnd, unsigned numBins,
+            double tolerance = 0.1);
+
+    //The following just reweight to obtain the histogram at the target beta,
+    //return that and the relative dip
+    void energyRelDip(double& relDip, HistogramDouble*& histoResult,
+            double targetBeta, double tolerance = 0.1);
+    void obsRelDip(double& relDip, HistogramDouble*& histoResult,
+            double targetBeta, unsigned numBins, double tolerance = 0.1);
+
+
+    //produces nice histograms for further processing / output at inverse
+    //temperature @targetBeta. Returns a pointer to newly allocated memory
+    //that has to be deleted at some point!
+    HistogramDouble* reweightEnergyHistogramWithoutErrors(
+            double targetBeta);
+    HistogramDouble* reweightObservableHistogramWithoutErrors(
+            double targetBeta, unsigned numBins);
+    virtual HistogramDouble* reweightEnergyHistogram(double targetBeta) {
+        return reweightEnergyHistogramWithoutErrors(targetBeta);
+    }
+    virtual HistogramDouble* reweightObservableHistogram(
+            double targetBeta, unsigned numBins) {
+        return reweightObservableHistogramWithoutErrors(targetBeta, numBins);
+    }
+
+    //estimate a range of temperatures with approximately constant energy overlap
+    BetaRange reweightToConstantEnergyOverlap(double betaMin, double betaMax, unsigned targetNumBetas, unsigned maxIterations, double accuracy);
+    BetaRange reweightToConstantEnergyOverlap(unsigned targetNumBetas, unsigned maxIterations, double accuracy) {
+        return reweightToConstantEnergyOverlap(betas[0], betas[numReplicas - 1], targetNumBetas, maxIterations, accuracy);
+    }
+    BetaRange reweightToConstantEnergyOverlap(unsigned maxIterations, double accuracy) {
+        return reweightToConstantEnergyOverlap(numReplicas, maxIterations, accuracy);
+    }
+
+    //obtain energy and specific heat estimates directly from the density of states
+    //(do not re-consider the time series)
+    virtual ReweightingResult reweightDiscrete(double beta);
+
+    //determine the difference in entropy between betaLow and betaHigh
+    //by numerically integrating C_V / \beta
+    double entropyDifference(double betaLow, double betaHigh, double&
+            outIntegrationError, double eps = 1e-3);
+    BetaRange findBetasCEI(int numTemps, double betaMin, double betaMax, double eps = 1e-2);
+protected:
+    //interna
+
+    bool basicConfig;
+
+    unsigned addedEnergyTimeSeries;
+    unsigned addedObservableTimeSeries;
+
+    void createHistogramsHelper();
+    void createHistogramsHelperDiscrete();
+    void setUpHistograms(int binCount_);            //used in createHistograms (initializes data structures but does not set actual values)
+    void setUpHistogramsIsing();
+
+    void updateDensityOfStates();
+
+    DoubleSeriesCollection computeWeights(double targetBeta);       //determine weights w_kn(beta) (occupies a lot of memory, free later)
+    ReweightingResult reweightWithoutErrorsInternal(double targetBeta, const DoubleSeriesCollection& w_kn);
+
+    //return the expectation value of the first moment of some observable
+    //with given weights, put the result into firstMoment
+    void reweight1stMomentInternalWithoutErrors(
+            const DoubleSeriesCollection& timeSeries,
+            const DoubleSeriesCollection& w_kn, double& firstMoment);
+    //return the expectation value of the first and second moments of some
+    //observable at a given temperature with given weights, put the result
+    //into firstMoment, secondMoment
+    void reweight1stMoment2ndMomentInternalWithoutErrors(
+            const DoubleSeriesCollection& timeSeries,
+            const DoubleSeriesCollection& w_kn,
+            double& firstMoment, double& secondMoment);
+    //likewise:
+    void reweight2ndMoment4thMomentInternalWithoutErrors(
+            const DoubleSeriesCollection& timeSeries,
+            const DoubleSeriesCollection& w_kn,
+            double& secondMoment, double& fourthMoment);
+
+
+    //used in reweightConstantOverlap:
+    //creates a histogram at histograms[index], normalizes to 1.0:
+    void internalHistogramReweighter(double targetBeta, Double2Array& histograms, unsigned index);
+    double internalHistogramOverlap(const Double2Array& histograms, unsigned index1, unsigned index2);      //assumes normalization to 1.0
+    double internalAverageNeighborOverlap(const BetaRange& betas);      //creates reweighted histograms at each beta and returns the average overlap of adjacent pairs
+    void internalReweightHistogramToOverlap(Double2Array& histograms, BetaRange& betas,
+            unsigned active, unsigned passive, unsigned limit, double targetOverlap, double accuracy);
+
+    HistogramDouble* reweightObservableHistogramUsingWeights(double targetBeta, unsigned numBins,
+            const DoubleSeriesCollection& w_kn);
+
+    //using pre-calculated weights @w_kn estimate a @numBins-histogram of the
+    //observable at inverse temperature @targetBeta. Put the result into
+    //output vector @histo
+    void reweightObservableHistogramInternal(double targetBeta, unsigned numBins,
+            const DoubleSeriesCollection& w_kn, std::vector<double>& histo);
+
+    //routines for constant entropy increase temperature determination
+    //are inside this (~ [Sabo2008]):
+    MrptCEI cei;
+};
+
+
+
+#endif /* MULTIREWEIGHTHISTO_PT_H_ */
