@@ -20,7 +20,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <dlib/string.h>
+#include <boost/algorithm/string.hpp> // e.g. trimming
 #include "myexception.h"
 #include "logval.h"
 #include "metadata.h"
@@ -39,9 +39,9 @@ struct HistogramT {
     //-- optional, may not even be relevant (e.g. replica-specific
     //histograms..)
     int N;              //system volume
-    double beta;        //inverse temperature
-
-
+    std::string controlParameterName; // name of control parameter, e.g. inverse temperature beta
+    double cp;          //control paramter value
+    
     ValType total;      //all histogram values summed up
     KeyType spacing;        //distance between two bins
     KeyType minBin;
@@ -50,7 +50,7 @@ struct HistogramT {
 
     //default copy constructor / assignment operator work well for this
 
-    void load(const char* inFname) throw(ReadError) {
+    void load(const char* inFname) {
         using namespace std;
         ifstream input(inFname);
         if (not input) {
@@ -64,7 +64,7 @@ struct HistogramT {
         string metadataLines;
         while (not input.eof()) {
             getline(input, line);
-            line = dlib::ltrim(line);
+            boost::algorithm::trim(line)
             if (line[0] == '#') {
                 if (line[1] == '#')  {
                     //comment line -- header text
@@ -94,25 +94,26 @@ struct HistogramT {
         }
         meta = parseMetadataBlock(metadataLines);
         if (meta.size()) {
-            beta = dlib::sa = meta["beta"];
-            spacing = dlib::sa = meta["spacing"];
-            N = dlib::sa = meta["N"];
+            controlParameterName = meta["controlParameterName"];
+            cp = fromString<double>( meta[controlParameterName] );
+            spacing = fromString<KeyType>( meta["spacing"] );
+            N  = fromString<int>( meta["N"] );
         }
         if (meta.count("min")) {
-            minBin = dlib::sa = meta["min"];
+            minBin = fromString<KeyType>( meta["min"] );
         } else {
             minBin = histo.begin()->first;      //first key
         }
         if (meta.count("max")) {
-            maxBin = dlib::sa = meta["max"];
+            maxBin = fromString<KeyType>( meta["max"] ) ;
         } else {
             maxBin = histo.rbegin()->first;     //last key
         }
     }
 
-    void assignVector(const std::vector<ValType>& vec, KeyType minVal, KeyType maxVal, double beta_, int N_) {
+    void assignVector(const std::vector<ValType>& vec, KeyType minVal, KeyType maxVal, double cp_, int N_) {
         histo.clear();
-        beta = beta_;
+        cp = cp_;
         N = N_;
         binCount = vec.size();
         minBin = minVal;
@@ -138,7 +139,8 @@ struct HistogramT {
     }
 
     void updateMeta() {
-        meta["beta"] = numToString(beta);
+        meta["controlParameterName"] = controlParameterName;
+        meta[controlParameterName] = numToString(cp);
         meta["spacing"] = numToString(spacing);
         meta["min"] = numToString(minBin);
         meta["max"] = numToString(maxBin);
@@ -447,15 +449,15 @@ inline double histogramMinimumLocation(const HistogramDouble* histogram,
 }
 
 
-//to sort by beta
+//to sort by control parameter
 template<typename KeyType, typename ValType>
 bool histogramCompare(const HistogramT<KeyType, ValType>& h1, const HistogramT<KeyType, ValType>& h2) {
-    return (h1.beta < h2.beta);
+    return (h1.cp < h2.cp);
 }
 
 template<typename KeyType, typename ValType>
 bool pHistogramCompare(const HistogramT<KeyType, ValType>* h1, const HistogramT<KeyType, ValType>* h2) {
-    return (h1->beta < h2->beta);
+    return (h1->cp < h2->cp);
 }
 
 
