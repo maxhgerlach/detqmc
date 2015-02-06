@@ -14,7 +14,7 @@
 
 #include <algorithm>
 #include <omp.h>
-#include <dlib/misc_api.h>          //directory handling
+#include "boost/algorithm/string.hpp" // boost::split
 #include "tools.h"
 #include "mrpt.h"
 #include "dataseriesloader.h"
@@ -46,31 +46,76 @@ MultireweightHistosPT::~MultireweightHistosPT() {
 void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     DataSeriesLoader<double> info;
     info.readFromFile(filename);
-    numReplicas = 0;
-    info.getMeta("numTemperatures", numReplicas);
+
+    try {
+        // try to read info.dat as produced by detqmc
+        info.getMeta("controlParameterName", controlParameterName);
+        std::string controlParameterValues_string; // "val1 val2 val3 [...]"
+        info.getMeta("controlParameterValues", controlParameterValues_string);
+        std::vector<std::string> controlParameterValues_string_vec;
+        boost::split(controlParameterValues_string_vec,
+                     controlParameterValues_string,
+                     boost::is_any_of(" "));
+        numReplicas = controlParameterValues_string_vec.size();
+        controlParameterValues.clear();
+        controlParameterValues.reserve(numReplicas);
+        for (const auto& str : controlParameterValues_string_vec) {
+            controlParameterValues.push_back(fromString<double>(str));
+        }
+    } catch (KeyUndefined& exc) {
+        controlParameterName = "beta";
+        numReplicas = 0;
+        info.getMeta("numTemperatures", numReplicas);
+
+        // betas should be stored in info.dat file below the metadata
+        DataSeriesLoader<double> dr;
+        dr.readFromFile(filename);
+        if (dr.getColumns() == 1) {
+            controlParameterValues = *dr.getData(0);
+        } else if (dr.getColumns() == 2) {
+            controlParameterValues = *dr.getData(1);
+        } else {
+            throw GeneralException("invalid format of inverse temperature file " + filename);
+        }
+        dr.deleteData();
+    }
+    
     systemN = 0;
     info.getMeta("N", systemN);
     systemL = 0;
     info.getMeta("L", systemL);
     infoNumSamples = 0;
+
     try {
-        info.getMeta("sweepsBetweenMeasurements", infoSweepsBetweenMeasurements);
-    } catch (KeyUndefined& exc) {
-        infoSweepsBetweenMeasurements = 1;
-    }
-    try {
-        info.getMeta("curSamples", infoNumSamples);
+        info.getMeta("measureInterval", infoSweepsBetweenMeasurements);
     } catch (KeyUndefined& exc) {
         try {
-            info.getMeta("totalSamples", infoNumSamples);
+            info.getMeta("sweepsBetweenMeasurements", infoSweepsBetweenMeasurements);
+        } catch (KeyUndefined& exc) {
+            infoSweepsBetweenMeasurements = 1;
+        }
+    }
+
+    // get a size hint for the time series
+    try {
+        int sweepsDone;
+        info.getMeta("curSamples", sweepsDone);
+        infoNumSamples = sweepsDone / measureInterval;
+    } catch (KeyUndefined& exc) {
+        try {
+            info.getMeta("curSamples", infoNumSamples);
         } catch (KeyUndefined& exc) {
             try {
-                info.getMeta("samples", infoNumSamples);
+                info.getMeta("totalSamples", infoNumSamples);
             } catch (KeyUndefined& exc) {
                 try {
-                    info.getMeta("totalSweeps", infoNumSamples);
+                    info.getMeta("samples", infoNumSamples);
                 } catch (KeyUndefined& exc) {
-                    infoNumSamples = 0;
+                    try {
+                        info.getMeta("totalSweeps", infoNumSamples);
+                    } catch (KeyUndefined& exc) {
+                        infoNumSamples = 0;
+                    }
                 }
             }
         }
@@ -78,21 +123,22 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
 
     info.deleteData();
 
-    out << "Simulation info loaded from " << filename << " numReplicas=" << numReplicas << " systemN=" << systemN << endl;
+    out << "Simulation info loaded from " << filename << " numReplicas=" << numReplicas << " systemN=" << systemN << std::endl;
 
     addedEnergyTimeSeries = 0;
     addedObservableTimeSeries = 0;
     energyTimeSeries.resize(numReplicas, 0);
     observableTimeSeries.resize(numReplicas, 0);
-    betaIndexTimeSeries.resize(numReplicas, 0);
+    cpiTimeSeries.resize(numReplicas, 0);
     lZ_l.resize(numReplicas, LogVal(1.0));
 
-    betas.loadBetas(filename);
-    out << "betas: ";
-    for (unsigned b = 0; b < betas.getSize(); ++b) {
-        out << betas[b] << " ";
+    out << "controlParameterName: " << controlParameterName << std::endl;
+    out << "controlParameterValues: ";
+
+    for (unsigned cpi = 0; cpi < controlParameterValues.size(); ++cpi) {
+        out << controlParameterValues[cpi] << " ";
     }
-    out << endl;
+    out << std::endl;
     basicConfig = true;
 }
 
@@ -126,10 +172,10 @@ void MultireweightHistosPT::addInputTimeSeries(const std::string& filename, unsi
         ++addedEnergyTimeSeries;
         //update betaIndexTimeSeries:
         std::vector<double>* dBetaIndexTimeSeries = input.getData(0);           //values loaded in as doubles...
-        betaIndexTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size());
+        cpiTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size());
         for (unsigned n = 0; n < dBetaIndexTimeSeries->size(); ++n) {
             int betaIndex = static_cast<int>((*dBetaIndexTimeSeries)[n]);       //TODO:useless cast!
-            (*(betaIndexTimeSeries[replicaIndex]))[n] = betaIndex;
+            (*(cpiTimeSeries[replicaIndex]))[n] = betaIndex;
         }
         delete dBetaIndexTimeSeries;        //don't need this in memory anymore
     } else if (observable == "" or obs == observable) {
@@ -181,14 +227,14 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
             for (unsigned r = 0; r < numReplicas; ++r) {
                 tempEnergies[r] = (*energyTimeSeries[r])[m];
                 tempObs[r] = (*observableTimeSeries[r])[m];
-                tempBetaIndices[r] = (*betaIndexTimeSeries[r])[m];
+                tempBetaIndices[r] = (*cpiTimeSeries[r])[m];
             }
             for (unsigned r = 0; r < numReplicas; ++r) {
                 int bi = tempBetaIndices[r];
                 (*energyTimeSeries[bi])[m] = tempEnergies[r];
                 (*observableTimeSeries[bi])[m] = tempObs[r];
                 //the following is now trivial, but later code depends on it
-                (*betaIndexTimeSeries[bi])[m] = bi;
+                (*cpiTimeSeries[bi])[m] = bi;
             }
         }
     } else {
@@ -208,13 +254,13 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
         for (unsigned m = 0; m < M; ++m) {
             for (unsigned r = 0; r < numReplicas; ++r) {
                 tempEnergies[r] = (*energyTimeSeries[r])[m];
-                tempBetaIndices[r] = (*betaIndexTimeSeries[r])[m];
+                tempBetaIndices[r] = (*cpiTimeSeries[r])[m];
             }
             for (unsigned r = 0; r < numReplicas; ++r) {
                 int bi = tempBetaIndices[r];
                 (*energyTimeSeries[bi])[m] = tempEnergies[r];
                 //the following is now trivial, but later code depends on it
-                (*betaIndexTimeSeries[bi])[m] = bi;
+                (*cpiTimeSeries[bi])[m] = bi;
             }
         }
     }
@@ -248,7 +294,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
         unsigned N_k = energyTimeSeries[k]->size();
         //sum up:
         for (unsigned n = 0; n < N_k; ++n) {
-            int bi = (*betaIndexTimeSeries[k])[n];
+            int bi = (*cpiTimeSeries[k])[n];
             double e = (*energyTimeSeries[k])[n];
             double o = (*observableTimeSeries[k])[n];
             k_meanEnergy_l[bi] += e;
@@ -331,8 +377,8 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
         if (observableTimeSeries[k] == 0) {
             observableTimeSeries[k] = new vector<double>(0);
         }
-        if (betaIndexTimeSeries[k] == 0) {
-            betaIndexTimeSeries[k] = new vector<int>(0);
+        if (cpiTimeSeries[k] == 0) {
+            cpiTimeSeries[k] = new vector<int>(0);
         }
     }
 
@@ -400,8 +446,8 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
         if (observableTimeSeries[k] == 0) {
             observableTimeSeries[k] = new vector<double>(0);
         }
-        if (betaIndexTimeSeries[k] == 0) {
-            betaIndexTimeSeries[k] = new vector<int>(0);
+        if (cpiTimeSeries[k] == 0) {
+            cpiTimeSeries[k] = new vector<int>(0);
         }
     }
 
@@ -466,7 +512,7 @@ void MultireweightHistosPT::createHistogramsHelper() {
             //get bin number, correct due to rounding in cast:
             int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
             //get beta index
-            int l = (*(betaIndexTimeSeries[k]))[n];
+            int l = (*(cpiTimeSeries[k]))[n];
 
             N_kl[k][l] += 1;
 
@@ -480,7 +526,7 @@ void MultireweightHistosPT::createHistogramsHelper() {
         out << "." << flush;
     }
 
-    destroyAll(betaIndexTimeSeries);                    //not needed any more
+    destroyAll(cpiTimeSeries);                    //not needed any more
 
     out << " done" << endl;
 }
@@ -499,7 +545,7 @@ void MultireweightHistosPT::createHistogramsHelperDiscrete() {
 //            int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
             int m = int(round(((*energyTimeSeries[k])[n] * systemN - minEnergy) / deltaU));
             //get beta index
-            int l = (*(betaIndexTimeSeries[k]))[n];
+            int l = (*(cpiTimeSeries[k]))[n];
 
             N_kl[k][l] += 1;
 
@@ -513,7 +559,7 @@ void MultireweightHistosPT::createHistogramsHelperDiscrete() {
         out << "." << flush;
     }
 
-    destroyAll(betaIndexTimeSeries);                    //not needed any more
+    destroyAll(cpiTimeSeries);                    //not needed any more
 
     out << " done" << endl;
 }

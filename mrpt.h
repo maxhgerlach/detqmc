@@ -21,7 +21,6 @@
 #include <string>
 #include <boost/multi_array.hpp>
 #include "exceptions.h"
-#include "betarange.h"
 #include "logval.h"
 #include "histogram.h"
 #include "reweightingresult.h"
@@ -29,10 +28,18 @@
 //internally don't use the HistogramT class, which would use maps internally
 
 //multiple histogram reweighting adapted for data from parallel tempering as in Chodera 2007
+// [timeseries / per bin correlation handling optional]
+
+// for classical (extended-) canonical MC simulations: uses energy and observable time series for different beta
+
+// for SDW DQMC simulations: timeseries for different r: associated "energy" (0.5 sum phi^2), observable (e.g. |phi| magnetization)
+
 class MultireweightHistosPT {
 
 public:
     //Data kept public do make things simple. Handle with care!
+    
+    std::string controlParameterName; // name of control parameter, for classical (extended-) canonical MC simulations: inverse temperature beta
 
     std::string observable;                 //name of second observable (other than energy)
     int infoNumSamples;                     //number of samples, value taken from info.dat
@@ -41,8 +48,8 @@ public:
     typedef std::vector<std::vector<int>*> IntSeriesCollection;             //map replica index -> pointer to series of integer values
     DoubleSeriesCollection energyTimeSeries;
     DoubleSeriesCollection observableTimeSeries;
-    IntSeriesCollection betaIndexTimeSeries;            //currently only used for the Fenwick-estimation of d.o.s. --> can be freed after histograms have been computed
-    BetaRange betas;
+    IntSeriesCollection cpiTimeSeries; //control parameter index time series for each replica, currently only used for the Fenwick-estimation of d.o.s. --> can be freed after histograms have been computed
+    std::vector<double> controlParameterValues;
     unsigned numReplicas;
     unsigned systemN;       // should be systemL ** d
     unsigned systemL;
@@ -96,6 +103,7 @@ public:
     unsigned getSystemN() const { return systemN; }
     unsigned getSystemL() const { return systemL; }
     std::string getObservableName() const { return observable; }
+    std::string getControlParameterName() const { return controlParameterName; }
 
     //distinguishes automatically by observable (denoted in meta data)
     //also extracts beta index timeseries

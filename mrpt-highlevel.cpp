@@ -1067,8 +1067,8 @@ void getObservableTimeSeries(unsigned k, int *outN_k, double **outArray1) {
 }
 
 void getBetaIndexTimeSeries(unsigned k, int *outN_k, int **outArray1) {
-    *outN_k = int(mr->betaIndexTimeSeries[k]->size());
-    *outArray1 = mr->betaIndexTimeSeries[k]->data();
+    *outN_k = int(mr->cpiTimeSeries[k]->size());
+    *outArray1 = mr->cpiTimeSeries[k]->data();
 }
 
 void getU_m(int *outM, double **outArray1) {

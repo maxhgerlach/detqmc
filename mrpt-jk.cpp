@@ -69,7 +69,7 @@ void MultireweightHistosPTJK::createHistogramsHelperJK() {
             //get bin number, correct due to rounding in cast:
             int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
             //get beta index
-            int l = (*(betaIndexTimeSeries[k]))[n];
+            int l = (*(cpiTimeSeries[k]))[n];
 
             //update quantities over the whole data set:
             (*m_kn[k])[n] = m;
@@ -94,7 +94,7 @@ void MultireweightHistosPTJK::createHistogramsHelperJK() {
         }
         out << "." << flush;
     }
-    destroyAll(betaIndexTimeSeries);                    //not needed any more
+    destroyAll(cpiTimeSeries);                    //not needed any more
     out << " done" << endl;
 }
 
@@ -113,7 +113,7 @@ void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
 //            int m = int(round(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize));
             int m = int(round(((*energyTimeSeries[k])[n] * systemN - minEnergy) / deltaU));
             //get beta index
-            int l = (*(betaIndexTimeSeries[k]))[n];
+            int l = (*(cpiTimeSeries[k]))[n];
 
             //update quantities over the whole data set:
             (*m_kn[k])[n] = m;
@@ -138,7 +138,7 @@ void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
         }
         out << "." << flush;
     }
-    destroyAll(betaIndexTimeSeries);                    //not needed any more
+    destroyAll(cpiTimeSeries);                    //not needed any more
     out << " done" << endl;
 }
 
@@ -188,7 +188,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::
         unsigned jkBlockSize = N_k / blockCount;
         //sum up:
         for (unsigned n = 0; n < N_k; ++n) {
-            int bi = (*betaIndexTimeSeries[k])[n];
+            int bi = (*cpiTimeSeries[k])[n];
             double e = (*energyTimeSeries[k])[n];
             double o = (*observableTimeSeries[k])[n];
             const unsigned curBlock = n / jkBlockSize;
