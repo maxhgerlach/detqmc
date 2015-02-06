@@ -242,15 +242,6 @@ public:
         return reweightObservableHistogramWithoutErrors(targetBeta, numBins);
     }
 
-    //estimate a range of temperatures with approximately constant energy overlap
-    BetaRange reweightToConstantEnergyOverlap(double betaMin, double betaMax, unsigned targetNumBetas, unsigned maxIterations, double accuracy);
-    BetaRange reweightToConstantEnergyOverlap(unsigned targetNumBetas, unsigned maxIterations, double accuracy) {
-        return reweightToConstantEnergyOverlap(betas[0], betas[numReplicas - 1], targetNumBetas, maxIterations, accuracy);
-    }
-    BetaRange reweightToConstantEnergyOverlap(unsigned maxIterations, double accuracy) {
-        return reweightToConstantEnergyOverlap(numReplicas, maxIterations, accuracy);
-    }
-
     //obtain energy and specific heat estimates directly from the density of states
     //(do not re-consider the time series)
     virtual ReweightingResult reweightDiscrete(double beta);
@@ -291,14 +282,6 @@ protected:
             const DoubleSeriesCollection& w_kn,
             double& secondMoment, double& fourthMoment);
 
-
-    //used in reweightConstantOverlap:
-    //creates a histogram at histograms[index], normalizes to 1.0:
-    void internalHistogramReweighter(double targetBeta, Double2Array& histograms, unsigned index);
-    double internalHistogramOverlap(const Double2Array& histograms, unsigned index1, unsigned index2);      //assumes normalization to 1.0
-    double internalAverageNeighborOverlap(const BetaRange& betas);      //creates reweighted histograms at each beta and returns the average overlap of adjacent pairs
-    void internalReweightHistogramToOverlap(Double2Array& histograms, BetaRange& betas,
-            unsigned active, unsigned passive, unsigned limit, double targetOverlap, double accuracy);
 
     HistogramDouble* reweightObservableHistogramUsingWeights(double targetBeta, unsigned numBins,
             const DoubleSeriesCollection& w_kn);
