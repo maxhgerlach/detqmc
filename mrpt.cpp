@@ -375,61 +375,66 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
         unsigned N_k = energyTimeSeries[k]->size();
         //sum up:
         for (unsigned n = 0; n < N_k; ++n) {
-            int bi = (*cpiTimeSeries[k])[n];
+            int cpi = (*cpiTimeSeries[k])[n];
             double e = (*energyTimeSeries[k])[n];
             double o = (*observableTimeSeries[k])[n];
-            k_meanEnergy_l[bi] += e;
-            k_meanEnergySquared_l[bi] += e*e;
-            k_meanObs_l[bi] += o;
-            k_meanObsSquared_l[bi] += o*o;
-            k_meanObsToTheFourth_l[bi] += o*o*o*o;
+            k_meanEnergy_l[cpi] += e;
+            k_meanEnergySquared_l[cpi] += e*e;
+            k_meanObs_l[cpi] += o;
+            k_meanObsSquared_l[cpi] += o*o;
+            k_meanObsToTheFourth_l[cpi] += o*o*o*o;
         }
         //divide to form averages, divisor: no of samples for this temperature
         //in the time series (numReplicas == #temperatures)
         double divisor = double(N_k) / double(numReplicas);
-        for (unsigned bi = 0; bi < numReplicas; ++bi) {
-            k_meanEnergy_l[bi] /= divisor;
-            k_meanEnergySquared_l[bi] /= divisor;
-            k_meanObs_l[bi] /= divisor;
-            k_meanObsSquared_l[bi] /= divisor;
-            k_meanObsToTheFourth_l[bi] /= divisor;
+        for (unsigned cpi = 0; cpi < numReplicas; ++cpi) {
+            k_meanEnergy_l[cpi] /= divisor;
+            k_meanEnergySquared_l[cpi] /= divisor;
+            k_meanObs_l[cpi] /= divisor;
+            k_meanObsSquared_l[cpi] /= divisor;
+            k_meanObsToTheFourth_l[cpi] /= divisor;
         }
         //average over replicas -- sum up everything from all replicas
         #pragma omp critical
         {
-            for (unsigned bi = 0; bi < numReplicas; ++bi) {
-                meanEnergy_l[bi] += k_meanEnergy_l[bi];
-                meanEnergySquared_l[bi] += k_meanEnergySquared_l[bi];
-                meanObs_l[bi] += k_meanObs_l[bi];
-                meanObsSquared_l[bi] += k_meanObsSquared_l[bi];
-                meanObsToTheFourth_l[bi] +=
-                        k_meanObsToTheFourth_l[bi];
+            for (unsigned cpi = 0; cpi < numReplicas; ++cpi) {
+                meanEnergy_l[cpi] += k_meanEnergy_l[cpi];
+                meanEnergySquared_l[cpi] += k_meanEnergySquared_l[cpi];
+                meanObs_l[cpi] += k_meanObs_l[cpi];
+                meanObsSquared_l[cpi] += k_meanObsSquared_l[cpi];
+                meanObsToTheFourth_l[cpi] +=
+                        k_meanObsToTheFourth_l[cpi];
             }
         }
     }
     //average over replicas -- divide
-    for (unsigned bi = 0; bi < numReplicas; ++bi) {
-        meanEnergy_l[bi] /= double(numReplicas);
-        meanEnergySquared_l[bi] /= double(numReplicas);
-        meanObs_l[bi] /= double(numReplicas);
-        meanObsSquared_l[bi] /= double(numReplicas);
-        meanObsToTheFourth_l[bi] /= double(numReplicas);
+    for (unsigned cpi = 0; cpi < numReplicas; ++cpi) {
+        meanEnergy_l[cpi] /= double(numReplicas);
+        meanEnergySquared_l[cpi] /= double(numReplicas);
+        meanObs_l[cpi] /= double(numReplicas);
+        meanObsSquared_l[cpi] /= double(numReplicas);
+        meanObsToTheFourth_l[cpi] /= double(numReplicas);
     }
     //compute final results and put them into the map
-    for (unsigned bi = 0; bi < numReplicas; ++bi) {
-        double beta = betas[bi];
-        double heatCapacity = systemN * beta*beta *
-                (meanEnergySquared_l[bi] - pow(meanEnergy_l[bi], 2));
+    for (unsigned cpi = 0; cpi < numReplicas; ++cpi) {
+        double cp = controlParameterValues[cpi];
+        double heatCapacity = systemN * cp*cp *
+            (meanEnergySquared_l[cpi] - pow(meanEnergy_l[cpi], 2));
+        double sqObs = systemN * meanObsSquared_l[cpi];
         double suscObs = systemN *
-                (meanObsSquared_l[bi] - pow(meanObs_l[bi], 2));
-        double binderObs = 1.0 - (meanObsToTheFourth_l[bi] /
-                        (3 * pow(meanObsSquared_l[bi], 2)));
+            (meanObsSquared_l[cpi] - pow(meanObs_l[cpi], 2));
+        double binderObs = 1.0 - (meanObsToTheFourth_l[cpi] /
+                                  (3 * pow(meanObsSquared_l[cpi], 2)));
+        double binderRatioObs = (meanObsToTheFourth_l[cpi] /
+                                 (pow(meanObsSquared_l[cpi], 2)));
         //set results without specification of errors:
-        (*results)[beta] = ReweightingResult(meanEnergy_l[bi],
-                heatCapacity,
-                meanObs_l[bi],
-                suscObs,
-                binderObs);
+        (*results)[beta] = ReweightingResult(meanEnergy_l[cpi],
+                                             heatCapacity,
+                                             meanObs_l[cpi],
+                                             sqObs,
+                                             suscObs,
+                                             binderObs,
+                                             binderRatioObs);
     }
     out << "done." << endl;
     return results;
