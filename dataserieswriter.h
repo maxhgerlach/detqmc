@@ -9,6 +9,9 @@
  *      Author: gerlach
  */
 
+// recovered for SDW DQMC (2015-02-07 - )
+//   -- note that dataserieswritersucc.h has nicer code
+
 #ifndef DATASERIESWRITER_H_
 #define DATASERIESWRITER_H_
 
