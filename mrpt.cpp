@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <omp.h>
 #include "boost/algorithm/string.hpp" // boost::split
+#include "boost/filesystem.hpp"
 #include "tools.h"
 #include "mrpt.h"
 #include "dataseriesloader.h"
@@ -284,8 +285,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
     }
 }
 
-void MultireweightHistosPT::sortTimeSeriesByBeta() {
-    out << "Sorting time series by beta..." << flush;
+void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
+    out << "Sorting time series by control parameter..." << flush;
 
     if (addedObservableTimeSeries > 0) {
         //all time series need to have the same length
@@ -293,7 +294,7 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M or
                     observableTimeSeries[r]->size() != M) {
-                throw GeneralException("Time series length mismatch: for beta-sorted "
+                throw GeneralException("Time series length mismatch: for control-parameter-sorted "
                                        "timeseries all need to have the same length");
             }
         }
@@ -302,15 +303,15 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
         //then they are sorted back into the time series, sorted by beta index
         vector<double> tempEnergies(numReplicas);
         vector<double> tempObs(numReplicas);
-        vector<int> tempBetaIndices(numReplicas);
+        vector<int> tempCPI(numReplicas);
         for (unsigned m = 0; m < M; ++m) {
             for (unsigned r = 0; r < numReplicas; ++r) {
                 tempEnergies[r] = (*energyTimeSeries[r])[m];
                 tempObs[r] = (*observableTimeSeries[r])[m];
-                tempBetaIndices[r] = (*cpiTimeSeries[r])[m];
+                tempCPI[r] = (*cpiTimeSeries[r])[m];
             }
             for (unsigned r = 0; r < numReplicas; ++r) {
-                int bi = tempBetaIndices[r];
+                int bi = tempCPI[r];
                 (*energyTimeSeries[bi])[m] = tempEnergies[r];
                 (*observableTimeSeries[bi])[m] = tempObs[r];
                 //the following is now trivial, but later code depends on it
@@ -322,7 +323,7 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
         unsigned M = energyTimeSeries[0]->size();
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M) {
-                throw GeneralException("Time series length mismatch: for beta-sorted "
+                throw GeneralException("Time series length mismatch: for control-parameter-sorted "
                         "timeseries all need to have the same length");
             }
         }
@@ -330,14 +331,14 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
         //first these vectors hold the original ordering by replica index
         //then they are sorted back into the time series, sorted by beta index
         vector<double> tempEnergies(numReplicas);
-        vector<int> tempBetaIndices(numReplicas);
+        vector<int> tempCPI(numReplicas);
         for (unsigned m = 0; m < M; ++m) {
             for (unsigned r = 0; r < numReplicas; ++r) {
                 tempEnergies[r] = (*energyTimeSeries[r])[m];
-                tempBetaIndices[r] = (*cpiTimeSeries[r])[m];
+                tempCPI[r] = (*cpiTimeSeries[r])[m];
             }
             for (unsigned r = 0; r < numReplicas; ++r) {
-                int bi = tempBetaIndices[r];
+                int bi = tempCPI[r];
                 (*energyTimeSeries[bi])[m] = tempEnergies[r];
                 //the following is now trivial, but later code depends on it
                 (*cpiTimeSeries[bi])[m] = bi;
@@ -661,9 +662,12 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
 
     g_km.resize(boost::extents[numReplicas][binCount]);
 
+    namespace fs = boost::filesystem;
+    
     if (saveAutocorr) {
-        dlib::create_directory("autocorr");
-        dlib::set_current_dir("autocorr");
+        fs::path autocorrPath("./autocorr");
+        fs::create_directory(autocorrPath);
+        fs::current_path(autocorrPath);
     }
 
     #pragma omp parallel for
@@ -681,7 +685,7 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
             IntDoubleMapWriter writeAutocorr;
             writeAutocorr.setData(autocorr);
             writeAutocorr.addHeaderText("Autocorrelation function of the energy");
-            writeAutocorr.addHeaderText("Replica-index (corresponds to beta-index if time series were sorted):");
+            writeAutocorr.addHeaderText("Replica-index (corresponds to control-parameter-index if time series were sorted):");
             writeAutocorr.addMeta("k", k);
             writeAutocorr.addHeaderText("Estimated integrated autocorrelation time");
             writeAutocorr.addMeta("tau-int", tauint);
@@ -694,7 +698,7 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
     }
 
     if (saveAutocorr) {
-        dlib::set_current_dir("..");
+        fs::current_path("..");
     }
 
     out << " done" << endl;
@@ -765,12 +769,13 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
     std::fill(g_km.data(), g_km.data() + g_km.num_elements(), 1.0);
 
     if (saveAutocorr) {
-        dlib::create_directory("autocorr");
-        dlib::set_current_dir("autocorr");
+        fs::path autocorrPath("./autocorr");
+        fs::create_directory(autocorrPath);
+        fs::current_path(autocorrPath);
         for (unsigned k = 0; k < numReplicas; ++k) {
             if (energyTimeSeries[k]->size() > 0) {
-                string dir = "k" + numToString(k);
-                dlib::create_directory(dir);
+                fs::path dir("k" + numToString(k));
+                fs::create_directory(dir);
             }
         }
     }
@@ -851,7 +856,7 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
                 IntDoubleMapWriter wa;
                 wa.setData(autocorr_m[m]);
                 wa.addHeaderText("Autocorrelation function of the characteristic function of one energy bin");
-                wa.addHeaderText("Replica-index (corresponds to beta-index if time series were sorted):");
+                wa.addHeaderText("Replica-index (corresponds to control-parameter-index if time series were sorted):");
                 wa.addMeta("k", k);
                 wa.addHeaderText("Bin-index");
                 wa.addMeta("m", m);
@@ -872,7 +877,7 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
     }
 
     if (saveAutocorr) {
-        dlib::set_current_dir("..");
+        fs::current_path("..");
     }
 
     out << " done" << endl;

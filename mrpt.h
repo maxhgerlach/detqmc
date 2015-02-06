@@ -130,15 +130,18 @@ public:
     typedef std::map<double, ReweightingResult> ResultsMap;
     virtual ResultsMap* directNoReweighting();
 
-    //sort replica time series according to beta index, after this call
-    //the timeseries for replica i only contain measurements at temperature
+    //sort replica time series according to control parameter index, after this call
+    //the timeseries for replica i only contain measurements at, e.g., temperature
     //beta_i.
-    //This will probably hide correlations (the whole idea of the Chodera article).
-    void sortTimeSeriesByBeta();
+    
+    //This will probably hide correlations (the idea of the Chodera
+    //article was to avoid this, we have found this not to matter in
+    //the actual implementation).
+    void sortTimeSeriesByControlParameter();
 
     //this should be done for the whole time series even when jackkniving
     //if saveAutocorr = true: store evaluated autocorr function points to (a) file(s)
-    void setBinInefficienciesToUnity();     //most simple choice, results should be the worst
+    void setBinInefficienciesToUnity();     //most simple choice, results might be the worst -- actually little difference
     void measureBinInefficiencies(bool saveAutocorr = false);        //as in Chodera
     void measureGlobalInefficiencies(bool saveAutocorr = false);     //as in traditional Ferrenberg-Swendsen
 

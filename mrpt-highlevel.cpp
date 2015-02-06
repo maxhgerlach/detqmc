@@ -500,7 +500,7 @@ void init() {
     }
 
     if (sortByBeta) {
-        mr->sortTimeSeriesByBeta();
+        mr->sortTimeSeriesByControlParameter();
     }
 
     if (do_directEstimates) {
