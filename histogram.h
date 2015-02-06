@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 #include <boost/algorithm/string.hpp> // e.g. trimming
-#include "myexception.h"
+#include "exceptions.h"
 #include "logval.h"
 #include "metadata.h"
 #include "tools.h"
@@ -64,7 +64,7 @@ struct HistogramT {
         string metadataLines;
         while (not input.eof()) {
             getline(input, line);
-            boost::algorithm::trim(line)
+            boost::algorithm::trim(line);
             if (line[0] == '#') {
                 if (line[1] == '#')  {
                     //comment line -- header text
