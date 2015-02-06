@@ -401,6 +401,10 @@ target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt)
 
 
+set(mrpt_SRC main-mrpt.cpp mrpt-highlevel.cpp mrpt.cpp mrpt-jk.cpp)
+add_executable(mrpt ${mrpt_SRC})
+target_link_libraries(mrpt general_common)
+
 
 
 
