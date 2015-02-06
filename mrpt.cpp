@@ -583,9 +583,9 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
 
 void MultireweightHistosPT::createHistogramsHelper() {
     out << "Creating energy histograms etc. minEnergyNormalized=" << minEnergyNormalized
-        << " maxEnergyNormalized=" << maxEnergyNormalized
-        << " binSize=" << binSize
-        << " binCount=" << binCount << endl;
+            << " maxEnergyNormalized=" << maxEnergyNormalized
+            << " binSize=" << binSize
+            << " binCount=" << binCount << endl;
 
 //  #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
