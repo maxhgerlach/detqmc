@@ -1036,12 +1036,12 @@ void MultireweightHistosPT::findDensityOfStatesNonIteratively() {
 }
 
 
-ReweightingResult MultireweightHistosPT::reweightDiscrete(double targetBeta) {
+ReweightingResult MultireweightHistosPT::reweightDiscrete(double targetControlParameter) {
     vector<LogVal> arguments(binCount);
-    arguments[0] = lOmega_m[0] * toLogValExp(-targetBeta * U_m[0]);
+    arguments[0] = lOmega_m[0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = arguments[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        arguments[m] = lOmega_m[m] * toLogValExp(-targetBeta * U_m[m]);
+        arguments[m] = lOmega_m[m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += arguments[m];
     }
 
@@ -1111,15 +1111,15 @@ void MultireweightHistosPT::findPartitionFunctionsAndDensityOfStates(double tole
     out << "Done." << endl;
 }
 
-MultireweightHistosPT::DoubleSeriesCollection MultireweightHistosPT::computeWeights(double targetBeta) {
-//    out << "Computing weights w_kn at beta=" << targetBeta << endl;
-    out << " " << targetBeta << flush;
+MultireweightHistosPT::DoubleSeriesCollection MultireweightHistosPT::computeWeights(double targetControlParameter) {
+//    out << "Computing weights w_kn at controlParameter=" << targetControlParameter << endl;
+    out << " " << targetControlParameter << flush;
 
     vector<LogVal> arguments(binCount);
-    arguments[0] = lOmega_m[0] * toLogValExp(-targetBeta * U_m[0]);
+    arguments[0] = lOmega_m[0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = arguments[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        arguments[m] = lOmega_m[m] * toLogValExp(-targetBeta * U_m[m]);
+        arguments[m] = lOmega_m[m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += arguments[m];
     }
     //normalize arguments, calculate weight corresponding to bin
@@ -1260,8 +1260,8 @@ void MultireweightHistosPT::reweight2ndMoment4thMomentInternalWithoutErrors(
 }
 
 ReweightingResult MultireweightHistosPT::reweightWithoutErrorsInternal
-        (double targetBeta, const DoubleSeriesCollection& w_kn) {
-    out << "Reweighting without errors to beta=" << targetBeta << endl;
+        (double targetControlParameter, const DoubleSeriesCollection& w_kn) {
+    out << "Reweighting without errors to control parameter = " << targetControlParameter << endl;
 
     //everything normalized by system volume
     double meanEnergy = 0;
@@ -1285,17 +1285,20 @@ ReweightingResult MultireweightHistosPT::reweightWithoutErrorsInternal
         out << ".";
     }
 
-    double heatCapacity = systemN * targetBeta * targetBeta * (meanEnergySquared - pow(meanEnergy, 2));
+    double heatCapacity = systemN * targetControlParameter * targetControlParameter * (meanEnergySquared - pow(meanEnergy, 2));
     double suscObservable = systemN * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
+    double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
+    double squaredObservable = systemN * meanObservableSquared;
 
     out << " Done." << endl;
 
-    return ReweightingResult(meanEnergy, heatCapacity, meanObservable, suscObservable, binderObservable);
+    return ReweightingResult(meanEnergy, heatCapacity, meanObservable,
+        squaredObservable, suscObservable, binderObservable, binderRatioObservable);
 }
 
-double MultireweightHistosPT::reweightEnergy(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+double MultireweightHistosPT::reweightEnergy(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double result = 0;
     reweight1stMomentInternalWithoutErrors(energyTimeSeries, w_kn, result);
@@ -1305,13 +1308,13 @@ double MultireweightHistosPT::reweightEnergy(double targetBeta) {
     return result;
 }
 
-double MultireweightHistosPT::reweightSpecificHeat(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+double MultireweightHistosPT::reweightSpecificHeat(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double firstMoment = 0;
     double secondMoment = 0;
     reweight1stMoment2ndMomentInternalWithoutErrors(energyTimeSeries, w_kn, firstMoment, secondMoment);
-    double result = systemN * pow(targetBeta, 2) *
+    double result = systemN * pow(targetControlParameter, 2) *
             (secondMoment - pow(firstMoment, 2));;
 
     destroyAll(w_kn);
@@ -1319,8 +1322,8 @@ double MultireweightHistosPT::reweightSpecificHeat(double targetBeta) {
     return result;
 }
 
-double MultireweightHistosPT::reweightObservable(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+double MultireweightHistosPT::reweightObservable(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double result = 0;
     reweight1stMomentInternalWithoutErrors(observableTimeSeries, w_kn, result);
@@ -1330,8 +1333,8 @@ double MultireweightHistosPT::reweightObservable(double targetBeta) {
     return result;
 }
 
-double MultireweightHistosPT::reweightObservableSusceptibility(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+double MultireweightHistosPT::reweightObservableSusceptibility(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double firstMoment = 0;
     double secondMoment = 0;
@@ -1343,8 +1346,8 @@ double MultireweightHistosPT::reweightObservableSusceptibility(double targetBeta
     return result;
 }
 
-double MultireweightHistosPT::reweightObservableBinder(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+double MultireweightHistosPT::reweightObservableBinder(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double secondMoment = 0;
     double fourthMoment = 0;
@@ -1357,23 +1360,23 @@ double MultireweightHistosPT::reweightObservableBinder(double targetBeta) {
     return result;
 }
 
-ReweightingResult MultireweightHistosPT::reweight(double targetBeta) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+ReweightingResult MultireweightHistosPT::reweight(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
-    ReweightingResult results = reweightWithoutErrorsInternal(targetBeta, w_kn);
+    ReweightingResult results = reweightWithoutErrorsInternal(targetControlParameter, w_kn);
 
     destroyAll(w_kn);
 
     return results;
 }
 
-ReweightingResult MultireweightHistosPT::reweightWithHistograms(double targetBeta, unsigned obsBinCount) {
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
+ReweightingResult MultireweightHistosPT::reweightWithHistograms(double targetControlParameter, unsigned obsBinCount) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
-    ReweightingResult results = reweightWithoutErrorsInternal(targetBeta, w_kn);
-    results.energyHistogram = reweightEnergyHistogram(targetBeta);
+    ReweightingResult results = reweightWithoutErrorsInternal(targetControlParameter, w_kn);
+    results.energyHistogram = reweightEnergyHistogram(targetControlParameter);
     results.obsHistogram = reweightObservableHistogramUsingWeights(
-            targetBeta, obsBinCount, w_kn);
+            targetControlParameter, obsBinCount, w_kn);
 
     destroyAll(w_kn);
 
@@ -1381,7 +1384,7 @@ ReweightingResult MultireweightHistosPT::reweightWithHistograms(double targetBet
 }
 
 HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
-        double targetBeta) {
+        double targetControlParameter) {
     out << "Reweighting energy histogram... ";
     HistogramDouble* result = new HistogramDouble;
     result->minBin = minEnergyNormalized;
@@ -1389,14 +1392,14 @@ HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
     result->spacing = binSize;
     result->binCount = binCount;
     result->N = systemN;
-    result->beta = targetBeta;
+    result->beta = targetControlParameter;
     result->total = 0;
 
     vector<LogVal> arguments(binCount);
-    arguments[0] = lOmega_m[0] * toLogValExp(-targetBeta * U_m[0]);
+    arguments[0] = lOmega_m[0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = arguments[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        arguments[m] = lOmega_m[m] * toLogValExp(-targetBeta * U_m[m]);
+        arguments[m] = lOmega_m[m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += arguments[m];
     }
     for (unsigned m = 0; m < binCount; ++m) {
@@ -1412,14 +1415,14 @@ HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
     return result;
 }
 
-HistogramDouble* MultireweightHistosPT::reweightObservableHistogramUsingWeights(double targetBeta, unsigned obsBinCount,
+HistogramDouble* MultireweightHistosPT::reweightObservableHistogramUsingWeights(double targetControlParameter, unsigned obsBinCount,
             const DoubleSeriesCollection& w_kn) {
     HistogramDouble* result = new HistogramDouble;
 
     vector<double> obsHisto(obsBinCount, 0.0);
-    reweightObservableHistogramInternal(targetBeta, obsBinCount, w_kn, obsHisto);
+    reweightObservableHistogramInternal(targetControlParameter, obsBinCount, w_kn, obsHisto);
 
-    result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetBeta, systemN);
+    result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetControlParameter, systemN);
     result->headerLines += "## MRPT reweighted histogram of normalized " + observable + "\n";
     result->updateMeta();
 
@@ -1563,7 +1566,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
     out << " done" << endl;
 }
 
-void MultireweightHistosPT::reweightObservableHistogramInternal(double targetBeta, unsigned obsBinCount,
+void MultireweightHistosPT::reweightObservableHistogramInternal(double targetControlParameter, unsigned obsBinCount,
         const DoubleSeriesCollection& w_kn, std::vector<double>& obsHisto) {
     const double SMALL = 1e-10;     //to fit maxObservableNormalized into the highest bin
     double obsBinSize = (maxObservableNormalized - minObservableNormalized + SMALL) / obsBinCount;
@@ -1578,10 +1581,10 @@ void MultireweightHistosPT::reweightObservableHistogramInternal(double targetBet
 }
 
 HistogramDouble* MultireweightHistosPT::reweightObservableHistogramWithoutErrors(
-        double targetBeta, unsigned obsBinCount) {
-    out << "Reweighting " << observable << " to generate histogram at beta=" << targetBeta << ", " << obsBinCount << " bins... " << flush;
-    DoubleSeriesCollection w_kn = computeWeights(targetBeta);
-    HistogramDouble* result = reweightObservableHistogramUsingWeights(targetBeta, obsBinCount, w_kn);
+        double targetControlParameter, unsigned obsBinCount) {
+    out << "Reweighting " << observable << " to generate histogram at beta=" << targetControlParameter << ", " << obsBinCount << " bins... " << flush;
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
+    HistogramDouble* result = reweightObservableHistogramUsingWeights(targetControlParameter, obsBinCount, w_kn);
     destroyAll(w_kn);
     out << "Done." << endl;
     return result;
@@ -1842,14 +1845,14 @@ void MultireweightHistosPT::findObsEqualWeight(
 }
 
 void MultireweightHistosPT::energyRelDip(double& relDip, HistogramDouble*& histoResult,
-            double targetBeta, double tolerance) {
-    histoResult = reweightEnergyHistogramWithoutErrors(targetBeta);
+            double targetControlParameter, double tolerance) {
+    histoResult = reweightEnergyHistogramWithoutErrors(targetControlParameter);
     relDip = histogramRelativeDip(histoResult, tolerance);
 }
 
 void MultireweightHistosPT::obsRelDip(double& relDip, HistogramDouble*& histoResult,
-            double targetBeta, unsigned numBins, double tolerance) {
-    histoResult = reweightObservableHistogramWithoutErrors(targetBeta,
+            double targetControlParameter, unsigned numBins, double tolerance) {
+    histoResult = reweightObservableHistogramWithoutErrors(targetControlParameter,
             numBins);
     relDip = histogramRelativeDip(histoResult, tolerance);
 }

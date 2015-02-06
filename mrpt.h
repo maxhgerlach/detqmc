@@ -177,23 +177,23 @@ public:
 
     //FS-multi-reweighting without error estimation, all observables known
     //using time series:
-    virtual ReweightingResult reweight(double targetBeta);
+    virtual ReweightingResult reweight(double targetControlParameter);
 
     //FS-multi-reweighting without error estimation, all observables known,
     // + energy and observable histograms at the target beta
     //the returned structure holds pointers to newly allocated memory
     // -- they should be deleted at some point
     //using time series:
-    virtual ReweightingResult reweightWithHistograms(double targetBeta,
+    virtual ReweightingResult reweightWithHistograms(double targetControlParameter,
             unsigned obsBinCount);
 
     //FS-multi-reweighting without error estimation for one specific observable
     //using time series:
-    virtual double reweightEnergy(double targetBeta);
-    virtual double reweightSpecificHeat(double targetBeta);
-    virtual double reweightObservable(double targetBeta);
-    virtual double reweightObservableSusceptibility(double targetBeta);
-    virtual double reweightObservableBinder(double targetBeta);
+    virtual double reweightEnergy(double targetControlParameter);
+    virtual double reweightSpecificHeat(double targetControlParameter);
+    virtual double reweightObservable(double targetControlParameter);
+    virtual double reweightObservableSusceptibility(double targetControlParameter);
+    virtual double reweightObservableBinder(double targetControlParameter);
 
     //find the maximum of the susceptibility between betaStart and betaEnd
     //put its location into betaMax, its value into suscMax and add all
@@ -244,24 +244,24 @@ public:
     //The following just reweight to obtain the histogram at the target beta,
     //return that and the relative dip
     void energyRelDip(double& relDip, HistogramDouble*& histoResult,
-            double targetBeta, double tolerance = 0.1);
+            double targetControlParameter, double tolerance = 0.1);
     void obsRelDip(double& relDip, HistogramDouble*& histoResult,
-            double targetBeta, unsigned numBins, double tolerance = 0.1);
+            double targetControlParameter, unsigned numBins, double tolerance = 0.1);
 
 
     //produces nice histograms for further processing / output at inverse
-    //temperature @targetBeta. Returns a pointer to newly allocated memory
+    //temperature @targetControlParameter. Returns a pointer to newly allocated memory
     //that has to be deleted at some point!
     HistogramDouble* reweightEnergyHistogramWithoutErrors(
-            double targetBeta);
+            double targetControlParameter);
     HistogramDouble* reweightObservableHistogramWithoutErrors(
-            double targetBeta, unsigned numBins);
-    virtual HistogramDouble* reweightEnergyHistogram(double targetBeta) {
-        return reweightEnergyHistogramWithoutErrors(targetBeta);
+            double targetControlParameter, unsigned numBins);
+    virtual HistogramDouble* reweightEnergyHistogram(double targetControlParameter) {
+        return reweightEnergyHistogramWithoutErrors(targetControlParameter);
     }
     virtual HistogramDouble* reweightObservableHistogram(
-            double targetBeta, unsigned numBins) {
-        return reweightObservableHistogramWithoutErrors(targetBeta, numBins);
+            double targetControlParameter, unsigned numBins) {
+        return reweightObservableHistogramWithoutErrors(targetControlParameter, numBins);
     }
 
     //obtain energy and specific heat estimates directly from the density of states
@@ -283,8 +283,8 @@ protected:
 
     void updateDensityOfStates();
 
-    DoubleSeriesCollection computeWeights(double targetBeta);       //determine weights w_kn(beta) (occupies a lot of memory, free later)
-    ReweightingResult reweightWithoutErrorsInternal(double targetBeta, const DoubleSeriesCollection& w_kn);
+    DoubleSeriesCollection computeWeights(double targetControlParameter);       //determine weights w_kn(cp) (occupies a lot of memory, free later)
+    ReweightingResult reweightWithoutErrorsInternal(double targetControlParameter, const DoubleSeriesCollection& w_kn);
 
     //return the expectation value of the first moment of some observable
     //with given weights, put the result into firstMoment
@@ -305,13 +305,13 @@ protected:
             double& secondMoment, double& fourthMoment);
 
 
-    HistogramDouble* reweightObservableHistogramUsingWeights(double targetBeta, unsigned numBins,
+    HistogramDouble* reweightObservableHistogramUsingWeights(double targetControlParameter, unsigned numBins,
             const DoubleSeriesCollection& w_kn);
 
     //using pre-calculated weights @w_kn estimate a @numBins-histogram of the
-    //observable at inverse temperature @targetBeta. Put the result into
+    //observable at inverse temperature @targetControlParameter. Put the result into
     //output vector @histo
-    void reweightObservableHistogramInternal(double targetBeta, unsigned numBins,
+    void reweightObservableHistogramInternal(double targetControlParameter, unsigned numBins,
             const DoubleSeriesCollection& w_kn, std::vector<double>& histo);
 
 };
