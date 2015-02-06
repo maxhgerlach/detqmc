@@ -143,13 +143,14 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
 }
 
 
-void MultireweightHistosPT::addInputTimeSeries(const std::string& filename, unsigned subsample, unsigned discardEntries) {
+void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& filename, unsigned subsample, unsigned discardEntries) {
     if (not basicConfig) {
         throw GeneralException("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
     }
     DoubleSeriesLoader input;
     out << "adding time-series " << filename << " - " << flush;
     input.readFromFile(filename, subsample, discardEntries, infoNumSamples);
+    
     unsigned replicaIndex;
     input.getMeta("r", replicaIndex);
     string obs;
@@ -170,14 +171,14 @@ void MultireweightHistosPT::addInputTimeSeries(const std::string& filename, unsi
             throw GeneralException(filename + ": expected a two column time series file, but got " + numToString(input.getColumns()) + " column(s)");
         }
         ++addedEnergyTimeSeries;
-        //update betaIndexTimeSeries:
-        std::vector<double>* dBetaIndexTimeSeries = input.getData(0);           //values loaded in as doubles...
+        //update cpiTimeSeries:
+        std::vector<double>* dCPItimeSeries = input.getData(0);           //values loaded in as doubles...
         cpiTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size());
-        for (unsigned n = 0; n < dBetaIndexTimeSeries->size(); ++n) {
-            int betaIndex = static_cast<int>((*dBetaIndexTimeSeries)[n]);       //TODO:useless cast!
-            (*(cpiTimeSeries[replicaIndex]))[n] = betaIndex;
+        for (unsigned n = 0; n < dCPItimeSeries->size(); ++n) {
+            int cpi = static_cast<int>((*dCPItimeSeries)[n]);       //TODO:useless cast!
+            (*(cpiTimeSeries[replicaIndex]))[n] = cpi;
         }
-        delete dBetaIndexTimeSeries;        //don't need this in memory anymore
+        delete dCPItimeSeries;        //don't need this in memory anymore
     } else if (observable == "" or obs == observable) {
         observable = obs;
 //      if (observableTimeSeries.size() < replicaIndex + 1) {
@@ -193,7 +194,7 @@ void MultireweightHistosPT::addInputTimeSeries(const std::string& filename, unsi
         }
     } else {
         throw GeneralException("in " + filename + ": Observable doesn't match previous\n" +
-                obs + " vs. " + observable + "\n");
+                               obs + " vs. " + observable + "\n");
     }
     unsigned N;
     input.getMeta("N", N);
@@ -201,6 +202,85 @@ void MultireweightHistosPT::addInputTimeSeries(const std::string& filename, unsi
         systemN = N;
     } else if (systemN != N) {
         throw GeneralException("in " + filename + ": Non matching system sizes: " + numToString(N) + " vs. " + numToString(systemN));
+    }
+}
+
+void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& filename, unsigned subsample, unsigned discardEntries) {
+    if (not basicConfig) {
+        throw GeneralException("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
+    }
+    
+    DoubleSeriesLoader input;
+    out << "adding time-series " << filename << " - " << flush;
+    input.readFromFile(filename, subsample, discardEntries, infoNumSamples);
+
+    if (input.getColumns() != 1) {
+        throw GeneralException(filename + ": expected a single column time series file, but got " +
+                               numToString(input.getColumns()) + " columns");
+    }
+    
+    unsigned replicaIndex;
+    try {
+        input.getMeta("replicaIndex", replicaIndex);
+    } catch (KeyUndefined& exc) {
+        try {
+            input.getMeta("controlParameterIndex", replicaIndex);
+        } catch (KeyUndefined& exc) {
+            // controlParameterIndex not defined --> get it from the actual controlParameter value
+            double targetValue;
+            input.getMeta(controlParameterName, targetValue);
+            replicaIndex = findNearest(controlParameterValues, targetValue);
+        }
+    }
+    
+    string obs;
+    input.getMeta("observable", obs);
+    out << obs << " - " << input.getData(0)->size() << endl;
+    if (obs == "energy") {
+//      if (energyTimeSeries.size() < replicaIndex + 1) {
+//          //content preserving resizes:
+//          unsigned newNumReplicas = replicaIndex + 1;
+//          energyTimeSeries.resize(newNumReplicas, 0);
+//          betaIndexTimeSeries.resize(newNumReplicas, 0);
+//      }
+        if (energyTimeSeries[replicaIndex] != 0) {
+            throw GeneralException("two time series added for " + obs +
+                                   " from replica-index " + numToString(replicaIndex));
+        }
+        energyTimeSeries[replicaIndex] = input.getData();
+        ++addedEnergyTimeSeries;
+        //update cpiTimeSeries -- just fill with constant controlparameter index
+        if (cpiTimeSeries[replicaIndex] == 0) {
+            cpiTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size(),
+                                                          replicaIndex);
+        }
+    } else if (observable == "" or obs == observable) {
+        observable = obs;
+//      if (observableTimeSeries.size() < replicaIndex + 1) {
+//          observableTimeSeries.resize(replicaIndex + 1, 0);
+//      }
+        if (observableTimeSeries[replicaIndex] != 0) {
+            throw GeneralException("two time series added for " + obs +
+                                   " from replica-index " + numToString(replicaIndex));
+        }
+        observableTimeSeries[replicaIndex] = input.getData();
+        ++addedObservableTimeSeries;
+        //update cpiTimeSeries -- just fill with constant controlparameter index
+        if (cpiTimeSeries[replicaIndex] == 0) {
+            cpiTimeSeries[replicaIndex] = new vector<int>(observableTimeSeries[replicaIndex]->size(),
+                                                          replicaIndex);
+        }
+    } else {
+        throw GeneralException("in " + filename + ": Observable doesn't match previous\n" +
+                               obs + " vs. " + observable + "\n");
+    }
+    unsigned N;
+    input.getMeta("N", N);
+    if (systemN == 0) {
+        systemN = N;
+    } else if (systemN != N) {
+        throw GeneralException("in " + filename + ": Non matching system sizes: " +
+                               numToString(N) + " vs. " + numToString(systemN));
     }
 }
 
@@ -214,7 +294,7 @@ void MultireweightHistosPT::sortTimeSeriesByBeta() {
             if (energyTimeSeries[r]->size() != M or
                     observableTimeSeries[r]->size() != M) {
                 throw GeneralException("Time series length mismatch: for beta-sorted "
-                        "timeseries all need to have the same length");
+                                       "timeseries all need to have the same length");
             }
         }
         //for each sample:

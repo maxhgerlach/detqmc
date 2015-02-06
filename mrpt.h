@@ -105,12 +105,23 @@ public:
     std::string getObservableName() const { return observable; }
     std::string getControlParameterName() const { return controlParameterName; }
 
+    // I) version for two-column timeseries [beta-index, obs-value],
+    //    currently only supports control parameter beta,
+    //    this is meant for the classical MC parallel tempering code.
     //distinguishes automatically by observable (denoted in meta data)
     //also extracts beta index timeseries
     //optionally subsamples the time series (subsample defines sample size)
     //optionally leaves out the first @discardEntries entries (extra thermalization)
-    void addInputTimeSeries(const std::string& filename, unsigned subsample = 1,
-            unsigned discardEntries = 0);
+    void addInputTimeSeries_twoColumn(const std::string& filename, unsigned subsample = 1,
+                                      unsigned discardEntries = 0);
+
+    // II) version for single-column timeseries, [obs-value] exclusively,
+    //     which are already sorted by temperature
+    //distinguishes automatically by observable (denoted in meta data)
+    //optionally subsamples the time series (subsample defines sample size)
+    //optionally leaves out the first @discardEntries entries (extra thermalization)
+    void addInputTimeSeries_singleColumn(const std::string& filename, unsigned subsample = 1,
+                                         unsigned discardEntries = 0);
 
     //compute averages directly at the original temperatures, only
     //from data at the original temperatures -- no reweighting
