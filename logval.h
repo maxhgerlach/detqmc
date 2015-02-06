@@ -20,7 +20,7 @@
 //to avoid overflows
 class LogVal {
 public:
-    static const double LogZero = 1e-3; //ln(LogZero) << ln(1)
+    static constexpr double LogZero = 1e-3; //ln(LogZero) << ln(1)
     double lnx;
 
     LogVal();
