@@ -38,7 +38,7 @@ struct HistogramT {
     //parameters of the simulation the histogram was measured at
     //-- optional, may not even be relevant (e.g. replica-specific
     //histograms..)
-    int N;              //system volume
+    int N;              //system volume (L**d)
     std::string controlParameterName; // name of control parameter, e.g. inverse temperature beta
     double cp;          //control paramter value
     

@@ -109,6 +109,11 @@ endif (NOT ${MPI_CXX_FOUND})
 #    ${MPI_CXX_LINK_FLAGS} for these targets
 
 
+# OpenMP
+find_package(OpenMP)
+# this provides ${OpenMP_C_FLAGS} and ${OpenMP_CXX_FLAGS}
+
+
 
 # Preprocessor flags: -D definitions
 add_definitions(-DDSFMT -DDSFMT_MEXP=19937)
@@ -401,9 +406,19 @@ target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt)
 
 
-set(mrpt_SRC main-mrpt.cpp mrpt-highlevel.cpp mrpt.cpp mrpt-jk.cpp)
+set(mrpt_SRC main-mrpt.cpp
+  # mrpt-highlevel.cpp
+  mrpt.cpp
+  # mrpt-jk.cpp
+  statistics.cpp
+  )
 add_executable(mrpt ${mrpt_SRC})
-target_link_libraries(mrpt general_common)
+if(${OPENMP_FOUND})
+  # add -fopenmp or -openmp or whatever
+  set_target_properties(mrpt PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
+                                        LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
+endif(${OPENMP_FOUND})
+target_link_libraries(mrpt general_common boost_filesystem boost_system)
 
 
 

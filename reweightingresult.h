@@ -29,7 +29,7 @@ struct ReweightingResult {
     double obsAvg;
     double obsError;
     double obsSquared;          // systemSize * (<o^2>)
-    doube  obsSquaredError;
+    double obsSquaredError;
     double obsSusc;             // systemSize * (<o^2> - <o>^2)
     double obsSuscError;
     double obsBinder;           // 1 - <o^4> / (3 <o^2>^2)

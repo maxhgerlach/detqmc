@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <omp.h>
+#include <memory>
 #include "boost/algorithm/string.hpp" // boost::split
 #include "boost/filesystem.hpp"
 #include "tools.h"
@@ -30,9 +31,9 @@ template void printVector<LogVal>(const vector<LogVal>&);
 template void printVector<double>(const vector<double>&);
 
 MultireweightHistosPT::MultireweightHistosPT(ostream& outStream) :
-        numReplicas(0), systemN(0),
-        minEnergyNormalized(0), maxEnergyNormalized(0), binCount(0), binSize(0), lBinSize(1.0),
-        basicConfig(false), out(outStream),
+    numReplicas(0), systemN(0), systemSize(0),
+    minEnergyNormalized(0), maxEnergyNormalized(0), binCount(0), binSize(0), lBinSize(1.0),
+    out(outStream), basicConfig(false)
 {
     out << "max threads: " << omp_get_max_threads() << endl;
 }
@@ -40,7 +41,7 @@ MultireweightHistosPT::MultireweightHistosPT(ostream& outStream) :
 MultireweightHistosPT::~MultireweightHistosPT() {
     destroyAll(energyTimeSeries);
     destroyAll(observableTimeSeries);
-    destroyAll(betaIndexTimeSeries);
+    destroyAll(cpiTimeSeries);
     destroyAll(m_kn);
 }
 
@@ -76,7 +77,7 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
         } else if (dr.getColumns() == 2) {
             controlParameterValues = *dr.getData(1);
         } else {
-            throw GeneralException("invalid format of inverse temperature file " + filename);
+            throw GeneralError("invalid format of inverse temperature file " + filename);
         }
         dr.deleteData();
     }
@@ -86,6 +87,18 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     systemL = 0;
     info.getMeta("L", systemL);
     infoNumSamples = 0;
+
+    std::string model;
+    info.getMeta("model", model);
+    if (model == "sdw") {
+        // QMC simulation
+        unsigned timeslices;
+        info.getMeta("m", timeslices);
+        systemSize = systemN * timeslices;
+    } else {
+        // classical MC simulation
+        systemSize = systemN;
+    }
 
     try {
         info.getMeta("measureInterval", infoSweepsBetweenMeasurements);
@@ -101,7 +114,7 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     try {
         int sweepsDone;
         info.getMeta("curSamples", sweepsDone);
-        infoNumSamples = sweepsDone / measureInterval;
+        infoNumSamples = sweepsDone / infoSweepsBetweenMeasurements;
     } catch (KeyUndefined& exc) {
         try {
             info.getMeta("curSamples", infoNumSamples);
@@ -124,7 +137,8 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
 
     info.deleteData();
 
-    out << "Simulation info loaded from " << filename << " numReplicas=" << numReplicas << " systemN=" << systemN << std::endl;
+    out << "Simulation info loaded from " << filename << " numReplicas=" << numReplicas
+        << " systemN=" << systemN << " systemSize=" << systemSize << std::endl;
 
     addedEnergyTimeSeries = 0;
     addedObservableTimeSeries = 0;
@@ -146,7 +160,7 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
 
 void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& filename, unsigned subsample, unsigned discardEntries) {
     if (not basicConfig) {
-        throw GeneralException("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
+        throw GeneralError("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
     }
     DoubleSeriesLoader input;
     out << "adding time-series " << filename << " - " << flush;
@@ -165,11 +179,11 @@ void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& file
 //          betaIndexTimeSeries.resize(newNumReplicas, 0);
 //      }
         if (energyTimeSeries[replicaIndex] != 0) {
-            throw GeneralException("two time series added for " + obs + " from replica-index " + numToString(replicaIndex));
+            throw GeneralError("two time series added for " + obs + " from replica-index " + numToString(replicaIndex));
         }
         energyTimeSeries[replicaIndex] = input.getData(input.getColumns() - 1);
         if (input.getColumns() != 2) {
-            throw GeneralException(filename + ": expected a two column time series file, but got " + numToString(input.getColumns()) + " column(s)");
+            throw GeneralError(filename + ": expected a two column time series file, but got " + numToString(input.getColumns()) + " column(s)");
         }
         ++addedEnergyTimeSeries;
         //update cpiTimeSeries:
@@ -186,7 +200,7 @@ void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& file
 //          observableTimeSeries.resize(replicaIndex + 1, 0);
 //      }
         if (observableTimeSeries[replicaIndex] != 0) {
-            throw GeneralException("two time series added for " + obs + " from replica-index " + numToString(replicaIndex));
+            throw GeneralError("two time series added for " + obs + " from replica-index " + numToString(replicaIndex));
         }
         observableTimeSeries[replicaIndex] = input.getData(input.getColumns() - 1);
         ++addedObservableTimeSeries;
@@ -194,21 +208,22 @@ void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& file
             delete input.getData(0);        //don't need this in memory
         }
     } else {
-        throw GeneralException("in " + filename + ": Observable doesn't match previous\n" +
-                               obs + " vs. " + observable + "\n");
+        throw GeneralError("in " + filename + ": Observable doesn't match previous\n" +
+                           obs + " vs. " + observable + "\n");
     }
     unsigned N;
     input.getMeta("N", N);
     if (systemN == 0) {
         systemN = N;
     } else if (systemN != N) {
-        throw GeneralException("in " + filename + ": Non matching system sizes: " + numToString(N) + " vs. " + numToString(systemN));
+        throw GeneralError("in " + filename + ": Non matching system sizes: " +
+                           numToString(N) + " vs. " + numToString(systemN));
     }
 }
 
 void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& filename, unsigned subsample, unsigned discardEntries) {
     if (not basicConfig) {
-        throw GeneralException("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
+        throw GeneralError("tried to add input time series before basic configuration from simulation info was done (need to parse info.dat first)");
     }
     
     DoubleSeriesLoader input;
@@ -216,8 +231,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
     input.readFromFile(filename, subsample, discardEntries, infoNumSamples);
 
     if (input.getColumns() != 1) {
-        throw GeneralException(filename + ": expected a single column time series file, but got " +
-                               numToString(input.getColumns()) + " columns");
+        throw GeneralError(filename + ": expected a single column time series file, but got " +
+                           numToString(input.getColumns()) + " columns");
     }
     
     unsigned replicaIndex;
@@ -237,7 +252,7 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
     string obs;
     input.getMeta("observable", obs);
     out << obs << " - " << input.getData(0)->size() << endl;
-    if (obs == "energy") {
+    if (obs == "energy" or obs == "associatedEnergy") {
 //      if (energyTimeSeries.size() < replicaIndex + 1) {
 //          //content preserving resizes:
 //          unsigned newNumReplicas = replicaIndex + 1;
@@ -245,8 +260,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
 //          betaIndexTimeSeries.resize(newNumReplicas, 0);
 //      }
         if (energyTimeSeries[replicaIndex] != 0) {
-            throw GeneralException("two time series added for " + obs +
-                                   " from replica-index " + numToString(replicaIndex));
+            throw GeneralError("two time series added for " + obs +
+                               " from replica-index " + numToString(replicaIndex));
         }
         energyTimeSeries[replicaIndex] = input.getData();
         ++addedEnergyTimeSeries;
@@ -261,8 +276,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
 //          observableTimeSeries.resize(replicaIndex + 1, 0);
 //      }
         if (observableTimeSeries[replicaIndex] != 0) {
-            throw GeneralException("two time series added for " + obs +
-                                   " from replica-index " + numToString(replicaIndex));
+            throw GeneralError("two time series added for " + obs +
+                               " from replica-index " + numToString(replicaIndex));
         }
         observableTimeSeries[replicaIndex] = input.getData();
         ++addedObservableTimeSeries;
@@ -272,16 +287,16 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
                                                           replicaIndex);
         }
     } else {
-        throw GeneralException("in " + filename + ": Observable doesn't match previous\n" +
-                               obs + " vs. " + observable + "\n");
+        throw GeneralError("in " + filename + ": Observable doesn't match previous\n" +
+                           obs + " vs. " + observable + "\n");
     }
     unsigned N;
     input.getMeta("N", N);
     if (systemN == 0) {
         systemN = N;
     } else if (systemN != N) {
-        throw GeneralException("in " + filename + ": Non matching system sizes: " +
-                               numToString(N) + " vs. " + numToString(systemN));
+        throw GeneralError("in " + filename + ": Non matching system sizes: " +
+                           numToString(N) + " vs. " + numToString(systemN));
     }
 }
 
@@ -294,8 +309,8 @@ void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M or
                     observableTimeSeries[r]->size() != M) {
-                throw GeneralException("Time series length mismatch: for control-parameter-sorted "
-                                       "timeseries all need to have the same length");
+                throw GeneralError("Time series length mismatch: for control-parameter-sorted "
+                                   "timeseries all need to have the same length");
             }
         }
         //for each sample:
@@ -323,8 +338,8 @@ void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
         unsigned M = energyTimeSeries[0]->size();
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M) {
-                throw GeneralException("Time series length mismatch: for control-parameter-sorted "
-                        "timeseries all need to have the same length");
+                throw GeneralError("Time series length mismatch: for control-parameter-sorted "
+                                   "timeseries all need to have the same length");
             }
         }
         //for each sample:
@@ -418,23 +433,23 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
     //compute final results and put them into the map
     for (unsigned cpi = 0; cpi < numReplicas; ++cpi) {
         double cp = controlParameterValues[cpi];
-        double heatCapacity = systemN * cp*cp *
+        double heatCapacity = systemSize * cp*cp *
             (meanEnergySquared_l[cpi] - pow(meanEnergy_l[cpi], 2));
-        double sqObs = systemN * meanObsSquared_l[cpi];
-        double suscObs = systemN *
+        double sqObs = systemSize * meanObsSquared_l[cpi];
+        double suscObs = systemSize *
             (meanObsSquared_l[cpi] - pow(meanObs_l[cpi], 2));
         double binderObs = 1.0 - (meanObsToTheFourth_l[cpi] /
                                   (3 * pow(meanObsSquared_l[cpi], 2)));
         double binderRatioObs = (meanObsToTheFourth_l[cpi] /
                                  (pow(meanObsSquared_l[cpi], 2)));
         //set results without specification of errors:
-        (*results)[beta] = ReweightingResult(meanEnergy_l[cpi],
-                                             heatCapacity,
-                                             meanObs_l[cpi],
-                                             sqObs,
-                                             suscObs,
-                                             binderObs,
-                                             binderRatioObs);
+        (*results)[cp] = ReweightingResult(meanEnergy_l[cpi],
+                                           heatCapacity,
+                                           meanObs_l[cpi],
+                                           sqObs,
+                                           suscObs,
+                                           binderObs,
+                                           binderRatioObs);
     }
     out << "done." << endl;
     return results;
@@ -442,15 +457,15 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
 
 void MultireweightHistosPT::setUpHistograms(int binCount_) {
     if (addedEnergyTimeSeries == 0) {
-        throw GeneralException("No energy time series added!");
+        throw GeneralError("No energy time series added!");
     }
     if (addedObservableTimeSeries == 0) {
         cout << "Warning: No observable time series added." << endl;
     }
-    if (numReplicas != controlParameterValues.getSize() or numReplicas != addedEnergyTimeSeries
+    if (numReplicas != controlParameterValues.size() or numReplicas != addedEnergyTimeSeries
         or (addedObservableTimeSeries > 0 and
             numReplicas != addedObservableTimeSeries)) {
-//        throw GeneralException("Mismatched number of replicas (forgot to add time series? wrong betas?)");
+//        throw GeneralError("Mismatched number of replicas (forgot to add time series? wrong betas?)");
         cout << "Warning: Number of added time series does not match number "
                 "of replicas from simulation info file." << endl;
     }
@@ -471,8 +486,8 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
     binCount = binCount_;
 
     findMinMax(energyTimeSeries, minEnergyNormalized, maxEnergyNormalized);
-    minEnergy = minEnergyNormalized * systemN;
-    maxEnergy = maxEnergyNormalized * systemN;
+    minEnergy = minEnergyNormalized * systemSize;
+    maxEnergy = maxEnergyNormalized * systemSize;
     deltaU = (maxEnergyNormalized - minEnergyNormalized) / binCount;
     const double SMALL = 1e-10;     //to fit maxEnergy into the highest bin
     binSize = (maxEnergyNormalized - minEnergyNormalized + SMALL) / binCount;
@@ -485,7 +500,7 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
     U_m.resize(binCount);
     for (unsigned m = 0; m < binCount; ++m) {
         //take normalized energy at bin center, then undo normalization
-        U_m[m] = (minEnergyNormalized + binSize * (m + 0.5)) * systemN;
+        U_m[m] = (minEnergyNormalized + binSize * (m + 0.5)) * systemSize;
     }
 
     lZ_l = vector<LogVal>(numReplicas, LogVal(1.0));
@@ -511,15 +526,15 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
 
 void MultireweightHistosPT::setUpHistogramsIsing() {
     if (addedEnergyTimeSeries == 0) {
-        throw GeneralException("No energy time series added!");
+        throw GeneralError("No energy time series added!");
     }
     if (addedObservableTimeSeries == 0) {
         cout << "Warning: No observable time series added." << endl;
     }
-    if (numReplicas != betas.getSize() or numReplicas != addedEnergyTimeSeries
-            or (addedObservableTimeSeries > 0 and
-                numReplicas != addedObservableTimeSeries)) {
-//        throw GeneralException("Mismatched number of replicas (forgot to add time series? wrong betas?)");
+    if (numReplicas != controlParameterValues.size() or numReplicas != addedEnergyTimeSeries
+        or (addedObservableTimeSeries > 0 and
+            numReplicas != addedObservableTimeSeries)) {
+//        throw GeneralError("Mismatched number of replicas (forgot to add time series? wrong betas?)");
         cout << "Warning: Number of added time series does not match number "
                 "of replicas from simulation info file." << endl;
     }
@@ -540,20 +555,20 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
     findMinMax(energyTimeSeries, minEnergyNormalized, maxEnergyNormalized);
 
     //actual min and max energies:
-    minEnergy = round(minEnergyNormalized * double(systemN));
-    maxEnergy = round(maxEnergyNormalized * double(systemN));
+    minEnergy = round(minEnergyNormalized * double(systemSize));
+    maxEnergy = round(maxEnergyNormalized * double(systemSize));
 
     //special knowledge of 2D Ising model:
     //offset by half a bin width, else the binning routines won't work due to
     //rounding errors:
-//    minEnergyNormalized -= double(2) / systemN;
+//    minEnergyNormalized -= double(2) / systemSize;
     //the energies -2N+4 and 2N-4 aren't physically accessible, but we'll
     //include them in the histograms anyway
     binCount = int(maxEnergy - minEnergy) / 4 + 1;
 
     deltaU = 4.0;
     const double SMALL = 1e-10;     //to fit maxEnergy into the highest bin
-    binSize = deltaU / double(systemN) + SMALL;
+    binSize = deltaU / double(systemSize) + SMALL;
     lBinSize = LogVal(binSize);
 
     if (addedObservableTimeSeries) {
@@ -629,7 +644,7 @@ void MultireweightHistosPT::createHistogramsHelperDiscrete() {
         for (unsigned n = 0; n < energyTimeSeries[k]->size(); ++n) {
             //get bin number, correct due to rounding in cast:
 //            int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
-            int m = int(round(((*energyTimeSeries[k])[n] * systemN - minEnergy) / deltaU));
+            int m = int(round(((*energyTimeSeries[k])[n] * systemSize - minEnergy) / deltaU));
             //get beta index
             int l = (*(cpiTimeSeries[k]))[n];
 
@@ -677,11 +692,11 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
 
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        AutoCorrMap* autocorr = 0;
+        std::shared_ptr<AutoCorrMap> autocorr;
         if (saveAutocorr) {
-            autocorr = new AutoCorrMap;
+            autocorr.reset(new AutoCorrMap);
         }
-        double tauint = tauint_adaptive(energyTimeSeries[k], autocorr);
+        double tauint = tauint_adaptive(energyTimeSeries[k], autocorr.get());
         double g_k = 1 + 2 * tauint;
         for (unsigned m = 0; m < binCount; ++m) {
             g_km[k][m] = g_k;
@@ -697,7 +712,6 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
             writeAutocorr.addMeta("g", g_k);
             writeAutocorr.addHeaderText("gap t \t autocorr");
             writeAutocorr.writeToFile("autocorr-k" + numToString(k) + ".dat");
-            destroy(autocorr);
         }
         out << "." << flush;
     }
@@ -711,12 +725,12 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
 
 void MultireweightHistosPT::writeOutEnergyTauInt(const std::string& filename) {
     out << "Estimating energy tau-ints... " << endl;
-    map<double, double> tauint;
+    std::shared_ptr<map<double, double> > tauint(new map<double, double>);
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        tauint.insert(make_pair(controlParameterValues[k],
-                                tauint_adaptive(energyTimeSeries[k]) *
-                                infoSweepsBetweenMeasurements));
+        tauint->insert(make_pair(controlParameterValues[k],
+                                 tauint_adaptive(energyTimeSeries[k]) *
+                                 infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
     DoubleMapWriter w;
@@ -726,21 +740,22 @@ void MultireweightHistosPT::writeOutEnergyTauInt(const std::string& filename) {
     w.addMeta("observable", "energy");
     w.addMeta("L", systemL);
     w.addMeta("N", systemN);
+    w.addMeta("systemSize", systemSize);
     w.addMeta("controlParameterName", controlParameterName);
     w.addHeaderText("cp \t tau-int");
-    w.setData(&tauint);
+    w.setData(tauint);
     w.writeToFile(filename);
     out << " Done." << endl;
 }
 
 void MultireweightHistosPT::writeOutObsTauInt(const std::string& filename) {
     out << "Estimating " << observable << " tau-ints... " << endl;
-    map<double, double> tauint;
+    std::shared_ptr<map<double, double> > tauint(new map<double, double>);
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        tauint.insert(make_pair(controlParameterValues[k],
-                                tauint_adaptive(observableTimeSeries[k]) *
-                                infoSweepsBetweenMeasurements));
+        tauint->insert(make_pair(controlParameterValues[k],
+                                 tauint_adaptive(observableTimeSeries[k]) *
+                                 infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
     DoubleMapWriter w;
@@ -751,9 +766,10 @@ void MultireweightHistosPT::writeOutObsTauInt(const std::string& filename) {
     w.addMeta("observable", observable);
     w.addMeta("L", systemL);
     w.addMeta("N", systemN);
+    w.addMeta("systemSize", systemSize);
     w.addMeta("controlParameterName", controlParameterName);
     w.addHeaderText("cp \t tau-int");
-    w.setData(&tauint);
+    w.setData(tauint);
     w.writeToFile(filename);
     out << " Done." << endl;
 }
@@ -775,6 +791,8 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
     g_km.resize(boost::extents[numReplicas][binCount]);
     std::fill(g_km.data(), g_km.data() + g_km.num_elements(), 1.0);
 
+    namespace fs = boost::filesystem;
+    
     if (saveAutocorr) {
         fs::path autocorrPath("./autocorr");
         fs::create_directory(autocorrPath);
@@ -789,10 +807,10 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
 
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        vector<AutoCorrMap*> autocorr_m(binCount, 0);
+        vector<std::shared_ptr<AutoCorrMap> > autocorr_m(binCount, 0);
         if (saveAutocorr) {
             for (unsigned m = 0; m < binCount; ++m) {
-                autocorr_m[m] = new AutoCorrMap;
+                autocorr_m[m].reset(new AutoCorrMap);
             }
         }
 
@@ -855,7 +873,7 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
 
             i += 1;
             //lag time for next step of the iteration
-            t_i = 1.0 + i * (i - 1.0) / 2.0;
+            t_i = unsigned(1.0 + i * (i - 1.0) / 2.0);
         } while (t_i < N - 1 and countZeroCrossed < binCount);
 
         if (saveAutocorr) {
@@ -869,14 +887,13 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
                 wa.addMeta("m", m);
                 wa.addHeaderText("Corresponding energy");
                 wa.addMeta("U_m", U_m[m]);
-                wa.addHeaderText("Corresponding energy normalized by system N");
-                wa.addMeta("e_m", double(U_m[m]) / double(systemN));
+                wa.addHeaderText("Corresponding energy normalized by systemSize");
+                wa.addMeta("e_m", double(U_m[m]) / double(systemSize));
                 wa.addHeaderText("Statistical inefficiency estimated from integrated autocorrelation time");
                 wa.addMeta("g_km", g_km[k][m]);
                 wa.addHeaderText("gap t \t autocorr");
                 wa.writeToFile("k" + numToString(k) + "/autocorr-k" + numToString(k)
                         + "m-" + numToString(m) + ".dat");
-                destroy(autocorr_m[m]);
             }
         }
 
@@ -968,7 +985,7 @@ inline void MultireweightHistosPT::updateEffectiveCounts() {
         lHeff_m[m] = (Heff_m[m] != 0 ? LogVal(Heff_m[m]) : LogVal(LogVal::LogZero));
         for (unsigned l = 0; l < numReplicas; ++l) {
             lNeff_lm[l][m] = (Neff_lm[l][m] != 0 ? LogVal(Neff_lm[l][m]) : LogVal(LogVal::LogZero));
-            lPrecalc_lm[l][m] = lNeff_lm[l][m] * lBinSize * toLogValExp(-betas[l] * U_m[m]);    //for updateDensityOfStates
+            lPrecalc_lm[l][m] = lNeff_lm[l][m] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[m]);    //for updateDensityOfStates
             Neff_l[l] += Neff_lm[l][m];
         }
     }
@@ -990,12 +1007,12 @@ inline void MultireweightHistosPT::updateDensityOfStates() {
 void MultireweightHistosPT::findDensityOfStatesNonIteratively() {
     out << "Non-iterative estimate of the density of states... " << flush;
 
-    const double deltaU = binSize * systemN;
+    const double deltaU = binSize * systemSize;
     LogVal2Array x_lm(boost::extents[numReplicas][binCount - 1]);       // <-> difference of microcanonical entropies at bins m, m+1
     Double2Array w_lm(boost::extents[numReplicas][binCount - 1]);       //weights at temperature l, energy bin m
     vector<double> w_m(binCount - 1, 0);                                //sum_l { w_lm }
     for (unsigned l = 0; l < numReplicas; ++l) {
-        double temperatureExponent = +betas[l] * deltaU;
+        double temperatureExponent = +controlParameterValues[l] * deltaU;
         for (unsigned m = 0; m < binCount - 1; ++m) {
 //          double curHist = max(H_lm[l][m], 1);
 //          double nextHist = max(H_lm[l][m + 1], 1);
@@ -1054,7 +1071,7 @@ ReweightingResult MultireweightHistosPT::reweightDiscrete(double targetControlPa
     double estEnergySqNorm = 0;
 
     for (unsigned m = 0; m < binCount; ++m) {
-        double energyNorm = U_m[m] / systemN;
+        double energyNorm = U_m[m] / systemSize;
         double energySqNorm = energyNorm*energyNorm;
         arguments[m] /= normalization;
         double prob = toDouble(arguments[m]);
@@ -1064,7 +1081,7 @@ ReweightingResult MultireweightHistosPT::reweightDiscrete(double targetControlPa
 
     ReweightingResult result;
     result.energyAvg = estEnergyNorm;
-    result.heatCapacity = targetControlParameter*targetControlParameter * systemN *
+    result.heatCapacity = targetControlParameter*targetControlParameter * systemSize *
             (estEnergySqNorm - estEnergyNorm*estEnergyNorm);
 
     return result;
@@ -1090,16 +1107,16 @@ void MultireweightHistosPT::findPartitionFunctionsAndDensityOfStates(double tole
         deltaSquared = 0;
 
         //update estimates of partition functions
-        lZ_l[0] = lOmega_m[0] * lBinSize * toLogValExp(-betas[0] * U_m[0]);
+        lZ_l[0] = lOmega_m[0] * lBinSize * toLogValExp(-controlParameterValues[0] * U_m[0]);
         for (unsigned m = 1; m < binCount; ++m) {
-            lZ_l[0] += lOmega_m[m] * lBinSize * toLogValExp(-betas[0] * U_m[m]);
+            lZ_l[0] += lOmega_m[m] * lBinSize * toLogValExp(-controlParameterValues[0] * U_m[m]);
         }
         #pragma omp parallel for reduction(+: deltaSquared)
         for (int l = 1; l < (signed)numReplicas; ++l) {
             lZ_l_lastIteration[l] = lZ_l[l];            //store old value
-            lZ_l[l] = lOmega_m[0] * lBinSize * toLogValExp(-betas[l] * U_m[0]);
+            lZ_l[l] = lOmega_m[0] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[0]);
             for (unsigned m = 1; m < binCount; ++m) {
-                lZ_l[l] += lOmega_m[m] * lBinSize * toLogValExp(-betas[l] * U_m[m]);
+                lZ_l[l] += lOmega_m[m] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[m]);
             }
             lZ_l[l] /= lZ_l[0];             //normalize
 
@@ -1164,7 +1181,7 @@ void MultireweightHistosPT::saveLogDensityOfStates(const string& filename) {
             << "## energy (normalized by volume)\t ln(d.o.s.)"
             << endl;
     for (unsigned m = 0; m < binCount; ++m) {
-        output  << U_m[m] / systemN << "\t" << lOmega_m[m] / lOmega_m[binCount / 2] << '\n';
+        output  << U_m[m] / systemSize << "\t" << lOmega_m[m] / lOmega_m[binCount / 2] << '\n';
     }
 }
 
@@ -1178,10 +1195,10 @@ void MultireweightHistosPT::saveLogDensityOfStatesIsing(const string& filename) 
             << endl;
     LogVal norm = lOmega_m[0] / LogVal(2);
     //Normierung ist nur dann korrekt und stimmig mit Beale,
-    //wenn U[0] == -2 * systemN
+    //wenn U[0] == -2 * systemSize
     //d.h., wenn Grundzustand wirklich erreicht!
     for (unsigned m = 0; m < binCount; ++m) {
-        output  << U_m[m] / systemN << "\t" << lOmega_m[m] / norm << '\n';
+        output  << U_m[m] / systemSize << "\t" << lOmega_m[m] / norm << '\n';
     }
 }
 
@@ -1290,11 +1307,11 @@ ReweightingResult MultireweightHistosPT::reweightWithoutErrorsInternal
         out << ".";
     }
 
-    double heatCapacity = systemN * targetControlParameter * targetControlParameter * (meanEnergySquared - pow(meanEnergy, 2));
-    double suscObservable = systemN * (meanObservableSquared - pow(meanObservable, 2));
+    double heatCapacity = systemSize * targetControlParameter * targetControlParameter * (meanEnergySquared - pow(meanEnergy, 2));
+    double suscObservable = systemSize * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
     double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
-    double squaredObservable = systemN * meanObservableSquared;
+    double squaredObservable = systemSize * meanObservableSquared;
 
     out << " Done." << endl;
 
@@ -1319,7 +1336,7 @@ double MultireweightHistosPT::reweightSpecificHeat(double targetControlParameter
     double firstMoment = 0;
     double secondMoment = 0;
     reweight1stMoment2ndMomentInternalWithoutErrors(energyTimeSeries, w_kn, firstMoment, secondMoment);
-    double result = systemN * pow(targetControlParameter, 2) *
+    double result = systemSize * pow(targetControlParameter, 2) *
             (secondMoment - pow(firstMoment, 2));;
 
     destroyAll(w_kn);
@@ -1344,7 +1361,7 @@ double MultireweightHistosPT::reweightObservableSusceptibility(double targetCont
     double firstMoment = 0;
     double secondMoment = 0;
     reweight1stMoment2ndMomentInternalWithoutErrors(observableTimeSeries, w_kn, firstMoment, secondMoment);
-    double result = systemN * (secondMoment - pow(firstMoment, 2));
+    double result = systemSize * (secondMoment - pow(firstMoment, 2));
 
     destroyAll(w_kn);
 
@@ -1411,7 +1428,7 @@ HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
     for (unsigned m = 0; m < binCount; ++m) {
         arguments[m] /= normalization;
         double prob = toDouble(arguments[m]);
-        double energyNormalized = U_m[m] / systemN;
+        double energyNormalized = U_m[m] / systemSize;
         result->histo[energyNormalized] = prob;
         result->total += prob;
     }
@@ -1575,6 +1592,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
 
 void MultireweightHistosPT::reweightObservableHistogramInternal(double targetControlParameter, unsigned obsBinCount,
         const DoubleSeriesCollection& w_kn, std::vector<double>& obsHisto) {
+    (void) targetControlParameter;
     const double SMALL = 1e-10;     //to fit maxObservableNormalized into the highest bin
     double obsBinSize = (maxObservableNormalized - minObservableNormalized + SMALL) / obsBinCount;
 
