@@ -59,16 +59,16 @@ void MultireweightHistosPTJK::setUpHistogramsIsingJK() {
 
 void MultireweightHistosPTJK::createHistogramsHelperJK() {
     out << "Creating energy histograms etc., jackknife ready. minEnergyNormalized=" << minEnergyNormalized
-            << " maxEnergyNormalized=" << maxEnergyNormalized
-            << " binSize=" << binSize
-            << " binCount=" << binCount << endl;
+        << " maxEnergyNormalized=" << maxEnergyNormalized
+        << " binSize=" << binSize
+        << " binCount=" << binCount << endl;
 
     for (unsigned k = 0; k < numReplicas; ++k) {
         unsigned N_k = energyTimeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             //get bin number, correct due to rounding in cast:
             int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
-            //get beta index
+            //get cp index
             int l = (*(cpiTimeSeries[k]))[n];
 
             //update quantities over the whole data set:
@@ -100,10 +100,10 @@ void MultireweightHistosPTJK::createHistogramsHelperJK() {
 
 void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
     out << "Creating energy histograms etc., jackknife ready. minEnergyNormalized=" << minEnergyNormalized
-            << " maxEnergyNormalized=" << maxEnergyNormalized
-            << " binSize=" << binSize
-            << " binCount=" << binCount
-            << " for originally discrete bins " << endl;
+        << " maxEnergyNormalized=" << maxEnergyNormalized
+        << " binSize=" << binSize
+        << " binCount=" << binCount
+        << " for originally discrete bins " << endl;
 
     for (unsigned k = 0; k < numReplicas; ++k) {
         unsigned N_k = energyTimeSeries[k]->size();
@@ -111,8 +111,8 @@ void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
             //get bin number, correct due to rounding in cast:
 //            int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
 //            int m = int(round(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize));
-            int m = int(round(((*energyTimeSeries[k])[n] * systemN - minEnergy) / deltaU));
-            //get beta index
+            int m = int(round(((*energyTimeSeries[k])[n] * systemSize - minEnergy) / deltaU));
+            //get cp index
             int l = (*(cpiTimeSeries[k]))[n];
 
             //update quantities over the whole data set:
@@ -152,13 +152,12 @@ void MultireweightHistosPTJK::createHistogramsIsing() {
     createHistogramsHelperDiscreteJK();
 }
 
-MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::
-        directNoReweighting() {
+MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting() {
     out << "Computing estimates from time series without any reweighting, jackknifed... "
         << flush;
     ResultsMap* results = new ResultsMap;
 
-    //map (jk-block, beta-index) -> value
+    //map (jk-block, cp-index) -> value
     Double2Array meanEnergy_bl(boost::extents[blockCount][numReplicas]);
     initArray(meanEnergy_bl, 0);
     Double2Array meanEnergySquared_bl(boost::extents[blockCount][numReplicas]);
@@ -238,65 +237,80 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::
     Double2Array heatCapacity_bl(boost::extents[blockCount][numReplicas]);
     Double2Array suscObs_bl(boost::extents[blockCount][numReplicas]);
     Double2Array binderObs_bl(boost::extents[blockCount][numReplicas]);
+    Double2Array binderRatioObs_bl(boost::extents[blockCount][numReplicas]);    
     for (unsigned b = 0; b < blockCount; ++b) {
         for (unsigned bi = 0; bi < numReplicas; ++bi) {
-            double beta = betas[bi];
+            double cp = controlParameterValues[bi];
             meanEnergy_bl[b][bi] /= double(numReplicas);
             meanEnergySquared_bl[b][bi] /= double(numReplicas);
             meanObs_bl[b][bi] /= double(numReplicas);
             meanObsSquared_bl[b][bi] /= double(numReplicas);
             meanObsToTheFourth_bl[b][bi] /= double(numReplicas);
-            heatCapacity_bl[b][bi] = systemN * beta*beta *
+            heatCapacity_bl[b][bi] = systemSize * cp*cp *
                     (meanEnergySquared_bl[b][bi] - pow(meanEnergy_bl[b][bi], 2));
-            suscObs_bl[b][bi] = systemN *
+            suscObs_bl[b][bi] = systemSize *
                     (meanObsSquared_bl[b][bi] - pow(meanObs_bl[b][bi], 2));
             binderObs_bl[b][bi] = 1.0 - (meanObsToTheFourth_bl[b][bi] /
-                    (3 * pow(meanObsSquared_bl[b][bi], 2)));
+                                         (3 * pow(meanObsSquared_bl[b][bi], 2)));
+            binderRatioObs_bl[b][bi] = (meanObsToTheFourth_bl[b][bi] /
+                                        (pow(meanObsSquared_bl[b][bi], 2)));
         }
     }
 
-    //combine Jackknife blocks, for each beta...
+    //combine Jackknife blocks, for each cp...
     for (unsigned bi = 0; bi < numReplicas; ++bi) {
-        double beta = betas[bi];
+        double cp = controlParameterValues[bi];
         //sum over jk blocks --> averages computed this way have reduced bias.
         double jkSumEnergy = 0;
         double jkSumHeatCapacity = 0;
         double jkSumObs = 0;
+        double jkSumObsSq = 0;        
         double jkSumSusc = 0;
         double jkSumBinder = 0;
+        double jkSumBinderRatio = 0;        
         for (unsigned b = 0; b < blockCount; ++b) {
             jkSumEnergy += meanEnergy_bl[b][bi];
             jkSumHeatCapacity += heatCapacity_bl[b][bi];
             jkSumObs += meanObs_bl[b][bi];
+            jkSumObsSq += meanObsSquared_bl[b][bi];            
             jkSumSusc += suscObs_bl[b][bi];
             jkSumBinder += binderObs_bl[b][bi];
+            jkSumBinderRatio += binderRatioObs_bl[b][bi];            
         }
         double resEnergy = jkSumEnergy / blockCount;
         double resHeatCapacity = jkSumHeatCapacity / blockCount;
         double resObs = jkSumObs / blockCount;
+        double resObsSq = jkSumObsSq / blockCount;        
         double resSusc = jkSumSusc / blockCount;
         double resBinder = jkSumBinder / blockCount;
+        double resBinderRatio = jkSumBinderRatio / blockCount;        
 
         //error estimation
         double sqDevEnergy = 0;
         double sqDevHeatCapacity = 0;
         double sqDevObs = 0;
+        double sqDevObsSq = 0;        
         double sqDevSusc = 0;
         double sqDevBinder = 0;
+        double sqDevBinderRatio = 0;        
         for (unsigned b = 0; b < blockCount; ++b) {
             sqDevEnergy += pow(resEnergy - meanEnergy_bl[b][bi], 2);
             sqDevHeatCapacity +=
                     pow(resHeatCapacity- heatCapacity_bl[b][bi], 2);
             sqDevObs += pow(resObs - meanObs_bl[b][bi], 2);
+            sqDevObsSq += pow(resObsSq - meanObsSquared_bl[b][bi], 2);            
             sqDevSusc += pow(resSusc - suscObs_bl[b][bi], 2);
             sqDevBinder += pow(resBinder - binderObs_bl[b][bi], 2);
+            sqDevBinderRatio += pow(resBinderRatio - binderRatioObs_bl[b][bi], 2);            
         }
         //set values and errors:
-        (*results)[beta] = ReweightingResult(resEnergy, sqrt(sqDevEnergy),
-                resHeatCapacity, sqrt(sqDevHeatCapacity),
-                resObs, sqrt(sqDevObs),
-                resSusc, sqrt(sqDevSusc),
-                resBinder, sqrt(sqDevBinder));
+        (*results)[cp] = ReweightingResult(resEnergy, sqrt(sqDevEnergy),
+                                           resHeatCapacity, sqrt(sqDevHeatCapacity),
+                                           resObs, sqrt(sqDevObs),
+                                           resObsSq, sqrt(sqDevObsSq),                                           
+                                           resSusc, sqrt(sqDevSusc),
+                                           resBinder, sqrt(sqDevBinder),
+                                           resBinderRatio, sqrt(sqDevBinderRatio));
     }
 
     out << "done" << endl;
@@ -309,14 +323,14 @@ void MultireweightHistosPTJK::findDensityOfStatesNonIteratively() {
 
     out << "Non-iterative estimate of the density of states, jackknife blocks... " << endl;
 
-    const double deltaU = binSize * systemN;
+    const double deltaU = binSize * systemSize;
 
     for (int b = 0; b < (signed)blockCount; ++b) {
         LogVal2Array x_lm(boost::extents[numReplicas][binCount - 1]);       // <-> difference of microcanonical entropies at bins m, m+1
         Double2Array w_lm(boost::extents[numReplicas][binCount - 1]);       //weights at temperature l, energy bin m
         vector<double> w_m(binCount - 1, 0);                                //sum_l { w_lm }
         for (unsigned l = 0; l < numReplicas; ++l) {
-            double temperatureExponenet = +betas[l] * deltaU;
+            double temperatureExponenet = +controlParameterValues[l] * deltaU;
             for (unsigned m = 0; m < binCount - 1; ++m) {
                 double curHist = H_blm[b][l][m];
                 double nextHist = H_blm[b][l][m + 1];
@@ -373,7 +387,7 @@ void MultireweightHistosPTJK::updateEffectiveCountsJK() {
             lHeff_bm[b][m] = (Heff_bm[b][m] != 0 ? LogVal(Heff_bm[b][m]) : LogVal(LogVal::LogZero));
             for (unsigned l = 0; l < numReplicas; ++l) {
                 lNeff_blm[b][l][m] = (Neff_blm[b][l][m] != 0 ? LogVal(Neff_blm[b][l][m]) : LogVal(LogVal::LogZero));
-                lPrecalc_blm[b][l][m] = lNeff_blm[b][l][m] * lBinSize * toLogValExp(-betas[l] * U_m[m]);    //for updateDensityOfStates
+                lPrecalc_blm[b][l][m] = lNeff_blm[b][l][m] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[m]);    //for updateDensityOfStates
             }
         }
     }
@@ -381,7 +395,7 @@ void MultireweightHistosPTJK::updateEffectiveCountsJK() {
 
 inline void MultireweightHistosPTJK::updateDensityOfStatesJK(unsigned b) {
     //precalculated the part that does not depend on the estimates of the partition functions
-    //lPrecalc_blm[b][l][m] = lNeff_blm[b][l][m] * lBinSize * toLogValExp(-betas[l] * U_m[m]);
+    //lPrecalc_blm[b][l][m] = lNeff_blm[b][l][m] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[m]);
     for (int m = 0; m < (signed)binCount; ++m) {
         lOmega_bm[b][m] = lHeff_bm[b][m];
         LogVal denominator = lPrecalc_blm[b][0][m] / lZ_bl[b][0];
@@ -424,15 +438,15 @@ void MultireweightHistosPTJK::findPartitionFunctionsAndDensityOfStates(double to
             deltaSquared = 0;
 
             //update estimates of partition functions
-            lZ_bl[b][0] = lOmega_bm[b][0] * lBinSize * toLogValExp(-betas[0] * U_m[0]);
+            lZ_bl[b][0] = lOmega_bm[b][0] * lBinSize * toLogValExp(-controlParameterValues[0] * U_m[0]);
             for (unsigned m = 1; m < binCount; ++m) {
-                lZ_bl[b][0] += lOmega_bm[b][m] * lBinSize * toLogValExp(-betas[0] * U_m[m]);
+                lZ_bl[b][0] += lOmega_bm[b][m] * lBinSize * toLogValExp(-controlParameterValues[0] * U_m[m]);
             }
             for (int l = 1; l < (signed)numReplicas; ++l) {
                 lZ_l_lastIteration[l] = lZ_bl[b][l];            //store old value
-                lZ_bl[b][l] = lOmega_bm[b][0] * lBinSize * toLogValExp(-betas[l] * U_m[0]);
+                lZ_bl[b][l] = lOmega_bm[b][0] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[0]);
                 for (unsigned m = 1; m < binCount; ++m) {
-                    lZ_bl[b][l] += lOmega_bm[b][m] * lBinSize * toLogValExp(-betas[l] * U_m[m]);
+                    lZ_bl[b][l] += lOmega_bm[b][m] * lBinSize * toLogValExp(-controlParameterValues[l] * U_m[m]);
                 }
                 lZ_bl[b][l] /= lZ_bl[b][0];             //normalize
 
@@ -475,7 +489,7 @@ void MultireweightHistosPTJK::saveLogDensityOfStates(const std::string& filename
             << "## energy (normalized)\t ln(d.o.s.)\t error (jk)"
             << endl;
     for (unsigned m = 0; m < binCount; ++m) {
-        output  << U_m[m] / systemN
+        output  << U_m[m] / systemSize
                 << "\t" << lOmega_m[m] / lOmega_m[binCount / 2]
                 << "\t" << omegaError_m[m]
                 << '\n';
@@ -511,11 +525,11 @@ void MultireweightHistosPTJK::saveLogDensityOfStatesIsing(const std::string& fil
     //logarithmierten Werts bleibt also gleich
 
     //Normierung ist nur dann korrekt und stimmig mit Beale,
-    //wenn U[0] == -2 * systemN
+    //wenn U[0] == -2 * systemSize
     //d.h., wenn Grundzustand wirklich erreicht!
 
     for (unsigned m = 0; m < binCount; ++m) {
-        output  << U_m[m] / systemN
+        output  << U_m[m] / systemSize
                 << "\t" << lOmega_m[m] / norm
                 << "\t" << omegaError_m[m]
                 << '\n';
@@ -525,7 +539,7 @@ void MultireweightHistosPTJK::saveLogDensityOfStatesIsing(const std::string& fil
 
 
 ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
-        double targetBeta, unsigned jkBlock,
+        double targetControlParameter, unsigned jkBlock,
         const DoubleSeriesCollection& w_kn) {
     //everything normalized by system volume:
     double meanEnergy = 0;
@@ -554,12 +568,15 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
         }
     }
 
-    double heatCapacity = double(systemN) * targetBeta * targetBeta
+    double heatCapacity = double(systemSize) * targetControlParameter * targetControlParameter
         * (meanEnergySquared - pow(meanEnergy, 2));
-    double suscObservable = double(systemN) * (meanObservableSquared - pow(meanObservable, 2));
+    double suscObservable = double(systemSize) * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
+    double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
+    double squaredObservable = systemSize * meanObservableSquared;
 
-    return ReweightingResult(meanEnergy, heatCapacity, meanObservable, suscObservable, binderObservable);
+    return ReweightingResult(meanEnergy, heatCapacity, meanObservable,
+                             squaredObservable, suscObservable, binderObservable, binderRatioObservable);
 }
 
 
@@ -633,8 +650,8 @@ void MultireweightHistosPTJK::reweight2ndMoment4thMomentInternalJK(
 }
 
 
-double MultireweightHistosPTJK::reweightEnergyJK(double targetBeta, unsigned jkBlock) {
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+double MultireweightHistosPTJK::reweightEnergyJK(double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double result = 0;
     reweight1stMomentInternalJK(energyTimeSeries, w_kn, jkBlock, result);
@@ -644,22 +661,22 @@ double MultireweightHistosPTJK::reweightEnergyJK(double targetBeta, unsigned jkB
     return result;
 }
 
-double MultireweightHistosPTJK::reweightSpecificHeatJK(double targetBeta, unsigned jkBlock) {
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+double MultireweightHistosPTJK::reweightSpecificHeatJK(double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double firstMoment = 0;
     double secondMoment = 0;
     reweight1stMoment2ndMomentInternalJK(energyTimeSeries, w_kn, jkBlock, firstMoment, secondMoment);
-    double result = systemN * pow(targetBeta, 2) *
-            (secondMoment - pow(firstMoment, 2));;
+    double result = systemSize * pow(targetControlParameter, 2) *
+        (secondMoment - pow(firstMoment, 2));;
 
     destroyAll(w_kn);
 
     return result;
 }
 
-double MultireweightHistosPTJK::reweightObservableJK(double targetBeta, unsigned jkBlock) {
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+double MultireweightHistosPTJK::reweightObservableJK(double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double result = 0;
     reweight1stMomentInternalJK(observableTimeSeries, w_kn, jkBlock, result);
@@ -670,22 +687,22 @@ double MultireweightHistosPTJK::reweightObservableJK(double targetBeta, unsigned
 }
 
 double MultireweightHistosPTJK::reweightObservableSusceptibilityJK(
-        double targetBeta, unsigned jkBlock) {
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+        double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double firstMoment = 0;
     double secondMoment = 0;
     reweight1stMoment2ndMomentInternalJK(observableTimeSeries, w_kn, jkBlock, firstMoment, secondMoment);
-    double result = systemN * (secondMoment - pow(firstMoment, 2));;
+    double result = systemSize * (secondMoment - pow(firstMoment, 2));;
 
     destroyAll(w_kn);
 
     return result;
 }
 
-double MultireweightHistosPTJK::reweightObservableBinderJK(double targetBeta,
+double MultireweightHistosPTJK::reweightObservableBinderJK(double targetControlParameter,
         unsigned jkBlock) {
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double secondMoment = 0;
     double fourthMoment = 0;
@@ -698,14 +715,14 @@ double MultireweightHistosPTJK::reweightObservableBinderJK(double targetBeta,
     return result;
 }
 
-MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::computeWeightsJK(double targetBeta, unsigned jkBlock) {
-//  out << "Computing weights w_kn at beta=" << targetBeta << ", jackknife block:" << jkBlock << endl;
+MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::computeWeightsJK(double targetControlParameter, unsigned jkBlock) {
+//  out << "Computing weights w_kn at cp=" << targetControlParameter << ", jackknife block:" << jkBlock << endl;
 
     vector<LogVal> arguments(binCount);
-    arguments[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetBeta * U_m[0]);
+    arguments[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = arguments[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        arguments[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetBeta * U_m[m]);
+        arguments[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += arguments[m];
     }
     //normalize arguments, calculate weight corresponding to bin
@@ -741,26 +758,30 @@ MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::compute
     return w_kn;
 }
 
-ReweightingResult MultireweightHistosPTJK::reweight(double targetBeta) {
-    out << "Jackknife estimation of energy and " << observable << " moments at beta=" << targetBeta << endl;
+ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParameter) {
+    out << "Jackknife estimation of energy and " << observable << " moments at cp=" << targetControlParameter << endl;
 
     //jackknifed dataset:
     vector<double> jkEnergy_b(blockCount);
     vector<double> jkHeatCapacity_b(blockCount);
     vector<double> jkObs_b(blockCount);
+    vector<double> jkObsSq_b(blockCount);    
     vector<double> jkSusc_b(blockCount);
     vector<double> jkBinder_b(blockCount);
+    vector<double> jkBinderRatio_b(blockCount);    
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
-        DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, b);
+        DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, b);
 
         ReweightingResult results =
-                reweightJackknifeInternal(targetBeta, b, w_kn);
+                reweightJackknifeInternal(targetControlParameter, b, w_kn);
         jkEnergy_b[b] = results.energyAvg;
         jkHeatCapacity_b[b] = results.heatCapacity;
         jkObs_b[b] = results.obsAvg;
+        jkObsSq_b[b] = results.obsSquared;
         jkSusc_b[b] = results.obsSusc;
         jkBinder_b[b] = results.obsBinder;
+        jkBinderRatio_b[b] = results.obsBinderRatio;
 
         destroyAll(w_kn);
         out << '#' << flush;
@@ -772,8 +793,10 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetBeta) {
     jackknife(totalResult.heatCapacity, totalResult.heatCapacityError,
             jkHeatCapacity_b);
     jackknife(totalResult.obsAvg, totalResult.obsError, jkObs_b);
+    jackknife(totalResult.obsSquared, totalResult.obsSquaredError, jkObsSq_b);    
     jackknife(totalResult.obsSusc, totalResult.obsSuscError, jkSusc_b);
     jackknife(totalResult.obsBinder, totalResult.obsBinderError, jkBinder_b);
+    jackknife(totalResult.obsBinderRatio, totalResult.obsBinderRatioError, jkBinderRatio_b);
 
     out << " Done." << endl;
 
@@ -781,17 +804,17 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetBeta) {
 }
 
 
-HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetBeta) {
-    out << "Jackknife estimation of energy histogram at beta=" << targetBeta << ", " << binCount << " bins... " << endl;
+HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetControlParameter) {
+    out << "Jackknife estimation of energy histogram at cp=" << targetControlParameter << ", " << binCount << " bins... " << endl;
 
     //helper array:
     vector<LogVal> arguments(binCount);
     //histogram from whole data set
     vector<double> histo_m(binCount);
-    arguments[0] = lOmega_m[0] * toLogValExp(-targetBeta * U_m[0]);
+    arguments[0] = lOmega_m[0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = arguments[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        arguments[m] = lOmega_m[m] * toLogValExp(-targetBeta * U_m[m]);
+        arguments[m] = lOmega_m[m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += arguments[m];
     }
     for (unsigned m = 0; m < binCount; ++m) {
@@ -805,10 +828,10 @@ HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetB
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++ b) {
         vector<LogVal> args(binCount);
-        args[0] = lOmega_bm[b][0] * toLogValExp(-targetBeta * U_m[0]);
+        args[0] = lOmega_bm[b][0] * toLogValExp(-targetControlParameter * U_m[0]);
         LogVal normalization = args[0];
         for (unsigned m = 1; m < binCount; ++m) {
-            args[m] = lOmega_bm[b][m] * toLogValExp(-targetBeta * U_m[m]);
+            args[m] = lOmega_bm[b][m] * toLogValExp(-targetControlParameter * U_m[m]);
             normalization += args[m];
         }
         for (unsigned m = 0; m < binCount; ++m) {
@@ -833,7 +856,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetB
     //prepare instance of nice histogram class to return
     HistogramDouble* result = new HistogramDouble;
     result->assignVector(histo_m,
-            minEnergyNormalized, maxEnergyNormalized, targetBeta, systemN);
+            minEnergyNormalized, maxEnergyNormalized, targetControlParameter, systemN);
     result->assignErrorBarVector(errors);
     result->headerLines +=
             "## MRPT reweighted histogram of normalized energy\n";
@@ -843,17 +866,17 @@ HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetB
 }
 
 
-HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double targetBeta, unsigned obsBinCount) {
-    out << "Jackknife estimation of " << observable << " histogram at beta=" << targetBeta << ", " << obsBinCount << " bins... " << endl;
+HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double targetControlParameter, unsigned obsBinCount) {
+    out << "Jackknife estimation of " << observable << " histogram at cp=" << targetControlParameter << ", " << obsBinCount << " bins... " << endl;
 
     //histogram created from the whole data-set
     vector<double> obsHisto(obsBinCount, 0.0);
-    DoubleSeriesCollection total_w_kn = computeWeights(targetBeta);
-    MultireweightHistosPT::reweightObservableHistogramInternal(targetBeta, obsBinCount, total_w_kn, obsHisto);
+    DoubleSeriesCollection total_w_kn = computeWeights(targetControlParameter);
+    MultireweightHistosPT::reweightObservableHistogramInternal(targetControlParameter, obsBinCount, total_w_kn, obsHisto);
     destroyAll(total_w_kn);
 
     HistogramDouble* result = new HistogramDouble;
-    result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetBeta, systemN);
+    result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetControlParameter, systemN);
     result->headerLines += "## MRPT reweighted histogram of normalized " + observable + "\n";
     result->updateMeta();
 
@@ -865,7 +888,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double tar
 
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++ b) {
-        DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, b);
+        DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, b);
         for (unsigned k = 0; k < numReplicas; ++k) {
             unsigned N_k = observableTimeSeries[k]->size();
             unsigned jkBlockSize = N_k / blockCount;
@@ -904,14 +927,14 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double tar
 }
 
 HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogramJK(
-        double targetBeta, unsigned jkBlock) {
+        double targetControlParameter, unsigned jkBlock) {
     vector<double> histo_m(binCount, 0.0);
 
     vector<LogVal> args(binCount);
-    args[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetBeta * U_m[0]);
+    args[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = args[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        args[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetBeta * U_m[m]);
+        args[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += args[m];
     }
     for (unsigned m = 0; m < binCount; ++m) {
@@ -922,7 +945,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogramJK(
     //prepare instance of nice histogram class to return
     HistogramDouble* result = new HistogramDouble;
     result->assignVector(histo_m,
-            minEnergyNormalized, maxEnergyNormalized, targetBeta, systemN);
+            minEnergyNormalized, maxEnergyNormalized, targetControlParameter, systemN);
     result->headerLines +=
             "## MRPT reweighted histogram of normalized energy\n";
     result->updateMeta();
@@ -931,12 +954,12 @@ HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogramJK(
 }
 
 HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
-        double targetBeta, unsigned obsBinCount, unsigned jkBlock) {
+        double targetControlParameter, unsigned obsBinCount, unsigned jkBlock) {
     const double SMALL = 1e-10;     //to fit maxObservableNormalized into the highest bin
     double obsBinSize = (maxObservableNormalized - minObservableNormalized + SMALL) / obsBinCount;
     vector<double> obsHisto_m(obsBinCount, 0.0);
 
-    DoubleSeriesCollection w_kn = computeWeightsJK(targetBeta, jkBlock);
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
     for (unsigned k = 0; k < numReplicas; ++k) {
         unsigned N_k = observableTimeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
@@ -957,7 +980,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
 
     HistogramDouble* result = new HistogramDouble;
     result->assignVector(obsHisto_m, minObservableNormalized, maxObservableNormalized,
-            targetBeta, systemN);
+            targetControlParameter, systemN);
     result->updateMeta();
 
     return result;
@@ -966,10 +989,10 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
 
 
 //TODO:unnecessary weight-recalculcation in reweightObservableHistogram
-ReweightingResult MultireweightHistosPTJK::reweightWithHistograms(double targetBeta, unsigned  obsBinCount) {
-    ReweightingResult results = reweight(targetBeta);
-    results.energyHistogram = reweightEnergyHistogram(targetBeta);
-    results.obsHistogram = reweightObservableHistogram(targetBeta, obsBinCount);
+ReweightingResult MultireweightHistosPTJK::reweightWithHistograms(double targetControlParameter, unsigned  obsBinCount) {
+    ReweightingResult results = reweight(targetControlParameter);
+    results.energyHistogram = reweightEnergyHistogram(targetControlParameter);
+    results.obsHistogram = reweightObservableHistogram(targetControlParameter, obsBinCount);
 
     return results;
 }
@@ -980,10 +1003,10 @@ class SuscMinCallableJK {
 public:
     SuscMinCallableJK(MultireweightHistosPTJK* master, map<double, double>& pointsEvaluated, unsigned jkBlock) :
         master(master), pointsEvaluated(pointsEvaluated), jkBlock(jkBlock) { }
-    double operator()(double beta) {
-        double susc = master->reweightObservableSusceptibilityJK(beta, jkBlock);
-        pointsEvaluated[beta] = susc;
-//      master->out << " b:" << jkBlock << ", beta: " << beta << " => " << susc << endl;
+    double operator()(double cp) {
+        double susc = master->reweightObservableSusceptibilityJK(cp, jkBlock);
+        pointsEvaluated[cp] = susc;
+//      master->out << " b:" << jkBlock << ", cp: " << cp << " => " << susc << endl;
         return -susc;
     }
 };
@@ -994,9 +1017,9 @@ public:
     BinderMinCallableJK(MultireweightHistosPTJK* master,
             map<double, double>& pointsEvaluated, unsigned jkBlock) :
         master(master), pointsEvaluated(pointsEvaluated), jkBlock(jkBlock) { }
-    double operator()(double beta) {
-        double binder = master->reweightObservableBinderJK(beta, jkBlock);
-        pointsEvaluated[beta] = binder;
+    double operator()(double cp) {
+        double binder = master->reweightObservableBinderJK(cp, jkBlock);
+        pointsEvaluated[cp] = binder;
         return binder;
     }
 };
@@ -1006,10 +1029,10 @@ class SpecificHeatDiscreteMinCallableJK {
 public:
     SpecificHeatDiscreteMinCallableJK (MultireweightHistosPTJK* master, map<double, double>& pointsEvaluated, unsigned jkBlock) :
         master(master), pointsEvaluated(pointsEvaluated), jkBlock(jkBlock) { }
-    double operator()(double beta) {
-        double specHeat = master->reweightSpecificHeatDiscreteJK(beta, jkBlock);
-        pointsEvaluated[beta] = specHeat;
-//      master->out << " b:" << jkBlock << ", beta: " << beta << " => " << specHeat << endl;
+    double operator()(double cp) {
+        double specHeat = master->reweightSpecificHeatDiscreteJK(cp, jkBlock);
+        pointsEvaluated[cp] = specHeat;
+//      master->out << " b:" << jkBlock << ", cp: " << cp << " => " << specHeat << endl;
         return -specHeat;
     }
 };
@@ -1027,9 +1050,9 @@ public:
         master(master), foundHistogram(0), jkBlock(jkBlock),
         tolerance(tolerance)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
-        foundHistogram = master->reweightEnergyHistogramJK(beta, jkBlock);
+        foundHistogram = master->reweightEnergyHistogramJK(cp, jkBlock);
         double peakDiff = histogramPeakDiff(foundHistogram, tolerance);
         return peakDiff;
     }
@@ -1054,10 +1077,10 @@ public:
         master(master), foundHistogram(0),
         tolerance(tolerance), numBins(numBins), jkBlock(jkBlock)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
         foundHistogram = master->
-                reweightObservableHistogramJK(beta, numBins, jkBlock);
+                reweightObservableHistogramJK(cp, numBins, jkBlock);
         double peakDiff = histogramPeakDiff(foundHistogram, tolerance);
         return peakDiff;
     }
@@ -1081,9 +1104,9 @@ public:
         master(master), foundHistogram(0), tolerance(tolerance),
         cutOff(cutOff), jkBlock(jkBlock)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
-        foundHistogram = master->reweightEnergyHistogramJK(beta, jkBlock);
+        foundHistogram = master->reweightEnergyHistogramJK(cp, jkBlock);
         double weightDiff = histogramWeightDiff(foundHistogram,
                 cutOff);
         return weightDiff;
@@ -1110,10 +1133,10 @@ public:
         master(master), foundHistogram(0), tolerance(tolerance), cutOff(cutOff),
         numBins(numBins), jkBlock(jkBlock)
     {}
-    double operator()(double beta) {
+    double operator()(double cp) {
         destroy(foundHistogram);
         foundHistogram = master->
-                reweightObservableHistogramJK(beta, numBins, jkBlock);
+                reweightObservableHistogramJK(cp, numBins, jkBlock);
         double weightDiff = histogramWeightDiff(foundHistogram,
                 cutOff);
         return weightDiff;
@@ -1127,111 +1150,111 @@ public:
 };
 
 
-void MultireweightHistosPTJK::findMaxObservableSusceptibility(double& betaMax, double& betaMaxError, double& suscMax, double& suscMaxError,
+void MultireweightHistosPTJK::findMaxObservableSusceptibility(double& cpMax, double& cpMaxError, double& suscMax, double& suscMaxError,
         std::map<double, double>& pointsEvaluated, std::vector<std::map<double,double> >& pointsEvaluatedJK,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     //whole data-set:
-    MultireweightHistosPT::findMaxObservableSusceptibility(betaMax, suscMax, pointsEvaluated, betaStart, betaEnd);
+    MultireweightHistosPT::findMaxObservableSusceptibility(cpMax, suscMax, pointsEvaluated, cpStart, cpEnd);
 
     out << "Jackknifed search for maximum of " << observable << " susceptibility" << endl;
 
     //jackknife blocking
     vector<double> jkSusc_b(blockCount);
-    vector<double> jkBeta_b(blockCount);
+    vector<double> jkCp_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         SuscMinCallableJK f(this, pointsEvaluatedJK[b], b);
-        brentMinimize(jkBeta_b[b], jkSusc_b[b], f, betaStart, betaEnd);
+        brentMinimize(jkCp_b[b], jkSusc_b[b], f, cpStart, cpEnd);
         jkSusc_b[b] *= -1;
-        out << "final b:" << b << ", beta: " << jkBeta_b[b] << " => " << jkSusc_b[b] << endl;
+        out << "final b:" << b << ", cp: " << jkCp_b[b] << " => " << jkSusc_b[b] << endl;
     }
 
     double jkSuscBlockAverage;
-    double jkBetaBlockAverage;
+    double jkCpBlockAverage;
     jackknife(jkSuscBlockAverage, suscMaxError, jkSusc_b);
-    jackknife(jkBetaBlockAverage, betaMaxError, jkBeta_b);
-    out << "averaged beta: " << jkBetaBlockAverage << endl;
+    jackknife(jkCpBlockAverage, cpMaxError, jkCp_b);
+    out << "averaged cp: " << jkCpBlockAverage << endl;
     out << "averaged susc: " << jkSuscBlockAverage << endl;
 
     out << "Final result: maximum of " << observable << " susceptibility: " << suscMax << ", error: " << suscMaxError << '\n'
-        << "at beta=" << betaMax << ", error: " << betaMaxError << endl;
+        << "at cp=" << cpMax << ", error: " << cpMaxError << endl;
 }
 
-void MultireweightHistosPTJK::findMinBinder(double& betaMin,
-        double& betaMinError, double& binderMin, double& binderMinError,
+void MultireweightHistosPTJK::findMinBinder(double& cpMin,
+        double& cpMinError, double& binderMin, double& binderMinError,
         std::map<double, double>& pointsEvaluated,
         std::vector<std::map<double, double> >& pointsEvaluatedJK,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     //whole data-set:
-    MultireweightHistosPT::findMinBinder(betaMin, binderMin,
-            pointsEvaluated, betaStart, betaEnd);
+    MultireweightHistosPT::findMinBinder(cpMin, binderMin,
+            pointsEvaluated, cpStart, cpEnd);
 
     out << "Jackknifed search for minimum of "
         << observable << " binder cumulant" << endl;
 
     //jackknife blocking
     vector<double> jkBinder_b(blockCount);
-    vector<double> jkBeta_b(blockCount);
+    vector<double> jkCp_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         BinderMinCallableJK f(this, pointsEvaluatedJK[b], b);
-        brentMinimize(jkBeta_b[b], jkBinder_b[b], f, betaStart, betaEnd);
-        out << "final b:" << b << ", beta: " << jkBeta_b[b] << " => " << jkBinder_b[b] << endl;
+        brentMinimize(jkCp_b[b], jkBinder_b[b], f, cpStart, cpEnd);
+        out << "final b:" << b << ", cp: " << jkCp_b[b] << " => " << jkBinder_b[b] << endl;
     }
 
     double jkBinderBlockAverage;
-    double jkBetaBlockAverage;
+    double jkCpBlockAverage;
     jackknife(jkBinderBlockAverage, binderMinError, jkBinder_b);
-    jackknife(jkBetaBlockAverage, betaMinError, jkBeta_b);
-    out << "averaged beta:   " << jkBetaBlockAverage << endl;
+    jackknife(jkCpBlockAverage, cpMinError, jkCp_b);
+    out << "averaged cp:   " << jkCpBlockAverage << endl;
     out << "averaged binder: " << jkBinderBlockAverage << endl;
 
     out << "Final result: minimum of " << observable << " binder cumulant: "
         << binderMin << ", error: " << binderMinError << '\n'
-        << "at beta=" << betaMin << ", error: " << betaMinError << endl;
+        << "at cp=" << cpMin << ", error: " << cpMinError << endl;
 }
 
 
 void MultireweightHistosPTJK::findMaxSpecificHeatDiscrete(
-        double& betaMax, double& betaMaxError,
+        double& cpMax, double& cpMaxError,
         double& specificHeatMax, double& specificHeatMaxError,
         std::map<double, double>& pointsEvaluated, std::vector<std::map<double,double> >& pointsEvaluatedJK,
-        double betaStart, double betaEnd) {
+        double cpStart, double cpEnd) {
     //whole data-set:
-    MultireweightHistosPT::findMaxSpecificHeatDiscrete(betaMax, specificHeatMax, pointsEvaluated, betaStart, betaEnd);
+    MultireweightHistosPT::findMaxSpecificHeatDiscrete(cpMax, specificHeatMax, pointsEvaluated, cpStart, cpEnd);
 
     out << "Jackknifed search for maximum of specific heat (discrete)" << endl;
 
     //jackknife blocking
     vector<double> jkSH_b(blockCount);
-    vector<double> jkBeta_b(blockCount);
+    vector<double> jkCp_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         SpecificHeatDiscreteMinCallableJK f(this, pointsEvaluatedJK[b], b);
-        brentMinimize(jkBeta_b[b], jkSH_b[b], f, betaStart, betaEnd);
+        brentMinimize(jkCp_b[b], jkSH_b[b], f, cpStart, cpEnd);
         jkSH_b[b] *= -1;
-        out << "final b:" << b << ", beta: " << jkBeta_b[b] << " => " << jkSH_b[b] << endl;
+        out << "final b:" << b << ", cp: " << jkCp_b[b] << " => " << jkSH_b[b] << endl;
     }
 
     double jkSHBlockAverage;
-    double jkBetaBlockAverage;
+    double jkCpBlockAverage;
     jackknife(jkSHBlockAverage, specificHeatMaxError, jkSH_b);
-    jackknife(jkBetaBlockAverage, betaMaxError, jkBeta_b);
-    out << "averaged beta: " << jkBetaBlockAverage << endl;
+    jackknife(jkCpBlockAverage, cpMaxError, jkCp_b);
+    out << "averaged cp: " << jkCpBlockAverage << endl;
     out << "averaged s.h.: " << jkSHBlockAverage << endl;
 
     out << "Final result: maximum of specific heat: " << specificHeatMax << ", error: " << specificHeatMaxError << '\n'
-        << "at beta=" << betaMax << ", error: " << betaMaxError << endl;
+        << "at cp=" << cpMax << ", error: " << cpMaxError << endl;
 }
 
 
 void MultireweightHistosPTJK::findEnergyEqualHeight(
-        double& betaDouble, double& betaDoubleError,
+        double& cpDouble, double& cpDoubleError,
         double& relDip, double& relDipError, HistogramDouble*& histo,
-        double betaStart, double betaEnd, double tolerance) {
+        double cpStart, double cpEnd, double tolerance) {
     //whole data-set
-    MultireweightHistosPT::findEnergyEqualHeight(betaDouble, relDip,
-            histo, betaStart, betaEnd, tolerance);
+    MultireweightHistosPT::findEnergyEqualHeight(cpDouble, relDip,
+            histo, cpStart, cpEnd, tolerance);
 
     out << "Jackknifed search for energy histogram with equal "
             "height double peak "
@@ -1239,37 +1262,37 @@ void MultireweightHistosPTJK::findEnergyEqualHeight(
 
     //jackknife blocking
     vector<double> jkRelDip_b(blockCount);
-    vector<double> jkBeta_b(blockCount);
+    vector<double> jkCp_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         EnergyHistogramPeakDiffMinCallableJK f(tolerance, this, b);
         double peakDiff = -1.;
-        brentMinimize(jkBeta_b[b], peakDiff, f, betaStart, betaEnd);
+        brentMinimize(jkCp_b[b], peakDiff, f, cpStart, cpEnd);
         jkRelDip_b[b] = histogramRelativeDip(f.getHistogram(), tolerance);
-        out << "final b:" << b << ", beta: " << jkBeta_b[b]
+        out << "final b:" << b << ", cp: " << jkCp_b[b]
                 << " => peakDiff: " << peakDiff << ", relativeDip: "
                 << jkRelDip_b[b] << endl;
     }
 
     double jkRelDipBlockAverage;
-    double jkBetaBlockAverage;
+    double jkCpBlockAverage;
     jackknife(jkRelDipBlockAverage, relDipError, jkRelDip_b);
-    jackknife(jkBetaBlockAverage, betaDoubleError, jkBeta_b);
-    out << "averaged beta:   " << jkBetaBlockAverage << endl;
+    jackknife(jkCpBlockAverage, cpDoubleError, jkCp_b);
+    out << "averaged cp:   " << jkCpBlockAverage << endl;
     out << "averaged relDip: " << jkRelDipBlockAverage << endl;
 
     out << "Final result: relative dip: " << relDip << ", error: " << relDipError << '\n'
-        << "at beta=" << betaDouble << ", error: " << betaDoubleError << endl;
+        << "at cp=" << cpDouble << ", error: " << cpDoubleError << endl;
 }
 
 void MultireweightHistosPTJK::findObservableEqualHeight(
-        double& betaDouble, double& betaDoubleError,
+        double& cpDouble, double& cpDoubleError,
         double& relDip, double& relDipError, HistogramDouble*& histo,
-        double betaStart, double betaEnd,
+        double cpStart, double cpEnd,
         unsigned numBins, double tolerance) {
     //whole data-set
-    MultireweightHistosPT::findObsEqualHeight(betaDouble, relDip,
-            histo, betaStart, betaEnd, numBins, tolerance);
+    MultireweightHistosPT::findObsEqualHeight(cpDouble, relDip,
+            histo, cpStart, cpEnd, numBins, tolerance);
 
     out << "Jackknifed search for " << observable <<
            " histogram with equal height double peak "
@@ -1277,108 +1300,108 @@ void MultireweightHistosPTJK::findObservableEqualHeight(
 
     //jackknife blocking
     vector<double> jkRelDip_b(blockCount);
-    vector<double> jkBeta_b(blockCount);
+    vector<double> jkCp_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         ObsHistogramPeakDiffMinCallableJK f(tolerance, numBins, this, b);
         double peakDiff = -1.;
-        brentMinimize(jkBeta_b[b], peakDiff, f, betaStart, betaEnd);
+        brentMinimize(jkCp_b[b], peakDiff, f, cpStart, cpEnd);
         jkRelDip_b[b] = histogramRelativeDip(f.getHistogram(), tolerance);
-        out << "final b:" << b << ", beta: " << jkBeta_b[b]
+        out << "final b:" << b << ", cp: " << jkCp_b[b]
                 << " => peakDiff: " << peakDiff << ", relativeDip: "
                 << jkRelDip_b[b] << endl;
     }
 
     double jkRelDipBlockAverage = average(&jkRelDip_b);
-    double jkBetaDoubleBlockAverage = average(&jkBeta_b);
+    double jkCpDoubleBlockAverage = average(&jkCp_b);
     jackknife(jkRelDipBlockAverage, relDipError, jkRelDip_b);
-    jackknife(jkBetaDoubleBlockAverage, betaDoubleError, jkBeta_b);
-    out << "averaged beta:   " << jkBetaDoubleBlockAverage << endl;
+    jackknife(jkCpDoubleBlockAverage, cpDoubleError, jkCp_b);
+    out << "averaged cp:   " << jkCpDoubleBlockAverage << endl;
     out << "averaged relDip: " << jkRelDipBlockAverage << endl;
 
     out << "Final result: relative dip: " << relDip << ", error: " << relDipError << '\n'
-        << "at beta=" << betaDouble << ", error: " << betaDoubleError << endl;
+        << "at cp=" << cpDouble << ", error: " << cpDoubleError << endl;
 }
 
 void MultireweightHistosPTJK::findEnergyEqualHeightWeight(
-        double& betaDoubleEH, double& betaDoubleErrorEH,
+        double& cpDoubleEH, double& cpDoubleErrorEH,
         double& relDipEH, double& relDipErrorEH,
         HistogramDouble*& histoResultEH,
-        double& betaDoubleEW, double& betaDoubleErrorEW,
+        double& cpDoubleEW, double& cpDoubleErrorEW,
         double& relDipEW, double& relDipErrorEW,
         HistogramDouble*& histoResultEW,
-        double betaStart, double betaEnd, double tolerance) {
+        double cpStart, double cpEnd, double tolerance) {
     //whole data-set
-    MultireweightHistosPT::findEnergyEqualHeight(betaDoubleEH, relDipEH,
-            histoResultEH, betaStart, betaEnd, tolerance);
-    MultireweightHistosPT::findEnergyEqualWeight(betaDoubleEW, relDipEW,
-            histoResultEW, histoResultEH, betaStart, betaEnd, tolerance);
+    MultireweightHistosPT::findEnergyEqualHeight(cpDoubleEH, relDipEH,
+            histoResultEH, cpStart, cpEnd, tolerance);
+    MultireweightHistosPT::findEnergyEqualWeight(cpDoubleEW, relDipEW,
+            histoResultEW, histoResultEH, cpStart, cpEnd, tolerance);
 
     out << "Jackknifed search for energy histograms with equal "
            "height and weight double peak "
         << "on " << blockCount << " blocks" << endl;
 
     vector<double> jkRelDipEH_b(blockCount);
-    vector<double> jkBetaEH_b(blockCount);
+    vector<double> jkCpEH_b(blockCount);
     vector<double> jkRelDipEW_b(blockCount);
-    vector<double> jkBetaEW_b(blockCount);
+    vector<double> jkCpEW_b(blockCount);
 
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         EnergyHistogramPeakDiffMinCallableJK fEH(tolerance, this, b);
         double peakDiff = -1.;
-        brentMinimize(jkBetaEH_b[b], peakDiff, fEH, betaStart, betaEnd);
+        brentMinimize(jkCpEH_b[b], peakDiff, fEH, cpStart, cpEnd);
         jkRelDipEH_b[b] = histogramRelativeDip(fEH.getHistogram(), tolerance);
-        out << "final equal height, b:" << b << ", beta: " << jkBetaEH_b[b]
+        out << "final equal height, b:" << b << ", cp: " << jkCpEH_b[b]
                 << " => peakDiff: " << peakDiff << ", relativeDip: "
                 << jkRelDipEH_b[b] << endl;
         double cut = histogramMinimumLocation(fEH.getHistogram(), tolerance);
         EnergyHistogramWeightDiffMinCallableJK fEW(tolerance, cut, this, b);
         double weightDiff = -1.;
-        brentMinimize(jkBetaEW_b[b], weightDiff, fEW, betaStart, betaEnd);
+        brentMinimize(jkCpEW_b[b], weightDiff, fEW, cpStart, cpEnd);
         jkRelDipEW_b[b] = histogramRelativeDip(fEW.getHistogram(), tolerance);
-        out << "final equal weight, b:" << b << ", beta: " << jkBetaEW_b[b]
+        out << "final equal weight, b:" << b << ", cp: " << jkCpEW_b[b]
                 << " => weightDiff: " << weightDiff << ", relativeDip: "
                 << jkRelDipEW_b[b] << endl;
     }
     double jkRelDipBlockAverageEH;
-    double jkBetaBlockAverageEH;
+    double jkCpBlockAverageEH;
     jackknife(jkRelDipBlockAverageEH, relDipErrorEH, jkRelDipEH_b);
-    jackknife(jkBetaBlockAverageEH, betaDoubleErrorEH, jkBetaEH_b);
-    out << "EH averaged beta:   " << jkBetaBlockAverageEH << endl;
+    jackknife(jkCpBlockAverageEH, cpDoubleErrorEH, jkCpEH_b);
+    out << "EH averaged cp:   " << jkCpBlockAverageEH << endl;
     out << "EH averaged relDip: " << jkRelDipBlockAverageEH << endl;
     double jkRelDipBlockAverageEW;
-    double jkBetaBlockAverageEW;
+    double jkCpBlockAverageEW;
     jackknife(jkRelDipBlockAverageEW, relDipErrorEW, jkRelDipEW_b);
-    jackknife(jkBetaBlockAverageEW, betaDoubleErrorEW, jkBetaEW_b);
-    out << "EW averaged beta:   " << jkBetaBlockAverageEW << endl;
+    jackknife(jkCpBlockAverageEW, cpDoubleErrorEW, jkCpEW_b);
+    out << "EW averaged cp:   " << jkCpBlockAverageEW << endl;
     out << "EW averaged relDip: " << jkRelDipBlockAverageEW << endl;
 
     out << "Equal Height Final result: relative dip: " << relDipEH
         << ", error: " << relDipErrorEH << '\n'
-        << "at beta=" << betaDoubleEH << ", error: "
-        << betaDoubleErrorEH << endl;
+        << "at cp=" << cpDoubleEH << ", error: "
+        << cpDoubleErrorEH << endl;
     out << "Equal Weight Final result: relative dip: " << relDipEW
         << ", error: " << relDipErrorEW << '\n'
-        << "at beta=" << betaDoubleEW << ", error: "
-        << betaDoubleErrorEW << endl;
+        << "at cp=" << cpDoubleEW << ", error: "
+        << cpDoubleErrorEW << endl;
 
 }
 
 void MultireweightHistosPTJK::findObservableEqualHeightWeight(
-        double& betaDoubleEH, double& betaDoubleErrorEH,
+        double& cpDoubleEH, double& cpDoubleErrorEH,
         double& relDipEH, double& relDipErrorEH,
         HistogramDouble*& histoResultEH,
-        double& betaDoubleEW, double& betaDoubleErrorEW,
+        double& cpDoubleEW, double& cpDoubleErrorEW,
         double& relDipEW, double& relDipErrorEW,
         HistogramDouble*& histoResultEW,
-        double betaStart, double betaEnd, unsigned numBins,
+        double cpStart, double cpEnd, unsigned numBins,
         double tolerance) {
     //whole data-set
-    MultireweightHistosPT::findObsEqualHeight(betaDoubleEH, relDipEH,
-            histoResultEH, betaStart, betaEnd, numBins, tolerance);
-    MultireweightHistosPT::findObsEqualWeight(betaDoubleEW, relDipEW,
-            histoResultEW, histoResultEH, betaStart, betaEnd, numBins,
+    MultireweightHistosPT::findObsEqualHeight(cpDoubleEH, relDipEH,
+            histoResultEH, cpStart, cpEnd, numBins, tolerance);
+    MultireweightHistosPT::findObsEqualWeight(cpDoubleEW, relDipEW,
+            histoResultEW, histoResultEH, cpStart, cpEnd, numBins,
             tolerance);
 
     out << "Jackknifed search for " << observable << "histograms with equal "
@@ -1386,49 +1409,49 @@ void MultireweightHistosPTJK::findObservableEqualHeightWeight(
         << "on " << blockCount << " blocks" << endl;
 
     vector<double> jkRelDipEH_b(blockCount);
-    vector<double> jkBetaEH_b(blockCount);
+    vector<double> jkCpEH_b(blockCount);
     vector<double> jkRelDipEW_b(blockCount);
-    vector<double> jkBetaEW_b(blockCount);
+    vector<double> jkCpEW_b(blockCount);
 
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         ObsHistogramPeakDiffMinCallableJK fEH(tolerance, numBins, this, b);
         double peakDiff = -1.;
-        brentMinimize(jkBetaEH_b[b], peakDiff, fEH, betaStart, betaEnd);
+        brentMinimize(jkCpEH_b[b], peakDiff, fEH, cpStart, cpEnd);
         jkRelDipEH_b[b] = histogramRelativeDip(fEH.getHistogram(), tolerance);
-        out << "final equal height, b:" << b << ", beta: " << jkBetaEH_b[b]
+        out << "final equal height, b:" << b << ", cp: " << jkCpEH_b[b]
                 << " => peakDiff: " << peakDiff << ", relativeDip: "
                 << jkRelDipEH_b[b] << endl;
         double cut = histogramMinimumLocation(fEH.getHistogram(), tolerance);
         ObsHistogramWeightDiffMinCallableJK fEW(tolerance, cut, numBins, this, b);
         double weightDiff = -1.;
-        brentMinimize(jkBetaEW_b[b], weightDiff, fEH, betaStart, betaEnd);
+        brentMinimize(jkCpEW_b[b], weightDiff, fEH, cpStart, cpEnd);
         jkRelDipEW_b[b] = histogramRelativeDip(fEH.getHistogram(), tolerance);
-        out << "final equal weight, b:" << b << ", beta: " << jkBetaEW_b[b]
+        out << "final equal weight, b:" << b << ", cp: " << jkCpEW_b[b]
                 << " => weightDiff: " << weightDiff << ", relativeDip: "
                 << jkRelDipEW_b[b] << endl;
     }
     double jkRelDipBlockAverageEH;
-    double jkBetaBlockAverageEH;
+    double jkCpBlockAverageEH;
     jackknife(jkRelDipBlockAverageEH, relDipErrorEH, jkRelDipEH_b);
-    jackknife(jkBetaBlockAverageEH, betaDoubleErrorEH, jkBetaEH_b);
-    out << "EH averaged beta:   " << jkBetaBlockAverageEH << endl;
+    jackknife(jkCpBlockAverageEH, cpDoubleErrorEH, jkCpEH_b);
+    out << "EH averaged cp:   " << jkCpBlockAverageEH << endl;
     out << "EH averaged relDip: " << jkRelDipBlockAverageEH << endl;
     double jkRelDipBlockAverageEW;
-    double jkBetaBlockAverageEW;
+    double jkCpBlockAverageEW;
     jackknife(jkRelDipBlockAverageEW, relDipErrorEW, jkRelDipEW_b);
-    jackknife(jkBetaBlockAverageEW, betaDoubleErrorEW, jkBetaEW_b);
-    out << "EW averaged beta:   " << jkBetaBlockAverageEW << endl;
+    jackknife(jkCpBlockAverageEW, cpDoubleErrorEW, jkCpEW_b);
+    out << "EW averaged cp:   " << jkCpBlockAverageEW << endl;
     out << "EW averaged relDip: " << jkRelDipBlockAverageEW << endl;
 
     out << "Equal Height Final result: relative dip: " << relDipEH
         << ", error: " << relDipErrorEH << '\n'
-        << "at beta=" << betaDoubleEH << ", error: "
-        << betaDoubleErrorEH << endl;
+        << "at cp=" << cpDoubleEH << ", error: "
+        << cpDoubleErrorEH << endl;
     out << "Equal Weight Final result: relative dip: " << relDipEW
         << ", error: " << relDipErrorEW << '\n'
-        << "at beta=" << betaDoubleEW << ", error: "
-        << betaDoubleErrorEW << endl;
+        << "at cp=" << cpDoubleEW << ", error: "
+        << cpDoubleErrorEW << endl;
 }
 
 
@@ -1436,16 +1459,16 @@ void MultireweightHistosPTJK::findObservableEqualHeightWeight(
 
 void MultireweightHistosPTJK::energyRelDip(
         double& relDip, double& relDipError, HistogramDouble*& histo,
-        double targetBeta, double tolerance) {
+        double targetControlParameter, double tolerance) {
     //whole data-set
     MultireweightHistosPT::energyRelDip(relDip,
-            histo, targetBeta, tolerance);
+            histo, targetControlParameter, tolerance);
 
     //jackknife blocking
     vector<double> jkRelDip_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
-        HistogramDouble* histojk = reweightEnergyHistogramJK(targetBeta, b);
+        HistogramDouble* histojk = reweightEnergyHistogramJK(targetControlParameter, b);
         jkRelDip_b[b] = histogramRelativeDip(histojk, tolerance);
         destroy(histojk);
     }
@@ -1456,17 +1479,17 @@ void MultireweightHistosPTJK::energyRelDip(
 
 void MultireweightHistosPTJK::obsRelDip(
         double& relDip, double& relDipError, HistogramDouble*& histo,
-        double targetBeta, unsigned numBins, double tolerance) {
+        double targetControlParameter, unsigned numBins, double tolerance) {
     //whole data-set
     MultireweightHistosPT::obsRelDip(relDip,
-            histo, targetBeta, numBins, tolerance);
+            histo, targetControlParameter, numBins, tolerance);
 
     //jackknife blocking
     vector<double> jkRelDip_b(blockCount);
     #pragma omp parallel for
     for (signed b = 0; b < (signed)blockCount; ++b) {
         HistogramDouble* histojk = reweightObservableHistogramJK(
-                targetBeta, numBins, b);
+                targetControlParameter, numBins, b);
         jkRelDip_b[b] = histogramRelativeDip(histojk, tolerance);
         destroy(histojk);
     }
@@ -1506,9 +1529,9 @@ void MultireweightHistosPTJK::saveH_km_errors(const std::string & filename) {
 }
 
 
-ReweightingResult MultireweightHistosPTJK::reweightDiscrete(double beta) {
+ReweightingResult MultireweightHistosPTJK::reweightDiscrete(double cp) {
 //    //estimates from whole data set:
-//    ReweightingResult result = MultireweightHistosPT::reweightDiscrete(beta);
+//    ReweightingResult result = MultireweightHistosPT::reweightDiscrete(cp);
 
     //estimates for jackknifed sub sets:
     vector<double> energy_b(blockCount);
@@ -1519,10 +1542,10 @@ ReweightingResult MultireweightHistosPTJK::reweightDiscrete(double beta) {
     for (signed b = 0; b < (signed)blockCount; ++b) {
         //helper array:
         vector<LogVal> args(binCount);
-        args[0] = lOmega_bm[b][0] * toLogValExp(-beta * U_m[0]);
+        args[0] = lOmega_bm[b][0] * toLogValExp(-cp * U_m[0]);
         LogVal normalization = args[0];
         for (unsigned m = 1; m < binCount; ++m) {
-            args[m] = lOmega_bm[b][m] * toLogValExp(-beta * U_m[m]);
+            args[m] = lOmega_bm[b][m] * toLogValExp(-cp * U_m[m]);
             normalization += args[m];
         }
         double estEnergyNorm = 0;
@@ -1530,13 +1553,13 @@ ReweightingResult MultireweightHistosPTJK::reweightDiscrete(double beta) {
         for (unsigned m = 0; m < binCount; ++m) {
             args[m] /= normalization;
             double prob = toDouble(args[m]);
-            double energyNorm = U_m[m] / systemN;
+            double energyNorm = U_m[m] / systemSize;
             double energySqNorm = energyNorm*energyNorm;
             estEnergyNorm += prob * energyNorm;
             estEnergySqNorm += prob * energySqNorm;
         }
         energy_b[b] = estEnergyNorm;
-        heatCapacity_b[b] = beta*beta * systemN *
+        heatCapacity_b[b] = cp*cp * systemSize *
             (estEnergySqNorm - estEnergyNorm*estEnergyNorm);
     }
 
@@ -1550,13 +1573,13 @@ ReweightingResult MultireweightHistosPTJK::reweightDiscrete(double beta) {
 
 
 double MultireweightHistosPTJK::reweightSpecificHeatDiscreteJK(
-        double targetBeta, unsigned jkBlock) {
+        double targetControlParameter, unsigned jkBlock) {
     //helper array:
     vector<LogVal> args(binCount);
-    args[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetBeta * U_m[0]);
+    args[0] = lOmega_bm[jkBlock][0] * toLogValExp(-targetControlParameter * U_m[0]);
     LogVal normalization = args[0];
     for (unsigned m = 1; m < binCount; ++m) {
-        args[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetBeta * U_m[m]);
+        args[m] = lOmega_bm[jkBlock][m] * toLogValExp(-targetControlParameter * U_m[m]);
         normalization += args[m];
     }
     double estEnergyNorm = 0;
@@ -1564,12 +1587,12 @@ double MultireweightHistosPTJK::reweightSpecificHeatDiscreteJK(
     for (unsigned m = 0; m < binCount; ++m) {
         args[m] /= normalization;
         double prob = toDouble(args[m]);
-        double energyNorm = U_m[m] / systemN;
+        double energyNorm = U_m[m] / systemSize;
         double energySqNorm = energyNorm*energyNorm;
         estEnergyNorm += prob * energyNorm;
         estEnergySqNorm += prob * energySqNorm;
     }
-    return targetBeta*targetBeta * systemN *
+    return targetControlParameter*targetControlParameter * systemSize *
             (estEnergySqNorm - estEnergyNorm*estEnergyNorm);
 }
 

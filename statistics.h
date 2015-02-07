@@ -91,6 +91,23 @@ T jackknife(
     return sqrt((double(bc - 1) / double(bc)) * squaredDeviation);
 }
 
+//Take a vector of block values, calculate their average and estimate
+//their error using standard jackknife
+template<typename T> void jackknife(T& outBlockAverage, T& outBlockError,
+                                    const std::vector<T>& blockValues) {
+    unsigned bc = blockValues.size();
+    for (unsigned b = 0; b < bc; ++b) {
+        outBlockAverage += blockValues[b];
+    }
+    outBlockAverage /= static_cast<T>(bc);
+    T squaredDeviation = 0;
+    for (unsigned b = 0; b < bc; ++b) {
+        squaredDeviation += std::pow(outBlockAverage - blockValues[b], 2);
+    }
+    outBlockError = std::sqrt(double(bc - 1) / double(bc) * squaredDeviation);
+}
+
+
 
 //Take a vector of block values, calculate their average and estimate
 //their error using standard jackknife

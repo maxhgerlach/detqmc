@@ -44,7 +44,7 @@ private:
     LogVal3Array lNeff_blm;
     LogVal3Array lPrecalc_blm;      // precalculated for updateDensityOfStates
 
-    LogVal2Array lZ_bl;     //partition function at beta_l, jackknife block b
+    LogVal2Array lZ_bl;     //partition function at cp_l, jackknife block b
 
     LogVal2Array lOmega_bm; //estimate of density of states (up to multiplicative factor), jackknife block b
 
@@ -54,11 +54,11 @@ private:
     void setUpHistogramsJK(int binCount_);
     void setUpHistogramsIsingJK();
 
-    DoubleSeriesCollection computeWeightsJK(double targetBeta, unsigned jkBlock);
+    DoubleSeriesCollection computeWeightsJK(double targetControlParameter, unsigned jkBlock);
     void updateEffectiveCountsJK();                 //for all blocks
     void updateDensityOfStatesJK(unsigned block);   //for the indicated block
 
-    ReweightingResult reweightJackknifeInternal(double targetBeta, unsigned jkBlock, const DoubleSeriesCollection& w_kn);
+    ReweightingResult reweightJackknifeInternal(double targetControlParameter, unsigned jkBlock, const DoubleSeriesCollection& w_kn);
 
     //FS-multi-reweighting for one specific observable, one jackknife block
     void reweight1stMomentInternalJK(const DoubleSeriesCollection& timeSeries,
@@ -72,18 +72,18 @@ private:
             const DoubleSeriesCollection& timeSeries,
             const DoubleSeriesCollection& w_kn, unsigned jkBlock,
             double& secondMoment, double& fourthMoment);
-    double reweightEnergyJK(double targetBeta, unsigned jkBlock);
-    double reweightSpecificHeatJK(double targetBeta, unsigned jkBlock);
-    double reweightSpecificHeatDiscreteJK(double targetBeta, unsigned jkBlock);
-    double reweightObservableJK(double targetBeta, unsigned jkBlock);
-    double reweightObservableSusceptibilityJK(double targetBeta,
+    double reweightEnergyJK(double targetControlParameter, unsigned jkBlock);
+    double reweightSpecificHeatJK(double targetControlParameter, unsigned jkBlock);
+    double reweightSpecificHeatDiscreteJK(double targetControlParameter, unsigned jkBlock);
+    double reweightObservableJK(double targetControlParameter, unsigned jkBlock);
+    double reweightObservableSusceptibilityJK(double targetControlParameter,
             unsigned jkBlock);
-    double reweightObservableBinderJK(double targetBeta, unsigned jkBlock);
+    double reweightObservableBinderJK(double targetControlParameter, unsigned jkBlock);
 
     //reweight histograms taking only data from one of the jackknife blocks
-    HistogramDouble* reweightEnergyHistogramJK(double targetBeta,
+    HistogramDouble* reweightEnergyHistogramJK(double targetControlParameter,
             unsigned jkBlock);
-    HistogramDouble* reweightObservableHistogramJK(double targetBeta,
+    HistogramDouble* reweightObservableHistogramJK(double targetControlParameter,
             unsigned numBins, unsigned jkBlock);
 
     friend class SuscMinCallableJK;
@@ -104,7 +104,7 @@ public:
     //compute averages directly at the original temperatures, only
     //from data at the original temperatures -- no reweighting
     //return a newly allocated map
-    //    beta -> results
+    //    cp -> results
     //here: additional Jackknife error estimation
     virtual ResultsMap* directNoReweighting();
 
@@ -120,50 +120,50 @@ public:
 
     //jackknifes each time series into blockcount blocks (this allows for differing lengths, e.g. if they have been
     //sub-sampled before) --> additional error estimation
-    virtual ReweightingResult reweight(double targetBeta);
-    virtual HistogramDouble* reweightEnergyHistogram(double targetBeta);
-    virtual HistogramDouble* reweightObservableHistogram(double targetBeta,
+    virtual ReweightingResult reweight(double targetControlParameter);
+    virtual HistogramDouble* reweightEnergyHistogram(double targetControlParameter);
+    virtual HistogramDouble* reweightObservableHistogram(double targetControlParameter,
             unsigned numBins);
-    virtual ReweightingResult reweightWithHistograms(double targetBeta,
+    virtual ReweightingResult reweightWithHistograms(double targetControlParameter,
             unsigned obsBinCount);
 
-    //find the maximum of the susceptibility between betaStart and betaEnd
-    //put its location into betaMax, its value into suscMax and add all points evaluated to the map pointsEvaluated
-    //also use jackknifing to estimate errors on betaMax and suscMax and store the points evaluated in the passes
+    //find the maximum of the susceptibility between cpStart and cpEnd
+    //put its location into cpMax, its value into suscMax and add all points evaluated to the map pointsEvaluated
+    //also use jackknifing to estimate errors on cpMax and suscMax and store the points evaluated in the passes
     //for each individual jackknife block into pointsEvaluatedJK
-    void findMaxObservableSusceptibility(double& betaMax, double& betaMaxError, double& suscMax, double& suscMaxError,
+    void findMaxObservableSusceptibility(double& cpMax, double& cpMaxError, double& suscMax, double& suscMaxError,
             std::map<double, double>& pointsEvaluated, std::vector<std::map<double,double> >& pointsEvaluatedJK,
-        double betaStart, double betaEnd);
-    void findMaxSpecificHeatDiscrete(double& betaMax, double& betaMaxError, double& specHeatMax, double& specHeatMaxError,
+        double cpStart, double cpEnd);
+    void findMaxSpecificHeatDiscrete(double& cpMax, double& cpMaxError, double& specHeatMax, double& specHeatMaxError,
             std::map<double, double>& pointsEvaluated, std::vector<std::map<double,double> >& pointsEvaluatedJK,
-        double betaStart, double betaEnd);
-    void findMinBinder(double& betaMin, double& betaMinError,
+        double cpStart, double cpEnd);
+    void findMinBinder(double& cpMin, double& cpMinError,
             double& binderMin, double& binderMinError,
             std::map<double, double>& pointsEvaluated,
             std::vector<std::map<double,double> >& pointsEvaluatedJK,
-            double betaStart, double betaEnd);
+            double cpStart, double cpEnd);
 
 
-    //Search between betaStart and betaEnd for a double-peak histogram
+    //Search between cpStart and cpEnd for a double-peak histogram
     //with as equal peak-heights as possible, obtain histograms from the
     //reweighting. .0<tolerance<1.0 should be chosen small enough to
     //distinguish the dip from the peaks and large enough to distinguish
     //the dip from noise...
-    //Return the temperature location for this histogram in betaDouble
+    //Return the temperature location for this histogram in cpDouble
     //and the ratio max(max1,max2)/(2*min) in relativeDip. If no dip is found,
     //relativeDip is set to 1.0. A pointer to the final histogram is put
     //into histo.
     //The function for observable histograms has an additional parameter
     //specifying the number of bins to use for the reweighted histograms.
     //Additional jackknife error estimation
-    void findEnergyEqualHeight(double& betaDouble, double& betaDoubleError,
+    void findEnergyEqualHeight(double& cpDouble, double& cpDoubleError,
             double& relativeDip, double& relDipError,
             HistogramDouble*& histoResult,
-            double betaStart, double betaEnd, double tolerance = 0.1);
-    void findObservableEqualHeight(double& betaDouble, double& betaDoubleError,
+            double cpStart, double cpEnd, double tolerance = 0.1);
+    void findObservableEqualHeight(double& cpDouble, double& cpDoubleError,
             double& relativeDip, double& relDipError,
             HistogramDouble*& histoResult,
-            double betaStart, double betaEnd, unsigned numBins,
+            double cpStart, double cpEnd, unsigned numBins,
             double tolerance = 0.1);
 
     //The following additionally
@@ -171,37 +171,37 @@ public:
     //One function for both operations as this makes the jackknife
     //error estimation faster.
     void findEnergyEqualHeightWeight(
-            double& betaDoubleEH, double& betaDoubleErrorEH,
+            double& cpDoubleEH, double& cpDoubleErrorEH,
             double& relativeDipEH, double& relDipErrorEH,
             HistogramDouble*& histoResultEH,
-            double& betaDoubleEW, double& betaDoubleErrorEW,
+            double& cpDoubleEW, double& cpDoubleErrorEW,
             double& relativeDipEW, double& relDipErrorEW,
             HistogramDouble*& histoResultEW,
-            double betaStart, double betaEnd, double tolerance = 0.1);
+            double cpStart, double cpEnd, double tolerance = 0.1);
     void findObservableEqualHeightWeight(
-            double& betaDoubleEH, double& betaDoubleErrorEH,
+            double& cpDoubleEH, double& cpDoubleErrorEH,
             double& relativeDipEH, double& relDipErrorEH,
             HistogramDouble*& histoResultEH,
-            double& betaDoubleEW, double& betaDoubleErrorEW,
+            double& cpDoubleEW, double& cpDoubleErrorEW,
             double& relativeDipEW, double& relDipErrorEW,
             HistogramDouble*& histoResultEW,
-            double betaStart, double betaEnd, unsigned numBins,
+            double cpStart, double cpEnd, unsigned numBins,
             double tolerance = 0.1);
 
 
-    //The following just reweight to obtain the histogram at the target beta,
+    //The following just reweight to obtain the histogram at the target cp,
     //return that and the relative dip
     //additional JK error estimation
     void energyRelDip(double& relDip, double& relDipError,
             HistogramDouble*& histoResult,
-            double targetBeta, double tolerance = 0.1);
+            double targetControlParameter, double tolerance = 0.1);
     void obsRelDip(double& relDip, double& relDipError,
             HistogramDouble*& histoResult,
-            double targetBeta, unsigned numBins, double tolerance = 0.1);
+            double targetControlParameter, unsigned numBins, double tolerance = 0.1);
 
     //obtain energy and specific heat estimates directly from the density of states
     //(do not re-consider the time series), estimate Jackknife errors
-    virtual ReweightingResult reweightDiscrete(double beta);
+    virtual ReweightingResult reweightDiscrete(double cp);
 
 
 };

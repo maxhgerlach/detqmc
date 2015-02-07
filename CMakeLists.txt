@@ -409,7 +409,7 @@ target_link_libraries(testspheresampling general_common
 set(mrpt_SRC main-mrpt.cpp
   # mrpt-highlevel.cpp
   mrpt.cpp
-  # mrpt-jk.cpp
+  mrpt-jk.cpp
   statistics.cpp
   )
 add_executable(mrpt ${mrpt_SRC})
