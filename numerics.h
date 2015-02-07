@@ -145,8 +145,8 @@ double findRoot(Function& func, Derivative& dfunc,
     double fh = func(xMax);
     if (fh == .0) return xMax;
     if ((fl > .0 and fh > .0) or (fl < .0 and fh < .0)) {
-        throw GeneralException("Root is not bracketed between "
-                + numToString(xMin) + " and " + numToString(xMax));
+        throw GeneralError("Root is not bracketed between "
+                           + numToString(xMin) + " and " + numToString(xMax));
     }
     //find direction of search:
     if (fl <.0) {
@@ -201,10 +201,10 @@ double findRoot(Function& func, Derivative& dfunc,
         }
     }
 
-    throw GeneralException(numToString(maxIterations) + " iterations did"
-            "not suffice to find root with relative accuracy " +
-            numToString(acc) + ", last estimate: " + numToString(root)
-            + ", accuracy " + numToString(std::fabs(dx / root)));
+    throw GeneralError(numToString(maxIterations) + " iterations did"
+                       "not suffice to find root with relative accuracy " +
+                       numToString(acc) + ", last estimate: " + numToString(root)
+                       + ", accuracy " + numToString(std::fabs(dx / root)));
 }
 
 

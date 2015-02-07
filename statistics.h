@@ -9,6 +9,7 @@
 #define STATISTICS_H_
 
 #include <cmath>
+#include <map>
 #include <vector>
 #include <tuple>
 #include <functional>
@@ -237,8 +238,150 @@ T tauint_adaptive(const std::vector<T>& data) {
 
 
 
+// some extras for mrpt:
+
+//if end==0: compute average over whole vector
+//else compute average for elements at start, start+1, ..., end-1
+double average(const std::vector<double>* vec, int start=0, int end=0);
+double average(const std::vector<int>* vec, int start=0, int end=0);
 
 
+//if end==0: compute square average over whole vector
+//else compute sq. average for elements at start, start+1, ..., end-1
+double sqAverage(const std::vector<double>* vec, int start=0, int end=0);
+
+double variance(const std::vector<double>* numbers, double meanValue, int N=0);
+double variance(const std::vector<int>* numbers, double meanValue, int N=0);
+
+
+typedef std::map<int, double> AutoCorrMap;
+
+//integrated autocorrelation time,
+//employ a self-consistent cut-off
+//\tau_int = 1/2 + \sum_{k=1}^{k_max} A(k)
+//k_max \approx 6*\tau_int
+//
+//if points != 0 store the evaluated points of the auto-correlation function
+//into that map
+double tauint(const std::vector<double>* data, double selfConsCutOff = 6, AutoCorrMap* points = 0);
+
+//integrated autocorrelation time,
+//stop accumulating once autoCorr <= 0
+//
+//if points != 0 store the evaluated points of the auto-correlation function
+//into that map
+double tauint_stopAtZeroCrossing(const std::vector<double>* data, AutoCorrMap* points = 0);
+
+//faster estimation of tauint using an adaptive integration scheme (compare [Chodera2007] pg. 38)
+//(also stops at the zero crossing of autoCorr)
+//
+//if points != 0 store the evaluated points of the auto-correlation function
+//into that map
+double tauint_adaptive(const std::vector<double>* data, AutoCorrMap* points = 0);
+
+
+//subsample inTimeSeries into outTimeSeries (appending to its end), taking only samples separated by sampleSize
+template <typename T>
+void subsample(const std::vector<T>& inTimeSeries, int sampleSize, std::vector<T>& outTimeSeries) {
+    for (unsigned index = 0; index < inTimeSeries.size(); index += sampleSize) {
+        outTimeSeries.push_back(inTimeSeries[index]);
+    }
+}
+
+template <typename T1, typename T2>
+void subsampleTypeCasting(const std::vector<T1>& inTimeSeries, int sampleSize, std::vector<T2>& outTimeSeries) {
+    for (unsigned index = 0; index < inTimeSeries.size(); index += sampleSize) {
+        outTimeSeries.push_back(static_cast<T2>(inTimeSeries[index]));
+    }
+}
+
+
+template<typename T>
+void findMinMaxMean(const std::vector<T>& timeSeries, T& min, T& max, T& mean) {
+    T runningMin = timeSeries[0];
+    T runningMax = timeSeries[0];
+    T cummulativeSum = timeSeries[0];
+    for (unsigned k = 1; k < timeSeries.size(); ++k) {
+        if (timeSeries[k] < runningMin)
+            runningMin = timeSeries[k];
+        else if (timeSeries[k] > runningMax)
+            runningMax = timeSeries[k];
+        cummulativeSum += timeSeries[k];
+    }
+    min = runningMin;
+    max = runningMax;
+    mean = cummulativeSum / static_cast<T>(timeSeries.size());
+}
+
+template <typename T>
+void findMinMaxMean(const std::vector<std::vector<T>*>& timeSeriesVector, T& min, T& max, T& mean) {
+    T runningMin, runningMax, cummulatedMeans;
+    int firstTimeSeries = timeSeriesVector.size();
+    int numTimeSeries = 0;
+    for (int k = 0; k < timeSeriesVector.size(); ++k) {
+        if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
+            findMinMaxMean(*timeSeriesVector[k],
+                           runningMin, runningMax, cummulatedMeans);
+            firstTimeSeries = k;
+            ++numTimeSeries;
+            break;
+        }
+    }
+    for (unsigned k = firstTimeSeries + 1; k < timeSeriesVector.size(); ++k) {
+        T curMin, curMax, curMean;
+        if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
+            ++numTimeSeries;
+            findMinMaxMean(*timeSeriesVector[k], curMin, curMax, curMean);
+            if (curMin < runningMin)
+                runningMin = curMin;
+            else if (curMax > runningMax)
+                runningMax = curMax;
+            cummulatedMeans += curMean;
+        }
+    }
+    min = runningMin;
+    max = runningMax;
+    mean = cummulatedMeans / static_cast<T>(numTimeSeries);
+}
+
+template <typename T>
+void findMinMax(const std::vector<T>& timeSeries, T& min, T& max) {
+    T runningMin = timeSeries[0];
+    T runningMax = timeSeries[0];
+    for (unsigned k = 1; k < timeSeries.size(); ++k) {
+        if (timeSeries[k] < runningMin)
+            runningMin = timeSeries[k];
+        else if (timeSeries[k] > runningMax)
+            runningMax = timeSeries[k];
+    }
+    min = runningMin;
+    max = runningMax;
+}
+
+template <typename T>
+void findMinMax(const std::vector<std::vector<T>*>& timeSeriesVector, T& min, T& max) {
+    T runningMin, runningMax;
+    int firstTimeSeries = timeSeriesVector.size();
+    for (unsigned k = 0; k < timeSeriesVector.size(); ++k) {
+        if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
+            findMinMax(*timeSeriesVector[k], runningMin, runningMax);
+            firstTimeSeries = k;
+            break;
+        }
+    }
+    for (unsigned k = firstTimeSeries + 1; k < timeSeriesVector.size(); ++k) {
+        T curMin, curMax;
+        if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
+            findMinMax(*timeSeriesVector[k], curMin, curMax);
+            if (curMin < runningMin)
+                runningMin = curMin;
+            if (curMax > runningMax)
+                runningMax = curMax;
+        }
+    }
+    min = runningMin;
+    max = runningMax;
+}
 
 
 #endif /* STATISTICS_H_ */
