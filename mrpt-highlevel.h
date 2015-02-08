@@ -35,25 +35,23 @@ void setTolerance(double tolerance);
 
 void init();    //afterwards we can proceed estimating quantities using reweighting
 
-void directResults();   //compute averages at original betas, no reweighting
+void directResults();   //compute averages at original control parameters (cps), no reweighting
 
-void reweight(double beta, bool createHistogramsToo = false);
-void reweightRange(double betaMin, double betaMax, double betaStep, bool createHistogramsToo = false);
-void reweightDiscreteRange(double betaMin, double betaMax, double betaStep, bool createHistogramsToo = false);
-void reweightConstantOverlap(double targetNumBetas = 0);
-void reweightConstantOverlap(double betaMin, double betaMax, unsigned targetNumBetas);
+void reweight(double cp, bool createHistogramsToo = false);
+void reweightRange(double cpMin, double cpMax, double cpStep, bool createHistogramsToo = false);
+void reweightDiscreteRange(double cpMin, double cpMax, double cpStep, bool createHistogramsToo = false);
 
-void reweightEnergyHistogram(double beta);
-void reweightObservableHistogram(double beta);
+void reweightEnergyHistogram(double cp);
+void reweightObservableHistogram(double cp);
 
-void findMaxSusc(double betaStart, double betaEnd);
-void findMaxSpecificHeat(double betaStart, double betaEnd);
-void findMinBinder(double betaStart, double betaEnd);
-void findEnergyDoublePeak(double betaStart, double betaEnd, double tolerance = 0.1);
-void findObservableDoublePeak(double betaStart, double betaEnd, double tolerance = 0.1);
+void findMaxSusc(double cpStart, double cpEnd);
+void findMaxSpecificHeat(double cpStart, double cpEnd);
+void findMinBinder(double cpStart, double cpEnd);
+void findEnergyDoublePeak(double cpStart, double cpEnd, double tolerance = 0.1);
+void findObservableDoublePeak(double cpStart, double cpEnd, double tolerance = 0.1);
 
-void findEnergyRelDip(double targetBeta, double tolerance = 0.1);
-void findObservableRelDip(double targetBeta, double tolerance = 0.1);
+void findEnergyRelDip(double targetControlParameter, double tolerance = 0.1);
+void findObservableRelDip(double targetControlParameter, double tolerance = 0.1);
 
 
 //accessor functions to arrays (these give pointers directly to internal data!)
@@ -69,6 +67,6 @@ void getN_kl(int* outK, int* outL, int** outArray2);
 void getHeff_m(int* outM, double** outArray1);
 void getNeff_lm(int* outL, int* outM, double** outArray2);
 
-void getOriginalBetas(int* outK, double** outArray1);
+void getOriginalControlParameterValues(int* outK, double** outArray1);
 
 #endif /* MRPT_HIGHLEVEL_H_ */

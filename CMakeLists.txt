@@ -268,7 +268,7 @@ configure_file(
 # [Unfortunately, in this respect, for this use case, CMake is
 # actually less convenient than rolling one's own makefiles]
 #
-# We do this separetely for a couple of the source files to limit
+# We do this separately for a couple of the source files to limit
 # unnecessary recompilations.
 
 set(general_common_SRC rngwrapper.cpp metadata.cpp tools.cpp
@@ -407,7 +407,7 @@ target_link_libraries(testspheresampling general_common
 
 
 set(mrpt_SRC main-mrpt.cpp
-  # mrpt-highlevel.cpp
+  mrpt-highlevel.cpp
   mrpt.cpp
   mrpt-jk.cpp
   statistics.cpp
