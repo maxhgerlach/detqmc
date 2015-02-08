@@ -506,6 +506,8 @@ protected:
     Phi meanPhi;		//averaged field [~ magnetization]
     num normMeanPhi;	//norm of averaged field
 
+    num associatedEnergy;       // to enable reweighting measure: 1/2 1/(N*m) sum phi^2
+
     // diagonal blocks of the (equal time) Green's function in
     // momentum space
     VecNum kgreenXUP;

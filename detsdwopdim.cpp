@@ -171,6 +171,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     ad(pars),                   // AdjustmentData
     performedSweeps(0),
     meanPhi(), normMeanPhi(0),
+    associatedEnergy(0),
     kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
     greenXUP_summed(), greenYDOWN_summed(), greenXDOWN_summed(), greenYUP_summed(),
     greenK0(), greenLocal(),
@@ -233,6 +234,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     using std::cref;
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
+        ScalarObservable(cref(associatedEnergy), "associatedEnergy", ""),
         ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
         ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
         ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
@@ -400,6 +402,8 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
     meanPhi.zeros();
     normMeanPhi = 0;
 
+    associatedEnergy = 0;
+
     if (not pars.turnoffFermions) {
 
         // some sectors of the momentum space Green's function,
@@ -462,10 +466,11 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
 
     timeslices_included_in_measurement.insert(timeslice);
 
-    //normphi, meanPhi, sdw-susceptibility
+    //normphi, meanPhi, sdw-susceptibility, associatedEnergy
     for (uint32_t site = 0; site < pars.N; ++site) {
         Phi phi_site = getPhi(site, timeslice);
         meanPhi += phi_site;
+        associatedEnergy += arma::dot(phi_site, phi_site);
     }
 
     if (not pars.turnoffFermions) {
@@ -826,6 +831,8 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     //normphi, meanPhi, sdw-susceptibility
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
+
+    associatedEnergy /= (2.0 * N * m);
 
     if (not pars.turnoffFermions) {
 
