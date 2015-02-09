@@ -749,6 +749,7 @@ public:
             (*observableError)[cp] = result.obsError;
             (*observableSquaredError)[cp] = result.obsSquaredError;
             (*susceptibilityError)[cp] = result.obsSuscError;
+            (*binderError)[cp] = result.obsBinderError;            
             (*binderRatioError)[cp] = result.obsBinderRatioError;
         }
         if (createHistograms) {

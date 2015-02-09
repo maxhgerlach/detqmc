@@ -46,14 +46,13 @@ MultireweightHistosPT::~MultireweightHistosPT() {
 }
 
 void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
-    DataSeriesLoader<double> info;
-    info.readFromFile(filename);
+    MetadataMap info = readOnlyMetadata(filename);
 
     try {
         // try to read info.dat as produced by detqmc
-        info.getMeta("controlParameterName", controlParameterName);
+        getMeta(info, "controlParameterName", controlParameterName);
         std::string controlParameterValues_string; // "val1 val2 val3 [...]"
-        info.getMeta("controlParameterValues", controlParameterValues_string);
+        controlParameterValues_string = info["controlParameterValues"];
         std::vector<std::string> controlParameterValues_string_vec;
         boost::split(controlParameterValues_string_vec,
                      controlParameterValues_string,
@@ -67,7 +66,7 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     } catch (KeyUndefined& exc) {
         controlParameterName = "beta";
         numReplicas = 0;
-        info.getMeta("numTemperatures", numReplicas);
+        getMeta(info, "numTemperatures", numReplicas);
 
         // betas should be stored in info.dat file below the metadata
         DataSeriesLoader<double> dr;
@@ -83,17 +82,17 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     }
     
     systemN = 0;
-    info.getMeta("N", systemN);
+    getMeta(info, "N", systemN);
     systemL = 0;
-    info.getMeta("L", systemL);
+    getMeta(info, "L", systemL);
     infoNumSamples = 0;
 
     std::string model;
-    info.getMeta("model", model);
+    getMeta(info, "model", model);
     if (model == "sdw") {
         // QMC simulation
         unsigned timeslices;
-        info.getMeta("m", timeslices);
+        getMeta(info, "m", timeslices);
         systemSize = systemN * timeslices;
     } else {
         // classical MC simulation
@@ -101,10 +100,10 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     }
 
     try {
-        info.getMeta("measureInterval", infoSweepsBetweenMeasurements);
+        getMeta(info, "measureInterval", infoSweepsBetweenMeasurements);
     } catch (KeyUndefined& exc) {
         try {
-            info.getMeta("sweepsBetweenMeasurements", infoSweepsBetweenMeasurements);
+            getMeta(info, "sweepsBetweenMeasurements", infoSweepsBetweenMeasurements);
         } catch (KeyUndefined& exc) {
             infoSweepsBetweenMeasurements = 1;
         }
@@ -113,20 +112,20 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
     // get a size hint for the time series
     try {
         int sweepsDone;
-        info.getMeta("curSamples", sweepsDone);
+        getMeta(info, "curSamples", sweepsDone);
         infoNumSamples = sweepsDone / infoSweepsBetweenMeasurements;
     } catch (KeyUndefined& exc) {
         try {
-            info.getMeta("curSamples", infoNumSamples);
+            getMeta(info, "curSamples", infoNumSamples);
         } catch (KeyUndefined& exc) {
             try {
-                info.getMeta("totalSamples", infoNumSamples);
+                getMeta(info, "totalSamples", infoNumSamples);
             } catch (KeyUndefined& exc) {
                 try {
-                    info.getMeta("samples", infoNumSamples);
+                    getMeta(info, "samples", infoNumSamples);
                 } catch (KeyUndefined& exc) {
                     try {
-                        info.getMeta("totalSweeps", infoNumSamples);
+                        getMeta(info, "totalSweeps", infoNumSamples);
                     } catch (KeyUndefined& exc) {
                         infoNumSamples = 0;
                     }
@@ -134,8 +133,6 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
             }
         }
     }
-
-    info.deleteData();
 
     out << "Simulation info loaded from " << filename << " numReplicas=" << numReplicas
         << " systemN=" << systemN << " systemSize=" << systemSize << std::endl;

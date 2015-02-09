@@ -14,8 +14,20 @@
 
 #include <map>
 #include <string>
+#include <sstream>
+#include "exceptions.h"
 
 typedef std::map<std::string, std::string> MetadataMap;
+
+template<typename Value>
+void getMeta(const MetadataMap& meta, const std::string& key, Value& valOut) {
+    if (meta.count(key) == 0) {
+        throw_KeyUndefined(key);
+    } else {
+        std::stringstream parseStream(meta.at(key));
+        parseStream >> valOut;
+    }
+}
 
 //parse metadata from a configfile-like section of lines of the form
 //key = value
