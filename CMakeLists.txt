@@ -142,7 +142,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 
 # TODO: make sure only Intel compiler used on Cheops
 if (${CHEOPS_FOUND})
-  set(EXTRA_FLAGS_DEBUG "-g -O0 -fp-trap-common")
+  set(EXTRA_FLAGS_DEBUG "-g -O0")
   # floating-point traps for division by zero, invalid operation, and overflow
 else (${CHEOPS_FOUND})
   set(EXTRA_FLAGS_DEBUG "-g -O0")
