@@ -967,7 +967,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
         unsigned N_k = observableTimeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
-            const int curBlock = n / jkBlockSize;
+            const unsigned curBlock = n / jkBlockSize;
             if (curBlock == jkBlock) {
                 n += jkBlockSize;
                 continue;
@@ -1045,8 +1045,8 @@ public:
 class EnergyHistogramPeakDiffMinCallableJK {
     MultireweightHistosPTJK* master;
     HistogramDouble* foundHistogram;
-    double tolerance;
     unsigned jkBlock;
+    double tolerance;
 public:
     EnergyHistogramPeakDiffMinCallableJK(double tolerance,
             MultireweightHistosPTJK* master, unsigned jkBlock) :

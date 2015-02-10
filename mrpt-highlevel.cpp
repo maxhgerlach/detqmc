@@ -20,7 +20,12 @@
 #include "metadata.h"
 #include "tools.h"
 #include "datamapwriter.h"
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include "dlib/cmd_line_parser.h" // for simplicity: keep using DLIB for this instead of rewriting the handling below with Boost
+#pragma GCC diagnostic pop
 #include "mrpt.h"
 #include "mrpt-jk.h"
 #include "mrpt-highlevel.h"
