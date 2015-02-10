@@ -15,6 +15,7 @@
 #define MULTIREWEIGHTHISTO_PT_H_
 
 
+#include <memory>
 #include <vector>
 #include <iostream>
 #include <map>
@@ -44,8 +45,8 @@ public:
     std::string observable;                 //name of second observable (other than energy)
     int infoNumSamples;                     //number of samples, value taken from info.dat
     int infoSweepsBetweenMeasurements;      //taken from info.dat
-    typedef std::vector<std::vector<double>*> DoubleSeriesCollection;       //map replica index -> pointer to time series of (floating point) measurements
-    typedef std::vector<std::vector<int>*> IntSeriesCollection;             //map replica index -> pointer to series of integer values
+    typedef std::vector<std::shared_ptr<std::vector<double>>> DoubleSeriesCollection;       //map replica index -> pointer to time series of (floating point) measurements
+    typedef std::vector<std::shared_ptr<std::vector<int>>> IntSeriesCollection;             //map replica index -> pointer to series of integer values
     DoubleSeriesCollection energyTimeSeries;
     DoubleSeriesCollection observableTimeSeries;
     IntSeriesCollection cpiTimeSeries; //control parameter index time series for each replica, currently only used for the Fenwick-estimation of d.o.s. --> can be freed after histograms have been computed

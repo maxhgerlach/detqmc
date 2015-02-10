@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <memory>
 #include "exceptions.h"
 #include "tools.h"
 #pragma GCC diagnostic push
@@ -41,9 +42,6 @@
 //   samples
 template <typename ValueType>
 class DataSeriesLoader {
-    int columns;
-    std::vector<std::vector<ValueType>*>* data;
-    MetadataMap meta;
 public:
     DataSeriesLoader();
     void readFromFile(const std::string& filename, uint32_t subsample = 1,
@@ -54,25 +52,31 @@ public:
                       uint32_t sizeHint = 0);
 
     int getColumns();
-    std::vector<ValueType>* getData(int column = 0);
+
+    typedef std::shared_ptr<std::vector<ValueType>> TimeSeriesPtr;
+    TimeSeriesPtr getData(int column = 0);
     void deleteData();
 
     template<typename MetaValueType>
     void getMeta(const std::string& key, MetaValueType& value);
 
     MetadataMap getMetadataMap();
+private:
+    int columns;
+    std::vector<TimeSeriesPtr> data;
+    MetadataMap meta;
 };
 
 template <typename ValueType>
-DataSeriesLoader<ValueType>::DataSeriesLoader() {
-    columns = 0;
-    data = 0;
+DataSeriesLoader<ValueType>::DataSeriesLoader() : columns(0) {
 }
 
 template <typename ValueType>
 void DataSeriesLoader<ValueType>::deleteData() {
-    destroyAll(*data);
-    destroy(data);
+    // should not require to do anything
+    data.clear();
+    // destroyAll(*data);
+    // destroy(data);
 }
 
 template <typename ValueType>
@@ -91,7 +95,7 @@ void DataSeriesLoader<ValueType>::readFromFile(
     if (not input) {
         throw_ReadError(filename);
     }
-    data = new vector<vector<ValueType>*>();
+    data.clear();
     string line;
     string configLines;
     while (getline(input, line)) {
@@ -112,12 +116,12 @@ void DataSeriesLoader<ValueType>::readFromFile(
             while (not ss.eof()) {
                 ValueType val;
                 ss >> val;
-                data->push_back(new vector<ValueType>);
+                data.push_back(TimeSeriesPtr(new vector<ValueType>));
                 if (sizeHint > 0) {
-                    data->at(columns)->
-                            reserve((sizeHint - discardData) / subsample);
+                    data.at(columns)->
+                        reserve((sizeHint - discardData) / subsample);
                 }
-                data->at(columns)->push_back(val);
+                data.at(columns)->push_back(val);
                 ++columns;
             }
             //handle the rest of the lines below
@@ -128,7 +132,7 @@ void DataSeriesLoader<ValueType>::readFromFile(
 
     if (discardData > 0) {
         //the line that was already read in earlier has to be discarded:
-        for (int c = 0; c < columns; ++c) data->at(c)->pop_back();
+        for (int c = 0; c < columns; ++c) data.at(c)->pop_back();
 
         for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
             getline(input, line);
@@ -148,7 +152,7 @@ void DataSeriesLoader<ValueType>::readFromFile(
                 ValueType val;
                 ss >> val;
                 if (samples == 0) {
-                    (*data)[c]->push_back(val);
+                    data[c]->push_back(val);
                 }
             }
             ++samples;
@@ -159,15 +163,15 @@ void DataSeriesLoader<ValueType>::readFromFile(
             for (int c = 0; c < columns; ++c) {
                 ValueType val;
                 ss >> val;
-                (*data)[c]->push_back(val);
+                data[c]->push_back(val);
             }
         }
     }
 }
 
 template<typename ValueType>
-std::vector<ValueType>* DataSeriesLoader<ValueType>::getData(int column) {
-    return (*data)[column];
+typename DataSeriesLoader<ValueType>::TimeSeriesPtr DataSeriesLoader<ValueType>::getData(int column) {
+    return data[column];
 }
 
 template<typename ValueType>
@@ -198,10 +202,11 @@ void DataSeriesLoader<double>::readFromFile(
     if (not input) {
         throw_ReadError(filename);
     }
-    data = new vector<vector<double>*>();
-    if (sizeHint > 0) {
-        data->reserve((sizeHint - discardData) / subsample);
-    }
+    data.clear();
+    //// this was nonsense
+    // if (sizeHint > 0) {
+    //     data->reserve((sizeHint - discardData) / subsample);
+    // }
     string line;
     string configLines;
     while (getline(input, line)) {
@@ -222,12 +227,12 @@ void DataSeriesLoader<double>::readFromFile(
             while (not ss.eof()) {
                 double val;
                 ss >> val;
-                data->push_back(new vector<double>);
+                data.push_back(std::shared_ptr<vector<double>>(new vector<double>));
                 if (sizeHint > 0) {
-                    data->at(columns)->
-                            reserve((sizeHint - discardData) / subsample);
+                    data.at(columns)->
+                        reserve((sizeHint - discardData) / subsample);
                 }
-                data->at(columns)->push_back(val);
+                data.at(columns)->push_back(val);
                 ++columns;
             }
             //handle the rest of the lines below
@@ -238,7 +243,7 @@ void DataSeriesLoader<double>::readFromFile(
 
     if (discardData > 0) {
         //the line that was already read in earlier has to be discarded:
-        for (int c = 0; c < columns; ++c) data->at(c)->pop_back();
+        for (int c = 0; c < columns; ++c) data.at(c)->pop_back();
 
         for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
             getline(input, line);
@@ -281,7 +286,7 @@ void DataSeriesLoader<double>::readFromFile(
 //  } else {
 
     // the following is zero if we have discarded initial entries, one otherwise
-    uint32_t valuesRead = data->at(0)->size(); 
+    uint32_t valuesRead = data.at(0)->size(); 
     //number of samples not known beforehand, resize on the go:
     if (subsample > 1) {
         uint32_t samples = 1;
@@ -292,7 +297,7 @@ void DataSeriesLoader<double>::readFromFile(
             for (int c = 0; c < columns; ++c) {
                 double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
                 if (samples == 0) {
-                    (*data)[c]->push_back(val);
+                    data[c]->push_back(val);
                 }
             }
             ++valuesRead;
@@ -302,7 +307,7 @@ void DataSeriesLoader<double>::readFromFile(
         while (tokenPointer < buffer + length and (readMaxData == 0 or (valuesRead < readMaxData))) {
             for (int c = 0; c < columns; ++c) {
                 double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
-                (*data)[c]->push_back(val);
+                data[c]->push_back(val);
             }
             ++valuesRead;
         }

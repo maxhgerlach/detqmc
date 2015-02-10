@@ -39,10 +39,6 @@ MultireweightHistosPT::MultireweightHistosPT(ostream& outStream) :
 }
 
 MultireweightHistosPT::~MultireweightHistosPT() {
-    destroyAll(energyTimeSeries);
-    destroyAll(observableTimeSeries);
-    destroyAll(cpiTimeSeries);
-    destroyAll(m_kn);
 }
 
 void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
@@ -139,9 +135,9 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
 
     addedEnergyTimeSeries = 0;
     addedObservableTimeSeries = 0;
-    energyTimeSeries.resize(numReplicas, 0);
-    observableTimeSeries.resize(numReplicas, 0);
-    cpiTimeSeries.resize(numReplicas, 0);
+    energyTimeSeries.resize(numReplicas);
+    observableTimeSeries.resize(numReplicas);
+    cpiTimeSeries.resize(numReplicas);
     lZ_l.resize(numReplicas, LogVal(1.0));
 
     out << "controlParameterName: " << controlParameterName << std::endl;
@@ -184,13 +180,14 @@ void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& file
         }
         ++addedEnergyTimeSeries;
         //update cpiTimeSeries:
-        std::vector<double>* dCPItimeSeries = input.getData(0);           //values loaded in as doubles...
-        cpiTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size());
+        std::shared_ptr<std::vector<double>> dCPItimeSeries = input.getData(0);           //values loaded in as doubles...
+        cpiTimeSeries[replicaIndex] = std::shared_ptr<std::vector<int>>(
+            new vector<int>(energyTimeSeries[replicaIndex]->size()));
         for (unsigned n = 0; n < dCPItimeSeries->size(); ++n) {
             int cpi = static_cast<int>((*dCPItimeSeries)[n]);       //TODO:useless cast!
             (*(cpiTimeSeries[replicaIndex]))[n] = cpi;
         }
-        delete dCPItimeSeries;        //don't need this in memory anymore
+        // delete dCPItimeSeries;        //don't need this in memory anymore
     } else if (observable == "" or obs == observable) {
         observable = obs;
 //      if (observableTimeSeries.size() < replicaIndex + 1) {
@@ -202,7 +199,7 @@ void MultireweightHistosPT::addInputTimeSeries_twoColumn(const std::string& file
         observableTimeSeries[replicaIndex] = input.getData(input.getColumns() - 1);
         ++addedObservableTimeSeries;
         if (input.getColumns() == 2) {
-            delete input.getData(0);        //don't need this in memory
+            input.getData(0)->clear();        //don't need this in memory
         }
     } else {
         throw GeneralError("in " + filename + ": Observable doesn't match previous\n" +
@@ -264,8 +261,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
         ++addedEnergyTimeSeries;
         //update cpiTimeSeries -- just fill with constant controlparameter index
         if (cpiTimeSeries[replicaIndex] == 0) {
-            cpiTimeSeries[replicaIndex] = new vector<int>(energyTimeSeries[replicaIndex]->size(),
-                                                          replicaIndex);
+            cpiTimeSeries[replicaIndex] = std::shared_ptr<vector<int>>(
+                new vector<int>(energyTimeSeries[replicaIndex]->size(), replicaIndex));
         }
     } else if (observable == "" or obs == observable) {
         observable = obs;
@@ -280,8 +277,8 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
         ++addedObservableTimeSeries;
         //update cpiTimeSeries -- just fill with constant controlparameter index
         if (cpiTimeSeries[replicaIndex] == 0) {
-            cpiTimeSeries[replicaIndex] = new vector<int>(observableTimeSeries[replicaIndex]->size(),
-                                                          replicaIndex);
+            cpiTimeSeries[replicaIndex] = std::shared_ptr<vector<int>>(
+                new vector<int>(observableTimeSeries[replicaIndex]->size(), replicaIndex));
         }
     } else {
         throw GeneralError("in " + filename + ": Observable doesn't match previous\n" +
@@ -305,7 +302,7 @@ void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
         unsigned M = energyTimeSeries[0]->size();
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M or
-                    observableTimeSeries[r]->size() != M) {
+                observableTimeSeries[r]->size() != M) {
                 throw GeneralError("Time series length mismatch: for control-parameter-sorted "
                                    "timeseries all need to have the same length");
             }
@@ -469,14 +466,14 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
     //replace null-pointer with zero-length vectors at the spots, where
     //no time series were added
     for (unsigned k = 0; k < numReplicas; ++k) {
-        if (energyTimeSeries[k] == 0) {
-            energyTimeSeries[k] = new vector<double>(0);
+        if (not energyTimeSeries[k]) {
+            energyTimeSeries[k].reset(new vector<double>(0));
         }
-        if (observableTimeSeries[k] == 0) {
-            observableTimeSeries[k] = new vector<double>(0);
+        if (not observableTimeSeries[k]) {
+            observableTimeSeries[k].reset(new vector<double>(0));
         }
-        if (cpiTimeSeries[k] == 0) {
-            cpiTimeSeries[k] = new vector<int>(0);
+        if (not cpiTimeSeries[k]) {
+            cpiTimeSeries[k].reset(new vector<int>(0));
         }
     }
 
@@ -513,9 +510,9 @@ void MultireweightHistosPT::setUpHistograms(int binCount_) {
 
     H_m = Histo(binCount, 0);
 
-    m_kn = IntSeriesCollection(numReplicas, 0);
+    m_kn = IntSeriesCollection(numReplicas);
     for (unsigned k = 0; k < numReplicas; ++k) {
-        m_kn[k] = new std::vector<int>(energyTimeSeries[k]->size());
+        m_kn[k].reset(new std::vector<int>(energyTimeSeries[k]->size()));
     }
 
     lOmega_m.resize(binCount, LogVal(1.0));
@@ -538,14 +535,14 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
     //replace null-pointer with zero-length vectors at the spots, where
     //no time series were added
     for (unsigned k = 0; k < numReplicas; ++k) {
-        if (energyTimeSeries[k] == 0) {
-            energyTimeSeries[k] = new vector<double>(0);
+        if (not energyTimeSeries[k]) {
+            energyTimeSeries[k].reset(new vector<double>(0));
         }
-        if (observableTimeSeries[k] == 0) {
-            observableTimeSeries[k] = new vector<double>(0);
+        if (not observableTimeSeries[k]) {
+            observableTimeSeries[k].reset(new vector<double>(0));
         }
-        if (cpiTimeSeries[k] == 0) {
-            cpiTimeSeries[k] = new vector<int>(0);
+        if (not cpiTimeSeries[k]) {
+            cpiTimeSeries[k].reset(new vector<int>(0));
         }
     }
 
@@ -590,9 +587,9 @@ void MultireweightHistosPT::setUpHistogramsIsing() {
 
     H_m = Histo(binCount, 0);
 
-    m_kn = IntSeriesCollection(numReplicas, 0);
+    m_kn = IntSeriesCollection(numReplicas);
     for (unsigned k = 0; k < numReplicas; ++k) {
-        m_kn[k] = new std::vector<int>(energyTimeSeries[k]->size());
+        m_kn[k].reset(new std::vector<int>(energyTimeSeries[k]->size()));
     }
 
     lOmega_m.resize(binCount, LogVal(1.0));
@@ -624,7 +621,8 @@ void MultireweightHistosPT::createHistogramsHelper() {
         out << "." << flush;
     }
 
-    destroyAll(cpiTimeSeries);                    //not needed any more
+    //not needed any more
+    cpiTimeSeries.clear();  
 
     out << " done" << endl;
 }
@@ -657,7 +655,9 @@ void MultireweightHistosPT::createHistogramsHelperDiscrete() {
         out << "." << flush;
     }
 
-    destroyAll(cpiTimeSeries);                    //not needed any more
+    //not needed any more
+    cpiTimeSeries.clear();
+    // destroyAll(cpiTimeSeries);                    
 
     out << " done" << endl;
 }
@@ -693,7 +693,7 @@ void MultireweightHistosPT::measureGlobalInefficiencies(bool saveAutocorr) {
         if (saveAutocorr) {
             autocorr.reset(new AutoCorrMap);
         }
-        double tauint = tauint_adaptive(energyTimeSeries[k], autocorr.get());
+        double tauint = tauint_adaptive(energyTimeSeries[k].get(), autocorr.get());
         double g_k = 1 + 2 * tauint;
         for (unsigned m = 0; m < binCount; ++m) {
             g_km[k][m] = g_k;
@@ -726,7 +726,7 @@ void MultireweightHistosPT::writeOutEnergyTauInt(const std::string& filename) {
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
         tauint->insert(make_pair(controlParameterValues[k],
-                                 tauint_adaptive(energyTimeSeries[k]) *
+                                 tauint_adaptive(energyTimeSeries[k].get()) *
                                  infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
@@ -751,7 +751,7 @@ void MultireweightHistosPT::writeOutObsTauInt(const std::string& filename) {
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
         tauint->insert(make_pair(controlParameterValues[k],
-                                 tauint_adaptive(observableTimeSeries[k]) *
+                                 tauint_adaptive(observableTimeSeries[k].get()) *
                                  infoSweepsBetweenMeasurements));
         cout << "." << flush;
     }
@@ -1152,13 +1152,13 @@ MultireweightHistosPT::DoubleSeriesCollection MultireweightHistosPT::computeWeig
         }
     }
 
-    DoubleSeriesCollection w_kn(numReplicas, 0);
+    DoubleSeriesCollection w_kn(numReplicas);
 
     //calculate weight for each sample
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
         unsigned N_k = m_kn[k]->size();
-        w_kn[k] = new vector<double>(N_k);
+        w_kn[k].reset(new vector<double>(N_k));
         for (unsigned n = 0; n < N_k; ++n) {
             unsigned m = (*m_kn[k])[n];
             (*w_kn[k])[n] = weightFromBin[m];
@@ -1322,7 +1322,8 @@ double MultireweightHistosPT::reweightEnergy(double targetControlParameter) {
     double result = 0;
     reweight1stMomentInternalWithoutErrors(energyTimeSeries, w_kn, result);
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -1336,7 +1337,8 @@ double MultireweightHistosPT::reweightSpecificHeat(double targetControlParameter
     double result = systemSize * pow(targetControlParameter, 2) *
             (secondMoment - pow(firstMoment, 2));;
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -1347,7 +1349,8 @@ double MultireweightHistosPT::reweightObservable(double targetControlParameter) 
     double result = 0;
     reweight1stMomentInternalWithoutErrors(observableTimeSeries, w_kn, result);
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -1360,7 +1363,8 @@ double MultireweightHistosPT::reweightObservableSusceptibility(double targetCont
     reweight1stMoment2ndMomentInternalWithoutErrors(observableTimeSeries, w_kn, firstMoment, secondMoment);
     double result = systemSize * (secondMoment - pow(firstMoment, 2));
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -1374,7 +1378,8 @@ double MultireweightHistosPT::reweightObservableBinder(double targetControlParam
             observableTimeSeries, w_kn, secondMoment, fourthMoment);
     double result = 1.0 - (fourthMoment / (3 * pow(secondMoment, 2)));
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -1384,7 +1389,8 @@ ReweightingResult MultireweightHistosPT::reweight(double targetControlParameter)
 
     ReweightingResult results = reweightWithoutErrorsInternal(targetControlParameter, w_kn);
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return results;
 }
@@ -1397,7 +1403,8 @@ ReweightingResult MultireweightHistosPT::reweightWithHistograms(double targetCon
     results.obsHistogram = reweightObservableHistogramUsingWeights(
             targetControlParameter, obsBinCount, w_kn);
 
-    destroyAll(w_kn);
+    w_kn.clear();
+    // destroyAll(w_kn);
 
     return results;
 }
@@ -1607,7 +1614,8 @@ HistogramDouble* MultireweightHistosPT::reweightObservableHistogramWithoutErrors
     out << "Reweighting " << observable << " to generate histogram at beta=" << targetControlParameter << ", " << obsBinCount << " bins... " << flush;
     DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
     HistogramDouble* result = reweightObservableHistogramUsingWeights(targetControlParameter, obsBinCount, w_kn);
-    destroyAll(w_kn);
+    // destroyAll(w_kn);
+    w_kn.clear();
     out << "Done." << endl;
     return result;
 }

@@ -13,6 +13,7 @@
 #include <vector>
 #include <tuple>
 #include <functional>
+#include <memory>
 #include <armadillo>
 
 
@@ -330,8 +331,10 @@ void findMinMaxMean(const std::vector<T>& timeSeries, T& min, T& max, T& mean) {
     mean = cummulativeSum / static_cast<T>(timeSeries.size());
 }
 
-template <typename T>
-void findMinMaxMean(const std::vector<std::vector<T>*>& timeSeriesVector, T& min, T& max, T& mean) {
+template <typename T,
+          typename TTimeSeriesPtr // might be std::vector<T>*, or a shared_ptr
+          >
+void findMinMaxMean(const std::vector<TTimeSeriesPtr>& timeSeriesVector, T& min, T& max, T& mean) {
     T runningMin, runningMax, cummulatedMeans;
     int firstTimeSeries = timeSeriesVector.size();
     int numTimeSeries = 0;
@@ -375,8 +378,10 @@ void findMinMax(const std::vector<T>& timeSeries, T& min, T& max) {
     max = runningMax;
 }
 
-template <typename T>
-void findMinMax(const std::vector<std::vector<T>*>& timeSeriesVector, T& min, T& max) {
+template <typename T,
+          typename TTimeSeriesPtr // might be std::vector<T>*, or a shared_ptr
+          >
+void findMinMax(const std::vector<TTimeSeriesPtr>& timeSeriesVector, T& min, T& max) {
     T runningMin, runningMax;
     int firstTimeSeries = timeSeriesVector.size();
     for (unsigned k = 0; k < timeSeriesVector.size(); ++k) {

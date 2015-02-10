@@ -94,7 +94,8 @@ void MultireweightHistosPTJK::createHistogramsHelperJK() {
         }
         out << "." << flush;
     }
-    destroyAll(cpiTimeSeries);                    //not needed any more
+    //not needed any more
+    cpiTimeSeries.clear();  //    destroyAll(cpiTimeSeries);                    
     out << " done" << endl;
 }
 
@@ -138,7 +139,9 @@ void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
         }
         out << "." << flush;
     }
-    destroyAll(cpiTimeSeries);                    //not needed any more
+    //not needed any more
+    cpiTimeSeries.clear();
+    //destroyAll(cpiTimeSeries);
     out << " done" << endl;
 }
 
@@ -656,7 +659,7 @@ double MultireweightHistosPTJK::reweightEnergyJK(double targetControlParameter, 
     double result = 0;
     reweight1stMomentInternalJK(energyTimeSeries, w_kn, jkBlock, result);
 
-    destroyAll(w_kn);
+    //destroyAll(w_kn);
 
     return result;
 }
@@ -670,7 +673,7 @@ double MultireweightHistosPTJK::reweightSpecificHeatJK(double targetControlParam
     double result = systemSize * pow(targetControlParameter, 2) *
         (secondMoment - pow(firstMoment, 2));;
 
-    destroyAll(w_kn);
+    //destroyAll(w_kn);
 
     return result;
 }
@@ -681,7 +684,7 @@ double MultireweightHistosPTJK::reweightObservableJK(double targetControlParamet
     double result = 0;
     reweight1stMomentInternalJK(observableTimeSeries, w_kn, jkBlock, result);
 
-    destroyAll(w_kn);
+    //destroyAll(w_kn);
 
     return result;
 }
@@ -695,7 +698,7 @@ double MultireweightHistosPTJK::reweightObservableSusceptibilityJK(
     reweight1stMoment2ndMomentInternalJK(observableTimeSeries, w_kn, jkBlock, firstMoment, secondMoment);
     double result = systemSize * (secondMoment - pow(firstMoment, 2));;
 
-    destroyAll(w_kn);
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -710,7 +713,7 @@ double MultireweightHistosPTJK::reweightObservableBinderJK(double targetControlP
             secondMoment, fourthMoment);
     double result = 1.0 - (fourthMoment / (3 * pow(secondMoment, 2)));
 
-    destroyAll(w_kn);
+    // destroyAll(w_kn);
 
     return result;
 }
@@ -736,12 +739,12 @@ MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::compute
         }
     }
 
-    DoubleSeriesCollection w_kn(numReplicas, 0);
+    DoubleSeriesCollection w_kn(numReplicas);
 
     //calculate weight for each sample
     for (int k = 0; k < (signed)numReplicas; ++k) {
         unsigned N_k = m_kn[k]->size();
-        w_kn[k] = new vector<double>(N_k);
+        w_kn[k].reset(new vector<double>(N_k));
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             unsigned curBlock = (n * blockCount) / N_k;
@@ -783,7 +786,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
         jkBinder_b[b] = results.obsBinder;
         jkBinderRatio_b[b] = results.obsBinderRatio;
 
-        destroyAll(w_kn);
+        // destroyAll(w_kn);
         out << '#' << flush;
     }
 
@@ -873,7 +876,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double tar
     vector<double> obsHisto(obsBinCount, 0.0);
     DoubleSeriesCollection total_w_kn = computeWeights(targetControlParameter);
     MultireweightHistosPT::reweightObservableHistogramInternal(targetControlParameter, obsBinCount, total_w_kn, obsHisto);
-    destroyAll(total_w_kn);
+    // destroyAll(total_w_kn);
 
     HistogramDouble* result = new HistogramDouble;
     result->assignVector(obsHisto, minObservableNormalized, maxObservableNormalized, targetControlParameter, systemN);
@@ -903,7 +906,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double tar
                 }
             }
         }
-        destroyAll(w_kn);
+        // destroyAll(w_kn);
         cout << "#" << flush;
     }
 
@@ -976,7 +979,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
             }
         }
     }
-    destroyAll(w_kn);
+    // destroyAll(w_kn);
 
     HistogramDouble* result = new HistogramDouble;
     result->assignVector(obsHisto_m, minObservableNormalized, maxObservableNormalized,
