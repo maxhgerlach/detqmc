@@ -571,9 +571,9 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
         }
     }
 
-    double heatCapacity = double(systemSize) * targetControlParameter * targetControlParameter
+    double heatCapacity = systemSize * targetControlParameter * targetControlParameter
         * (meanEnergySquared - pow(meanEnergy, 2));
-    double suscObservable = double(systemSize) * (meanObservableSquared - pow(meanObservable, 2));
+    double suscObservable = systemSize * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
     double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
     double squaredObservable = systemSize * meanObservableSquared;

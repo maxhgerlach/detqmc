@@ -89,10 +89,12 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
         // QMC simulation
         unsigned timeslices;
         getMeta(info, "m", timeslices);
-        systemSize = systemN * timeslices;
+        double dtau = 0.1;
+        getMeta(info, "dtau", dtau);
+        systemSize = double(systemN) * double(timeslices) * dtau;
     } else {
         // classical MC simulation
-        systemSize = systemN;
+        systemSize = double(systemN);
     }
 
     try {

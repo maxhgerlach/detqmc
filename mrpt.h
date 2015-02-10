@@ -54,7 +54,7 @@ public:
     unsigned numReplicas;
     unsigned systemN;       // should be systemL ** d
     unsigned systemL;
-    unsigned systemSize;        // for classical MC == systemN; for QMC == systemN * beta / Delta_tau 
+    double systemSize;        // for classical MC == systemN; for QMC == systemN * beta
 
     //for energy histograms
     //energy-bins span: [U_m/N - binsize/2 ... U_m/N ... U_m/N + binsize/2]
