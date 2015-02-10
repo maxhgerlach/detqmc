@@ -73,6 +73,47 @@ std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data, uint32_t jkBl
             data, jkBlocks);
 }
 
+//variation which reweights the vector @data element-wise with the
+//elements of @reweighting_vec. @func is only applied to the elements
+//of vec.
+template<typename T>
+std::vector<T> jackknifeBlockEstimates(const std::function<T(T)>& func,
+                                       const std::vector<T>& data,
+                                       const std::vector<T>& reweighting_vec,
+                                       uint32_t jkBlocks) {
+    std::vector<T> blockEstimates(jkBlocks, T(0));
+    std::vector<T> blockReweightingSum(jkBlocks, T(0));    
+    uint32_t jkBlockSize = static_cast<uint32_t>(data.size()) / jkBlocks;
+    //if jkBlocks is not a divisor of data.size() --> some data at the end will be discarded
+    uint32_t totalSamples = jkBlocks * jkBlockSize;
+
+    for (uint32_t i = 0; i < totalSamples; ++i) {
+        T value = func(data[i]);
+        T reweightingFactor = reweighting_vec[i];
+        uint32_t curBlock = i / jkBlockSize;
+        for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+            if (jb != curBlock) {
+                blockEstimates[jb] += value * reweightingFactor;
+                blockReweightingSum[jb] += reweightingFactor;
+            }
+        }
+    }
+
+    for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+        blockEstimates[jb] /= blockReweightingSum[jb];
+    }
+
+    return blockEstimates;
+}
+
+template<typename T>
+std::vector<T> jackknifeBlockEstimates(const std::vector<T>& data,
+                                       const std::vector<T>& reweighting_vec,
+                                       uint32_t jkBlocks) {
+    return jackknifeBlockEstimates<T>([](T v) { return v; },    //identity lambda function
+                                      data, reweighting_vec, jkBlocks);
+}
+
 
 
 //Take a vector of block values, estimate their error using standard jackknife
@@ -152,6 +193,35 @@ template<typename T>
 T average(const std::vector<T>& vec, std::size_t start = 0, std::size_t end = 0) {
     return average<T>( [](T v) { return v; }, vec, start, end );
 }
+
+//variation which reweights the vector @vec element-wise with the
+//elements of @reweighting_vec. @func is only applied to the elements
+//of vec.
+template<typename T>
+T average(const std::function<T(T)>& func,
+          const std::vector<T>& vec,
+          const std::vector<T>& reweighting_vec,
+          std::size_t start = 0, std::size_t end = 0) {
+    if (end==0) {
+        end = vec.size();
+    }
+    assert(end > start);
+    assert(vec.size() == reweighting_vec.size());
+    T avg = T(0);
+    T reweighting_sum = T(0);
+    for (std::size_t i = start; i < end; ++i) {
+        avg += func(T(vec[i])) * reweighting_vec[i];
+        reweighting_sum += reweighting_vec[i];
+    }
+    avg /= reweighting_sum;
+    return avg;
+}
+template<typename T>
+T average(const std::vector<T>& vec, const std::vector<T>& reweighting_vec,
+          std::size_t start = 0, std::size_t end = 0) {
+    return average<T>( [](T v) { return v; }, vec, reweighting_vec, start, end );
+}
+
 
 
 
