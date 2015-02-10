@@ -89,8 +89,11 @@ void prepareReweightingFactors() {
     associatedEnergyReader.readFromFile("associatedEnergy.series", subsample_interval,
                                         discard, read_maximally, guessedLength);
     std::shared_ptr<std::vector<num>> associatedEnergyData = associatedEnergyReader.getData();
-    reweightingFactors.reset(new std::vector<num>(associatedEnergyData->size()));
+    reweightingFactors.reset(new std::vector<num>());
+    reweightingFactors->reserve(associatedEnergyData->size());
     for (num e : *associatedEnergyData) {
+        // the data read in has been normalized by system size -- correct this effect:
+        e *= (dtau * m * N);
         reweightingFactors->push_back( std::exp(-(reweight_to_this_r - original_r) * e) );
     }
 }
@@ -110,7 +113,6 @@ void processTimeseries(const std::string& filename) {
     std::cout << "observable: " << obsName << "...";
 
     if (reweight) {
-        reader.getMeta("r", original_r);
         std::cout << " [reweighting from r=" << original_r
                   << " to r=" << reweight_to_this_r << "] ...";
     }
@@ -310,6 +312,7 @@ int main(int argc, char **argv) {
     N = L*L;
     m = fromString<uint32_t>(meta.at("m"));
     dtau = fromString<double>(meta.at("dtau"));
+    original_r = fromString<double>(meta.at("r"));
 
     if (reweight) {
         prepareReweightingFactors();
