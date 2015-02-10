@@ -8,6 +8,7 @@
 #ifndef STATISTICS_H_
 #define STATISTICS_H_
 
+#include <cassert>
 #include <cmath>
 #include <map>
 #include <vector>

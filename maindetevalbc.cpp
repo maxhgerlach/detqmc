@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
                 throw_GeneralError("File " + fn + " does not have exactly 1 column");
             }
 
-            std::vector<double>* data = reader.getData();       //TODO: smart pointers!
+            std::shared_ptr<std::vector<double>> data = reader.getData();
             std::string obsName;
             reader.getMeta("observable", obsName);
             std::cout << "observable: " << obsName << "..." << std::flush;

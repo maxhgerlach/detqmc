@@ -11,6 +11,7 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <functional>
 #include <memory>
 #include <map>
 #include <cmath>
@@ -29,14 +30,231 @@
 #include "exceptions.h"
 #include "statistics.h"
 
-int main(int argc, char **argv) {
+
+namespace {
+    // what to do    
     uint32_t discard = 0;
-    uint32_t read = 0;
-    uint32_t subsample = 1;
+    uint32_t read_maximally = 0;
+    uint32_t subsample_interval = 1;
     uint32_t jkBlocks = 1;
     bool notau = false;
     bool noexp = false;
+    bool reweight = false;
+    num original_r = 0;
+    num reweight_to_this_r = 0;
 
+    //Store averages / nonlinear estimates, jackknife errors,
+    //integrated autocorrelation times here
+    //key: observable name
+    typedef std::map<std::string, double> ObsValMap;
+    ObsValMap estimates, errors, tauints;
+    //jackknife-block wise estimates
+    typedef std::map<std::string, std::vector<double>> ObsVecMap;
+    ObsVecMap jkBlockEstimates;
+
+    uint32_t evalSamples = 0;
+    uint32_t guessedLength = 0;
+    //metadata necessary for the computation of the susceptibility
+    // spatial system size, and number of imaginary time slices
+    uint32_t L;
+    uint32_t N;
+    uint32_t m;
+    double dtau;
+
+    // for reweighting the other timeseries: need to store a function
+    // of the timeseries of associatedEnergy
+    std::shared_ptr<std::vector<num>> reweightingFactors;
+
+};
+
+
+MetadataMap readAndCleanMetadata(const std::string& filename) {
+    //take simulation metadata from file info.dat, remove some unnecessary parts
+    MetadataMap meta = readOnlyMetadata(filename);
+    std::string keys[] = {"buildDate", "buildHost", "buildTime",
+                          "cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
+                          "sweepsDone", "sweepsDoneThermalization", "totalWallTimeSecs"};
+    for ( std::string key : keys) {
+        if (meta.count(key)) {
+            meta.erase(key);
+        }
+    }
+    return meta;
+}
+
+
+void prepareReweightingFactors() {
+    // we need the associatedEnergy time series to be able to do reweighting
+    DoubleSeriesLoader associatedEnergyReader;
+    associatedEnergyReader.readFromFile("associatedEnergy.series", subsample_interval,
+                                        discard, read_maximally, guessedLength);
+    std::shared_ptr<std::vector<num>> associatedEnergyData = associatedEnergyReader.getData();
+    reweightingFactors.reset(new std::vector<num>(associatedEnergyData->size()));
+    for (num e : *associatedEnergyData) {
+        reweightingFactors->push_back( std::exp(-(reweight_to_this_r - original_r) * e) );
+    }
+}
+
+
+void processTimeseries(const std::string& filename) {
+    std::cout << "Processing " << filename << ", ";
+    DoubleSeriesLoader reader;
+    reader.readFromFile(filename, subsample_interval, discard, read_maximally, guessedLength);
+    if (reader.getColumns() != 1) {
+        throw_GeneralError("File " + filename + " does not have exactly 1 column");
+    }
+
+    std::shared_ptr<std::vector<double>> data = reader.getData();
+    std::string obsName;
+    reader.getMeta("observable", obsName);
+    std::cout << "observable: " << obsName << "...";
+
+    if (reweight) {
+        reader.getMeta("r", original_r);
+        std::cout << " [reweighting from r=" << original_r
+                  << " to r=" << reweight_to_this_r << "] ...";
+    }
+    
+    std::cout << std::flush;
+
+    if (not noexp) {
+        auto average_func_maybe_reweight = [&]( const std::function<double(double)>& func ) {
+            if (reweight) {
+                return average<double>( func, *data, *reweightingFactors );
+            } else {
+                return average<double>( func, *data );
+            }
+        };
+        auto average_maybe_reweight = [&]( ) {
+            if (reweight) {
+                return average<double>( *data, *reweightingFactors );
+            } else {
+                return average<double>( *data );
+            }
+        };
+        auto jackknifeBlockEstimates_func_maybe_reweight = [&]( const std::function<double(double)>& func ) {
+            if (reweight) {
+                return jackknifeBlockEstimates<double>( func, *data, *reweightingFactors, jkBlocks );
+            } else {
+                return jackknifeBlockEstimates<double>( func, *data, jkBlocks );
+            }
+        };
+        auto jackknifeBlockEstimates_maybe_reweight = [&]( ) {
+            if (reweight) {
+                return jackknifeBlockEstimates<double>( *data, *reweightingFactors, jkBlocks );
+            } else {
+                return jackknifeBlockEstimates<double>( *data, jkBlocks );
+            }
+        };
+        
+        estimates[obsName] = average_maybe_reweight();
+        jkBlockEstimates[obsName] = jackknifeBlockEstimates_maybe_reweight();
+
+        // compute Binder cumulant and susceptibility (connected,
+        // i.e. with the disconnected part substracted), 
+        // the suscseptibility *without* the subtracted part:
+        //   normMeanPhiSquared
+        if (obsName == "normMeanPhi") {
+            using std::pow;
+            estimates["normMeanPhiSquared"] = average_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+            jkBlockEstimates["normMeanPhiSquared"] = jackknifeBlockEstimates_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+                
+            estimates["normMeanPhiFourth"] = average_func_maybe_reweight(
+                [](double v) { return pow(v, 4); } );
+            jkBlockEstimates["normMeanPhiFourth"] = jackknifeBlockEstimates_func_maybe_reweight(
+                [](double v) { return pow(v, 4); } );
+                
+            estimates["phiBinder"] = 1.0 - (3.0*estimates["normMeanPhiFourth"]) /
+                (5.0*pow(estimates["normMeanPhiSquared"], 2));
+            jkBlockEstimates["phiBinder"] = std::vector<double>(jkBlocks, 0);
+            for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                jkBlockEstimates["phiBinder"][jb] =
+                    1.0 - (3.0*jkBlockEstimates["normMeanPhiFourth"][jb]) /
+                    (5.0*pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2));
+            }
+
+            estimates["phiSusceptibility"] = (dtau * m * N) * (
+                estimates["normMeanPhiSquared"] -
+                pow(estimates["normMeanPhi"], 2)
+                );
+            jkBlockEstimates["phiSusceptibility"] = std::vector<double>(jkBlocks, 0);
+            for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                jkBlockEstimates["phiSusceptibility"][jb] = (dtau * m * N) * (
+                    jkBlockEstimates["normMeanPhiSquared"][jb] -
+                    pow(jkBlockEstimates["normMeanPhi"][jb], 2)
+                    );
+            }
+                
+        }
+    }
+//      std::copy(std::begin(jkBlockEstimates[obsName]), std::end(jkBlockEstimates[obsName]), std::ostream_iterator<double>(std::cout, " "));
+//      std::cout << std::endl;
+//      std::cout << average(jkBlockEstimates[obsName]);
+
+    if (not notau) {
+        tauints[obsName] = tauint(*data);
+    }
+
+    evalSamples = static_cast<uint32_t>(data->size());
+
+    std::cout << std::endl;
+}
+
+
+void jackknifeEvaluation() {
+    for (auto const& nameBlockPair : jkBlockEstimates) {
+        const std::string obsName = nameBlockPair.first;
+        const std::vector<double> blockEstimates = nameBlockPair.second;
+        errors[obsName] = jackknife(blockEstimates, estimates[obsName]);
+    }
+}
+
+void writeoutResults(MetadataMap meta) {
+    StringDoubleMapWriter resultsWriter;
+    if (reweight) {
+        meta["r"] = numToString(reweight_to_this_r);
+        meta["original-r"] = numToString(original_r);
+    }
+    resultsWriter.addMetadataMap(meta);
+    resultsWriter.addMeta("eval-jackknife-blocks", jkBlocks);
+    resultsWriter.addMeta("eval-discard", discard);
+    resultsWriter.addMeta("eval-read", read_maximally);
+    resultsWriter.addMeta("eval-subsample", subsample_interval);
+    resultsWriter.addMeta("eval-samples", evalSamples);
+    if (reweight) {
+        resultsWriter.addMeta("eval-reweighted-to-r", reweight_to_this_r);
+        resultsWriter.addMeta("eval-original-r", original_r);
+        resultsWriter.addHeaderText("Time series were reweighted");
+    }
+    if (jkBlocks > 1) {
+        resultsWriter.addHeaderText("Averages and jackknife error bars computed from time series");
+        resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
+        resultsWriter.setErrors(std::make_shared<ObsValMap>(errors));
+    } else {
+        resultsWriter.addHeaderText("Averages computed from time series");
+        resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
+    }
+    std::string filename_insert = (reweight ? "-reweighted-r" + numToString(reweight_to_this_r) : "");
+    resultsWriter.writeToFile("eval-results" + filename_insert + ".values");
+}
+
+void writeoutTauints(MetadataMap meta) {
+    StringDoubleMapWriter tauintWriter;
+    tauintWriter.addMetadataMap(meta);
+    tauintWriter.addMeta("eval-discard", discard);
+    tauintWriter.addMeta("eval-read", read_maximally);
+    tauintWriter.addMeta("eval-subsample", subsample_interval);
+    tauintWriter.addMeta("eval-samples", evalSamples);
+    tauintWriter.addHeaderText("Tauint estimates computed from time series");
+    tauintWriter.setData(std::make_shared<ObsValMap>(tauints));
+    tauintWriter.writeToFile("eval-tauint.values");
+}
+
+
+
+int main(int argc, char **argv) {
     //parse command line options
     namespace po = boost::program_options;
     po::options_description evalOptions("Time series evaluation options");
@@ -45,16 +263,18 @@ int main(int argc, char **argv) {
         ("version,v", "print version information (git hash, build date) and exit")
         ("discard,d", po::value<uint32_t>(&discard)->default_value(0),
          "number of initial time series entries to discard (additional thermalization)")
-        ("read,r", po::value<uint32_t>(&read)->default_value(0),
+        ("read,r", po::value<uint32_t>(&read_maximally)->default_value(0),
          "maximum number of time series entries to read (after discarded initial samples, before subsampling).  Default value of 0: read all entries")
-        ("subsample,s", po::value<uint32_t>(&subsample)->default_value(1),
+        ("subsample,s", po::value<uint32_t>(&subsample_interval)->default_value(1),
          "take only every s'th sample into account")
         ("jkblocks,j", po::value<uint32_t>(&jkBlocks)->default_value(1),
          "number of jackknife blocks to use")
         ("notau", po::bool_switch(&notau)->default_value(false),
-         "switch of estimation of integrated autocorrelation times")
+         "switch off estimation of integrated autocorrelation times")
         ("noexp", po::bool_switch(&noexp)->default_value(false),
-         "switch of estimation of expectation values and errorbars")
+         "switch off estimation of expectation values and errorbars")
+        ("reweight", po::value<double>(&reweight_to_this_r), "reweight timeseries to a new value of parameter r (SDW-model) "
+            "[will not affect tauint]")
         ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, evalOptions), vm);
@@ -72,176 +292,46 @@ int main(int argc, char **argv) {
                   << std::endl;
         earlyExit = true;
     }
+    if (vm.count("reweight")) {
+        reweight = true;
+        // reweight_to_this_r has been set to the argument
+    }
+
     if (earlyExit) {
         return 0;
     }
 
-    //take simulation metadata from file info.dat, remove some unnecessary parts
-    MetadataMap meta = readOnlyMetadata("info.dat");
-    std::string keys[] = {"buildDate", "buildHost", "buildTime",
-            "cppflags", "cxxflags", "gitBranch", "gitRevisionHash",
-            "sweepsDone", "sweepsDoneThermalization", "totalWallTimeSecs"};
-    for ( std::string key : keys) {
-        if (meta.count(key)) {
-            meta.erase(key);
-        }
+    MetadataMap meta = readAndCleanMetadata("info.dat");
+
+    guessedLength = static_cast<uint32_t>(fromString<double>(meta.at("sweeps")) /
+                                          fromString<double>(meta.at("measureInterval")));
+
+    L = fromString<uint32_t>(meta.at("L"));
+    N = L*L;
+    m = fromString<uint32_t>(meta.at("m"));
+    dtau = fromString<double>(meta.at("dtau"));
+
+    if (reweight) {
+        prepareReweightingFactors();
     }
-    uint32_t guessedLength = static_cast<uint32_t>(fromString<double>(meta.at("sweeps")) /
-            fromString<double>(meta.at("measureInterval")));
-
-    //Store averages / nonlinear estimates, jackknife errors,
-    //integrated autocorrelation times here
-    //key: observable name
-    typedef std::map<std::string, double> ObsValMap;
-    ObsValMap estimates, errors, tauints;
-    //jackknife-block wise estimates
-    typedef std::map<std::string, std::vector<double>> ObsVecMap;
-    ObsVecMap jkBlockEstimates;
-
-    uint32_t evalSamples = 0;
-
-    //metadata necessary for the computation of the susceptibility
-    // spatial system size, and number of imaginary time slices
-    uint32_t L = fromString<uint32_t>(meta.at("L"));
-    uint32_t N = L*L;
-    uint32_t m = fromString<uint32_t>(meta.at("m"));
-    double dtau = fromString<double>(meta.at("dtau"));
 
     //process time series files
     std::vector<std::string> filenames = glob("*.series");
     for (std::string fn : filenames) {
-        std::cout << "Processing " << fn << ", ";
-        DoubleSeriesLoader reader;
-        reader.readFromFile(fn, subsample, discard, read, guessedLength);
-        if (reader.getColumns() != 1) {
-            throw_GeneralError("File " + fn + " does not have exactly 1 column");
-        }
-
-        std::vector<double>* data = reader.getData();       //TODO: smart pointers!
-        std::string obsName;
-        reader.getMeta("observable", obsName);
-        std::cout << "observable: " << obsName << "..." << std::flush;
-
-        if (not noexp) {
-            estimates[obsName] = average(*data);
-            jkBlockEstimates[obsName] = jackknifeBlockEstimates(*data, jkBlocks);
-            // //this below is not what we want
-            // if (obsName == "normPhi") {
-            //     using std::pow;
-            //     estimates["normPhiSquared"] = average<double>( [](double v) { return pow(v, 2); }, *data);
-            //     jkBlockEstimates["normPhiSquared"] = jackknifeBlockEstimates<double>(
-            //             [](double v) { return pow(v, 2); },
-            //             *data, jkBlocks );
-            //     estimates["normPhiFourth"] = average<double>( [](double v) { return pow(v, 4); }, *data);
-            //     jkBlockEstimates["normPhiFourth"] = jackknifeBlockEstimates<double>(
-            //             [](double v) { return pow(v, 4); },
-            //             *data, jkBlocks );
-            //     estimates["normPhiBinder"] = 1.0 - (3.0*estimates["normPhiFourth"]) /
-            //             (5.0*pow(estimates["normPhiSquared"], 2));
-            //     jkBlockEstimates["normPhiBinder"] = std::vector<double>(jkBlocks, 0);
-            //     for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-            //         jkBlockEstimates["normPhiBinder"][jb] =
-            //                 1.0 - (3.0*jkBlockEstimates["normPhiFourth"][jb]) /
-            //                 (5.0*pow(jkBlockEstimates["normPhiSquared"][jb], 2));
-            //     }
-            // }
-
-            // compute Binder cumulant and susceptibility (connected,
-            // i.e. with the disconnected part substracted), 
-            // the suscseptibility *without* the subtracted part:
-            //   normMeanPhiSquared
-            if (obsName == "normMeanPhi") {
-                using std::pow;
-                estimates["normMeanPhiSquared"] = average<double>(
-                    [](double v) { return pow(v, 2); },
-                    *data );
-                jkBlockEstimates["normMeanPhiSquared"] = jackknifeBlockEstimates<double>(
-                    [](double v) { return pow(v, 2); },
-                    *data, jkBlocks );
-                
-                estimates["normMeanPhiFourth"] = average<double>(
-                    [](double v) { return pow(v, 4); },
-                    *data );
-                jkBlockEstimates["normMeanPhiFourth"] = jackknifeBlockEstimates<double>(
-                    [](double v) { return pow(v, 4); },
-                    *data, jkBlocks );
-                
-                estimates["phiBinder"] = 1.0 - (3.0*estimates["normMeanPhiFourth"]) /
-                    (5.0*pow(estimates["normMeanPhiSquared"], 2));
-                jkBlockEstimates["phiBinder"] = std::vector<double>(jkBlocks, 0);
-                for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-                    jkBlockEstimates["phiBinder"][jb] =
-                        1.0 - (3.0*jkBlockEstimates["normMeanPhiFourth"][jb]) /
-                        (5.0*pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2));
-                }
-
-                estimates["phiSusceptibility"] = (dtau * m * N) * (
-                    estimates["normMeanPhiSquared"] -
-                    pow(estimates["normMeanPhi"], 2)
-                    );
-                jkBlockEstimates["phiSusceptibility"] = std::vector<double>(jkBlocks, 0);
-                for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-                    jkBlockEstimates["phiSusceptibility"][jb] = (dtau * m * N) * (
-                        jkBlockEstimates["normMeanPhiSquared"][jb] -
-                        pow(jkBlockEstimates["normMeanPhi"][jb], 2)
-                        );
-                }
-                
-            }
-        }
-//      std::copy(std::begin(jkBlockEstimates[obsName]), std::end(jkBlockEstimates[obsName]), std::ostream_iterator<double>(std::cout, " "));
-//      std::cout << std::endl;
-//      std::cout << average(jkBlockEstimates[obsName]);
-
-        if (not notau) {
-            tauints[obsName] = tauint(*data);
-        }
-
-        evalSamples = static_cast<uint32_t>(data->size());
-
-        reader.deleteData();
-
-        std::cout << std::endl;
+        processTimeseries(fn);
     }
 
     //calculate error bars from jackknife block estimates
     if (not noexp and jkBlocks > 1) {
-        for (auto const& nameBlockPair : jkBlockEstimates) {
-            const std::string obsName = nameBlockPair.first;
-            const std::vector<double> blockEstimates = nameBlockPair.second;
-            errors[obsName] = jackknife(blockEstimates, estimates[obsName]);
-        }
+        jackknifeEvaluation();
     }
 
     if (not noexp) {
-        StringDoubleMapWriter resultsWriter;
-        resultsWriter.addMetadataMap(meta);
-        resultsWriter.addMeta("eval-jackknife-blocks", jkBlocks);
-        resultsWriter.addMeta("eval-discard", discard);
-        resultsWriter.addMeta("eval-read", read);
-        resultsWriter.addMeta("eval-subsample", subsample);
-        resultsWriter.addMeta("eval-samples", evalSamples);
-        if (jkBlocks > 1) {
-            resultsWriter.addHeaderText("Averages and jackknife error bars computed from time series");
-            resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
-            resultsWriter.setErrors(std::make_shared<ObsValMap>(errors));
-        } else {
-            resultsWriter.addHeaderText("Averages computed from time series");
-            resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
-        }
-        resultsWriter.writeToFile("eval-results.values");
+        writeoutResults(meta);
     }
 
     if (not notau) {
-        StringDoubleMapWriter tauintWriter;
-        tauintWriter.addMetadataMap(meta);
-        tauintWriter.addMeta("eval-discard", discard);
-        tauintWriter.addMeta("eval-read", read);
-        tauintWriter.addMeta("eval-subsample", subsample);
-        tauintWriter.addMeta("eval-samples", evalSamples);
-        tauintWriter.addHeaderText("Tauint estimates computed from time series");
-        tauintWriter.setData(std::make_shared<ObsValMap>(tauints));
-        tauintWriter.writeToFile("eval-tauint.values");
+        writeoutTauints(meta);
     }
 
     std::cout << "Done!" << std::endl;
