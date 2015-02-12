@@ -236,9 +236,10 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
         ScalarObservable(cref(associatedEnergy), "associatedEnergy", ""),
         ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
-        ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax"),
-        ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
-        ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple");
+        ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax")// ,
+        // ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
+        // ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple")
+        ;
 
     kOccX.zeros(pars.N);
     kOccY.zeros(pars.N);
@@ -258,10 +259,10 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     obsScalar += ScalarObservable(cref(greenK0), "greenK0", ""),
         ScalarObservable(cref(greenLocal), "greenLocal", "");
 
-    occX.zeros(pars.N);
-    occY.zeros(pars.N);
-    obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
-        VectorObservable(cref(occY), pars.N, "occY", "ny");
+    // occX.zeros(pars.N);
+    // occY.zeros(pars.N);
+    // obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
+    //     VectorObservable(cref(occY), pars.N, "occY", "ny");
 
     //attention:
     // these do not have valid entries for site 0
@@ -419,9 +420,9 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
         greenK0 = 0.;
         greenLocal = 0.;
 
-        //fermion occupation number -- real space
-        occX.zeros(pars.N);
-        occY.zeros(pars.N);
+        // //fermion occupation number -- real space
+        // occX.zeros(pars.N);
+        // occY.zeros(pars.N);
 
         //fermion occupation number -- k-space
         kOccX.zeros(pars.N);
@@ -431,9 +432,9 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
         pairPlus.zeros(pars.N);
         pairMinus.zeros(pars.N);
 
-        // Fermionic energy contribution
-        fermionEkinetic = 0;
-        fermionEcouple = 0;
+        // // Fermionic energy contribution
+        // fermionEkinetic = 0;
+        // fermionEcouple = 0;
 
         // band occupation / charge correlations
         const Band BandValues[2] = {XBAND, YBAND};
@@ -547,11 +548,11 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             return gl1(site1, bs1, site2, bs2);
         };
 
-        //fermion occupation number -- real space
-        for (uint32_t i = 0; i < N; ++i) {
-            occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
-            occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
-        }
+        // //fermion occupation number -- real space
+        // for (uint32_t i = 0; i < N; ++i) {
+        //     occX[i] += std::real(gl1(i, XUP, i, XUP) + gl1(i, XDOWN, i, XDOWN));
+        //     occY[i] += std::real(gl1(i, YUP, i, YUP) + gl1(i, YDOWN, i, YDOWN));
+        // }
 
         //fermion occupation number -- k-space
         static const num pi = M_PI;
@@ -655,56 +656,56 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         const auto txver = pars.txver;
         const auto tyhor = pars.tyhor;
         const auto tyver = pars.tyver;
-        for (uint32_t i = 0; i < N; ++i) {
-            //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
-            Spin spins[] = {SPINUP, SPINDOWN};
-            for (auto spin: spins) {
-                DataType e = DataType(txhor) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
-                    + DataType(txhor) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
-                    + DataType(txver) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
-                    + DataType(txver) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
-                    + DataType(tyhor) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
-                    + DataType(tyhor) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
-                    + DataType(tyver) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
-                    + DataType(tyver) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
-                fermionEkinetic += std::real(e);
-                //fermionEkinetic_imag += std::imag(e);
-            }
-        }
-        for (uint32_t i = 0; i < N; ++i) {
-            auto glbs = [this, i, gl](Band band1, Spin spin1,
-                                      Band band2, Spin spin2) -> DataType {
-                return gl(i, band1, spin1, i, band2, spin2);
-            };
+        // for (uint32_t i = 0; i < N; ++i) {
+        //     //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
+        //     Spin spins[] = {SPINUP, SPINDOWN};
+        //     for (auto spin: spins) {
+        //         DataType e = DataType(txhor) * glij(i, spaceNeigh(XPLUS, i), XBAND, spin)
+        //             + DataType(txhor) * glij(i, spaceNeigh(XMINUS,i), XBAND, spin)
+        //             + DataType(txver) * glij(i, spaceNeigh(YPLUS, i), XBAND, spin)
+        //             + DataType(txver) * glij(i, spaceNeigh(YMINUS,i), XBAND, spin)
+        //             + DataType(tyhor) * glij(i, spaceNeigh(XPLUS, i), YBAND, spin)
+        //             + DataType(tyhor) * glij(i, spaceNeigh(XMINUS,i), YBAND, spin)
+        //             + DataType(tyver) * glij(i, spaceNeigh(YPLUS, i), YBAND, spin)
+        //             + DataType(tyver) * glij(i, spaceNeigh(YMINUS,i), YBAND, spin);
+        //         fermionEkinetic += std::real(e);
+        //         //fermionEkinetic_imag += std::imag(e);
+        //     }
+        // }
+        // for (uint32_t i = 0; i < N; ++i) {
+        //     auto glbs = [this, i, gl](Band band1, Spin spin1,
+        //                               Band band2, Spin spin2) -> DataType {
+        //         return gl(i, band1, spin1, i, band2, spin2);
+        //     };
 
-            //factors for different combinations of spins
-            //overall factor of -1 included
-            // up_up, up_dn, dn_up, dn_dn;
-            DataType up_up(0);
-            DataType up_dn = DataType(-phi(i,0,timeslice)); // real part
-            DataType dn_up = DataType(-phi(i,0,timeslice));
-            DataType dn_dn(0);
-            if (OPDIM >= 2) {
-                setImag(up_dn, +phi(i,1,timeslice));
-                setImag(dn_up, -phi(i,1,timeslice));
-            }
-            if (OPDIM == 3) {
-                up_up = DataType(-phi(i,2,timeslice));
-                dn_dn = DataType(+phi(i,2,timeslice));
-            }
+        //     //factors for different combinations of spins
+        //     //overall factor of -1 included
+        //     // up_up, up_dn, dn_up, dn_dn;
+        //     DataType up_up(0);
+        //     DataType up_dn = DataType(-phi(i,0,timeslice)); // real part
+        //     DataType dn_up = DataType(-phi(i,0,timeslice));
+        //     DataType dn_dn(0);
+        //     if (OPDIM >= 2) {
+        //         setImag(up_dn, +phi(i,1,timeslice));
+        //         setImag(dn_up, -phi(i,1,timeslice));
+        //     }
+        //     if (OPDIM == 3) {
+        //         up_up = DataType(-phi(i,2,timeslice));
+        //         dn_dn = DataType(+phi(i,2,timeslice));
+        //     }
 
-            DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
-                                  glbs(YBAND, SPINUP, XBAND, SPINUP))
-                + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
-                           glbs(YBAND, SPINUP, XBAND, SPINDOWN))
-                + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
-                           glbs(YBAND, SPINDOWN, XBAND, SPINUP))
-                + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
-                           glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
+        //     DataType e = up_up * (glbs(XBAND, SPINUP, YBAND, SPINUP) +
+        //                           glbs(YBAND, SPINUP, XBAND, SPINUP))
+        //         + up_dn * (glbs(XBAND, SPINUP, YBAND, SPINDOWN) +
+        //                    glbs(YBAND, SPINUP, XBAND, SPINDOWN))
+        //         + dn_up * (glbs(XBAND, SPINDOWN, YBAND, SPINUP) +
+        //                    glbs(YBAND, SPINDOWN, XBAND, SPINUP))
+        //         + dn_dn * (glbs(XBAND, SPINDOWN, YBAND, SPINDOWN) +
+        //                    glbs(YBAND, SPINDOWN, XBAND, SPINDOWN));
 
-            fermionEcouple += std::real(e);
-            //fermionEcouple_imag += std::imag(e);
-        }
+        //     fermionEcouple += std::real(e);
+        //     //fermionEcouple_imag += std::imag(e);
+        // }
 
         // band occupation / charge correlations
         // -------------------------------------
@@ -857,9 +858,9 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
         greenK0 /= num(m);
         greenLocal /= num(m);
 
-        //fermion occupation number -- real space
-        occX /= num(m * N);
-        occY /= num(m * N);
+        // //fermion occupation number -- real space
+        // occX /= num(m * N);
+        // occY /= num(m * N);
 
         //fermion occupation number -- k-space
         for (uint32_t ksite = 0; ksite < N; ++ksite) {
@@ -888,10 +889,10 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
         pairPlusMax /= numSitesFar;
         pairMinusMax /= numSitesFar;
 
-        // Fermionic energy contribution
-        // -----------------------------
-        fermionEkinetic /= num(m*N);
-        fermionEcouple /= num(m*N);
+        // // Fermionic energy contribution
+        // // -----------------------------
+        // fermionEkinetic /= num(m*N);
+        // fermionEcouple /= num(m*N);
 
 
         // band occupation / charge correlations
