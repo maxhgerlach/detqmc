@@ -115,8 +115,10 @@ find_package(OpenMP)
 
 
 
-# Preprocessor flags: -D definitions
-add_definitions(-DDSFMT -DDSFMT_MEXP=19937)
+# Preprocessor flags: -D definitions (disable Armadillo C++11 support,
+# since we do not use it anyway and it will give less warnings on g++
+# 4.6)
+add_definitions(-DDSFMT -DDSFMT_MEXP=19937 -DARMA_DONT_USE_CXX11)
 
 option(USE_DUMA
   "build with DUMA to find memory errors" OFF)
