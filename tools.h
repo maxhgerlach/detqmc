@@ -47,7 +47,7 @@ std::string numToString(T i) {
 template<typename T> inline
 std::string numToString(T i, uint32_t floatPrecision) {
     std::stringstream s;
-    s.precision(floatPrecision);
+    s.precision(int(floatPrecision));
     s.setf(std::ios::scientific, std::ios::floatfield);
     s << i;
     return s.str();
@@ -191,6 +191,7 @@ void debugSaveMatrixCpx(const Matrix& matrix, const std::string& basename) {
 
 template<typename Val> inline
 void debugSaveMatrixRealOrCpx(const arma::Mat<Val>& matrix, const std::string& basename) {
+    (void)matrix; (void)basename;
 }
 
 template<> inline

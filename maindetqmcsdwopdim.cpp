@@ -1,3 +1,7 @@
+#if defined (MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
+#include "dumapp.h"
+#endif
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wconversion"

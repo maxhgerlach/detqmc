@@ -84,11 +84,11 @@ public:
     }
 
     //iterators over the nearest neighbors of a site:
-    auto beginNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
+    auto beginNeighbors(uint32_t site) const -> tableSites::const_col_iterator {
         return nearestNeighbors.begin_col(site);
     }
 
-    auto endNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
+    auto endNeighbors(uint32_t site) const -> tableSites::const_col_iterator {
         return nearestNeighbors.end_col(site);
     }
 
@@ -161,10 +161,10 @@ private:
 
     typedef PeriodicCubicLatticeNearestNeighbors Base;
     //iterators over the nearest neighbors of a site:
-    auto beginNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
+    auto beginNeighbors(uint32_t site) const -> tableSites::const_col_iterator {
     	return Base::beginNeighbors(site);
     }
-    auto endNeighbors(uint32_t site) -> tableSites::const_col_iterator const {
+    auto endNeighbors(uint32_t site) const -> tableSites::const_col_iterator {
     	return Base::endNeighbors(site);
     }
 };

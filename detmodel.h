@@ -89,6 +89,10 @@ num get_replica_exchange_probability(
     num parameter_1, num action_contribution_1,
     num parameter_2, num action_contribution_2)
 {
+    (void)parameter_1;
+    (void)parameter_2;
+    (void)action_contribution_1;
+    (void)action_contribution_2;    
     BOOST_MPL_ASSERT(( not_defined<Model> ));
     return 0.0;
 }

@@ -1,3 +1,7 @@
+#if defined (MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
+#include "dumapp.h"
+#endif
+
 /*
  * maintestspheresampling.cpp
  *

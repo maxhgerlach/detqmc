@@ -33,10 +33,6 @@
 #include "toolsdebug.h"
 #include "pytools.h"
 
-#if defined(MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
-#include "dumapp.h"
-#endif
-
 namespace fs = boost::filesystem;
 
 template<CheckerboardMethod CBM, int OPDIM>
@@ -192,6 +188,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
 
     //zero some dynamic data
     phi.zeros();
+    // std::cout << phi;
     cdwl.zeros();
     coshTermPhi.zeros();
     sinhTermPhi.zeros();
@@ -656,6 +653,10 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         const auto txver = pars.txver;
         const auto tyhor = pars.tyhor;
         const auto tyver = pars.tyver;
+        // code using this commented out
+        (void)glij;
+        (void)txhor; (void)txver; (void)tyhor; (void)tyver;
+        
         // for (uint32_t i = 0; i < N; ++i) {
         //     //TODO: write in a nicer fashion using hopping-array as used in the checkerboard branch
         //     Spin spins[] = {SPINUP, SPINDOWN};
@@ -1153,7 +1154,7 @@ VecNum DetSDW<CB, OPDIM>::compute_d_for_cdwl(const Vec& cdwl) {
 
 
 template<CheckerboardMethod CB, int OPDIM> inline
-num DetSDW<CB, OPDIM>::compute_d_for_cdwl_site(uint32_t cdwl) {
+num DetSDW<CB, OPDIM>::compute_d_for_cdwl_site(int32_t cdwl) {
     //TODO: check assembly -- operations removed?
     return std::sqrt(pars.dtau) * pars.cdwU * cdwl_eta(cdwl);
 }
@@ -2131,17 +2132,17 @@ num DetSDW<CB, OPDIM>::updateInSlice_iterative(uint32_t timeslice, Callable prop
             DataType det = 1;
             for (uint32_t l = 0; l < MatrixSizeFactor; ++l) {
                 VecData row = rows[l];
-                for (int k = l-1; k >= 0; --k) {
-                    row[site + k*pars.N] = 0;
+                for (int k = int(l)-1; k >= 0; --k) {
+                    row[site + unsigned(k)*pars.N] = 0;
                 }
-                for (int k = l-1; k >= 0; --k) {
-                    row += rows[l][site + k*pars.N] * rows[k];
+                for (int k = int(l)-1; k >= 0; --k) {
+                    row += rows[l][site + unsigned(k)*pars.N] * rows[(unsigned)k];
                 }
                 DataType divisor = DataType(1) + row[site + l*pars.N];
                 rows[l] = (-1.0/divisor) * row;
                 rows[l][site + l*pars.N] += 1;
-                for (int k = l - 1; k >= 0; --k) {
-                    rows[k] -= (rows[k][site + l*pars.N] / divisor) * row;
+                for (int k = int(l) - 1; k >= 0; --k) {
+                    rows[(unsigned)k] -= (rows[unsigned(k)][site + l*pars.N] / divisor) * row;
                 }
                 det *= divisor;
             }
@@ -2866,7 +2867,7 @@ void DetSDW<CB, OPDIM>::updateInSliceThermalization(uint32_t timeslice) {
 
     ra.get().addValue(ad.lastAccRatioLocal_phi);
     using std::cout;
-    if (ra.get().getSamplesAdded() % ad.AccRatioAdjustmentSamples == 0) {
+    if (unsigned(ra.get().getSamplesAdded()) % ad.AccRatioAdjustmentSamples == 0) {
         num avgAccRatio = ra.get().get();
         switch (adapting_what) {
         case ADAPT_BOX:
@@ -3250,8 +3251,8 @@ uint32_t DetSDW<CB, OPDIM>::buildAndFlipCluster(bool updateCoshSinh) {
     gmd.next_sites = std::stack<STI>();
 
     // cluster seed:
-    uint32_t timeslice = rng.randInt(1, pars.m);
-    uint32_t site = rng.randInt(0, pars.N-1);
+    uint32_t timeslice = uint32_t(rng.randInt(1, (int)pars.m));
+    uint32_t site = uint32_t(rng.randInt(0, (int)pars.N-1));
     flipPhi(site, timeslice);
     gmd.visited(site, timeslice) = 1;
     gmd.next_sites.push( STI(site, timeslice) );
@@ -3683,8 +3684,21 @@ num DetSDW<CB, OPDIM>::phiAction() {
                 action += (dtau / (2.0 * c * c)) * arma::dot(timeDerivative, timeDerivative);
 
                 //count only neighbors in PLUS-directions: no global overcounting of bonds
+                // std::cout << "site, timeslice: " << site << ", " << timeslice << std::endl;
+                // std::cout << "spaceNeigh(XPLUS, site), timeslice: " << spaceNeigh(XPLUS, site) << ", " << timeslice << std::endl;
+                // std::cout << "phiCopy(site, timeslice): " << phiCopy(site, timeslice) << std::endl;
+                // std::cout << "phiCopy(spaceNeigh(XPLUS, site), timeslice): " << phiCopy(spaceNeigh(XPLUS, site), timeslice) << std::endl;
+                // std::cout << "phiCopy(site, timeslice) - phiCopy(spaceNeigh(XPLUS, site), timeslice): " <<
+                //     (phiCopy(site, timeslice) - phiCopy(spaceNeigh(XPLUS, site), timeslice)) << std::endl;
+
                 Phi xneighDiff = phiCopy(site, timeslice) -
                     phiCopy(spaceNeigh(XPLUS, site), timeslice);
+                // Phi ph1 = phiCopy(site, timeslice);
+                // Phi ph2 = phiCopy(spaceNeigh(XPLUS, site), timeslice);
+                // Phi xneighDiff =  ph1 - ph2;
+                    
+                // std::cout << "Phi xneighDiff: " << xneighDiff << std::endl;
+                
                 action += 0.5 * dtau * arma::dot(xneighDiff, xneighDiff);
                 Phi yneighDiff = phiCopy(site, timeslice) -
                     phiCopy(spaceNeigh(YPLUS, site), timeslice);

@@ -117,7 +117,21 @@ find_package(OpenMP)
 
 # Preprocessor flags: -D definitions
 add_definitions(-DDSFMT -DDSFMT_MEXP=19937)
-add_definitions(-DDUMA_NO_DUMA) # TODO SOMETIME reenable
+
+option(USE_DUMA
+  "build with DUMA to find memory errors" OFF)
+if (${USE_DUMA})
+  set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "$ENV{HOME}/packages/duma_2_5_15")
+  set(EXTRA_LIBRARIES "${EXTRA_LIBRARIES}" -lduma)
+  include_directories("$ENV{HOME}/packages/duma_2_5_15")
+  add_definitions(-DDUMA_NO_DUMA) #test
+else (${USE_DUMA})
+  add_definitions(-DDUMA_NO_DUMA)
+endif (${USE_DUMA})
+
+#message("${EXTRA_LIBRARY_LOCATIONS}")
+
+
 
 # CXX flags:
 # -march settings
@@ -137,7 +151,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 # build type specific flags:
 # these are appended to ${CMAKE_C[XX]_FLAGS} for DEBUG / RELEASE / ETC builds
 
-# TODO: support build configuration RelWithDebInfo
 # TODO: support option to enable timing
 
 # TODO: make sure only Intel compiler used on Cheops
@@ -165,14 +178,27 @@ else (${CHEOPS_FOUND})
 endif (${CHEOPS_FOUND})
 set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_C_FLAGS_RELEASE}   ${EXTRA_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_FLAGS_RELEASE}")
+
 if(CMAKE_BUILD_TYPE MATCHES "Release")
   add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
 endif(CMAKE_BUILD_TYPE MATCHES "Release")
 
 
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   -O3 -g")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O3 -g")
+
+if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+  #add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
+  # leave some of the debugging info code
+  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG) # segfault
+#  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG -D_GLIBCXX_DEBUG) # no segfault
+endif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+
+
+
 
 # External libraries -- Armadillo
-set(EXTRA_LIBRARY_LOCATIONS "$ENV{HOME}/lib" "$ENV{HOME}/opt/lib")
+set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "$ENV{HOME}/lib" "$ENV{HOME}/opt/lib")
 if (${CHEOPS_FOUND})
   set(ARMADILLO_LIBRARIES
     "-lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -liomp5 -lpthread")
@@ -191,6 +217,10 @@ else (${CHEOPS_FOUND})
   else (${THP_DOMAIN})
   endif (${THP_DOMAIN})
 endif (${CHEOPS_FOUND})
+
+
+
+
 link_directories(${EXTRA_LIBRARY_LOCATIONS})
 
 
@@ -307,35 +337,35 @@ add_executable(detqmchubbard
   ${detqmchubbard_SRC})
 target_link_libraries(detqmchubbard
   dethubbard_common detqmc_nonmpi_common detqmc_common general_common
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB} ${EXTRA_LIBRARIES})
 
 set(detqmcsdwo1_SRC maindetqmcsdwo1.cpp)
 add_executable(detqmcsdwo1
   ${detqmcsdwo1_SRC})
 target_link_libraries(detqmcsdwo1
   detsdwo1_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB} ${EXTRA_LIBRARIES})
 
 set(detqmcsdwo2_SRC maindetqmcsdwo2.cpp)
 add_executable(detqmcsdwo2
   ${detqmcsdwo2_SRC})
 target_link_libraries(detqmcsdwo2
   detsdwo2_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB} ${EXTRA_LIBRARIES})
 
 set(detqmcsdwo3_SRC maindetqmcsdwo3.cpp)
 add_executable(detqmcsdwo3
   ${detqmcsdwo3_SRC})
 target_link_libraries(detqmcsdwo3
   detsdwo3_common detsdw_common detqmc_nonmpi_common detqmc_common general_common
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB} ${EXTRA_LIBRARIES})
 
 set(detqmcsdwopdim_SRC maindetqmcsdwopdim.cpp)
 add_executable(detqmcsdwopdim
   ${detqmcsdwopdim_SRC})
 target_link_libraries(detqmcsdwopdim
   detsdwopdim_common detsdw_common detqmc_nonmpi_common detqmc_common general_common  
-  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB})
+  dsfmt ${ARMADILLO_LIBRARIES} ${BOOST_LIBS} ${PYTHON_LIB} ${EXTRA_LIBRARIES})
 
 
 if ("${MPI_CXX_FOUND}")
@@ -345,7 +375,7 @@ if ("${MPI_CXX_FOUND}")
 
   set(PT_SIM_LIBRARIES general_common detqmc_mpi_common
     detqmc_nonmpi_common detqmc_common dsfmt ${ARMADILLO_LIBRARIES}
-    boost_mpi ${BOOST_LIBS} ${PYTHON_LIB} ${MPI_CXX_LIBRARIES} )
+    boost_mpi ${BOOST_LIBS} ${PYTHON_LIB} ${MPI_CXX_LIBRARIES} ${EXTRA_LIBRARIES})
 
   set(detqmcptsdwo1_SRC mpimaindetqmcptsdwo1.cpp)
   add_executable(detqmcptsdwo1
@@ -383,27 +413,27 @@ endif ("${MPI_CXX_FOUND}")
 set(binarystreamtotext_SRC mainbinarystreamtotext.cpp)
 add_executable(binarystreamtotext
   ${binarystreamtotext_SRC})
-target_link_libraries(binarystreamtotext general_common)
+target_link_libraries(binarystreamtotext general_common ${EXTRA_LIBRARIES})
 
 set(tauintsimple_SRC maintauintsimple.cpp)
 add_executable(tauintsimple
   ${tauintsimple_SRC})
-target_link_libraries(tauintsimple general_common)
+target_link_libraries(tauintsimple general_common ${EXTRA_LIBRARIES})
 
 set(deteval_SRC maindeteval.cpp)
 add_executable(deteval ${deteval_SRC})
-target_link_libraries(deteval general_common boost_program_options)
+target_link_libraries(deteval general_common boost_program_options ${EXTRA_LIBRARIES})
 
 set(detevalbc_SRC maindetevalbc.cpp)
 add_executable(detevalbc ${detevalbc_SRC})
 target_link_libraries(detevalbc general_common
-  boost_program_options boost_filesystem boost_system)
+  boost_program_options boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 
 set(testspheresampling_SRC maintestspheresampling.cpp)
 add_executable(testspheresampling ${testspheresampling_SRC})
 target_link_libraries(testspheresampling general_common
-  ${ARMADILLO_LIBRARIES} dsfmt)
+  ${ARMADILLO_LIBRARIES} dsfmt ${EXTRA_LIBRARIES})
 
 
 set(mrpt_SRC main-mrpt.cpp
@@ -418,7 +448,7 @@ if(${OPENMP_FOUND})
   set_target_properties(mrpt PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
                                         LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
 endif(${OPENMP_FOUND})
-target_link_libraries(mrpt general_common boost_filesystem boost_system)
+target_link_libraries(mrpt general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 
 

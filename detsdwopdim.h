@@ -740,7 +740,7 @@ protected:
     template<class Vec>
     VecNum compute_d_for_cdwl(const Vec& cdwl);
     // compute sqrt(dtau) * cdwU * eta_{cdwl} for cdwl
-    num compute_d_for_cdwl_site(uint32_t cdwl);
+    num compute_d_for_cdwl_site(int32_t cdwl);
 
 
     

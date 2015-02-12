@@ -1,3 +1,7 @@
+#if defined (MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
+#include "dumapp.h"
+#endif
+
 //Code by Max Henner Gerlach, 2010--2012,
 //used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
 //contact: maxgerlach@gmail.com

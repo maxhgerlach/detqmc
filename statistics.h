@@ -261,9 +261,9 @@ T tauint_stopAtZeroCrossing(const std::vector<T>& data) {
     T mean = average(data);
     T var = 0;
     T result = 0.5;
-    for (int t = 0; t < m - 1; ++t) {
+    for (std::size_t t = 0; t < m - 1; ++t) {
         T autoCorr = 0;
-        for (int k = 0; k < m - t; ++k){
+        for (std::size_t k = 0; k < m - t; ++k){
             autoCorr += (data[k] - mean) * (data[k + t] - mean);
         }
         autoCorr /= (m - t);
@@ -372,7 +372,7 @@ double tauint_adaptive(const std::vector<double>* data, AutoCorrMap* points = 0)
 //subsample inTimeSeries into outTimeSeries (appending to its end), taking only samples separated by sampleSize
 template <typename T>
 void subsample(const std::vector<T>& inTimeSeries, int sampleSize, std::vector<T>& outTimeSeries) {
-    for (unsigned index = 0; index < inTimeSeries.size(); index += sampleSize) {
+    for (unsigned index = 0; index < inTimeSeries.size(); index += unsigned(sampleSize)) {
         outTimeSeries.push_back(inTimeSeries[index]);
     }
 }
@@ -407,9 +407,9 @@ template <typename T,
           >
 void findMinMaxMean(const std::vector<TTimeSeriesPtr>& timeSeriesVector, T& min, T& max, T& mean) {
     T runningMin, runningMax, cummulatedMeans;
-    int firstTimeSeries = timeSeriesVector.size();
+    unsigned firstTimeSeries = timeSeriesVector.size();
     int numTimeSeries = 0;
-    for (int k = 0; k < timeSeriesVector.size(); ++k) {
+    for (unsigned k = 0; k < timeSeriesVector.size(); ++k) {
         if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
             findMinMaxMean(*timeSeriesVector[k],
                            runningMin, runningMax, cummulatedMeans);
