@@ -192,7 +192,8 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O3 -g")
 if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
   #add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
   # leave some of the debugging info code
-  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG) # segfault
+  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG) #seg_fault
+  # -DARMA_SIMPLE_LOOPS ... also prevents seg fault
 #  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG -D_GLIBCXX_DEBUG) # no segfault
 endif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
 
