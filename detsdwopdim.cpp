@@ -173,7 +173,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     meanPhi(), normMeanPhi(0),
     associatedEnergy(0),
     kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
-    greenXUP_summed(), greenYDOWN_summed(), greenXDOWN_summed(), greenYUP_summed(),
+    greenXUPXUP_summed(), greenYDOWNYDOWN_summed(), greenXDOWNXDOWN_summed(), greenYUPYUP_summed(),
     greenK0(), greenLocal(),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
     occ(), occX(occ[XBAND]), occY(occ[YBAND]),
@@ -409,11 +409,11 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
 
         // some sectors of the momentum space Green's function,
         // helpers:
-        greenXUP_summed.zeros(pars.N, pars.N);
-        greenYDOWN_summed.zeros(pars.N, pars.N);
+        greenXUPXUP_summed.zeros(pars.N, pars.N);
+        greenYDOWNYDOWN_summed.zeros(pars.N, pars.N);
         if (OPDIM == 3) {
-            greenXDOWN_summed.zeros(pars.N, pars.N);
-            greenYUP_summed.zeros(pars.N, pars.N);
+            greenXDOWNXDOWN_summed.zeros(pars.N, pars.N);
+            greenYUPYUP_summed.zeros(pars.N, pars.N);
         }
 
         // scalar functions of the Green's function
@@ -484,11 +484,11 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             return gshifted.submat(row * N, col * N,
                                    (row + 1) * N - 1, (col + 1) * N - 1);
         };
-        greenXUP_summed   += gblock(0, 0);
-        greenYDOWN_summed += gblock(1, 1);
+        greenXUPXUP_summed   += gblock(0, 0);
+        greenYDOWNYDOWN_summed += gblock(1, 1);
         if (OPDIM == 3) {
-            greenXDOWN_summed += gblock(2, 2);
-            greenYUP_summed   += gblock(3, 3);
+            greenXDOWNXDOWN_summed += gblock(2, 2);
+            greenYUPYUP_summed   += gblock(3, 3);
         }
 
         // scalar functions of the Green's function
@@ -838,15 +838,15 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     if (not pars.turnoffFermions) {
 
         // some sectors of the momentum space Green's function
-        greenXUP_summed /= num(m);
-        greenYDOWN_summed /= num(m);
-        computeStructureFactor(kgreenXUP, greenXUP_summed);
-        computeStructureFactor(kgreenYDOWN, greenYDOWN_summed);
+        greenXUPXUP_summed /= num(m);
+        greenYDOWNYDOWN_summed /= num(m);
+        computeStructureFactor(kgreenXUP, greenXUPXUP_summed);
+        computeStructureFactor(kgreenYDOWN, greenYDOWNYDOWN_summed);
         if (OPDIM == 3) {
-            greenXDOWN_summed /= num(m);
-            greenYUP_summed   /= num(m);
-            computeStructureFactor(kgreenXDOWN, greenXDOWN_summed);
-            computeStructureFactor(kgreenYUP, greenYUP_summed);
+            greenXDOWNXDOWN_summed /= num(m);
+            greenYUPYUP_summed   /= num(m);
+            computeStructureFactor(kgreenXDOWN, greenXDOWNXDOWN_summed);
+            computeStructureFactor(kgreenYUP, greenYUPYUP_summed);
         } else {
             // the following equalities are up to complex conjugation,
             // but we only consider real parts anyway

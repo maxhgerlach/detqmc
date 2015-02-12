@@ -518,8 +518,13 @@ protected:
     VecNum kgreenYUP;
     // helpers for the above: real space, summed and averaged over
     // imaginary time during a sweep
-    MatData greenXUP_summed, greenYDOWN_summed,
-        greenXDOWN_summed, greenYUP_summed;
+    MatData greenXUPXUP_summed;
+    MatData greenYDOWNYDOWN_summed;
+    MatData greenXDOWNXDOWN_summed;
+    MatData greenYUPYUP_summed;
+    // also include some of the off-diagonal blocks:
+    
+    
     // greenK0 is the sum over all entries of G
     num greenK0;
     // greenLocal is the trace of G divided by the size of G
