@@ -80,9 +80,12 @@ endif (${USE_CLANG} AND ${THP_DOMAIN})
 
 # GCC 4.6.3 on THP workarounds
 if (NOT ${USE_CLANG} AND ${THP_DOMAIN})
-  # prevent segfaults with -O3 compilation
-  add_definitions("-DARMA_SIMPLE_LOOPS")
+  # prevent segfaults -O3 compilation
+  set(OPTIMIZATION_LEVEL "-O2")
+else (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+  set(OPTIMIZATION_LEVEL "-O3")  
 endif (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+
 
 
 # Cheops, Intel compiler
@@ -179,9 +182,11 @@ endif(CMAKE_BUILD_TYPE MATCHES "Debug")
 
 # TODO: make sure only Intel compiler used on Cheops
 if (${CHEOPS_FOUND})
-  set(EXTRA_FLAGS_RELEASE "-O3 -ansi-alias -xSSE4.2 -no-prec-div")
+  set(EXTRA_FLAGS_RELEASE
+    "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div")
 else (${CHEOPS_FOUND})
-  set(EXTRA_FLAGS_RELEASE "-O3 -fno-strict-aliasing -ffast-math")
+  set(EXTRA_FLAGS_RELEASE
+    "${OPTIMIZATION_LEVEL} -fno-strict-aliasing -ffast-math")
 endif (${CHEOPS_FOUND})
 set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_C_FLAGS_RELEASE}   ${EXTRA_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_FLAGS_RELEASE}")
@@ -195,7 +200,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   ${EXTRA_FL
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${EXTRA_FLAGS_RELEASE} -g")
 
 if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-  add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)  
+  add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
 endif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
 
 
