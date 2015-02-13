@@ -67,8 +67,7 @@ endif (${BUILD_TIMING})
 
 
 
-include_directories(
-  "${PROJECT_SOURCE_DIR}"
+include_directories("${PROJECT_SOURCE_DIR}"
   "$ENV{HOME}/include"
   "$ENV{HOME}/opt/include"
   )
@@ -78,6 +77,12 @@ include_directories(
 if (${USE_CLANG} AND ${THP_DOMAIN})
   add_definitions("-D__extern_always_inline=inline")
 endif (${USE_CLANG} AND ${THP_DOMAIN})
+
+# GCC 4.6.3 on THP workarounds
+if (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+  # prevent segfaults with -O3 compilation
+  add_definitions("-DARMA_SIMPLE_LOOPS")
+endif (NOT ${USE_CLANG} AND ${THP_DOMAIN})
 
 
 # Cheops, Intel compiler
@@ -186,15 +191,11 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 endif(CMAKE_BUILD_TYPE MATCHES "Release")
 
 
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   -O3 -g")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -O3 -g")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   ${EXTRA_FLAGS_RELEASE} -g")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${EXTRA_FLAGS_RELEASE} -g")
 
 if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-  #add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
-  # leave some of the debugging info code
-  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG) #seg_fault
-  # -DARMA_SIMPLE_LOOPS ... also prevents seg fault
-#  add_definitions(-DHAVE_SSE2 -DMAX_DEBUG -D_GLIBCXX_DEBUG) # no segfault
+  add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)  
 endif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
 
 
