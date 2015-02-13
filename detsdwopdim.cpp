@@ -4341,7 +4341,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamText(const std::string& directory
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
                 for (uint32_t k = 1; k <= pars.m; ++k) {
-                    for (uint32_t dim = 0; dim <= OPDIM; ++dim) {
+                    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
                         phi_output << phi(i, dim, k) << "\n";
                     }
                 }
@@ -4384,7 +4384,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinary(const std::string& directo
             for (uint32_t iy = 0; iy < pars.L; ++iy) {
                 uint32_t i = iy*pars.L + ix;
                 for (uint32_t k = 1; k <= pars.m; ++k) {
-                    for (uint32_t dim = 0; dim <= OPDIM; ++dim) {
+                    for (uint32_t dim = 0; dim < OPDIM; ++dim) {
                         phi_output.write(reinterpret_cast<const char*>(&(phi(i, dim, k))),
                                          sizeof(phi(i, dim, k)));
                     }
