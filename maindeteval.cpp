@@ -123,28 +123,28 @@ void processTimeseries(const std::string& filename) {
     std::cout << std::flush;
 
     if (not noexp) {
-        auto average_func_maybe_reweight = [&]( const std::function<double(double)>& func ) {
+        auto average_func_maybe_reweight = [&]( const std::function<double(double)>& func ) -> double {
             if (reweight) {
                 return average<double>( func, *data, *reweightingFactors );
             } else {
                 return average<double>( func, *data );
             }
         };
-        auto average_maybe_reweight = [&]( ) {
+        auto average_maybe_reweight = [&]( )  -> double {
             if (reweight) {
                 return average<double>( *data, *reweightingFactors );
             } else {
                 return average<double>( *data );
             }
         };
-        auto jackknifeBlockEstimates_func_maybe_reweight = [&]( const std::function<double(double)>& func ) {
+        auto jackknifeBlockEstimates_func_maybe_reweight = [&]( const std::function<double(double)>& func )  -> std::vector<double> {
             if (reweight) {
                 return jackknifeBlockEstimates<double>( func, *data, *reweightingFactors, jkBlocks );
             } else {
                 return jackknifeBlockEstimates<double>( func, *data, jkBlocks );
             }
         };
-        auto jackknifeBlockEstimates_maybe_reweight = [&]( ) {
+        auto jackknifeBlockEstimates_maybe_reweight = [&]( )  -> std::vector<double> {
             if (reweight) {
                 return jackknifeBlockEstimates<double>( *data, *reweightingFactors, jkBlocks );
             } else {
