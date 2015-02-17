@@ -213,7 +213,7 @@ void outputResults(const std::vector<std::unique_ptr<ScalarObservableHandlerPT>>
     boost::mpi::communicator world;
     int processIndex = world.rank();
     int numProcesses = world.size();
-    if (processIndex == 0) {
+    if (processIndex == 0 and obsHandlers.size() > 0) {
         typedef std::map<std::string, num> StringNumMap;
         typedef std::shared_ptr<StringNumMap> StringNumMapPtr;
 
@@ -251,11 +251,11 @@ void outputResults(const std::vector<std::unique_ptr<VectorObservableHandlerPT>>
     boost::mpi::communicator world;
     int processIndex = world.rank();
     int numProcesses = world.size();
-    if (processIndex == 0) {    
+    if (processIndex == 0 and obsHandlers.size() > 0) {    
         typedef std::map<num, num> NumMap;
         typedef std::shared_ptr<NumMap> NumMapPtr;
         typedef DataMapWriter<num,num> NumMapWriter;
-
+        
         for (int cpi = 0; cpi < numProcesses; ++cpi) {
             std::string subdirectory = "p" + numToString(cpi) + "_" +
                 (*obsHandlers.begin())->ptparams.controlParameterName +
