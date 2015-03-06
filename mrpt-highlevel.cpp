@@ -95,7 +95,8 @@ void initFromCommandLine(int argc, char** argv) {
     parser.add_option("constant-overlap", "iteratively reweight energy histograms until constant overlap is achieved");
     parser.add_option("n", "indicates number of target temperatures if --constant-overlap is passed. Default: same as input.", 1);
 
-    parser.add_option("cp-range", "Takes three arguments to determine the range of inverse temperatures to reweight to: the minimum, the maximum and the step size", 3);
+    parser.add_option("cp-range", "Takes three arguments to determine the range of control parameters to reweight to: the minimum, the maximum and the step size", 3);
+    parser.add_option("cp-auto-range", "Takes one argument to determine the control parameter to reweight to: the step size; minimum and maximum are determinded automatically", 1);    
     parser.add_option("cp-range-discrete", "Takes three arguments to determine the range of inverse temperatures to discretely reweight energy and heat capacity to: the minimum, the maximum and the step size", 3);
     parser.add_option("j", "use jack-knife error estimation, indicate number of blocks", 1);
     parser.add_option("h", "write reweighted histograms at each target cp");
@@ -134,7 +135,7 @@ void initFromCommandLine(int argc, char** argv) {
     }
     cout << endl;
 
-    const char* one_time_opts[] = {"info", "b", "loadz", "savez", "n", "cp-range", "j", "i", "sub-sample", "sort", "time-series-format"};
+    const char* one_time_opts[] = {"info", "b", "loadz", "savez", "n", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format"};
     parser.check_one_time_options(one_time_opts);
     const char* incompatible1[] = {"global-tau", "no-tau"};
     parser.check_incompatible_options(incompatible1);
@@ -142,6 +143,8 @@ void initFromCommandLine(int argc, char** argv) {
     parser.check_incompatible_options(incompatible2);
     const char* incompatible3[] = {"b", "discrete-ising-bins"};
     parser.check_incompatible_options(incompatible3);
+    const char* incompatible4[] = {"cp-range", "cp-auto-range"};
+    parser.check_incompatible_options(incompatible4);
 
     if (parser.option("help")) {
         cout << "Multihistogram reweighting for time series originating from parallel tempering or canonical simulations" << endl;
@@ -220,6 +223,17 @@ void initFromCommandLine(int argc, char** argv) {
         double cpStep = dlib::sa = rr.argument(2);
         reweightRange(cpMin, cpMax, cpStep, createHistograms);
     }
+
+    if (const clp::option_type& rr = parser.option("cp-auto-range")) {
+        // double cpMin = dlib::sa = rr.argument(0);
+        // double cpMax = dlib::sa = rr.argument(1);
+        auto cpMinMax = std::minmax_element(mr->controlParameterValues.begin(),
+                                            mr->controlParameterValues.end());
+        double cpMin = *cpMinMax.first;
+        double cpMax = *cpMinMax.second;
+        double cpStep = dlib::sa = rr.argument(0);
+        reweightRange(cpMin, cpMax, cpStep, createHistograms);
+    }    
 
     if (const clp::option_type& rr = parser.option("cp-range-discrete")) {
         double cpMin = dlib::sa = rr.argument(0);
