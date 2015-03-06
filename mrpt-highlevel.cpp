@@ -346,8 +346,7 @@ void writeOutResults() {
         specificHeatOut.addHeaderText("MRPT estimates of specific heat");
         if (use_jackknife) specificHeatOut.addHeaderText("jackknife error estimation");
         specificHeatOut.addMeta("energyBins", binCount);
-
-        specificHeatOut.addMeta("observable", "energy");
+        specificHeatOut.addMeta("observable", "specificHeat");
         specificHeatOut.addMeta("L", mr->getSystemL());
         specificHeatOut.addMeta("N", mr->getSystemN());
         specificHeatOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -379,7 +378,7 @@ void writeOutResults() {
         observableSquaredOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " squared");
         if (use_jackknife) observableSquaredOut.addHeaderText("jackknife error estimation");
         observableSquaredOut.addMeta("energyBins", binCount);
-        observableSquaredOut.addMeta("observable", mr->getObservableName());
+        observableSquaredOut.addMeta("observable", mr->getObservableName() + "Squared");
         observableSquaredOut.addMeta("L", mr->getSystemL());
         observableSquaredOut.addMeta("N", mr->getSystemN());
         observableSquaredOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -398,7 +397,7 @@ void writeOutResults() {
         susceptibilityOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " susceptibility");
         if (use_jackknife) susceptibilityOut.addHeaderText("jackknife error estimation");
         susceptibilityOut.addMeta("energyBins", binCount);
-        susceptibilityOut.addMeta("observable", mr->getObservableName());
+        susceptibilityOut.addMeta("observable", "susc-" + mr->getObservableName());
         susceptibilityOut.addMeta("L", mr->getSystemL());
         susceptibilityOut.addMeta("N", mr->getSystemN());
         susceptibilityOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -414,12 +413,12 @@ void writeOutResults() {
         binderOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " binder parameter");
         if (use_jackknife) binderOut.addHeaderText("jackknife error estimation");
         binderOut.addMeta("energyBins", binCount);
-        binderOut.addMeta("observable", mr->getObservableName());
+        binderOut.addMeta("observable", "binder-" + mr->getObservableName());
         binderOut.addMeta("L", mr->getSystemL());
         binderOut.addMeta("N", mr->getSystemN());
         binderOut.addMeta("controlParameterName", mr->getControlParameterName());
         if (use_jackknife) binderOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
+        binderOut.addHeaderText(mr->getControlParameterName()+"\t binder" + headerSuffix);
         binderOut.writeToFile(outputDirPrefix + "mrpt-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
@@ -430,12 +429,12 @@ void writeOutResults() {
         binderRatioOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " binder ratio parameter");
         if (use_jackknife) binderRatioOut.addHeaderText("jackknife error estimation");
         binderRatioOut.addMeta("energyBins", binCount);
-        binderRatioOut.addMeta("observable", mr->getObservableName());
+        binderRatioOut.addMeta("observable", "binderRatio-" + mr->getObservableName());
         binderRatioOut.addMeta("L", mr->getSystemL());
         binderRatioOut.addMeta("N", mr->getSystemN());
         binderRatioOut.addMeta("controlParameterName", mr->getControlParameterName());
         if (use_jackknife) binderRatioOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
+        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t binderRatio" + headerSuffix);
         binderRatioOut.writeToFile(outputDirPrefix + "mrpt-binderRatio-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
     
@@ -462,7 +461,7 @@ void writeOutResults() {
         if (use_jackknife) specificHeatOut.setErrors(direct_specificHeatError);
         specificHeatOut.addHeaderText("Direct estimates of specific heat");
         if (use_jackknife) specificHeatOut.addHeaderText("jackknife error estimation");
-        specificHeatOut.addMeta("observable", "energy");
+        specificHeatOut.addMeta("observable", "specificHeat");
         specificHeatOut.addMeta("L", mr->getSystemL());
         specificHeatOut.addMeta("N", mr->getSystemN());
         specificHeatOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -492,7 +491,7 @@ void writeOutResults() {
         if (use_jackknife) observableSquaredOut.setErrors(direct_observableSquaredError);
         observableSquaredOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " squared");
         if (use_jackknife) observableSquaredOut.addHeaderText("jackknife error estimation");
-        observableSquaredOut.addMeta("observable", mr->getObservableName());
+        observableSquaredOut.addMeta("observable", mr->getObservableName() + "Squared");
         observableSquaredOut.addMeta("L", mr->getSystemL());
         observableSquaredOut.addMeta("N", mr->getSystemN());
         observableSquaredOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -510,7 +509,7 @@ void writeOutResults() {
         if (use_jackknife) susceptibilityOut.setErrors(direct_susceptibilityError);
         susceptibilityOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " susceptibility");
         if (use_jackknife) susceptibilityOut.addHeaderText("jackknife error estimation");
-        susceptibilityOut.addMeta("observable", mr->getObservableName());
+        susceptibilityOut.addMeta("observable", "susc-" + mr->getObservableName());
         susceptibilityOut.addMeta("L", mr->getSystemL());
         susceptibilityOut.addMeta("N", mr->getSystemN());
         susceptibilityOut.addMeta("controlParameterName", mr->getControlParameterName());
@@ -525,12 +524,12 @@ void writeOutResults() {
         if (use_jackknife) binderOut.setErrors(direct_binderError);
         binderOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " binder parameter");
         if (use_jackknife) binderOut.addHeaderText("jackknife error estimation");
-        binderOut.addMeta("observable", mr->getObservableName());
+        binderOut.addMeta("observable", "binder-" + mr->getObservableName());
         binderOut.addMeta("L", mr->getSystemL());
         binderOut.addMeta("N", mr->getSystemN());
         binderOut.addMeta("controlParameterName", mr->getControlParameterName());
         if (use_jackknife) binderOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
+        binderOut.addHeaderText(mr->getControlParameterName()+"\t binder" + headerSuffix);
         binderOut.writeToFile(outputDirPrefix + "mrpt-direct-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
@@ -540,13 +539,13 @@ void writeOutResults() {
         if (use_jackknife) binderRatioOut.setErrors(direct_binderRatioError);
         binderRatioOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " binder ratio parameter");
         if (use_jackknife) binderRatioOut.addHeaderText("jackknife error estimation");
-        binderRatioOut.addMeta("observable", mr->getObservableName());
+        binderRatioOut.addMeta("observable", "binderRatio-" + mr->getObservableName());
         binderRatioOut.addMeta("L", mr->getSystemL());
         binderRatioOut.addMeta("N", mr->getSystemN());
         binderRatioOut.addMeta("controlParameterName", mr->getControlParameterName());
         if (use_jackknife) binderRatioOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
-        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-direct-binderRatio" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t binderRatio" + headerSuffix);
+        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-direct-binderRatio-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
 }
