@@ -653,6 +653,7 @@ protected:
     
 */
     void setupRandomField();
+    void setupConstantField();    
     // return (coshTerm*, sinhTerm*) for these field values
     std::tuple<num,num> getCoshSinhTermPhi(Phi phi);
     std::tuple<num,num> getCoshSinhTermCDWl(int32_t cdwl);

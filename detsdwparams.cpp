@@ -140,11 +140,13 @@ void ModelParamsDetSDW::check() {
 MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     MetadataMap meta;
 #define META_INSERT(VAR) {meta[#VAR] = numToString(VAR);}
+#define META_INSERT_TRUE_FALSE(VAR) {meta[#VAR] = (VAR ? "true" : "false");}
     meta["model"] = "sdw";
     meta["opdim"] = numToString(opdim);
-    meta["checkerboard"] = (checkerboard ? "true" : "false");
-    meta["phi2bosons"] = (phi2bosons ? "true" : "false");
-    meta["turnoffFermions"] = (turnoffFermions ? "true" : "false");
+    META_INSERT_TRUE_FALSE(checkerboard);
+    META_INSERT_TRUE_FALSE(phi2bosons);
+    META_INSERT_TRUE_FALSE(phiFixed);
+    META_INSERT_TRUE_FALSE(turnoffFermions);
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (spinProposalMethod != BOX) {
@@ -194,6 +196,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
+#undef META_INSERT_TRUE_FALSE
     return meta;
 }
 

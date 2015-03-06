@@ -195,7 +195,11 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     coshTermCDWl.zeros();
     sinhTermCDWl.zeros();
 
-    setupRandomField();
+    if (not pars.phiFixed) {
+        setupRandomField();
+    } else {
+        setupConstantField();
+    }
 
     //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
     //So for actual calculations an additional minus-sign needs to be included.
@@ -1015,6 +1019,21 @@ void DetSDW<CB, OPDIM>::setupRandomField() {
         }
     }
 }
+
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::setupConstantField() {
+    for (uint32_t k = 1; k <= pars.m; ++k) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
+            phi(site, 0, k) = 1.0;
+            for (uint32_t dim = 1; dim < OPDIM; ++dim) {
+                phi(site, dim, k) = 0;
+            }
+            cdwl(site, k) = +1;
+            updateCoshSinhTerms(site, k);
+        }
+    }
+}
+
 
 
 template<CheckerboardMethod CB, int OPDIM>
@@ -1988,60 +2007,62 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
     timing.start("sdw-updateInSlice");
 
-    //reset normal_distribution -- this way we do not need to worry about its internal
-    //state during serialization
-    normal_distribution.reset();
+    if (not pars.phiFixed) {
+    
+        //reset normal_distribution -- this way we do not need to worry about its internal
+        //state during serialization
+        normal_distribution.reset();
 
-    // update phi-fields according to chosen method
-    for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
-        switch (pars.spinProposalMethod) {
-        case SpinProposalMethod_Type::BOX:
-            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
-                timeslice,
-                [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                    return this->proposeNewPhiBox(site, timeslice);
-                } );
-            break;
-        case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
-            //each sweep, alternate between rotating and scaling
-            if (performedSweeps % 2 == 0) {
+        // update phi-fields according to chosen method
+        for (uint32_t rep = 0; rep < pars.repeatUpdateInSlice; ++rep) {
+            switch (pars.spinProposalMethod) {
+            case SpinProposalMethod_Type::BOX:
                 ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
                     timeslice,
                     [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                        return this->proposeRotatedPhi(site, timeslice);
+                        return this->proposeNewPhiBox(site, timeslice);
                     } );
-            } else {
+                break;
+            case SpinProposalMethod_Type::ROTATE_THEN_SCALE:
+                //each sweep, alternate between rotating and scaling
+                if (performedSweeps % 2 == 0) {
+                    ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                        timeslice,
+                        [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                            return this->proposeRotatedPhi(site, timeslice);
+                        } );
+                } else {
+                    ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+                        timeslice,
+                        [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
+                            return this->proposeScaledPhi(site, timeslice);
+                        } );
+                }
+                break;
+            case SpinProposalMethod_Type::ROTATE_AND_SCALE:
                 ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
                     timeslice,
                     [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                        return this->proposeScaledPhi(site, timeslice);
+                        return this->proposeRotatedScaledPhi(site, timeslice);
                     } );
+                break;
             }
-            break;
-        case SpinProposalMethod_Type::ROTATE_AND_SCALE:
-            ad.lastAccRatioLocal_phi = callUpdateInSlice_for_updateMethod(
+        }
+
+        if (not pars.turnoffFermions) {
+
+            //Update discrete cdwl fields
+            //currently just discard this accratio
+
+            callUpdateInSlice_for_updateMethod(
                 timeslice,
                 [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                    return this->proposeRotatedScaledPhi(site, timeslice);
+                    return this->proposeNewCDWl(site, timeslice);
                 } );
-            break;
+
         }
     }
-
-
-    if (not pars.turnoffFermions) {
-
-        //Update discrete cdwl fields
-        //currently just discard this accratio
-
-        callUpdateInSlice_for_updateMethod(
-            timeslice,
-            [this](uint32_t site, uint32_t timeslice) -> changedPhiInt {
-                return this->proposeNewCDWl(site, timeslice);
-            } );
-
-    }
-
+    
     timing.stop("sdw-updateInSlice");
 }
 
@@ -2835,6 +2856,8 @@ template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::updateInSliceThermalization(uint32_t timeslice) {
     updateInSlice(timeslice);
 
+    if (pars.phiFixed) return;
+
     enum { ADAPT_BOX, ADAPT_ROTATE, ADAPT_SCALE } adapting_what = ADAPT_BOX;
     if (pars.spinProposalMethod == SpinProposalMethod_Type::BOX) {
         adapting_what = ADAPT_BOX;
@@ -2919,7 +2942,7 @@ void DetSDW<CB, OPDIM>::updateInSliceThermalization(uint32_t timeslice) {
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMove() {
     //This is called before the sweep, i.e. before performedSweeps is updated
-    if ((performedSweeps) % pars.globalUpdateInterval == 0) {
+    if (not pars.phiFixed and ((performedSweeps) % pars.globalUpdateInterval == 0)) {
         //the current sweep count is a multiple of globalMoveInterval
         if (pars.globalShift) {
             attemptGlobalShiftMove();

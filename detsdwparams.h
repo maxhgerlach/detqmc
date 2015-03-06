@@ -31,6 +31,7 @@ struct ModelParamsDetSDW {
 
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
+    bool phiFixed;              // if this is true: set a constant, fixed phi field -- all phi_i(tau) equal to (1 [, 0[, 0]])
     num r;
     num c;                      // currently fixed to 1.0
     num u;
@@ -74,7 +75,7 @@ struct ModelParamsDetSDW {
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
         adaptScaleVariance(), delaySteps(),
-        opdim(3), phi2bosons(false), r(), c(1.0), u(1.0), lambda(),
+        opdim(3), phi2bosons(false), phiFixed(false), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
         globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatUpdateInSlice(),
@@ -100,7 +101,7 @@ private:
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
-            & opdim & phi2bosons & r & c & u & lambda
+            & opdim & phi2bosons & phiFixed & r & c & u & lambda
             & txhor & txver & tyhor & tyver
             & cdwU & mu & mux & muy & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
