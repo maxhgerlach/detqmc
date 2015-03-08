@@ -179,6 +179,14 @@ void processTimeseries(const std::string& filename) {
                     1.0 - (3.0*jkBlockEstimates["normMeanPhiFourth"][jb]) /
                     (5.0*pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2));
             }
+            estimates["phiBinderRatio"] = estimates["normMeanPhiFourth"] /
+                pow(estimates["normMeanPhiSquared"], 2);
+            jkBlockEstimates["phiBinderRatio"] = std::vector<double>(jkBlocks, 0);
+            for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                jkBlockEstimates["phiBinderRatio"][jb] =
+                    jkBlockEstimates["normMeanPhiFourth"][jb] /
+                    pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2);
+            }
 
             estimates["phiSusceptibility"] = (dtau * m * N) * (
                 estimates["normMeanPhiSquared"] -

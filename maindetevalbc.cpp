@@ -330,6 +330,17 @@ int main(int argc, char **argv) {
             (5.0*pow(avg_jkBlockEstimates["normMeanPhiSquared"][jb], 2));
     }
 
+    avg_estimates["phiBinderRatio"] =
+        avg_estimates["normMeanPhiFourth"] /
+        pow(avg_estimates["normMeanPhiSquared"], 2);
+    avg_jkBlockEstimates["phiBinderRatio"] = std::vector<double>(jkBlocks, 0);
+    for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+        avg_jkBlockEstimates["phiBinderRatio"][jb] =
+            3.0*avg_jkBlockEstimates["normMeanPhiFourth"][jb] /
+            pow(avg_jkBlockEstimates["normMeanPhiSquared"][jb], 2);
+    }
+
+
     avg_estimates["phiSusceptibility"] = (dtau * m * N) * (
         avg_estimates["normMeanPhiSquared"] -
         pow(avg_estimates["normMeanPhi"], 2)
