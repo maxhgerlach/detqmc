@@ -806,6 +806,46 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
     return totalResult;
 }
 
+ReweightedMomentsJK MultireweightHistosPTJK::reweightObservableMoments(
+    double targetControlParameter) {
+    out << "Jackknife estimation of " << observable << " moments at cp=" << targetControlParameter << endl;
+
+    std::vector<double> jkBlocks_o(blockCount, 0);
+    std::vector<double> jkBlocks_o2(blockCount, 0);
+    std::vector<double> jkBlocks_o4(blockCount, 0);
+    
+    #pragma omp parallel for
+    for (signed b = 0; b < (signed)blockCount; ++b) {
+        DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, b);
+
+        double firstMoment  = 0;
+        double secondMoment = 0;
+        double fourthMoment = 0;
+        reweight1stMomentInternalJK(observableTimeSeries, w_kn, b, firstMoment);
+        reweight2ndMoment4thMomentInternalJK(observableTimeSeries, w_kn, b, secondMoment, fourthMoment);
+        jkBlocks_o[b]  = firstMoment;
+        jkBlocks_o2[b] = secondMoment;
+        jkBlocks_o4[b] = fourthMoment;
+        
+        out << '#' << flush;
+    }
+
+    double mean_o  = 0;
+    double mean_o2 = 0;
+    double mean_o4 = 0;
+    double err_o  = 0;          // errors: currently not passed out of this function
+    double err_o2 = 0;
+    double err_o4 = 0;
+    jackknife(mean_o, err_o, jkBlocks_o);
+    jackknife(mean_o2, err_o2, jkBlocks_o2);
+    jackknife(mean_o4, err_o4, jkBlocks_o4);    
+
+    out << " Done." << endl;
+
+    return ReweightedMomentsJK(mean_o, mean_o2, mean_o4,
+        jkBlocks_o, jkBlocks_o2, jkBlocks_o4);
+}
+
 
 HistogramDouble* MultireweightHistosPTJK::reweightEnergyHistogram(double targetControlParameter) {
     out << "Jackknife estimation of energy histogram at cp=" << targetControlParameter << ", " << binCount << " bins... " << endl;

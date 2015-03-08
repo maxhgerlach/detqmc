@@ -121,6 +121,7 @@ public:
     //jackknifes each time series into blockcount blocks (this allows for differing lengths, e.g. if they have been
     //sub-sampled before) --> additional error estimation
     virtual ReweightingResult reweight(double targetControlParameter);
+    virtual ReweightedMomentsJK reweightObservableMoments(double targetControlParameter);    
     virtual HistogramDouble* reweightEnergyHistogram(double targetControlParameter);
     virtual HistogramDouble* reweightObservableHistogram(double targetControlParameter,
             unsigned numBins);

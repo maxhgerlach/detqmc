@@ -1411,6 +1411,22 @@ ReweightingResult MultireweightHistosPT::reweightWithHistograms(double targetCon
     return results;
 }
 
+ReweightedMomentsJK MultireweightHistosPT::reweightObservableMoments(
+        double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
+    
+    double firstMoment  = 0;
+    double secondMoment = 0;
+    double fourthMoment = 0;
+    reweight1stMomentInternalWithoutErrors(observableTimeSeries, w_kn, firstMoment);
+    reweight2ndMoment4thMomentInternalWithoutErrors(
+        observableTimeSeries, w_kn, secondMoment, fourthMoment);
+
+    w_kn.clear();
+
+    return ReweightedMomentsJK(firstMoment, secondMoment, fourthMoment);
+}
+
 HistogramDouble* MultireweightHistosPT::reweightEnergyHistogramWithoutErrors(
         double targetControlParameter) {
     out << "Reweighting energy histogram... ";

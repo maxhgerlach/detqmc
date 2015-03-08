@@ -25,6 +25,7 @@
 #include "logval.h"
 #include "histogram.h"
 #include "reweightingresult.h"
+#include "reweightedmomentsjk.h"
 
 //internally don't use the HistogramT class, which would use maps internally
 
@@ -180,6 +181,8 @@ public:
     //FS-multi-reweighting without error estimation, all observables known
     //using time series:
     virtual ReweightingResult reweight(double targetControlParameter);
+    //provide <o>, <o**2>, <o**4> without error estimation:
+    virtual ReweightedMomentsJK reweightObservableMoments(double targetControlParameter);
 
     //FS-multi-reweighting without error estimation, all observables known,
     // + energy and observable histograms at the target beta
