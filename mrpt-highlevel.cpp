@@ -15,7 +15,8 @@
 #include <fstream>
 #include <exception>
 #include <map>
-#include <memory>               // shared_prt
+#include <memory>               // shared_ptr
+#include <array>
 #include <string>
 #include "metadata.h"
 #include "tools.h"
@@ -25,6 +26,7 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include "dlib/cmd_line_parser.h" // for simplicity: keep using DLIB for this instead of rewriting the handling below with Boost
+#include "boost/filesystem.hpp"
 #pragma GCC diagnostic pop
 #include "mrpt.h"
 #include "mrpt-jk.h"
@@ -36,6 +38,10 @@ using namespace std;
 namespace {
     MultireweightHistosPT* mr = 0;
 
+    enum BC { PBC=0, APBCX=1, APBCY=2, APBCXY=3, NONE };
+    const std::array<BC, 4> all_BC = {{PBC, APBCX, APBCY, APBCXY}};
+    std::array<std::shared_ptr<MultireweightHistosPT>, 4> mrbc;
+    
     unsigned binCount = 0;
     bool discreteIsingBins = false;
 
@@ -52,6 +58,8 @@ namespace {
     ofstream dev_null("/dev/null");
     string outputDirPrefix;
     string infoFilename;
+
+    std::array<std::string, 4> infoFilenamesBC;
 
     typedef dlib::cmd_line_parser<char>::check_1a_c clp;
     clp parser;
@@ -1269,7 +1277,241 @@ void getNeff_lm(int *outL, int *outM, double **outArray2) {
 }
 
 void getOriginalControlParameterValues(int *outK, double **outArray1) {
-    *outK = mr->numReplicas;
-    *outArray1 = mr->controlParameterValues.data();
+    if (mr) {
+        *outK = mr->numReplicas;
+        *outArray1 = mr->controlParameterValues.data();
+    } else {
+        *outK = mrbc[PBC]->numReplicas;
+        *outArray1 = mrbc[PBC]->controlParameterValues.data();
+    }
+}
+
+
+
+
+
+void initBC() {
+    observable = MapPtr(new Map());
+    observableSquared = MapPtr(new Map());    
+    susceptibility = MapPtr(new Map());
+    binder = MapPtr(new Map());
+    binderRatio = MapPtr(new Map());    
+    observableError = MapPtr(new Map());
+    observableSquaredError = MapPtr(new Map());    
+    susceptibilityError = MapPtr(new Map());
+    binderError = MapPtr(new Map());
+    binderRatioError = MapPtr(new Map());    
+    direct_observable = MapPtr(new Map());
+    direct_observableSquared = MapPtr(new Map());    
+    direct_susceptibility = MapPtr(new Map());
+    direct_binder = MapPtr(new Map());
+    direct_binderRatio = MapPtr(new Map());    
+    direct_observableError = MapPtr(new Map());
+    direct_observableSquaredError = MapPtr(new Map());    
+    direct_susceptibilityError = MapPtr(new Map());
+    direct_binderError = MapPtr(new Map());
+    direct_binderRatioError = MapPtr(new Map());    
+    
+    for (BC bc: all_BC) {
+        std::shared_ptr<MultireweightHistosPT>& mr_instance = mrbc[bc];
+        
+        if (use_jackknife) {
+            mr_instance = std::shared_ptr<MultireweightHistosPT>(
+                new MultireweightHistosPTJK(jackknifeBlocks,
+                                            be_quiet ? dev_null : cout));
+        } else {
+            mr_instance = std::shared_ptr<MultireweightHistosPT>(
+                new MultireweightHistosPT(be_quiet ? dev_null : cout));
+        }
+
+        mr_instance->addSimulationInfo(infoFilenamesBC[bc]);
+    }
+
+    //TODO: currently command line arguments are the only way to specify
+    //input time series
+    namespace boost::filesystem = fs;
+    for (unsigned arg = 0; arg < parser.number_of_arguments(); ++arg) {
+        std::string series_filename = parser[arg];
+
+        // find bc from infofilename path
+        BC this_bc = NONE;
+        for (BC bc: all_BC) {
+            if (fs::canonical(fs::path(infoFilename[bc]).parent_directory()) ==
+                    fs::canonical(fs::path(series_filename).parent_directory().parent_directory())) {
+                this_bc = bc;
+                break;
+            }
+        }
+        
+        std::shared_ptr<MultireweightHistosPT> mr_instance = mrbc[this_bc];
+        
+        switch (timeSeriesFormat) {
+        case COL1:
+            mr_instance->addInputTimeSeries_singleColumn(series_filename, subsample, discardSamples);
+            break;
+        case COL2:
+            mr_instance->addInputTimeSeries_twoColumn(series_filename, subsample, discardSamples);
+            break;
+        }
+    }
+
+    for (auto mr_instance: mrbc) {
+        if (sortByCp) {
+            mr_instance->sortTimeSeriesByControlParameter();
+        }
+    }
+
+    if (do_directEstimates) {
+        directResultsBC();
+    }
+
+    for (auto mr_instance: mrbc) {
+        if (non_iterative) {
+            mr_instance->findDensityOfStatesNonIteratively();
+        }
+
+        if (noTau) {
+            mr_instance->setBinInefficienciesToUnity();
+        } else if (globalTau) {
+            mr_instance->measureGlobalInefficiencies(false);
+        } else {
+            mr_instance->measureBinInefficiencies(false);
+        }
+
+        mr_instance->updateEffectiveCounts();        
+
+        if (maxIterations > 0) {
+            mr_instance->findPartitionFunctionsAndDensityOfStates(iterationTolerance, maxIterations);
+        }
+        
+    }
+}
+
+
+void initFromCommandLineBC(int argc, char** argv) {
+    //Command line parsing
+    parser.add_option("help", "display this help message");
+    parser.add_option("q", "be less verbose");
+    parser.add_option("info-pbc", "info generated by simulation (\"info.dat\"), pbc simulation", 1);
+    parser.add_option("info-apbcx", "info generated by simulation (\"info.dat\"), apbc-x simulation", 1);
+    parser.add_option("info-apbcy", "info generated by simulation (\"info.dat\"), apbc-y simulation", 1);
+    parser.add_option("info-apbcxy", "info generated by simulation (\"info.dat\"), apbc-xy simulation", 1);    
+    parser.add_option("b", "number of energy bins", 1);
+    parser.add_option("i", "max number of iterations to determine Z[cp]", 1);
+    parser.add_option("t", "tolerance in iterative determination of Z[cp]", 1);
+
+    parser.add_option("direct", "also calculate direct averages from the time series at the original temperatures without any reweighting");
+
+    parser.add_option("non-iterative", "first do a non-iterative estimation of the density of states as in Fenwick, 2008");
+
+    parser.add_option("cp-range", "Takes three arguments to determine the range of control parameters to reweight to: the minimum, the maximum and the step size", 3);
+    parser.add_option("cp-auto-range", "Takes one argument to determine the control parameter to reweight to: the step size; minimum and maximum are determinded automatically", 1);    
+    parser.add_option("j", "use jack-knife error estimation, indicate number of blocks", 1);
+
+    parser.add_option("sub-sample", "Sub samples the time series as they are read in (pass number of data points to be put into one sample", 1);
+    parser.add_option("d", "Discard the first samples of the time series (pass number of samples to be left out) -- allows for further thermalization.", 1);
+    parser.add_option("sort", "Sort replica timeseries by temperatures before doing any processing (simulate canonical data). This could hide correlations.");
+
+    parser.add_option("global-tau", "Do not estimate statistical inefficiencies for individual bins, but only globally for each temperature -- g_km = g_k");
+    parser.add_option("no-tau", "Ignore all differences in statistical inefficiencies when reweighting -- g_km = 1");
+
+    parser.add_option("time-series-format", "Set to number of columns: 1 (default) or 2; 1-column time series are already sorted by control parameter", 1);
+
+    //further general arguments: file names of energy/observable time series [for any bc, but should be in separate directories for each bc]
+    parser.parse(argc, argv);
+
+    //echo whole commandline:
+    cout << "command line: ";
+    for (int arg = 0; arg < argc; ++arg) {
+        cout << argv[arg] << " ";
+    }
+    cout << endl;
+
+    const char* one_time_opts[] = {"info", "b", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format"};
+    parser.check_one_time_options(one_time_opts);
+    const char* incompatible1[] = {"global-tau", "no-tau"};
+    parser.check_incompatible_options(incompatible1);
+    const char* incompatible4[] = {"cp-range", "cp-auto-range"};
+    parser.check_incompatible_options(incompatible4);
+
+    if (parser.option("help")) {
+        cout << "Multihistogram reweighting for time series originating from parallel tempering or canonical simulations" << endl;
+        cout << "This version is meant to average over different boundary conditions [pbc, apbc-x, apbc-y, apbc-xy] -- pass data from 4 parallel tempering simulations" << endl;
+        cout << "Command line options understood:" << endl;
+        parser.print_options(cout);
+        cout << endl;
+        return;
+    }
+
+    if (const clp::option_type& jk = parser.option("j")) {
+        setJackknife(true, fromString<unsigned>(jk.argument()));
+    }
+
+    be_quiet = parser.option("q");
+    infoFilenames[PBC] = parser.option("info-pbc").argument();
+    infoFilenames[APBCX]  = parser.option("info-apbcx").argument();    
+    infoFilenames[APBCY]  = parser.option("info-apbcy").argument();    
+    infoFilenames[APBCXY] = parser.option("info-apbcxy").argument();    
+
+    if (not parser.option("b")) {
+        cerr << "energy bin count not specified (option -b)!" << endl;
+    } else {
+        binCount = dlib::sa = parser.option("b").argument();
+    }
+
+    do_directEstimates = parser.option("direct");
+
+    non_iterative = parser.option("non-iterative");
+    maxIterations = (non_iterative ? 0 : 10000);            //if non-iterative estimation is attempted, by default don't do any iterations, else default to 10000
+    if (parser.option("i")) {
+        maxIterations = dlib::sa = parser.option("i").argument();
+    }
+    if (parser.option("t")) {
+        iterationTolerance = dlib::sa = parser.option("t").argument();
+    }
+
+    if (const clp::option_type& ss = parser.option("sub-sample")) {
+        subsample = dlib::sa = ss.argument();
+    }
+
+    if (const clp::option_type& dd = parser.option("d")) {
+        discardSamples = dlib::sa = dd.argument();
+    }
+
+    sortByCp = parser.option("sort");
+
+    globalTau = parser.option("global-tau");
+    noTau = parser.option("no-tau");
+
+    if (const clp::option_type& tsf_opt = parser.option("time-series-format")) {
+        std::string tsf = tsf_opt.argument();
+        if (tsf == "1") {
+            timeSeriesFormat = COL1;
+        } else if (tsf == "2") {
+            timeSeriesFormat = COL2;
+        } else {
+            cerr << "Invalid time series format -- should be \"1\" or \"2\"" << endl;
+        }
+    }
+    
+    initBC();
+
+    if (const clp::option_type& rr = parser.option("cp-range")) {
+        double cpMin = dlib::sa = rr.argument(0);
+        double cpMax = dlib::sa = rr.argument(1);
+        double cpStep = dlib::sa = rr.argument(2);
+        reweightRangeBC(cpMin, cpMax, cpStep);
+    }
+
+    if (const clp::option_type& rr = parser.option("cp-auto-range")) {
+        // double cpMin = dlib::sa = rr.argument(0);
+        // double cpMax = dlib::sa = rr.argument(1);
+        auto cpMinMax = std::minmax_element(mr[PBC]->controlParameterValues.begin(),
+                                            mr[PBC]->controlParameterValues.end());
+        double cpMin = *cpMinMax.first;
+        double cpMax = *cpMinMax.second;
+        double cpStep = dlib::sa = rr.argument(0);
+        reweightRangeBC(cpMin, cpMax, cpStep);
+    }    
 }
 
