@@ -138,13 +138,13 @@ T jackknife(
 //their error using standard jackknife
 template<typename T> void jackknife(T& outBlockAverage, T& outBlockError,
                                     const std::vector<T>& blockValues) {
-    unsigned bc = blockValues.size();
-    for (unsigned b = 0; b < bc; ++b) {
+    std::size_t bc = blockValues.size();
+    for (std::size_t b = 0; b < bc; ++b) {
         outBlockAverage += blockValues[b];
     }
     outBlockAverage /= static_cast<T>(bc);
     T squaredDeviation = 0;
-    for (unsigned b = 0; b < bc; ++b) {
+    for (std::size_t b = 0; b < bc; ++b) {
         squaredDeviation += std::pow(outBlockAverage - blockValues[b], 2);
     }
     outBlockError = std::sqrt(double(bc - 1) / double(bc) * squaredDeviation);
@@ -331,16 +331,16 @@ T tauint_adaptive(const std::vector<T>& data) {
 
 //if end==0: compute average over whole vector
 //else compute average for elements at start, start+1, ..., end-1
-double average(const std::vector<double>* vec, int start=0, int end=0);
-double average(const std::vector<int>* vec, int start=0, int end=0);
+double average(const std::vector<double>* vec, std::size_t start=0, std::size_t end=0);
+double average(const std::vector<int>* vec, std::size_t start=0, std::size_t end=0);
 
 
 //if end==0: compute square average over whole vector
 //else compute sq. average for elements at start, start+1, ..., end-1
-double sqAverage(const std::vector<double>* vec, int start=0, int end=0);
+double sqAverage(const std::vector<double>* vec, std::size_t start=0, std::size_t end=0);
 
-double variance(const std::vector<double>* numbers, double meanValue, int N=0);
-double variance(const std::vector<int>* numbers, double meanValue, int N=0);
+double variance(const std::vector<double>* numbers, double meanValue, std::size_t N=0);
+double variance(const std::vector<int>* numbers, double meanValue, std::size_t N=0);
 
 
 typedef std::map<int, double> AutoCorrMap;
@@ -453,8 +453,9 @@ template <typename T,
           typename TTimeSeriesPtr // might be std::vector<T>*, or a shared_ptr
           >
 void findMinMax(const std::vector<TTimeSeriesPtr>& timeSeriesVector, T& min, T& max) {
-    T runningMin, runningMax;
-    int firstTimeSeries = timeSeriesVector.size();
+    T runningMin = 0;
+    T runningMax = 0;
+    std::size_t firstTimeSeries = timeSeriesVector.size();
     for (unsigned k = 0; k < timeSeriesVector.size(); ++k) {
         if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
             findMinMax(*timeSeriesVector[k], runningMin, runningMax);
@@ -462,7 +463,7 @@ void findMinMax(const std::vector<TTimeSeriesPtr>& timeSeriesVector, T& min, T& 
             break;
         }
     }
-    for (unsigned k = firstTimeSeries + 1; k < timeSeriesVector.size(); ++k) {
+    for (std::size_t k = firstTimeSeries + 1; k < timeSeriesVector.size(); ++k) {
         T curMin, curMax;
         if (timeSeriesVector[k] and timeSeriesVector[k]->size() > 0) {
             findMinMax(*timeSeriesVector[k], curMin, curMax);

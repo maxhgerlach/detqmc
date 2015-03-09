@@ -286,7 +286,7 @@ void DataSeriesLoader<double>::readFromFile(
 //  } else {
 
     // the following is zero if we have discarded initial entries, one otherwise
-    uint32_t valuesRead = data.at(0)->size(); 
+    uint32_t valuesRead = (uint32_t)data.at(0)->size(); 
     //number of samples not known beforehand, resize on the go:
     if (subsample > 1) {
         uint32_t samples = 1;

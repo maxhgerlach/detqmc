@@ -115,7 +115,7 @@ struct HistogramT {
         histo.clear();
         cp = cp_;
         N = N_;
-        binCount = vec.size();
+        binCount = (unsigned)vec.size();
         minBin = minVal;
         maxBin = maxVal;
         const KeyType SMALL = static_cast<KeyType>(1e-10);
