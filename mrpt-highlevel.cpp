@@ -20,6 +20,7 @@
 #include <string>
 #include "metadata.h"
 #include "tools.h"
+#include "statistics.h"
 #include "datamapwriter.h"
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -64,7 +65,7 @@ namespace {
     typedef dlib::cmd_line_parser<char>::check_1a_c clp;
     clp parser;
 
-    unsigned subsample = 1;
+    unsigned subsampleHowMuch = 1;
     unsigned discardSamples = 0;
     bool sortByCp = false;
     bool saveTauInt = false;
@@ -194,7 +195,7 @@ void initFromCommandLine(int argc, char** argv) {
     bool createHistograms = parser.option("h");
 
     if (const clp::option_type& ss = parser.option("sub-sample")) {
-        subsample = dlib::sa = ss.argument();
+        subsampleHowMuch = dlib::sa = ss.argument();
     }
 
     if (const clp::option_type& dd = parser.option("d")) {
@@ -559,7 +560,7 @@ void writeOutResults() {
 }
 
 void setSubsample(unsigned samplesSize) {
-    subsample = samplesSize;
+    subsampleHowMuch = samplesSize;
 }
 
 void setOutputDirectory(const char *dir) {
@@ -635,10 +636,10 @@ void init() {
     for (unsigned arg = 0; arg < parser.number_of_arguments(); ++arg) {
         switch (timeSeriesFormat) {
         case COL1:
-            mr->addInputTimeSeries_singleColumn(parser[arg], subsample, discardSamples);
+            mr->addInputTimeSeries_singleColumn(parser[arg], subsampleHowMuch, discardSamples);
             break;
         case COL2:
-            mr->addInputTimeSeries_twoColumn(parser[arg], subsample, discardSamples);
+            mr->addInputTimeSeries_twoColumn(parser[arg], subsampleHowMuch, discardSamples);
             break;
         }
     }
@@ -1329,15 +1330,15 @@ void initBC() {
 
     //TODO: currently command line arguments are the only way to specify
     //input time series
-    namespace boost::filesystem = fs;
+    namespace fs = boost::filesystem;
     for (unsigned arg = 0; arg < parser.number_of_arguments(); ++arg) {
         std::string series_filename = parser[arg];
 
         // find bc from infofilename path
         BC this_bc = NONE;
         for (BC bc: all_BC) {
-            if (fs::canonical(fs::path(infoFilename[bc]).parent_directory()) ==
-                    fs::canonical(fs::path(series_filename).parent_directory().parent_directory())) {
+            if (fs::canonical(fs::path(infoFilenamesBC[bc]).parent_path()) ==
+                    fs::canonical(fs::path(series_filename).parent_path().parent_path())) {
                 this_bc = bc;
                 break;
             }
@@ -1347,10 +1348,10 @@ void initBC() {
         
         switch (timeSeriesFormat) {
         case COL1:
-            mr_instance->addInputTimeSeries_singleColumn(series_filename, subsample, discardSamples);
+            mr_instance->addInputTimeSeries_singleColumn(series_filename, subsampleHowMuch, discardSamples);
             break;
         case COL2:
-            mr_instance->addInputTimeSeries_twoColumn(series_filename, subsample, discardSamples);
+            mr_instance->addInputTimeSeries_twoColumn(series_filename, subsampleHowMuch, discardSamples);
             break;
         }
     }
@@ -1361,9 +1362,9 @@ void initBC() {
         }
     }
 
-    if (do_directEstimates) {
-        directResultsBC();
-    }
+    // if (do_directEstimates) {
+    //     directResultsBC();
+    // }
 
     for (auto mr_instance: mrbc) {
         if (non_iterative) {
@@ -1400,7 +1401,7 @@ void initFromCommandLineBC(int argc, char** argv) {
     parser.add_option("i", "max number of iterations to determine Z[cp]", 1);
     parser.add_option("t", "tolerance in iterative determination of Z[cp]", 1);
 
-    parser.add_option("direct", "also calculate direct averages from the time series at the original temperatures without any reweighting");
+    // parser.add_option("direct", "also calculate direct averages from the time series at the original temperatures without any reweighting");
 
     parser.add_option("non-iterative", "first do a non-iterative estimation of the density of states as in Fenwick, 2008");
 
@@ -1448,10 +1449,10 @@ void initFromCommandLineBC(int argc, char** argv) {
     }
 
     be_quiet = parser.option("q");
-    infoFilenames[PBC] = parser.option("info-pbc").argument();
-    infoFilenames[APBCX]  = parser.option("info-apbcx").argument();    
-    infoFilenames[APBCY]  = parser.option("info-apbcy").argument();    
-    infoFilenames[APBCXY] = parser.option("info-apbcxy").argument();    
+    infoFilenamesBC[PBC] = parser.option("info-pbc").argument();
+    infoFilenamesBC[APBCX]  = parser.option("info-apbcx").argument();    
+    infoFilenamesBC[APBCY]  = parser.option("info-apbcy").argument();    
+    infoFilenamesBC[APBCXY] = parser.option("info-apbcxy").argument();    
 
     if (not parser.option("b")) {
         cerr << "energy bin count not specified (option -b)!" << endl;
@@ -1459,7 +1460,7 @@ void initFromCommandLineBC(int argc, char** argv) {
         binCount = dlib::sa = parser.option("b").argument();
     }
 
-    do_directEstimates = parser.option("direct");
+    // do_directEstimates = parser.option("direct");
 
     non_iterative = parser.option("non-iterative");
     maxIterations = (non_iterative ? 0 : 10000);            //if non-iterative estimation is attempted, by default don't do any iterations, else default to 10000
@@ -1471,7 +1472,7 @@ void initFromCommandLineBC(int argc, char** argv) {
     }
 
     if (const clp::option_type& ss = parser.option("sub-sample")) {
-        subsample = dlib::sa = ss.argument();
+        subsampleHowMuch = dlib::sa = ss.argument();
     }
 
     if (const clp::option_type& dd = parser.option("d")) {
@@ -1506,8 +1507,8 @@ void initFromCommandLineBC(int argc, char** argv) {
     if (const clp::option_type& rr = parser.option("cp-auto-range")) {
         // double cpMin = dlib::sa = rr.argument(0);
         // double cpMax = dlib::sa = rr.argument(1);
-        auto cpMinMax = std::minmax_element(mr[PBC]->controlParameterValues.begin(),
-                                            mr[PBC]->controlParameterValues.end());
+        auto cpMinMax = std::minmax_element(mrbc[PBC]->controlParameterValues.begin(),
+                                            mrbc[PBC]->controlParameterValues.end());
         double cpMin = *cpMinMax.first;
         double cpMax = *cpMinMax.second;
         double cpStep = dlib::sa = rr.argument(0);
@@ -1515,3 +1516,80 @@ void initFromCommandLineBC(int argc, char** argv) {
     }    
 }
 
+
+template<class ProvideObservableMoments_bc_cp>
+void handleObservableMomentsBC(ProvideObservableMoments_bc_cp callable, double cp) {
+    std::array<ReweightedMomentsJK, 4> moments_bc;        
+    // for (BC bc: all_BC) {
+    //     moments[bc] = mrbc[bc]->reweightObservableMoments(cp);
+    // }
+    for (BC bc: all_BC) {
+        moments_bc[bc] = callable(bc, cp);
+    }
+
+    ReweightedMomentsJK moments_averaged;
+    for (BC bc: all_BC) {
+        moments_averaged.o  += moments_bc[bc].o;
+        moments_averaged.o2 += moments_bc[bc].o2;
+        moments_averaged.o4 += moments_bc[bc].o4;
+    }
+    moments_averaged.o  /= 4.0;
+    moments_averaged.o2 /= 4.0;
+    moments_averaged.o4 /= 4.0;
+        
+    if (use_jackknife) {
+        moments_averaged.jkBlocks_o.resize (jackknifeBlocks, 0.0);
+        moments_averaged.jkBlocks_o2.resize(jackknifeBlocks, 0.0);
+        moments_averaged.jkBlocks_o4.resize(jackknifeBlocks, 0.0);
+            
+        for (unsigned b = 0; b < jackknifeBlocks; ++b) {
+            for (BC bc: all_BC) {
+                moments_averaged.jkBlocks_o[b]  += moments_bc[bc].jkBlocks_o[b];
+                moments_averaged.jkBlocks_o2[b] += moments_bc[bc].jkBlocks_o2[b];
+                moments_averaged.jkBlocks_o4[b] += moments_bc[bc].jkBlocks_o4[b];
+            }
+            moments_averaged.jkBlocks_o[b]  /= 4.0;
+            moments_averaged.jkBlocks_o2[b] /= 4.0;
+            moments_averaged.jkBlocks_o4[b] /= 4.0;
+        }
+            
+        // estimate quantities, also non-linear combinations of expectation values:
+        jackknife((*observable)[cp], (*observableError)[cp], moments_averaged.jkBlocks_o);
+            
+        std::vector<double> jkBlocks_binderRatio(jackknifeBlocks, 0.0);
+        std::vector<double> jkBlocks_susceptibility(jackknifeBlocks, 0.0);            
+        for (unsigned b = 0; b < jackknifeBlocks; ++b) {
+            jkBlocks_binderRatio[b] = moments_averaged.jkBlocks_o4[b] / std::pow(moments_averaged.jkBlocks_o2[b], 2);
+            jkBlocks_susceptibility[b] = mrbc[PBC]->systemSize * (moments_averaged.jkBlocks_o2[b] -
+                                                                  pow(moments_averaged.jkBlocks_o[b], 2));
+        }
+            
+        jackknife((*binderRatio)[cp], (*binderRatioError)[cp], jkBlocks_binderRatio);
+        jackknife((*susceptibility)[cp], (*susceptibilityError)[cp], jkBlocks_susceptibility);            
+            
+    } else {
+        (*observable)[cp] = moments_averaged.o;
+        (*binderRatio)[cp] = moments_averaged.o4 / std::pow(moments_averaged.o2, 2);
+        (*susceptibility)[cp] = mrbc[PBC]->systemSize * (moments_averaged.o2 -
+                                                         pow(moments_averaged.o, 2));
+    }
+}
+
+void reweightBC(double cp) {
+    handleObservableMomentsBC( [&](BC bc, double cp) -> ReweightedMomentsJK {
+            return mrbc[bc]->reweightObservableMoments(cp);
+        }, cp);
+    writeOutResults();
+}
+
+void reweightRangeBC(double cpMin, double cpMax, double cpStep) {
+    for (double cp = cpMin; cp <= cpMax; cp += cpStep) {
+        handleObservableMomentsBC( [&](BC bc, double cp) -> ReweightedMomentsJK {
+                return mrbc[bc]->reweightObservableMoments(cp);
+            }, cp);
+    }
+    writeOutResults();
+}
+
+// void directResultsBC() {
+// }

@@ -64,7 +64,7 @@ void MultireweightHistosPTJK::createHistogramsHelperJK() {
         << " binCount=" << binCount << endl;
 
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             //get bin number, correct due to rounding in cast:
             int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
@@ -107,7 +107,7 @@ void MultireweightHistosPTJK::createHistogramsHelperDiscreteJK() {
         << " for originally discrete bins " << endl;
 
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             //get bin number, correct due to rounding in cast:
 //            int m = static_cast<int>(((*energyTimeSeries[k])[n] - minEnergyNormalized) / binSize);
@@ -186,7 +186,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
         initArray(k_meanObsSquared_bl, 0);
         Double2Array k_meanObsToTheFourth_bl(boost::extents[blockCount][numReplicas]);
         initArray(k_meanObsToTheFourth_bl, 0);
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         //sum up:
         for (unsigned n = 0; n < N_k; ++n) {
@@ -552,7 +552,7 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
     double meanObservableToTheFourth = 0;
 
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             const unsigned curBlock = n / jkBlockSize;
@@ -586,7 +586,7 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
 void MultireweightHistosPTJK::reweight1stMomentInternalJK(const DoubleSeriesCollection& timeSeries, const DoubleSeriesCollection& w_kn, unsigned jkBlock, double& firstMoment) {
     double first = 0;
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             const unsigned curBlock = n / jkBlockSize;
@@ -609,7 +609,7 @@ void MultireweightHistosPTJK::reweight1stMoment2ndMomentInternalJK(
     double first = 0;
     double second = 0;
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             const unsigned curBlock = n / jkBlockSize;
@@ -634,7 +634,7 @@ void MultireweightHistosPTJK::reweight2ndMoment4thMomentInternalJK(
     double second = 0;
     double fourth = 0;
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             const unsigned curBlock = n / jkBlockSize;
@@ -743,7 +743,7 @@ MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::compute
 
     //calculate weight for each sample
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = m_kn[k]->size();
+        unsigned N_k = (unsigned)m_kn[k]->size();
         w_kn[k].reset(new vector<double>(N_k));
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
@@ -933,7 +933,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogram(double tar
     for (signed b = 0; b < (signed)blockCount; ++ b) {
         DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, b);
         for (unsigned k = 0; k < numReplicas; ++k) {
-            unsigned N_k = observableTimeSeries[k]->size();
+            unsigned N_k = (unsigned)observableTimeSeries[k]->size();
             unsigned jkBlockSize = N_k / blockCount;
             for (unsigned n = 0; n < N_k; ++n) {
                 const int curBlock = n / jkBlockSize;
@@ -1004,7 +1004,7 @@ HistogramDouble* MultireweightHistosPTJK::reweightObservableHistogramJK(
 
     DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = observableTimeSeries[k]->size();
+        unsigned N_k = (unsigned)observableTimeSeries[k]->size();
         unsigned jkBlockSize = N_k / blockCount;
         for (unsigned n = 0; n < N_k; ++n) {
             const unsigned curBlock = n / jkBlockSize;

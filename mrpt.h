@@ -129,9 +129,11 @@ public:
     //compute averages directly at the original temperatures, only
     //from data at the original temperatures -- no reweighting
     //return a newly allocated map
-    //    beta -> results
+    //    cp -> results
     typedef std::map<double, ReweightingResult> ResultsMap;
     virtual ResultsMap* directNoReweighting();
+    typedef std::map<double, ReweightedMomentsJK> MomentsResultsMap;
+//    virtual std::shared_ptr<MomentsResultsMap> directObservableMoments;
 
     //sort replica time series according to control parameter index, after this call
     //the timeseries for replica i only contain measurements at, e.g., temperature

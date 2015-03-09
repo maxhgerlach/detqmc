@@ -53,7 +53,7 @@ void MultireweightHistosPT::addSimulationInfo(const std::string& filename) {
         boost::split(controlParameterValues_string_vec,
                      controlParameterValues_string,
                      boost::is_any_of(" "));
-        numReplicas = controlParameterValues_string_vec.size();
+        numReplicas = (uint32_t)controlParameterValues_string_vec.size();
         controlParameterValues.clear();
         controlParameterValues.reserve(numReplicas);
         for (const auto& str : controlParameterValues_string_vec) {
@@ -241,7 +241,7 @@ void MultireweightHistosPT::addInputTimeSeries_singleColumn(const std::string& f
             // controlParameterIndex not defined --> get it from the actual controlParameter value
             double targetValue;
             input.getMeta(controlParameterName, targetValue);
-            replicaIndex = findNearest(controlParameterValues, targetValue);
+            replicaIndex = (uint32_t)findNearest(controlParameterValues, targetValue);
         }
     }
     
@@ -301,7 +301,7 @@ void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
 
     if (addedObservableTimeSeries > 0) {
         //all time series need to have the same length
-        unsigned M = energyTimeSeries[0]->size();
+        unsigned M = (unsigned)energyTimeSeries[0]->size();
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M or
                 observableTimeSeries[r]->size() != M) {
@@ -331,7 +331,7 @@ void MultireweightHistosPT::sortTimeSeriesByControlParameter() {
         }
     } else {
         //all time series need to have the same length
-        unsigned M = energyTimeSeries[0]->size();
+        unsigned M = (unsigned)energyTimeSeries[0]->size();
         for (unsigned r = 1; r < numReplicas; ++r) {
             if (energyTimeSeries[r]->size() != M) {
                 throw GeneralError("Time series length mismatch: for control-parameter-sorted "
@@ -383,7 +383,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
         vector<double> k_meanObs_l(numReplicas, 0);
         vector<double> k_meanObsSquared_l(numReplicas);
         vector<double> k_meanObsToTheFourth_l(numReplicas, 0);
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         //sum up:
         for (unsigned n = 0; n < N_k; ++n) {
             int cpi = (*cpiTimeSeries[k])[n];
@@ -819,7 +819,7 @@ void MultireweightHistosPT::measureBinInefficiencies(bool saveAutocorr) {
         vector<char> zeroCrossed(binCount, false);
         unsigned countZeroCrossed = 0;
 
-        unsigned N = energyTimeSeries[k]->size();
+        unsigned N = (unsigned)energyTimeSeries[k]->size();
         if (N == 0) {
             //skip empty time series
             continue;
@@ -1159,7 +1159,7 @@ MultireweightHistosPT::DoubleSeriesCollection MultireweightHistosPT::computeWeig
     //calculate weight for each sample
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = m_kn[k]->size();
+        unsigned N_k = (unsigned)m_kn[k]->size();
         w_kn[k].reset(new vector<double>(N_k));
         for (unsigned n = 0; n < N_k; ++n) {
             unsigned m = (*m_kn[k])[n];
@@ -1229,7 +1229,7 @@ void MultireweightHistosPT::reweight1stMomentInternalWithoutErrors(const DoubleS
     double first = 0;
     #pragma omp parallel for reduction( + : first)
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             double v = (*timeSeries[k])[n];
             first += v * (*w_kn[k])[n];
@@ -1248,7 +1248,7 @@ void MultireweightHistosPT::reweight1stMoment2ndMomentInternalWithoutErrors(
     double second = 0;
     #pragma omp parallel for reduction( + : first, second)
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             double v = (*timeSeries[k])[n];
             first += v * (*w_kn[k])[n];
@@ -1268,7 +1268,7 @@ void MultireweightHistosPT::reweight2ndMoment4thMomentInternalWithoutErrors(
     double fourth = 0;
     #pragma omp parallel for reduction( + : second, fourth)
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = timeSeries[k]->size();
+        unsigned N_k = (unsigned)timeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             double v = (*timeSeries[k])[n];
             second += v*v * (*w_kn[k])[n];
@@ -1293,7 +1293,7 @@ ReweightingResult MultireweightHistosPT::reweightWithoutErrorsInternal
 
     #pragma omp parallel for reduction( + : meanEnergy, meanEnergySquared, meanObservable, meanObservableSquared, meanObservableToTheFourth)
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             double e = (*energyTimeSeries[k])[n];
             double o = (*observableTimeSeries[k])[n];
@@ -1484,7 +1484,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorr() {
     // rho_kmn = (-p_km * p_kn) / sqrt(p_km(1-p_km)*p_kn(1-p_kn))
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         if (N_k == 0) {
             //skip non-added time series
             continue;
@@ -1508,7 +1508,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorr() {
     fs::create_directory("crosscorr");
     fs::current_path("crosscorr");
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         if (N_k == 0) {
             //skip non-added time series
             continue;
@@ -1541,7 +1541,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
     //            sqrt(Var(psi_m)Var(psi_n))>
     #pragma omp parallel for
     for (int k = 0; k < (signed)numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         if (N_k == 0) {
             //skip non-added time series
             continue;
@@ -1589,7 +1589,7 @@ void MultireweightHistosPT::computeAndSaveHistogramCrossCorrAlt() {
     fs::create_directory("crosscorr-alt");
     fs::current_path("crosscorr-alt");
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = energyTimeSeries[k]->size();
+        unsigned N_k = (unsigned)energyTimeSeries[k]->size();
         if (N_k == 0) {
             //skip non-added time series
             continue;
@@ -1619,7 +1619,7 @@ void MultireweightHistosPT::reweightObservableHistogramInternal(double targetCon
     double obsBinSize = (maxObservableNormalized - minObservableNormalized + SMALL) / obsBinCount;
 
     for (unsigned k = 0; k < numReplicas; ++k) {
-        unsigned N_k = observableTimeSeries[k]->size();
+        unsigned N_k = (unsigned)observableTimeSeries[k]->size();
         for (unsigned n = 0; n < N_k; ++n) {
             unsigned curBin = static_cast<int>(((*observableTimeSeries[k])[n] - minObservableNormalized) / obsBinSize);
             obsHisto[curBin] += (*w_kn[k])[n];

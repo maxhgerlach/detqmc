@@ -101,7 +101,7 @@ void initBC();    //after this we can proceed estimating quantities using reweig
 
 void reweightBC(double cp);
 void reweightRangeBC(double cpMin, double cpMax, double cpStep);
-void directResultsBC();
+// void directResultsBC();
 
 
 

@@ -445,19 +445,28 @@ target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt ${EXTRA_LIBRARIES})
 
 
-set(mrpt_SRC main-mrpt.cpp
+set(mrpt_COMMON_SRC
   mrpt-highlevel.cpp
   mrpt.cpp
   mrpt-jk.cpp
   statistics.cpp
   )
-add_executable(mrpt ${mrpt_SRC})
+add_library(mrpt_COMMON ${mrpt_COMMON_SRC})
+add_executable(mrpt main-mrpt.cpp)
+target_link_libraries(mrpt mrpt_COMMON)
+add_executable(mrptbc main-mrptbc.cpp)
+target_link_libraries(mrptbc mrpt_COMMON)
 if(${OPENMP_FOUND})
   # add -fopenmp or -openmp or whatever
+  set_target_properties(mrpt_COMMON PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
+                                               LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
   set_target_properties(mrpt PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
                                         LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
+  set_target_properties(mrptbc PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
+                                          LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
 endif(${OPENMP_FOUND})
 target_link_libraries(mrpt general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
+target_link_libraries(mrptbc general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 
 
