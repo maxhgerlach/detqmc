@@ -1418,6 +1418,8 @@ void initFromCommandLineBC(int argc, char** argv) {
 
     parser.add_option("time-series-format", "Set to number of columns: 1 (default) or 2; 1-column time series are already sorted by control parameter", 1);
 
+    parser.add_option("outputDirectory", "directory to write reweighting results to", 1);
+
     //further general arguments: file names of energy/observable time series [for any bc, but should be in separate directories for each bc]
     parser.parse(argc, argv);
 
@@ -1428,7 +1430,7 @@ void initFromCommandLineBC(int argc, char** argv) {
     }
     cout << endl;
 
-    const char* one_time_opts[] = {"info-pbc", "info-apbc-x", "info-apbc-y", "info-apbc-xy", "b", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format"};
+    const char* one_time_opts[] = {"info-pbc", "info-apbc-x", "info-apbc-y", "info-apbc-xy", "b", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format", "outputDirectory"};
     parser.check_one_time_options(one_time_opts);
     const char* incompatible1[] = {"global-tau", "no-tau"};
     parser.check_incompatible_options(incompatible1);
@@ -1442,6 +1444,10 @@ void initFromCommandLineBC(int argc, char** argv) {
         parser.print_options(cout);
         cout << endl;
         return;
+    }
+
+    if (const clp::option_type& od = parser.option("outputDirectory")) {
+        setOutputDirectory(od.argument().c_str());
     }
 
     if (const clp::option_type& jk = parser.option("j")) {
