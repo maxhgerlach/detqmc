@@ -13,6 +13,7 @@
 #ifndef MRPT_HIGHLEVEL_H_
 #define MRPT_HIGHLEVEL_H_
 
+#include <string>
 
 // Common routines
 //////////////////
@@ -30,7 +31,10 @@ void setTolerance(double tolerance);
 
 void getOriginalControlParameterValues(int* outK, double** outArray1);
 
-
+std::string getObservableName();
+std::string getControlParameterName();
+unsigned getSystemL();
+unsigned getSystemN();
 
 // Single boundary conditions, single instance of MRPT
 //////////////////////////////////////////////////////

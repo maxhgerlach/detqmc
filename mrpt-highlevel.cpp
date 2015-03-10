@@ -340,12 +340,12 @@ void writeOutResults() {
         if (use_jackknife) energyOut.addHeaderText("jackknife error estimation");
         energyOut.addMeta("energyBins", binCount);
         energyOut.addMeta("observable", "energy");
-        energyOut.addMeta("L", mr->getSystemL());
-        energyOut.addMeta("N", mr->getSystemN());
-        energyOut.addMeta("controlParameterName", mr->getControlParameterName());
+        energyOut.addMeta("L", getSystemL());
+        energyOut.addMeta("N", getSystemN());
+        energyOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) energyOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        energyOut.addHeaderText(mr->getControlParameterName()+"\t energy" + headerSuffix);
-        energyOut.writeToFile(outputDirPrefix + "mrpt-energy-l-" + numToString(mr->getSystemL()) + ".values");
+        energyOut.addHeaderText(getControlParameterName()+"\t energy" + headerSuffix);
+        energyOut.writeToFile(outputDirPrefix + "mrpt-energy-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (specificHeat and not specificHeat->empty()) {
@@ -356,46 +356,46 @@ void writeOutResults() {
         if (use_jackknife) specificHeatOut.addHeaderText("jackknife error estimation");
         specificHeatOut.addMeta("energyBins", binCount);
         specificHeatOut.addMeta("observable", "specificHeat");
-        specificHeatOut.addMeta("L", mr->getSystemL());
-        specificHeatOut.addMeta("N", mr->getSystemN());
-        specificHeatOut.addMeta("controlParameterName", mr->getControlParameterName());
+        specificHeatOut.addMeta("L", getSystemL());
+        specificHeatOut.addMeta("N", getSystemN());
+        specificHeatOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) specificHeatOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        specificHeatOut.addHeaderText(mr->getControlParameterName()+"\t specificHeat" + headerSuffix);
-        specificHeatOut.writeToFile(outputDirPrefix + "mrpt-specific-heat-l-" + numToString(mr->getSystemL()) + ".values");
+        specificHeatOut.addHeaderText(getControlParameterName()+"\t specificHeat" + headerSuffix);
+        specificHeatOut.writeToFile(outputDirPrefix + "mrpt-specific-heat-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (observable and not observable->empty()) {
         DoubleMapWriter observableOut;
         observableOut.setData(observable);
         if (use_jackknife) observableOut.setErrors(observableError);
-        observableOut.addHeaderText("MRPT estimates of " + mr->getObservableName());
+        observableOut.addHeaderText("MRPT estimates of " + getObservableName());
         if (use_jackknife) observableOut.addHeaderText("jackknife error estimation");
         observableOut.addMeta("energyBins", binCount);
-        observableOut.addMeta("observable", mr->getObservableName());
-        observableOut.addMeta("L", mr->getSystemL());
-        observableOut.addMeta("N", mr->getSystemN());
-        observableOut.addMeta("controlParameterName", mr->getControlParameterName());
+        observableOut.addMeta("observable", getObservableName());
+        observableOut.addMeta("L", getSystemL());
+        observableOut.addMeta("N", getSystemN());
+        observableOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) observableOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        observableOut.addHeaderText(mr->getControlParameterName()+"\t " + mr->getObservableName() + headerSuffix);
-        observableOut.writeToFile(outputDirPrefix + "mrpt-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        observableOut.addHeaderText(getControlParameterName()+"\t " + getObservableName() + headerSuffix);
+        observableOut.writeToFile(outputDirPrefix + "mrpt-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (observableSquared and not observableSquared->empty()) {
         DoubleMapWriter observableSquaredOut;
         observableSquaredOut.setData(observableSquared);
         if (use_jackknife) observableSquaredOut.setErrors(observableSquaredError);
-        observableSquaredOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " squared");
+        observableSquaredOut.addHeaderText("MRPT estimates of " + getObservableName() + " squared");
         if (use_jackknife) observableSquaredOut.addHeaderText("jackknife error estimation");
         observableSquaredOut.addMeta("energyBins", binCount);
-        observableSquaredOut.addMeta("observable", mr->getObservableName() + "Squared");
-        observableSquaredOut.addMeta("L", mr->getSystemL());
-        observableSquaredOut.addMeta("N", mr->getSystemN());
-        observableSquaredOut.addMeta("controlParameterName", mr->getControlParameterName());
+        observableSquaredOut.addMeta("observable", getObservableName() + "Squared");
+        observableSquaredOut.addMeta("L", getSystemL());
+        observableSquaredOut.addMeta("N", getSystemN());
+        observableSquaredOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) observableSquaredOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        observableSquaredOut.addHeaderText(mr->getControlParameterName()+"\t " +
-                                           mr->getObservableName() + "Squared" +
+        observableSquaredOut.addHeaderText(getControlParameterName()+"\t " +
+                                           getObservableName() + "Squared" +
                                            headerSuffix);
-        observableSquaredOut.writeToFile(outputDirPrefix + "mrpt-" + mr->getObservableName() + "Squared" + "-l-" + numToString(mr->getSystemL()) + ".values");
+        observableSquaredOut.writeToFile(outputDirPrefix + "mrpt-" + getObservableName() + "Squared" + "-l-" + numToString(getSystemL()) + ".values");
     }
     
 
@@ -403,48 +403,48 @@ void writeOutResults() {
         DoubleMapWriter susceptibilityOut;
         susceptibilityOut.setData(susceptibility);
         if (use_jackknife) susceptibilityOut.setErrors(susceptibilityError);
-        susceptibilityOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " susceptibility");
+        susceptibilityOut.addHeaderText("MRPT estimates of " + getObservableName() + " susceptibility");
         if (use_jackknife) susceptibilityOut.addHeaderText("jackknife error estimation");
         susceptibilityOut.addMeta("energyBins", binCount);
-        susceptibilityOut.addMeta("observable", "susc-" + mr->getObservableName());
-        susceptibilityOut.addMeta("L", mr->getSystemL());
-        susceptibilityOut.addMeta("N", mr->getSystemN());
-        susceptibilityOut.addMeta("controlParameterName", mr->getControlParameterName());
+        susceptibilityOut.addMeta("observable", "susc-" + getObservableName());
+        susceptibilityOut.addMeta("L", getSystemL());
+        susceptibilityOut.addMeta("N", getSystemN());
+        susceptibilityOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) susceptibilityOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        susceptibilityOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
-        susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-susc-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        susceptibilityOut.addHeaderText(getControlParameterName()+"\t susc" + headerSuffix);
+        susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-susc-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (binder and not binder->empty()) {
         DoubleMapWriter binderOut;
         binderOut.setData(binder);
         if (use_jackknife) binderOut.setErrors(binderError);
-        binderOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " binder parameter");
+        binderOut.addHeaderText("MRPT estimates of " + getObservableName() + " binder parameter");
         if (use_jackknife) binderOut.addHeaderText("jackknife error estimation");
         binderOut.addMeta("energyBins", binCount);
-        binderOut.addMeta("observable", "binder-" + mr->getObservableName());
-        binderOut.addMeta("L", mr->getSystemL());
-        binderOut.addMeta("N", mr->getSystemN());
-        binderOut.addMeta("controlParameterName", mr->getControlParameterName());
+        binderOut.addMeta("observable", "binder-" + getObservableName());
+        binderOut.addMeta("L", getSystemL());
+        binderOut.addMeta("N", getSystemN());
+        binderOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) binderOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderOut.addHeaderText(mr->getControlParameterName()+"\t binder" + headerSuffix);
-        binderOut.writeToFile(outputDirPrefix + "mrpt-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        binderOut.addHeaderText(getControlParameterName()+"\t binder" + headerSuffix);
+        binderOut.writeToFile(outputDirPrefix + "mrpt-binder-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (binderRatio and not binderRatio->empty()) {
         DoubleMapWriter binderRatioOut;
         binderRatioOut.setData(binderRatio);
         if (use_jackknife) binderRatioOut.setErrors(binderRatioError);
-        binderRatioOut.addHeaderText("MRPT estimates of " + mr->getObservableName() + " binder ratio parameter");
+        binderRatioOut.addHeaderText("MRPT estimates of " + getObservableName() + " binder ratio parameter");
         if (use_jackknife) binderRatioOut.addHeaderText("jackknife error estimation");
         binderRatioOut.addMeta("energyBins", binCount);
-        binderRatioOut.addMeta("observable", "binderRatio-" + mr->getObservableName());
-        binderRatioOut.addMeta("L", mr->getSystemL());
-        binderRatioOut.addMeta("N", mr->getSystemN());
-        binderRatioOut.addMeta("controlParameterName", mr->getControlParameterName());
+        binderRatioOut.addMeta("observable", "binderRatio-" + getObservableName());
+        binderRatioOut.addMeta("L", getSystemL());
+        binderRatioOut.addMeta("N", getSystemN());
+        binderRatioOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) binderRatioOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t binderRatio" + headerSuffix);
-        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-binderRatio-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        binderRatioOut.addHeaderText(getControlParameterName()+"\t binderRatio" + headerSuffix);
+        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-binderRatio-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
     
 
@@ -456,12 +456,12 @@ void writeOutResults() {
         energyOut.addHeaderText("Direct estimates of energy");
         if (use_jackknife) energyOut.addHeaderText("jackknife error estimation");
         energyOut.addMeta("observable", "energy");
-        energyOut.addMeta("L", mr->getSystemL());
-        energyOut.addMeta("N", mr->getSystemN());
-        energyOut.addMeta("controlParameterName", mr->getControlParameterName());
+        energyOut.addMeta("L", getSystemL());
+        energyOut.addMeta("N", getSystemN());
+        energyOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) energyOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        energyOut.addHeaderText(mr->getControlParameterName()+"\t energy" + headerSuffix);
-        energyOut.writeToFile(outputDirPrefix + "mrpt-direct-energy-l-" + numToString(mr->getSystemL()) + ".values");
+        energyOut.addHeaderText(getControlParameterName()+"\t energy" + headerSuffix);
+        energyOut.writeToFile(outputDirPrefix + "mrpt-direct-energy-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (direct_specificHeat and not direct_specificHeat->empty()) {
@@ -471,44 +471,44 @@ void writeOutResults() {
         specificHeatOut.addHeaderText("Direct estimates of specific heat");
         if (use_jackknife) specificHeatOut.addHeaderText("jackknife error estimation");
         specificHeatOut.addMeta("observable", "specificHeat");
-        specificHeatOut.addMeta("L", mr->getSystemL());
-        specificHeatOut.addMeta("N", mr->getSystemN());
-        specificHeatOut.addMeta("controlParameterName", mr->getControlParameterName());
+        specificHeatOut.addMeta("L", getSystemL());
+        specificHeatOut.addMeta("N", getSystemN());
+        specificHeatOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) specificHeatOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        specificHeatOut.addHeaderText(mr->getControlParameterName()+"\t specificHeat" + headerSuffix);
-        specificHeatOut.writeToFile(outputDirPrefix + "mrpt-direct-specific-heat-l-" + numToString(mr->getSystemL()) + ".values");
+        specificHeatOut.addHeaderText(getControlParameterName()+"\t specificHeat" + headerSuffix);
+        specificHeatOut.writeToFile(outputDirPrefix + "mrpt-direct-specific-heat-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (direct_observable and not direct_observable->empty()) {
         DoubleMapWriter observableOut;
         observableOut.setData(direct_observable);
         if (use_jackknife) observableOut.setErrors(direct_observableError);
-        observableOut.addHeaderText("Direct estimates of " + mr->getObservableName());
+        observableOut.addHeaderText("Direct estimates of " + getObservableName());
         if (use_jackknife) observableOut.addHeaderText("jackknife error estimation");
-        observableOut.addMeta("observable", mr->getObservableName());
-        observableOut.addMeta("L", mr->getSystemL());
-        observableOut.addMeta("N", mr->getSystemN());
-        observableOut.addMeta("controlParameterName", mr->getControlParameterName());
+        observableOut.addMeta("observable", getObservableName());
+        observableOut.addMeta("L", getSystemL());
+        observableOut.addMeta("N", getSystemN());
+        observableOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) observableOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        observableOut.addHeaderText(mr->getControlParameterName()+"\t " + mr->getObservableName() + headerSuffix);
-        observableOut.writeToFile(outputDirPrefix + "mrpt-direct-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        observableOut.addHeaderText(getControlParameterName()+"\t " + getObservableName() + headerSuffix);
+        observableOut.writeToFile(outputDirPrefix + "mrpt-direct-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (direct_observableSquared and not direct_observableSquared->empty()) {
         DoubleMapWriter observableSquaredOut;
         observableSquaredOut.setData(direct_observableSquared);
         if (use_jackknife) observableSquaredOut.setErrors(direct_observableSquaredError);
-        observableSquaredOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " squared");
+        observableSquaredOut.addHeaderText("Direct estimates of " + getObservableName() + " squared");
         if (use_jackknife) observableSquaredOut.addHeaderText("jackknife error estimation");
-        observableSquaredOut.addMeta("observable", mr->getObservableName() + "Squared");
-        observableSquaredOut.addMeta("L", mr->getSystemL());
-        observableSquaredOut.addMeta("N", mr->getSystemN());
-        observableSquaredOut.addMeta("controlParameterName", mr->getControlParameterName());
+        observableSquaredOut.addMeta("observable", getObservableName() + "Squared");
+        observableSquaredOut.addMeta("L", getSystemL());
+        observableSquaredOut.addMeta("N", getSystemN());
+        observableSquaredOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) observableSquaredOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        observableSquaredOut.addHeaderText(mr->getControlParameterName()+"\t " +
-                                           mr->getObservableName() + "Squared" +
+        observableSquaredOut.addHeaderText(getControlParameterName()+"\t " +
+                                           getObservableName() + "Squared" +
                                            headerSuffix);
-        observableSquaredOut.writeToFile(outputDirPrefix + "mrpt-direct-" + mr->getObservableName() + "Squared" + "-l-" + numToString(mr->getSystemL()) + ".values");
+        observableSquaredOut.writeToFile(outputDirPrefix + "mrpt-direct-" + getObservableName() + "Squared" + "-l-" + numToString(getSystemL()) + ".values");
     }
 
 
@@ -516,45 +516,45 @@ void writeOutResults() {
         DoubleMapWriter susceptibilityOut;
         susceptibilityOut.setData(direct_susceptibility);
         if (use_jackknife) susceptibilityOut.setErrors(direct_susceptibilityError);
-        susceptibilityOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " susceptibility");
+        susceptibilityOut.addHeaderText("Direct estimates of " + getObservableName() + " susceptibility");
         if (use_jackknife) susceptibilityOut.addHeaderText("jackknife error estimation");
-        susceptibilityOut.addMeta("observable", "susc-" + mr->getObservableName());
-        susceptibilityOut.addMeta("L", mr->getSystemL());
-        susceptibilityOut.addMeta("N", mr->getSystemN());
-        susceptibilityOut.addMeta("controlParameterName", mr->getControlParameterName());
+        susceptibilityOut.addMeta("observable", "susc-" + getObservableName());
+        susceptibilityOut.addMeta("L", getSystemL());
+        susceptibilityOut.addMeta("N", getSystemN());
+        susceptibilityOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) susceptibilityOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        susceptibilityOut.addHeaderText(mr->getControlParameterName()+"\t susc" + headerSuffix);
-        susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-direct-susc-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        susceptibilityOut.addHeaderText(getControlParameterName()+"\t susc" + headerSuffix);
+        susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-direct-susc-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (direct_binder and not direct_binder->empty()) {
         DoubleMapWriter binderOut;
         binderOut.setData(direct_binder);
         if (use_jackknife) binderOut.setErrors(direct_binderError);
-        binderOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " binder parameter");
+        binderOut.addHeaderText("Direct estimates of " + getObservableName() + " binder parameter");
         if (use_jackknife) binderOut.addHeaderText("jackknife error estimation");
-        binderOut.addMeta("observable", "binder-" + mr->getObservableName());
-        binderOut.addMeta("L", mr->getSystemL());
-        binderOut.addMeta("N", mr->getSystemN());
-        binderOut.addMeta("controlParameterName", mr->getControlParameterName());
+        binderOut.addMeta("observable", "binder-" + getObservableName());
+        binderOut.addMeta("L", getSystemL());
+        binderOut.addMeta("N", getSystemN());
+        binderOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) binderOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderOut.addHeaderText(mr->getControlParameterName()+"\t binder" + headerSuffix);
-        binderOut.writeToFile(outputDirPrefix + "mrpt-direct-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        binderOut.addHeaderText(getControlParameterName()+"\t binder" + headerSuffix);
+        binderOut.writeToFile(outputDirPrefix + "mrpt-direct-binder-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
     if (direct_binderRatio and not direct_binderRatio->empty()) {
         DoubleMapWriter binderRatioOut;
         binderRatioOut.setData(direct_binderRatio);
         if (use_jackknife) binderRatioOut.setErrors(direct_binderRatioError);
-        binderRatioOut.addHeaderText("Direct estimates of " + mr->getObservableName() + " binder ratio parameter");
+        binderRatioOut.addHeaderText("Direct estimates of " + getObservableName() + " binder ratio parameter");
         if (use_jackknife) binderRatioOut.addHeaderText("jackknife error estimation");
-        binderRatioOut.addMeta("observable", "binderRatio-" + mr->getObservableName());
-        binderRatioOut.addMeta("L", mr->getSystemL());
-        binderRatioOut.addMeta("N", mr->getSystemN());
-        binderRatioOut.addMeta("controlParameterName", mr->getControlParameterName());
+        binderRatioOut.addMeta("observable", "binderRatio-" + getObservableName());
+        binderRatioOut.addMeta("L", getSystemL());
+        binderRatioOut.addMeta("N", getSystemN());
+        binderRatioOut.addMeta("controlParameterName", getControlParameterName());
         if (use_jackknife) binderRatioOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        binderRatioOut.addHeaderText(mr->getControlParameterName()+"\t binderRatio" + headerSuffix);
-        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-direct-binderRatio-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
+        binderRatioOut.addHeaderText(getControlParameterName()+"\t binderRatio" + headerSuffix);
+        binderRatioOut.writeToFile(outputDirPrefix + "mrpt-direct-binderRatio-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
 }
@@ -780,10 +780,10 @@ public:
             (*binderRatioError)[cp] = result.obsBinderRatioError;
         }
         if (createHistograms) {
-            result.energyHistogram->save("mrpt-energy-" + mr->getControlParameterName() +
+            result.energyHistogram->save("mrpt-energy-" + getControlParameterName() +
                                          numToString(cp) + ".hist");
-            result.obsHistogram->save("mrpt-" + mr->getObservableName() + "-" +
-                                      mr->getControlParameterName() + numToString(cp) + ".hist");
+            result.obsHistogram->save("mrpt-" + getObservableName() + "-" +
+                                      getControlParameterName() + numToString(cp) + ".hist");
         }
         result.freeMemory();
     }
@@ -805,7 +805,7 @@ public:
         }
         if (createHistogram) {
             result.energyHistogram = mr->reweightEnergyHistogram(cp);
-            result.energyHistogram->save("mrpt-energy-" + mr->getControlParameterName()
+            result.energyHistogram->save("mrpt-energy-" + getControlParameterName()
                                          + numToString(cp) + ".hist");
         }
         result.freeMemory();
@@ -828,14 +828,14 @@ void reweightDiscrete(double cp, bool createHistogramToo) {
 
 void reweightEnergyHistogram(double cp) {
     HistogramDouble* histo = mr->reweightEnergyHistogram(cp);
-    histo->save("mrpt-energy-" + mr->getControlParameterName()
+    histo->save("mrpt-energy-" + getControlParameterName()
                 + numToString(cp) + ".hist");
     destroy(histo);
 }
 
 void reweightObservableHistogram(double cp) {
     HistogramDouble* histo = mr->reweightObservableHistogram(cp, binCount);
-    histo->save("mrpt-" + mr->getObservableName() + "-" + mr->getControlParameterName()
+    histo->save("mrpt-" + getObservableName() + "-" + getControlParameterName()
                 + numToString(cp) + ".hist");
     destroy(histo);
 }
@@ -886,10 +886,10 @@ void findMaxSusc(double cpStart, double cpEnd) {
     meta["L"] = numToString(mr->systemL);
     meta["N"] = numToString(mr->systemN);
     meta["systemSize"] = numToString(mr->systemSize);
-    meta[mr->getControlParameterName()] = numToString(cpMax, 16);
+    meta[getControlParameterName()] = numToString(cpMax, 16);
     meta["susc"] = numToString(suscMax, 16);
     if (use_jackknife) {
-        meta[mr->getControlParameterName() + "Error"] = numToString(cpMaxError, 16);
+        meta[getControlParameterName() + "Error"] = numToString(cpMaxError, 16);
         meta["suscError"] = numToString(suscMaxError, 16);
     }
     string comments = "Maximum of " + mr->observable + " susceptibility, from MRPT\n";
@@ -929,10 +929,10 @@ void findMinBinder(double cpStart, double cpEnd) {
     meta["L"] = numToString(mr->systemL);
     meta["N"] = numToString(mr->systemN);
     meta["systemSize"] = numToString(mr->systemSize);
-    meta[mr->getControlParameterName()] = numToString(cpMin, 16);
+    meta[getControlParameterName()] = numToString(cpMin, 16);
     meta["binder"] = numToString(binderMin, 16);
     if (use_jackknife) {
-        meta[mr->getControlParameterName()+"Error"] = numToString(cpMinError, 16);
+        meta[getControlParameterName()+"Error"] = numToString(cpMinError, 16);
         meta["binderError"] = numToString(binderMinError, 16);
     }
     string comments = "Minimum of " + mr->observable + " binder cumulant, from MRPT\n";
@@ -972,10 +972,10 @@ void findMaxSpecificHeat(double cpStart, double cpEnd) {
     meta["L"] = numToString(mr->systemL);
     meta["N"] = numToString(mr->systemN);
     meta["systemSize"] = numToString(mr->systemSize);
-    meta[mr->getControlParameterName()] = numToString(cpMax, 16);
+    meta[getControlParameterName()] = numToString(cpMax, 16);
     meta["heatCapacity"] = numToString(specificHeatMax, 16);
     if (use_jackknife) {
-        meta[mr->getControlParameterName() + "Error"] = numToString(cpMaxError, 16);
+        meta[getControlParameterName() + "Error"] = numToString(cpMaxError, 16);
         meta["heatCapacityError"] = numToString(specificHeatMaxError, 16);
     }
     string comments = "Maximum of heat capacity, from MRPT\n";
@@ -1020,10 +1020,10 @@ void findEnergyDoublePeak(double cpStart, double cpEnd, double tolerance) {
     metaEH["L"] = numToString(mr->systemL);
     metaEH["N"] = numToString(mr->systemN);
     metaEH["systemSize"] = numToString(mr->systemSize);    
-    metaEH[mr->getControlParameterName()] = numToString(cpDoubleEH, 16);
+    metaEH[getControlParameterName()] = numToString(cpDoubleEH, 16);
     metaEH["relDip"] = numToString(relDipEH, 16);
     if (use_jackknife) {
-        metaEH[mr->getControlParameterName() + "Error"] = numToString(cpDoubleErrorEH, 16);
+        metaEH[getControlParameterName() + "Error"] = numToString(cpDoubleErrorEH, 16);
         metaEH["relDipError"] = numToString(relDipErrorEH, 16);
     }
     string comments = "Location of equal-height double-peak energy histogram, from MRPT\n";
@@ -1042,10 +1042,10 @@ void findEnergyDoublePeak(double cpStart, double cpEnd, double tolerance) {
     metaEW["L"] = numToString(mr->systemL);
     metaEW["N"] = numToString(mr->systemN);
     metaEW["systemSize"] = numToString(mr->systemSize);    
-    metaEW[mr->getControlParameterName()] = numToString(cpDoubleEW, 16);
+    metaEW[getControlParameterName()] = numToString(cpDoubleEW, 16);
     metaEW["relDip"] = numToString(relDipEW, 16);
     if (use_jackknife) {
-        metaEW[mr->getControlParameterName() + "Error"] = numToString(cpDoubleErrorEW, 16);
+        metaEW[getControlParameterName() + "Error"] = numToString(cpDoubleErrorEW, 16);
         metaEW["relDipError"] = numToString(relDipErrorEW, 16);
     }
     comments = "Location of equal-weight double-peak energy histogram, from MRPT\n";
@@ -1095,10 +1095,10 @@ void findObservableDoublePeak(double cpStart, double cpEnd, double tolerance) {
     metaEH["L"] = numToString(mr->systemL);
     metaEH["N"] = numToString(mr->systemN);
     metaEH["systemSize"] = numToString(mr->systemSize);    
-    metaEH[mr->getControlParameterName()] = numToString(cpDoubleEH, 16);
+    metaEH[getControlParameterName()] = numToString(cpDoubleEH, 16);
     metaEH["relDip"] = numToString(relDipEH, 16);
     if (use_jackknife) {
-        metaEH[mr->getControlParameterName() + "Error"] = numToString(cpDoubleErrorEH, 16);
+        metaEH[getControlParameterName() + "Error"] = numToString(cpDoubleErrorEH, 16);
         metaEH["relDipError"] = numToString(relDipErrorEH, 16);
     }
     string comments = "Location of equal-height double-peak " +
@@ -1119,10 +1119,10 @@ void findObservableDoublePeak(double cpStart, double cpEnd, double tolerance) {
     metaEW["L"] = numToString(mr->systemL);
     metaEW["N"] = numToString(mr->systemN);
     metaEW["systemSize"] = numToString(mr->systemSize);    
-    metaEW[mr->getControlParameterName()] = numToString(cpDoubleEW, 16);
+    metaEW[getControlParameterName()] = numToString(cpDoubleEW, 16);
     metaEW["relDip"] = numToString(relDipEW, 16);
     if (use_jackknife) {
-        metaEW[mr->getControlParameterName() + "Error"] = numToString(cpDoubleErrorEW, 16);
+        metaEW[getControlParameterName() + "Error"] = numToString(cpDoubleErrorEW, 16);
         metaEW["relDipError"] = numToString(relDipErrorEW, 16);
     }
     comments = "Location of equal-weight double-peak " + obs +
@@ -1161,7 +1161,7 @@ void findEnergyRelDip(double targetControlParameter, double tolerance) {
     meta["L"] = numToString(mr->systemL);
     meta["N"] = numToString(mr->systemN);
     meta["systemSize"] = numToString(mr->systemSize);    
-    meta[mr->getControlParameterName()] = numToString(targetControlParameter, 16);
+    meta[getControlParameterName()] = numToString(targetControlParameter, 16);
     meta["relDip"] = numToString(relDip, 16);
     if (use_jackknife) {
         meta["relDipError"] = numToString(relDipError, 16);
@@ -1199,7 +1199,7 @@ void findObservableRelDip(double targetControlParameter, double tolerance) {
     meta["L"] = numToString(mr->systemL);
     meta["N"] = numToString(mr->systemN);
     meta["systemSize"] = numToString(mr->systemSize);
-    meta[mr->getControlParameterName()] = numToString(targetControlParameter, 16);
+    meta[getControlParameterName()] = numToString(targetControlParameter, 16);
     meta["relDip"] = numToString(relDip, 16);
     if (use_jackknife) {
         meta["relDipError"] = numToString(relDipError, 16);
@@ -1210,7 +1210,7 @@ void findObservableRelDip(double targetControlParameter, double tolerance) {
                 + numToString(jackknifeBlocks) + "\n";
     }
     writeOnlyMetaData(outputDirPrefix + "mrpt-" + obs +
-                      "-" + mr->getControlParameterName() + numToString(targetControlParameter) +
+                      "-" + getControlParameterName() + numToString(targetControlParameter) +
                       "-reldip.dat", meta, comments);
 
     destroy(histo);
@@ -1287,6 +1287,37 @@ void getOriginalControlParameterValues(int *outK, double **outArray1) {
     }
 }
 
+std::string getObservableName() {
+    if (mr) {
+        return mr->getObservableName();
+    } else {
+        return mrbc[PBC]->getObservableName();
+    }
+}
+
+std::string getControlParameterName() {
+    if (mr) {
+        return mr->getControlParameterName();
+    } else {
+        return mrbc[PBC]->getControlParameterName();
+    }
+}
+
+unsigned getSystemL() {
+    if (mr) {
+        return mr->getSystemL();
+    } else {
+        return mrbc[PBC]->getSystemL();
+    }
+}
+
+unsigned getSystemN() {
+    if (mr) {
+        return mr->getSystemN();
+    } else {
+        return mrbc[PBC]->getSystemN();
+    }
+}
 
 
 
