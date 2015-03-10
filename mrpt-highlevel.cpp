@@ -1428,7 +1428,7 @@ void initFromCommandLineBC(int argc, char** argv) {
     }
     cout << endl;
 
-    const char* one_time_opts[] = {"info", "b", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format"};
+    const char* one_time_opts[] = {"info-pbc", "info-apbcx", "info-apbcy", "info-apbcxy", "b", "cp-range", "cp-auto-range", "j", "i", "sub-sample", "sort", "time-series-format"};
     parser.check_one_time_options(one_time_opts);
     const char* incompatible1[] = {"global-tau", "no-tau"};
     parser.check_incompatible_options(incompatible1);
