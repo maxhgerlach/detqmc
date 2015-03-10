@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     uint32_t dircount = 0;
     if (vm.count("inputDirectories")) {
         inputDirectories = vm["inputDirectories"].as<std::vector< std::string > >();
-        dircount = inputDirectories.size();
+        dircount = (uint32_t)inputDirectories.size();
     }
     if (dircount != 4) {
         throw_GeneralError("Number of passed input directories " + numToString(dircount) + " is not 4.");
