@@ -1360,11 +1360,14 @@ void initBC() {
         if (sortByCp) {
             mr_instance->sortTimeSeriesByControlParameter();
         }
+        mr_instance->createHistograms(binCount);
     }
 
     // if (do_directEstimates) {
     //     directResultsBC();
     // }
+
+    
 
     for (auto mr_instance: mrbc) {
         if (non_iterative) {
