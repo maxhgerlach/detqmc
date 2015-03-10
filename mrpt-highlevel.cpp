@@ -332,7 +332,7 @@ MapPtr direct_binderRatioError;
 //internal function to output the above maps
 void writeOutResults() {
     //reweighting results:
-    if (not energy->empty()) {
+    if (energy and not energy->empty()) {
         DoubleMapWriter energyOut;
         energyOut.setData(energy);
         if (use_jackknife) energyOut.setErrors(energyError);
@@ -348,7 +348,7 @@ void writeOutResults() {
         energyOut.writeToFile(outputDirPrefix + "mrpt-energy-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not specificHeat->empty()) {
+    if (specificHeat and not specificHeat->empty()) {
         DoubleMapWriter specificHeatOut;
         specificHeatOut.setData(specificHeat);
         if (use_jackknife) specificHeatOut.setErrors(specificHeatError);
@@ -364,7 +364,7 @@ void writeOutResults() {
         specificHeatOut.writeToFile(outputDirPrefix + "mrpt-specific-heat-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not observable->empty()) {
+    if (observable and not observable->empty()) {
         DoubleMapWriter observableOut;
         observableOut.setData(observable);
         if (use_jackknife) observableOut.setErrors(observableError);
@@ -380,7 +380,7 @@ void writeOutResults() {
         observableOut.writeToFile(outputDirPrefix + "mrpt-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not observableSquared->empty()) {
+    if (observableSquared and not observableSquared->empty()) {
         DoubleMapWriter observableSquaredOut;
         observableSquaredOut.setData(observableSquared);
         if (use_jackknife) observableSquaredOut.setErrors(observableSquaredError);
@@ -399,7 +399,7 @@ void writeOutResults() {
     }
     
 
-    if (not susceptibility->empty()) {
+    if (susceptibility and not susceptibility->empty()) {
         DoubleMapWriter susceptibilityOut;
         susceptibilityOut.setData(susceptibility);
         if (use_jackknife) susceptibilityOut.setErrors(susceptibilityError);
@@ -415,7 +415,7 @@ void writeOutResults() {
         susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-susc-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not binder->empty()) {
+    if (binder and not binder->empty()) {
         DoubleMapWriter binderOut;
         binderOut.setData(binder);
         if (use_jackknife) binderOut.setErrors(binderError);
@@ -431,7 +431,7 @@ void writeOutResults() {
         binderOut.writeToFile(outputDirPrefix + "mrpt-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not binderRatio->empty()) {
+    if (binderRatio and not binderRatio->empty()) {
         DoubleMapWriter binderRatioOut;
         binderRatioOut.setData(binderRatio);
         if (use_jackknife) binderRatioOut.setErrors(binderRatioError);
@@ -449,7 +449,7 @@ void writeOutResults() {
     
 
     //results from direct averaging:
-    if (not direct_energy->empty()) {
+    if (direct_energy and not direct_energy->empty()) {
         DoubleMapWriter energyOut;
         energyOut.setData(direct_energy);
         if (use_jackknife) energyOut.setErrors(direct_energyError);
@@ -464,7 +464,7 @@ void writeOutResults() {
         energyOut.writeToFile(outputDirPrefix + "mrpt-direct-energy-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not direct_specificHeat->empty()) {
+    if (direct_specificHeat and not direct_specificHeat->empty()) {
         DoubleMapWriter specificHeatOut;
         specificHeatOut.setData(direct_specificHeat);
         if (use_jackknife) specificHeatOut.setErrors(direct_specificHeatError);
@@ -479,7 +479,7 @@ void writeOutResults() {
         specificHeatOut.writeToFile(outputDirPrefix + "mrpt-direct-specific-heat-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not direct_observable->empty()) {
+    if (direct_observable and not direct_observable->empty()) {
         DoubleMapWriter observableOut;
         observableOut.setData(direct_observable);
         if (use_jackknife) observableOut.setErrors(direct_observableError);
@@ -494,7 +494,7 @@ void writeOutResults() {
         observableOut.writeToFile(outputDirPrefix + "mrpt-direct-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not direct_observableSquared->empty()) {
+    if (direct_observableSquared and not direct_observableSquared->empty()) {
         DoubleMapWriter observableSquaredOut;
         observableSquaredOut.setData(direct_observableSquared);
         if (use_jackknife) observableSquaredOut.setErrors(direct_observableSquaredError);
@@ -512,7 +512,7 @@ void writeOutResults() {
     }
 
 
-    if (not direct_susceptibility->empty()) {
+    if (direct_susceptibility and not direct_susceptibility->empty()) {
         DoubleMapWriter susceptibilityOut;
         susceptibilityOut.setData(direct_susceptibility);
         if (use_jackknife) susceptibilityOut.setErrors(direct_susceptibilityError);
@@ -527,7 +527,7 @@ void writeOutResults() {
         susceptibilityOut.writeToFile(outputDirPrefix + "mrpt-direct-susc-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not direct_binder->empty()) {
+    if (direct_binder and not direct_binder->empty()) {
         DoubleMapWriter binderOut;
         binderOut.setData(direct_binder);
         if (use_jackknife) binderOut.setErrors(direct_binderError);
@@ -542,7 +542,7 @@ void writeOutResults() {
         binderOut.writeToFile(outputDirPrefix + "mrpt-direct-binder-" + mr->getObservableName() + "-l-" + numToString(mr->getSystemL()) + ".values");
     }
 
-    if (not direct_binderRatio->empty()) {
+    if (direct_binderRatio and not direct_binderRatio->empty()) {
         DoubleMapWriter binderRatioOut;
         binderRatioOut.setData(direct_binderRatio);
         if (use_jackknife) binderRatioOut.setErrors(direct_binderRatioError);
