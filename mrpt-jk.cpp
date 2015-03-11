@@ -718,6 +718,22 @@ double MultireweightHistosPTJK::reweightObservableBinderJK(double targetControlP
     return result;
 }
 
+double MultireweightHistosPTJK::reweightObservableBinderRatioJK(
+    double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
+
+    double secondMoment = 0;
+    double fourthMoment = 0;
+    reweight2ndMoment4thMomentInternalJK(observableTimeSeries, w_kn, jkBlock,
+                                         secondMoment, fourthMoment);
+    double result = (fourthMoment / (pow(secondMoment, 2)));
+
+    // destroyAll(w_kn);
+
+    return result;
+}
+
+
 MultireweightHistosPTJK::DoubleSeriesCollection MultireweightHistosPTJK::computeWeightsJK(double targetControlParameter, unsigned jkBlock) {
 //  out << "Computing weights w_kn at cp=" << targetControlParameter << ", jackknife block:" << jkBlock << endl;
 

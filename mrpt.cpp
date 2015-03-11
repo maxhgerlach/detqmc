@@ -1386,6 +1386,22 @@ double MultireweightHistosPT::reweightObservableBinder(double targetControlParam
     return result;
 }
 
+double MultireweightHistosPT::reweightObservableBinderRatio(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
+
+    double secondMoment = 0;
+    double fourthMoment = 0;
+    reweight2ndMoment4thMomentInternalWithoutErrors(
+        observableTimeSeries, w_kn, secondMoment, fourthMoment);
+    double result = (fourthMoment / (pow(secondMoment, 2)));
+
+    w_kn.clear();
+    // destroyAll(w_kn);
+
+    return result;
+}
+
+
 ReweightingResult MultireweightHistosPT::reweight(double targetControlParameter) {
     DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 

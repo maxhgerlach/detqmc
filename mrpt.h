@@ -201,6 +201,7 @@ public:
     virtual double reweightObservable(double targetControlParameter);
     virtual double reweightObservableSusceptibility(double targetControlParameter);
     virtual double reweightObservableBinder(double targetControlParameter);
+    virtual double reweightObservableBinderRatio(double targetControlParameter);    
 
     //find the maximum of the susceptibility between control
     //parameters cpStart and cpEnd put its location into cpMax,
