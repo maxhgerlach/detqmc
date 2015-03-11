@@ -79,6 +79,8 @@ private:
     double reweightObservableSusceptibilityJK(double targetControlParameter,
             unsigned jkBlock);
     double reweightObservableBinderJK(double targetControlParameter, unsigned jkBlock);
+    void reweightObservableSecondFourthMomentJK(double& outSecondMoment, double& outFourthMoment,
+                                                double targetControlParameter, unsigned jkBlock);
     double reweightObservableBinderRatioJK(double targetControlParameter, unsigned jkBlock);    
 
     //reweight histograms taking only data from one of the jackknife blocks
