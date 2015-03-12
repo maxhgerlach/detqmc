@@ -17,14 +17,14 @@
 #include <exception>
 #include <map>
 #include <string>
-#include <boost/filesystem.hpp>
-#include "exceptions.h"
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#include "boost/filesystem.hpp"
 #include "dlib/cmd_line_parser.h"
 #pragma GCC diagnostic pop
+#include "exceptions.h"
 #include "tools.h"
 #include "datamapwriter.h"
 #include "metadata.h"
@@ -36,9 +36,10 @@ using namespace std;
 
 //variables in the following anonymous namespace are local to this file
 namespace {
-    MRPT_Pointer mr1;
-    MRPT_Pointer mr2;
-
+//  enum BC { PBC=0, APBCX=1, APBCY=2, APBCXY=3, NONE };
+    const std::array<BC, 4> all_BC = {{PBC, APBCX, APBCY, APBCXY}};
+    std::array<MRPT_Pointer, 4> mrbc1, mrbc2;
+    
     unsigned binCount = 0;
 
     bool use_jackknife = false;
@@ -52,7 +53,7 @@ namespace {
     ofstream dev_null("/dev/null");
     string outputDirPrefix;
 
-    string infoFilename1, infoFilename2;
+    std::array<std::string, 4> infoFilenamesBC1, infoFilenamesBC2;
 
     enum { COL1, COL2 } timeSeriesFormat;
     
@@ -71,28 +72,34 @@ namespace {
     double cpMin, cpMax;
 }
 
+
 void findBinderIntersection() {
     double cp;
     double cpError = 0;
 
-    string observable = mr1->getObservableName();
-    assert(observable == mr2->getObservableName());
+    string observable = mrbc1[PBC]->getObservableName();
+    assert(observable == mrbc2[PBC]->getObservableName());
 
-    string cpName = mr1->getControlParameterName();
-    assert(cpName == mr2->getControlParameterName());
+    string cpName = mrbc1[PBC]->getControlParameterName();
+    assert(cpName == mrbc2[PBC]->getControlParameterName());
     
     cout << "Searching for intersection of Binder cumulants ";
 
     bool ok = true;
     if (not use_jackknife) {
         cout << " without error bars." << endl;
-        findBinderRatioIntersect(cp, ok, mr1, mr2, cpMin, cpMax);
+        findBinderRatioIntersectBC(cp, ok, mrbc1, mrbc2, cpMin, cpMax);
     } else {
         cout << " with jackknife error bars." << endl;
-        findBinderRatioIntersectError(cp, cpError, ok,
-                                      std::dynamic_pointer_cast<MultireweightHistosPTJK>(mr1),
-                                      std::dynamic_pointer_cast<MultireweightHistosPTJK>(mr2),
-                                      cpMin, cpMax, jackknifeBlocks);
+        std::array<MRPTJK_Pointer, 4> mrjkbc1, mrjkbc2;
+        for (BC bc: all_BC) {
+            mrjkbc1[bc] = std::dynamic_pointer_cast<MultireweightHistosPTJK>(mrbc1[bc]);
+            mrjkbc2[bc] = std::dynamic_pointer_cast<MultireweightHistosPTJK>(mrbc2[bc]);            
+        }
+        
+        findBinderRatioIntersectBCError(cp, cpError, ok,
+                                        mrjkbc1, mrjkbc2,
+                                        cpMin, cpMax, jackknifeBlocks);
     }
 
     if (not ok) {
@@ -100,10 +107,10 @@ void findBinderIntersection() {
     }
 
     MetadataMap meta;
-    string L1 = numToString(mr1->systemL);
-    string N1 = numToString(mr1->systemN);
-    string L2 = numToString(mr2->systemL);
-    string N2 = numToString(mr2->systemN);
+    string L1 = numToString(mrbc1[PBC]->systemL);
+    string N1 = numToString(mrbc1[PBC]->systemN);
+    string L2 = numToString(mrbc2[PBC]->systemL);
+    string N2 = numToString(mrbc2[PBC]->systemN);
     meta["L1"] = L1;
     meta["N1"] = N1;
     meta["L2"] = L2;
@@ -113,12 +120,12 @@ void findBinderIntersection() {
         meta[cpName + "Error"] = numToString(cpError, 16);
     }
     string comments = "Estimated intersection point of the Binder cumulants of " +
-        observable + " from lattice sizes L1 and L2, from MRPT in two instances\n";
+        observable + " from lattice sizes L1 and L2, from MRPTBC in two instances\n";
     if (use_jackknife) {
         comments += "Jackknife error estimation, blockCount: "
             + numToString(jackknifeBlocks) + "\n";
     }
-    writeOnlyMetaData(outputDirPrefix + "mrpt-binder-intersect-l"+L1+"l"+L2+".dat", meta,
+    writeOnlyMetaData(outputDirPrefix + "mrptbc-binder-intersect-l"+L1+"l"+L2+".dat", meta,
                       comments);
 }
 
@@ -129,105 +136,127 @@ void setJackknife(bool useJackknife, unsigned blocks) {
 }
 
 void init() {
-    mr1.reset();
-    mr2.reset();
+    for (BC bc: all_BC) {
+        std::shared_ptr<MultireweightHistosPT>& mr_instance1 = mrbc1[bc];
+        std::shared_ptr<MultireweightHistosPT>& mr_instance2 = mrbc2[bc];        
+        
+        if (use_jackknife) {
+            mr_instance1 = MRPT_Pointer(new MultireweightHistosPTJK(
+                                            jackknifeBlocks,
+                                            be_quiet ? dev_null : cout));
+            mr_instance2 = MRPT_Pointer(new MultireweightHistosPTJK(
+                                            jackknifeBlocks,
+                                            be_quiet ? dev_null : cout));
+        } else {
+            mr_instance1 = MRPT_Pointer(new MultireweightHistosPT(
+                                            be_quiet ? dev_null : cout));
+            mr_instance2 = MRPT_Pointer(new MultireweightHistosPT(
+                                            be_quiet ? dev_null : cout));
+        }
 
-    mr1 = MRPT_Pointer(use_jackknife ?
-           new MultireweightHistosPTJK(jackknifeBlocks, be_quiet ? dev_null : cout) :
-           new MultireweightHistosPT(be_quiet ? dev_null : cout));
-    mr2 = MRPT_Pointer(use_jackknife ?
-           new MultireweightHistosPTJK(jackknifeBlocks, be_quiet ? dev_null : cout) :
-           new MultireweightHistosPT(be_quiet ? dev_null : cout));
+        mr_instance1->addSimulationInfo(infoFilenamesBC1[bc]);
+        mr_instance2->addSimulationInfo(infoFilenamesBC2[bc]);        
+    }
 
-    mr1->addSimulationInfo(infoFilename1);
-    mr2->addSimulationInfo(infoFilename2);
-
-    int L1 = mr1->systemL;
-    int L2 = mr2->systemL;
+    int L1 = mrbc1[PBC]->systemL;
+    int L2 = mrbc2[PBC]->systemL;
     assert(L1 != L2);
 
-    string pre1 = "mrpt-l" + numToString(L1) + "-";
-    string pre2 = "mrpt-l" + numToString(L2) + "-";
-
+    namespace fs = boost::filesystem;
     for (unsigned arg = 0; arg < parser.number_of_arguments(); ++arg) {
-    	string filename = parser[arg];
-    	MetadataMap meta = readOnlyMetadata(filename);
+    	string series_filename = parser[arg];
+    	MetadataMap meta = readOnlyMetadata(series_filename);
     	int L = dlib::sa = meta["L"];
 
     	if (L == L1) {
+            // find bc from infofilename path
+            BC this_bc = NONE;
+            for (BC bc: all_BC) {
+                if (fs::canonical(fs::path(infoFilenamesBC1[bc]).parent_path()) ==
+                    fs::canonical(fs::path(series_filename).parent_path().parent_path())) {
+                    this_bc = bc;
+                    break;
+                }
+            }
             switch (timeSeriesFormat) {
             case COL1:
-                mr1->addInputTimeSeries_singleColumn(filename, subsampleHowMuch, discardSamples);
+                mrbc1[this_bc]->addInputTimeSeries_singleColumn(series_filename, subsampleHowMuch, discardSamples);
                 break;
             case COL2:
-                mr1->addInputTimeSeries_twoColumn(filename, subsampleHowMuch, discardSamples);
+                mrbc1[this_bc]->addInputTimeSeries_twoColumn(series_filename, subsampleHowMuch, discardSamples);
                 break;
             }
     	} else if (L == L2) {
+            // find bc from infofilename path
+            BC this_bc = NONE;
+            for (BC bc: all_BC) {
+                if (fs::canonical(fs::path(infoFilenamesBC2[bc]).parent_path()) ==
+                    fs::canonical(fs::path(series_filename).parent_path().parent_path())) {
+                    this_bc = bc;
+                    break;
+                }
+            }
             switch (timeSeriesFormat) {
             case COL1:
-                mr2->addInputTimeSeries_singleColumn(filename, subsampleHowMuch, discardSamples);
+                mrbc2[this_bc]->addInputTimeSeries_singleColumn(series_filename, subsampleHowMuch, discardSamples);
                 break;
             case COL2:
-                mr2->addInputTimeSeries_twoColumn(filename, subsampleHowMuch, discardSamples);
+                mrbc2[this_bc]->addInputTimeSeries_twoColumn(series_filename, subsampleHowMuch, discardSamples);
                 break;
             }
     	} else {
-            throw GeneralError("Time series " + filename + " with L=" +
+            throw GeneralError("Time series " + series_filename + " with L=" +
                                numToString(L) + " matches neither L1=" + numToString(L1) +
                                "nor L2=" + numToString(L2));
     	}
     }
-
     if (sortByCp) {
-        mr1->sortTimeSeriesByControlParameter();
-        mr2->sortTimeSeriesByControlParameter();
+        for (BC bc: all_BC) {
+            mrbc1[bc]->sortTimeSeriesByControlParameter();
+	    mrbc2[bc]->sortTimeSeriesByControlParameter();
+        }
     }
-
-    mr1->createHistograms(binCount);
-    mr2->createHistograms(binCount);
-
-    mr1->saveH_km(outputDirPrefix + pre1 + "Hkm.table");
-    mr2->saveH_km(outputDirPrefix + pre2 + "Hkm.table");
-
-    if (use_jackknife) {
-        std::dynamic_pointer_cast<MultireweightHistosPTJK>(mr1)->
-            saveH_km_errors(outputDirPrefix + pre1 + "Hkm-errors.table");
-        std::dynamic_pointer_cast<MultireweightHistosPTJK>(mr2)->
-            saveH_km_errors(outputDirPrefix + pre2 + "Hkm-errors.table");
+    
+    for (BC bc: all_BC) {
+        mrbc1[bc]->createHistograms(binCount);
+        mrbc2[bc]->createHistograms(binCount);
     }
-    mr1->saveU_m(outputDirPrefix + pre1 + "Um.table");
-    mr2->saveU_m(outputDirPrefix + pre2 + "Um.table");
 
     if (non_iterative) {
-        mr1->findDensityOfStatesNonIteratively();
-        mr2->findDensityOfStatesNonIteratively();
+        for (BC bc: all_BC) {
+            mrbc1[bc]->findDensityOfStatesNonIteratively();
+            mrbc2[bc]->findDensityOfStatesNonIteratively();
+        }
     }
 
     if (noTau) {
-        mr1->setBinInefficienciesToUnity();
-        mr2->setBinInefficienciesToUnity();
+        for (BC bc: all_BC) {
+            mrbc1[bc]->setBinInefficienciesToUnity();
+            mrbc2[bc]->setBinInefficienciesToUnity();
+        }
     } else if (globalTau) {
-        mr1->measureGlobalInefficiencies();
-        mr2->measureGlobalInefficiencies();
+        for (BC bc: all_BC) {
+            mrbc1[bc]->measureGlobalInefficiencies();
+            mrbc2[bc]->measureGlobalInefficiencies();
+        }
     } else {
-        mr1->measureBinInefficiencies();
-        mr2->measureBinInefficiencies();
+        for (BC bc: all_BC) {
+            mrbc1[bc]->measureBinInefficiencies();
+            mrbc2[bc]->measureBinInefficiencies();
+        }
     }
 
-    mr1->saveg_km(outputDirPrefix + pre1 + "gkm.table");
-    mr2->saveg_km(outputDirPrefix + pre2 + "gkm.table");
-
-    mr1->updateEffectiveCounts();
-    mr2->updateEffectiveCounts();
+    for (BC bc: all_BC) {
+        mrbc1[bc]->updateEffectiveCounts();
+        mrbc2[bc]->updateEffectiveCounts();
+    }
 
     if (maxIterations > 0) {
-        mr1->findPartitionFunctionsAndDensityOfStates(iterationTolerance, maxIterations);
-        mr2->findPartitionFunctionsAndDensityOfStates(iterationTolerance, maxIterations);
+        for (BC bc: all_BC) {
+            mrbc1[bc]->findPartitionFunctionsAndDensityOfStates(iterationTolerance, maxIterations);
+            mrbc2[bc]->findPartitionFunctionsAndDensityOfStates(iterationTolerance, maxIterations);
+        }
     }
-
-    mr1->saveLogDensityOfStates(outputDirPrefix + pre1 + "dos.dat");
-    mr2->saveLogDensityOfStates(outputDirPrefix + pre2 + "dos.dat");
 }
 
 
@@ -235,8 +264,14 @@ void initFromCommandLine(int argc, char** argv) {
     //Command line parsing
     parser.add_option("help", "display this help message");
     parser.add_option("q", "be less verbose");
-    parser.add_option("info1", "info generated by simulation (\"info.dat\") for lattice size L1", 1);
-    parser.add_option("info2", "info generated by simulation (\"info.dat\") for lattice size L2", 1);
+    parser.add_option("info1-pbc", "info generated by simulation (\"info.dat\") for lattice size L1, pbc", 1);
+    parser.add_option("info2-pbc", "info generated by simulation (\"info.dat\") for lattice size L2, pbc", 1);
+    parser.add_option("info1-apbc-x", "info generated by simulation (\"info.dat\") for lattice size L1, apbc-x", 1);
+    parser.add_option("info2-apbc-x", "info generated by simulation (\"info.dat\") for lattice size L2, apbc-x", 1);
+    parser.add_option("info1-apbc-y", "info generated by simulation (\"info.dat\") for lattice size L1, apbc-y", 1);
+    parser.add_option("info2-apbc-y", "info generated by simulation (\"info.dat\") for lattice size L2, apbc-y", 1);
+    parser.add_option("info1-apbc-xy", "info generated bxy simulation (\"info.dat\") for lattice size L1, apbc-xy", 1);
+    parser.add_option("info2-apbc-xy", "info generated bxy simulation (\"info.dat\") for lattice size L2, apbc-xy", 1);
     parser.add_option("b", "number of energy bins", 1);
     parser.add_option("i", "max number of iterations to determine Z[cp]", 1);
     parser.add_option("t", "tolerance in iterative determination of Z[cp]", 1);
@@ -286,8 +321,14 @@ void initFromCommandLine(int argc, char** argv) {
 
     be_quiet = parser.option("q");
 
-    infoFilename1 = parser.option("info1");
-    infoFilename2 = parser.option("info2");
+    infoFilenamesBC1[PBC]    = parser.option("info1-pbc").argument();
+    infoFilenamesBC1[APBCX]  = parser.option("info1-apbc-x").argument();    
+    infoFilenamesBC1[APBCY]  = parser.option("info1-apbc-y").argument();    
+    infoFilenamesBC1[APBCXY] = parser.option("info1-apbc-xy").argument();    
+    infoFilenamesBC2[PBC]    = parser.option("info2-pbc").argument();
+    infoFilenamesBC2[APBCX]  = parser.option("info2-apbc-x").argument();    
+    infoFilenamesBC2[APBCY]  = parser.option("info2-apbc-y").argument();    
+    infoFilenamesBC2[APBCXY] = parser.option("info2-apbc-xy").argument();    
 
     if (not parser.option("b")) {
         cerr << "energy bin count not specified (option -b)!" << endl;

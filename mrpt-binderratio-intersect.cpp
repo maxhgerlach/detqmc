@@ -146,9 +146,9 @@ double findRoot(Callable f, double a, double b, bool& ok) {
 
 
 
-void findBinderIntersect(double& cpOut, bool& ok,
-                         MRPT_Pointer mr1, MRPT_Pointer mr2,
-                         double cpMin, double cpMax) {
+void findBinderRatioIntersect(double& cpOut, bool& ok,
+                              MRPT_Pointer mr1, MRPT_Pointer mr2,
+                              double cpMin, double cpMax) {
     BinderRatioDifference f(mr1, mr2);
     cpOut = findRoot(f, cpMin, cpMax, ok);
 }    
