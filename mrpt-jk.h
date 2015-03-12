@@ -95,6 +95,8 @@ private:
     friend class ObsHistogramPeakDiffMinCallableJK;
     friend class EnergyHistogramWeightDiffMinCallableJK;
     friend class ObsHistogramWeightDiffMinCallableJK;
+    friend class BinderMinCallableJK;
+    friend class BinderDiffMinCallableJK;    
     friend class BinderRatioDifferenceJK; 
     friend class BinderRatioDifferenceBCJK;   
 public:

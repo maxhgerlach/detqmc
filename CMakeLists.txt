@@ -446,27 +446,30 @@ target_link_libraries(testspheresampling general_common
 
 
 set(mrpt_COMMON_SRC
-  mrpt-highlevel.cpp
   mrpt.cpp
   mrpt-jk.cpp
   statistics.cpp
   )
 add_library(mrpt_COMMON ${mrpt_COMMON_SRC})
+add_library(mrpt_HIGHLEVEL mrpt-highlevel.cpp)
 add_executable(mrpt main-mrpt.cpp)
-target_link_libraries(mrpt mrpt_COMMON)
+target_link_libraries(mrpt mrpt_HIGHLEVEL mrpt_COMMON)
 add_executable(mrptbc main-mrptbc.cpp)
-target_link_libraries(mrptbc mrpt_COMMON)
+target_link_libraries(mrptbc mrpt_HIGHLEVEL mrpt_COMMON)
+add_library(mrpt_binderRatioIntersect mrpt-binderratio-intersect.cpp)
+add_executable(mrpt-binderratio-intersect main-mrptbc.cpp)
+target_link_libraries(mrpt-binderratio-intersect mrpt_binderRatioIntersect mrpt_COMMON)
 if(${OPENMP_FOUND})
   # add -fopenmp or -openmp or whatever
-  set_target_properties(mrpt_COMMON PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
+  set(MRPT_TARGETS mrpt_HIGHLEVEL mrpt_COMMON mrpt_binderRatioIntersect mrpt mrptbc)
+  foreach( target ${MRPT_TARGETS} )
+    set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
                                                LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
-  set_target_properties(mrpt PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
-                                        LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
-  set_target_properties(mrptbc PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
-                                          LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
+  endforeach( target ${MRPT_TARGETS} )                                        
 endif(${OPENMP_FOUND})
 target_link_libraries(mrpt general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 target_link_libraries(mrptbc general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
+target_link_libraries(mrpt-binderratio-intersect general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 
 
