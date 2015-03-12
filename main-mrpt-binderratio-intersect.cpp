@@ -128,6 +128,12 @@ void setJackknife(bool useJackknife, unsigned blocks) {
     headerSuffix = (use_jackknife ? "\t error" : "");
 }
 
+void setOutputDirectory(const char *dir) {
+    string directory = dir;
+    if (directory == "") directory = ".";
+    outputDirPrefix = directory + "/";
+}
+
 void init() {
     mr1.reset();
     mr2.reset();
@@ -255,6 +261,8 @@ void initFromCommandLine(int argc, char** argv) {
     parser.add_option("cp-range", "Takes two arguments determining the range of inverse temperatures between which to search for the intersection of the Binder cumulants", 2);
 
     parser.add_option("time-series-format", "Set to number of columns: 1 (default) or 2; 1-column time series are already sorted by control parameter", 1);
+
+    parser.add_option("outputDirectory", "directory to write intersection search results to", 1);
     
     //further general arguments: file names of energy/observable time series
     parser.parse(argc, argv);
@@ -322,6 +330,10 @@ void initFromCommandLine(int argc, char** argv) {
         } else {
             cerr << "Invalid time series format -- should be \"1\" or \"2\"" << endl;
         }
+    }
+
+    if (const clp::option_type& od = parser.option("outputDirectory")) {
+        setOutputDirectory(od.argument().c_str());
     }
     
     sortByCp = parser.option("sort");
