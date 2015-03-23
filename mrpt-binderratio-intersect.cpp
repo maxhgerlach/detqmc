@@ -13,8 +13,9 @@ public:
         mr1(mr1_), mr2(mr2_) { }
     double operator()(double controlParameter) {
         double br1 = mr1->reweightObservableBinderRatio(controlParameter);
-        double br2 = mr1->reweightObservableBinderRatio(controlParameter);
+        double br2 = mr2->reweightObservableBinderRatio(controlParameter);
         double diff = br1 - br2;
+        std::cout << diff << std::endl;
         return diff;
     }
 };
@@ -27,7 +28,7 @@ public:
         mr1(mr1_), mr2(mr2_), jkBlock(jkBlock_) { }
     double operator()(double controlParameter) {
         double br1 = mr1->reweightObservableBinderRatioJK(controlParameter, jkBlock);
-        double br2 = mr1->reweightObservableBinderRatioJK(controlParameter, jkBlock);
+        double br2 = mr2->reweightObservableBinderRatioJK(controlParameter, jkBlock);
         double diff = br1 - br2;
         return diff;
     }

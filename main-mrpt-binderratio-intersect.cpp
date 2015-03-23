@@ -81,7 +81,8 @@ void findBinderIntersection() {
     string cpName = mr1->getControlParameterName();
     assert(cpName == mr2->getControlParameterName());
     
-    cout << "Searching for intersection of Binder cumulants ";
+    cout << "Searching for intersection of Binder cumulants between "
+         << cpMin << " and " << cpMax;
 
     bool ok = true;
     if (not use_jackknife) {
