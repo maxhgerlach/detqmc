@@ -294,8 +294,10 @@ void initFromCommandLine(int argc, char** argv) {
 
     be_quiet = parser.option("q");
 
-    infoFilename1 = parser.option("info1");
-    infoFilename2 = parser.option("info2");
+    infoFilename1 = parser.option("info1").argument();
+    std::cout << infoFilename1 << "\n";
+    infoFilename2 = parser.option("info2").argument();
+    std::cout << infoFilename2 << "\n";    
 
     if (not parser.option("b")) {
         cerr << "energy bin count not specified (option -b)!" << endl;
