@@ -268,12 +268,12 @@ void initFromCommandLine(int argc, char** argv) {
     //further general arguments: file names of energy/observable time series
     parser.parse(argc, argv);
 
-    //echo whole commandline:
-    cout << "command line: ";
-    for (int arg = 0; arg < argc; ++arg) {
-        cout << argv[arg] << " ";
-    }
-    cout << endl;
+    // //echo whole commandline:
+    // cout << "command line: ";
+    // for (int arg = 0; arg < argc; ++arg) {
+    //     cout << argv[arg] << " ";
+    // }
+    // cout << endl;
 
     const char* one_time_opts[] = {"info1", "info2", "b", "j", "i", "sub-sample", "sort"};
     parser.check_one_time_options(one_time_opts);
@@ -286,6 +286,7 @@ void initFromCommandLine(int argc, char** argv) {
         cout << "Command line options understood:" << endl;
         parser.print_options(cout);
         cout << endl;
+        cout << "Remaining arguments: timeseries files" << endl;
         return;
     }
 

@@ -304,16 +304,12 @@ void initFromCommandLine(int argc, char** argv) {
     parser.parse(argc, argv);
 
     //echo whole commandline:
-    cout << "command line: ";
-    for (int arg = 0; arg < argc; ++arg) {
-        cout << argv[arg] << " ";
-    }
-    cout << endl;
+    // cout << "command line: ";
+    // for (int arg = 0; arg < argc; ++arg) {
+    //     cout << argv[arg] << " ";
+    // }
+    // cout << endl;
 
-    const char* one_time_opts[] = {"info1", "info2", "b", "j", "i", "sub-sample", "sort"};
-    parser.check_one_time_options(one_time_opts);
-    const char* incompatible1[] = {"global-tau", "no-tau"};
-    parser.check_incompatible_options(incompatible1);
 
     if (parser.option("help")) {
         cout << "Multihistogram reweighting for time series originating from parallel tempering or canonical simulations" << endl;
@@ -321,8 +317,18 @@ void initFromCommandLine(int argc, char** argv) {
         cout << "Command line options understood:" << endl;
         parser.print_options(cout);
         cout << endl;
+        cout << "Remaining arguments: timeseries files" << endl;
         return;
     }
+
+    const char* one_time_opts[] = {"info1-pbc", "info2-pbc",
+                                   "info1-apbc-x", "info2-apbc-x",
+                                   "info1-apbc-y", "info2-apbc-y",
+                                   "info1-apbc-xy", "info2-apbc-xy",
+                                   "b", "j", "i", "sub-sample", "sort"};
+    parser.check_one_time_options(one_time_opts);
+    const char* incompatible1[] = {"global-tau", "no-tau"};
+    parser.check_incompatible_options(incompatible1);
 
     if (const clp::option_type& jk = parser.option("j")) {
         setJackknife(true, fromString<unsigned>(jk.argument()));
