@@ -324,7 +324,7 @@ add_library(detqmc_nonmpi_common ${detqmc_nonmpi_common_SRC})
 set(dethubbard_common_SRC dethubbard.cpp dethubbardparams.cpp)
 add_library(dethubbard_common ${dethubbard_common_SRC})
 
-set(detsdw_common_SRC detsdwparams.cpp)
+set(detsdw_common_SRC detsdwparams.cpp detsdwsystemconfig.cpp)
 add_library(detsdw_common ${detsdw_common_SRC})
 
 set(detsdwo1_common_SRC detsdwo1.cpp)
