@@ -4505,13 +4505,85 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
             cdwl_output.flush();
         }
     }
-
 }
+
+
+
+//Methods used to implement writing out system configurations in a
+//replica exchange simulation (used by DetQMCPT).
+//----------------------------------------------------------------
+template<CheckerboardMethod CB, int OPDIM>
+DetSDW_SystemConfig DetSDW<CB, OPDIM>::getCurrentSystemConfiguration() {
+    if (pars.cdwU) {                 // so we have not assigned .0 to cdwU
+        return DetSDW_SystemConfig(pars, phi, cdwl);
+    } else {
+        return DetSDW_SystemConfig(pars, phi);
+    }
+}
+
+template<CheckerboardMethod CB, int OPDIM>
+DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStreamFileHandle(
+        bool binaryStream, bool textStream, const std::string& directory = ".") {
+    if (not (binaryStream or textStream)) {
+        throw_GeneralError("binaryStream or textStream must be sepcified to create file handle");
+    }
+
+    DetSDW_SystemConfig_FileHandle file_handle;
+
+    if (binaryStream) {
+        fs::path phi_filepath = fs::path(directory) /
+            fs::path("configs-phi.binarystream");
+        file_handle.phi_output_binary = std::unique_ptr<std::ofstream>(
+            new std::ofstream(phi_filepath.c_str(), std::ios::binary | std::ios::app) );
+        if (not file_handle.phi_output_binary) {
+            std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        }
+    }
+    if (textStream) {
+        fs::path phi_filepath = fs::path(directory) /
+            fs::path("configs-phi.textstream");
+        file_handle.phi_output_text = std::unique_ptr<std::ofstream>(
+            new std::ofstream(phi_filepath.c_str(), std::ios::app) );
+        if (not file_handle.phi_output_text) {
+            std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        }        
+    }
+    
+    if (pars.cdwU) {
+        if (binaryStream) {
+            fs::path cdwl_filepath = fs::path(directory) /
+                fs::path("configs-l.binarystream");
+
+            file_handle.cdwl_output_binary = std::unique_ptr<std::ofstream>(
+                new std::ofstream(cdwl_filepath.c_str(), std::ios::binary | std::ios::app));
+            if (not file_handle.cdwl_output_binary) {
+                std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+                std::cerr << "Error code: " << strerror(errno) << "\n";
+            }            
+        }
+        if (textStream) {
+            fs::path cdwl_filepath = fs::path(directory) /
+                fs::path("configs-l.textstream");
+
+            file_handle.cdwl_output_text = std::unique_ptr<std::ofstream>(
+                new std::ofstream(cdwl_filepath.c_str(), std::ios::app));
+            if (not file_handle.cdwl_output_text) {
+                std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+                std::cerr << "Error code: " << strerror(errno) << "\n";
+            }
+        }
+    }
+
+    return file_handle;
+}
+
 
 //Methods to implement a replica-exchange / parallel tempering scheme
 
 template<CheckerboardMethod CB, int OPDIM>
-num  DetSDW<CB, OPDIM>::get_exchange_parameter_value() const {
+num DetSDW<CB, OPDIM>::get_exchange_parameter_value() const {
     return pars.r;
 }
 

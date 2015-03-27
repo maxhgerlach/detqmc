@@ -21,6 +21,8 @@
 #include "checkarray.h"
 #include "normaldistribution.h"
 #include "symmat.h"
+#include "detsdwsystemconfig.h"
+#include "detsdwsystemconfigfilehandle.h"
 
 typedef std::complex<num> cpx;
 typedef arma::Mat<cpx> MatCpx;
@@ -97,6 +99,18 @@ public:
     void saveConfigurationStreamBinaryHeaderfile(const std::string& simInfoHeaderText,
                                                  const std::string& directory = ".");    
 
+    //Methods used to implement writing out system configurations in a
+    //replica exchange simulation (used by DetQMCPT).
+    //----------------------------------------------------------------
+    DetSDW_SystemConfig getCurrentSystemConfiguration();
+    // the file handle created by the following method will ultimately
+    // be used by other replicas simulated on other processors if this
+    // is used by DetQMCPT
+    DetSDW_SystemConfig_FileHandle prepareSystemConfigurationStreamFileHandle(
+        bool binaryStream, bool textStream,
+        const std::string& directory = ".");
+
+    
     //Methods to implement a replica-exchange / parallel tempering scheme
     //-------------------------------------------------------------------
     // get / set pars.r
