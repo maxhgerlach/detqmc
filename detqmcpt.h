@@ -668,7 +668,7 @@ void DetQMCPT<Model, ModelParams>::setup_SaveConfigurations() {
             }
             sc.process_mpi_buffer.resize(numProcesses);
             for (int pi = 0; pi < numProcesses; ++pi) {
-                sc.process_mpi_buffer[cpi].clear();
+                sc.process_mpi_buffer[pi].clear();
             }
             sc.process_controlParameterIndex.resize(numProcesses);
         }
@@ -693,7 +693,7 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
         // collect at rank0
         
         sc.local_mpi_buffer.clear();
-        serialize_systemConfig_to_buffer(local_mpi_buffer,
+        serialize_systemConfig_to_buffer(sc.local_mpi_buffer,
                                          sc.local_bufferedConfigurations.front());
         int local_cpi = sc.local_bufferedControlParameterIndex.front();
 
@@ -719,9 +719,9 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
         // write to the right files
 
         for (int pi = 0; pi < numProcesses; ++pi) {
-            SaveConfigurations::SystemConfig pi_systemConfig;
+            typename SaveConfigurations::SystemConfig pi_systemConfig;
             deserialize_systemConfig_from_buffer(pi_systemConfig, sc.process_mpi_buffer[pi]);
-            int cpi = sc.process_mpi_buffer[pi];
+            int cpi = sc.process_controlParameterIndex[pi];
 
             pi_systemConfig.write_to_disk(sc.par_fileHandle[cpi]);
         }

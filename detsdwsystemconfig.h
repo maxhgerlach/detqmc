@@ -15,6 +15,7 @@ typedef arma::Mat<int32_t> MatInt;
 
 class DetSDW_SystemConfig {
 public:
+    DetSDW_SystemConfig();
     DetSDW_SystemConfig(const ModelParamsDetSDW& pars, const CubeNum& phi_current, const MatInt& cdwl_current);
     DetSDW_SystemConfig(const ModelParamsDetSDW& pars, const CubeNum& phi_current);
 

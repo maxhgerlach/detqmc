@@ -12,6 +12,11 @@
 #include "detsdwsystemconfig.h"
 #include "exceptions.h"
 
+DetSDW_SystemConfig::DetSDW_SystemConfig()
+    : L(0), m(0), opdim(0), phi(), cdwl()
+{
+}
+
 DetSDW_SystemConfig::DetSDW_SystemConfig(const ModelParamsDetSDW& pars, const CubeNum& phi_current, const MatInt& cdwl_current)
     : L(pars.L), m(pars.m), opdim(pars.opdim), phi(phi_current), cdwl(cdwl_current)
 {
