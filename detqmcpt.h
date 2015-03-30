@@ -716,6 +716,8 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
                     sc.process_controlParameterIndex, // recv at rank 0
                     0);
 
+        // write to the right files
+
         for (int pi = 0; pi < numProcesses; ++pi) {
             SaveConfigurations::SystemConfig pi_systemConfig;
             deserialize_systemConfig_from_buffer(pi_systemConfig, sc.process_mpi_buffer[pi]);
@@ -724,7 +726,11 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
             pi_systemConfig.write_to_disk(sc.par_fileHandle[cpi]);
         }
     }
-    
+
+    // flush all ofstreams
+    for (int cpi = 0; cpi < numProcesses; ++cpi) {
+        sc.par_fileHandle[cpi].flush();
+    }    
 }
 
 
@@ -892,6 +898,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                 }
                 swCounter = 0;
                 saveResults();
+                gather_and_output_buffered_system_configurations();
                 saveState();
                 //MPI_Barrier(MPI_COMM_WORLD);
                 world.barrier();
