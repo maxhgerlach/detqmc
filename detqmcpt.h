@@ -358,6 +358,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
 
     // setup files for system configuration streams [if files do not exist already]
     // [each process for its local replica]
+    // Afterwards only the master process will continue to write to these files
     if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
         std::string subdir_string = control_parameter_subdir(local_current_parameter_index);
         std::string parname = parspt.controlParameterName;
