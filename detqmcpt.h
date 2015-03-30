@@ -4,6 +4,7 @@
 #define MPIDETQMCPT_H_
 
 #include <vector>
+#include <queue>
 #include <functional>
 #include <numeric>              // std::iota
 #include <algorithm>            // std::copy
@@ -169,7 +170,25 @@ protected:
                & par_countGoingUp & par_countGoingDown;
         }        
     } es;
-    
+
+
+    // Saving system configurations in parallelized simulations:
+    // -- root process collects configs from all replicas, saves all of them after buffering
+    struct SaveConfigurations {
+        typedef typename Model::SystemConfig SystemConfig;
+        std::queue<SystemConfig> local_bufferedConfigurations; // each process buffers the configs of its own replica here (FIFO)
+        std::queue<int> local_bufferedControlParameterIndex;   // each process buffers the current controlParameterIndex for its replica
+        std::string local_mpi_buffer;
+
+        // at rank 0:
+        typedef typename Model::SystemConfig_FileHandle FileHandle;
+        std::vector<FileHandle> par_fileHandle; // file handle to save configurations for each control parameter index
+        std::vector<std::string> process_mpi_buffer; // buffer for MPI gathered data for each process index
+        std::vector<int> process_controlParameterIndex; // cpi mathching the system configuration in process_mpi_buffer
+    } sc;
+    void setup_SaveConfigurations();
+    void buffer_local_system_configuration();
+    void gather_and_output_buffered_system_configurations();
 private:
     //Serialize only the content data that has changed after construction.
     //Only call for deserialization after DetQMCPT has already been constructed and initialized!
@@ -407,7 +426,7 @@ DetQMCPT<Model, ModelParams>::DetQMCPT(const ModelParams& parsmodel_, const DetQ
     process_control_data_buffer(),
     //control_data_buffer_2(),
     local_control_data_buffer(),
-    es()
+    es(), sc()
 {
     initFromParameters(parsmodel_, parsmc_, parspt_, parslogging_);
 }
@@ -634,6 +653,80 @@ template<class Model, class ModelParams>
 DetQMCPT<Model, ModelParams>::~DetQMCPT() {
 }
 
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::setup_SaveConfigurations() {
+    if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        sc = SaveConfigurations();
+    
+        if (processIndex == 0) {
+            sc.par_fileHandle.resize(numProcesses);
+            for (int cpi = 0; cpi < numProcesses; ++cpi) {
+                sc.par_fileHandle[cpi] = replica->prepareSystemConfigurationStreamFileHandle(
+                    parsmc.saveConfigurationStreamBinary, parsmc.saveConfigurationStreamText,
+                    control_parameter_subdir(cpi)
+                    );
+            }
+            sc.process_mpi_buffer.resize(numProcesses);
+            for (int pi = 0; pi < numProcesses; ++pi) {
+                sc.process_mpi_buffer[cpi].clear();
+            }
+            sc.process_controlParameterIndex.resize(numProcesses);
+        }
+    }
+}
+
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::buffer_local_system_configuration() {
+    // each process buffers the system configuration of its replica in local memory
+    if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        sc.local_bufferedConfigurations.push(replica->getCurrentSystemConfiguration());
+        sc.local_bufferedControlParameterIndex.push(local_current_parameter_index);
+    }
+}
+
+template<class Model, class ModelParams>
+void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurations() {
+    namespace mpi = boost::mpi;
+    mpi::communicator world;
+
+    while (not sc.local_bufferedConfigurations.empty()) {
+        // collect at rank0
+        
+        sc.local_mpi_buffer.clear();
+        serialize_systemConfig_to_buffer(local_mpi_buffer,
+                                         sc.local_bufferedConfigurations.front());
+        int local_cpi = sc.local_bufferedControlParameterIndex.front();
+
+        sc.local_bufferedConfigurations.pop();
+        sc.local_bufferedControlParameterIndex.pop();
+        
+        if (processIndex == 0) {
+            for (auto& datastring : sc.process_mpi_buffer) {
+                datastring.clear();
+            }
+        }
+        
+        mpi::gather(world,
+                    sc.local_mpi_buffer,   // send
+                    sc.process_mpi_buffer, // recv at rank 0
+                    0);
+
+        mpi::gather(world,
+                    local_cpi,                        // send
+                    sc.process_controlParameterIndex, // recv at rank 0
+                    0);
+
+        for (int pi = 0; pi < numProcesses; ++pi) {
+            SaveConfigurations::SystemConfig pi_systemConfig;
+            deserialize_systemConfig_from_buffer(pi_systemConfig, sc.process_mpi_buffer[pi]);
+            int cpi = sc.process_mpi_buffer[pi];
+
+            pi_systemConfig.write_to_disk(sc.par_fileHandle[cpi]);
+        }
+    }
+    
+}
+
 
 template<class Model, class ModelParams>
 void DetQMCPT<Model, ModelParams>::run() {
@@ -660,6 +753,10 @@ void DetQMCPT<Model, ModelParams>::run() {
         }
     };
 
+    if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        setup_SaveConfigurations();
+    }
+    
     if (sweepsDoneThermalization < parsmc.thermalization) {
         thermalizationStage();
     } else if (sweepsDone < parsmc.sweeps) {
@@ -722,7 +819,7 @@ void DetQMCPT<Model, ModelParams>::run() {
         //thermalization & measurement stages | main work
         switch (stage) {
 
-        case T:
+        case T: {
             switch(parsmc.greenUpdateType) {
             case GreenUpdateType::GreenUpdateTypeSimple:
                 replica->sweepSimpleThermalization();
@@ -753,8 +850,8 @@ void DetQMCPT<Model, ModelParams>::run() {
                 swCounter = 0;
                 measurementsStage();
             }
-            break;  //case
-
+            break;  //case T
+        }
         case M: {
             ++swCounter;
             bool takeMeasurementNow = (swCounter % parsmc.measureInterval == 0);
@@ -776,15 +873,17 @@ void DetQMCPT<Model, ModelParams>::run() {
                     (*ph)->insertValue(sweepsDone);
                 }
 
-                // This is a good time to write the current system configuration to disk
-                if (parsmc.saveConfigurationStreamText) {
-                    replica->saveConfigurationStreamText(
-                        control_parameter_subdir(local_current_parameter_index));
-                }
-                if (parsmc.saveConfigurationStreamBinary) {
-                    replica->saveConfigurationStreamBinary(
-                        control_parameter_subdir(local_current_parameter_index));
-                }
+                buffer_local_system_configuration();
+
+                // // This is a good time to write the current system configuration to disk
+                // if (parsmc.saveConfigurationStreamText) {
+                //     replica->saveConfigurationStreamText(
+                //         control_parameter_subdir(local_current_parameter_index));
+                // }
+                // if (parsmc.saveConfigurationStreamBinary) {
+                //     replica->saveConfigurationStreamBinary(
+                //         control_parameter_subdir(local_current_parameter_index));
+                // }
             }
             ++sweepsDone;
             if (swCounter == parsmc.saveInterval) {
@@ -804,11 +903,11 @@ void DetQMCPT<Model, ModelParams>::run() {
                 swCounter = 0;
                 finishedStage();
             }
-            break;  //case
+            break;  //case M
         }
 
         case F:
-            break;  //case
+            break;  //case F
 
         }  //switch
 

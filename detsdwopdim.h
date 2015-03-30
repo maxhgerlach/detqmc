@@ -100,8 +100,10 @@ public:
                                                  const std::string& directory = ".");    
 
     //Methods used to implement writing out system configurations in a
-    //replica exchange simulation (used by DetQMCPT).
+    //replica exchange simulation (needed by DetQMCPT).
     //----------------------------------------------------------------
+    typedef DetSDW_SystemConfig SystemConfig;
+    typedef DetSDW_SystemConfig_FileHandle SystemConfig_FileHandle;
     DetSDW_SystemConfig getCurrentSystemConfiguration();
     // the file handle created by the following method will ultimately
     // be used by other replicas simulated on other processors if this

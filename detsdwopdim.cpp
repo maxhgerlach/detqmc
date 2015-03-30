@@ -16,6 +16,7 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include "boost/assign/std/vector.hpp"    // 'operator+=()' for vectors
 #include "boost/archive/binary_oarchive.hpp"
 #include "boost/archive/binary_iarchive.hpp"
@@ -4514,7 +4515,7 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
 //----------------------------------------------------------------
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW_SystemConfig DetSDW<CB, OPDIM>::getCurrentSystemConfiguration() {
-    if (pars.cdwU) {                 // so we have not assigned .0 to cdwU
+    if (pars.cdwU) {                 // we have not assigned 0.0 to cdwU
         return DetSDW_SystemConfig(pars, phi, cdwl);
     } else {
         return DetSDW_SystemConfig(pars, phi);
@@ -4523,7 +4524,7 @@ DetSDW_SystemConfig DetSDW<CB, OPDIM>::getCurrentSystemConfiguration() {
 
 template<CheckerboardMethod CB, int OPDIM>
 DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStreamFileHandle(
-        bool binaryStream, bool textStream, const std::string& directory = ".") {
+        bool binaryStream, bool textStream, const std::string& directory) {
     if (not (binaryStream or textStream)) {
         throw_GeneralError("binaryStream or textStream must be sepcified to create file handle");
     }

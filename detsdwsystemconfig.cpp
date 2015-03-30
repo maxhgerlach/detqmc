@@ -1,3 +1,14 @@
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wshadow"
+#include "boost/iostreams/stream.hpp"
+#include "boost/iostreams/device/back_inserter.hpp"
+#include "boost/iostreams/device/array.hpp"
+#include "boost/archive/binary_oarchive.hpp"
+#include "boost/archive/binary_iarchive.hpp"
+#pragma GCC diagnostic pop
+#include "boost_serialize_armadillo.h"
 #include "detsdwsystemconfig.h"
 #include "exceptions.h"
 
@@ -121,4 +132,31 @@ void DetSDW_SystemConfig::write_to_disk_cdwl_binary(DetSDW_SystemConfig_FileHand
             }
         }
     }
+}
+
+
+
+
+void serialize_systemConfig_to_buffer(std::string& buffer, const DetSDW_SystemConfig& systemConfig) {
+    //serialize object into a std::basic_string
+    //cf. http://stackoverflow.com/questions/3015582/direct-boost-serialization-to-char-array
+    namespace ios = boost::iostreams;
+    ios::back_insert_device<std::string> inserter(buffer);
+    ios::stream<ios::back_insert_device<std::string> > s(inserter);
+    boost::archive::binary_oarchive oa(s);
+
+    oa << systemConfig;
+
+    s.flush();    
+}
+
+void deserialize_systemConfig_from_buffer(DetSDW_SystemConfig& systemConfig, const std::string& buffer) {
+    //wrap buffer inside a stream and deserialize into object
+    //cf. http://stackoverflow.com/questions/3015582/direct-boost-serialization-to-char-array
+    namespace ios = boost::iostreams;
+    ios::basic_array_source<char> device(buffer.data(), buffer.size());
+    ios::stream<ios::basic_array_source<char> > s(device);
+    boost::archive::binary_iarchive ia(s);
+
+    ia >> systemConfig;    
 }
