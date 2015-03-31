@@ -4374,23 +4374,25 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamText(const std::string& directory
         phi_output.flush();
     }
 
-    fs::path cdwl_filepath = fs::path(directory) /
-        fs::path("configs-l.textstream");
+    if (pars.cdwU) {                 // we have not assigned 0.0 to cdwU
+        fs::path cdwl_filepath = fs::path(directory) /
+            fs::path("configs-l.textstream");
 
-    std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::app);
-    if (not cdwl_output) {
-        std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
-        std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {
-        for (uint32_t ix = 0; ix < pars.L; ++ix) {
-            for (uint32_t iy = 0; iy < pars.L; ++iy) {
-                uint32_t i = iy*pars.L + ix;
-                for (uint32_t k = 1; k <= pars.m; ++k) {
-                    cdwl_output << cdwl(i, k) << "\n";
+        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::app);
+        if (not cdwl_output) {
+            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {
+            for (uint32_t ix = 0; ix < pars.L; ++ix) {
+                for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                    uint32_t i = iy*pars.L + ix;
+                    for (uint32_t k = 1; k <= pars.m; ++k) {
+                        cdwl_output << cdwl(i, k) << "\n";
+                    }
                 }
             }
+            cdwl_output.flush();
         }
-        cdwl_output.flush();
     }
 }
 
@@ -4418,24 +4420,26 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinary(const std::string& directo
         phi_output.flush();
     }
 
-    fs::path cdwl_filepath = fs::path(directory) /
-        fs::path("configs-l.binarystream");
+    if (pars.cdwU) {                 // we have not assigned 0.0 to cdwU
+        fs::path cdwl_filepath = fs::path(directory) /
+            fs::path("configs-l.binarystream");
 
-    std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::binary | std::ios::app);
-    if (not cdwl_output) {
-        std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
-        std::cerr << "Error code: " << strerror(errno) << "\n";
-    } else {
-        for (uint32_t ix = 0; ix < pars.L; ++ix) {
-            for (uint32_t iy = 0; iy < pars.L; ++iy) {
-                uint32_t i = iy*pars.L + ix;
-                for (uint32_t k = 1; k <= pars.m; ++k) {
-                    cdwl_output.write(reinterpret_cast<const char*>(&(cdwl(i, k))),
-                                      sizeof(cdwl(i, k)));
+        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::binary | std::ios::app);
+        if (not cdwl_output) {
+            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+            std::cerr << "Error code: " << strerror(errno) << "\n";
+        } else {
+            for (uint32_t ix = 0; ix < pars.L; ++ix) {
+                for (uint32_t iy = 0; iy < pars.L; ++iy) {
+                    uint32_t i = iy*pars.L + ix;
+                    for (uint32_t k = 1; k <= pars.m; ++k) {
+                        cdwl_output.write(reinterpret_cast<const char*>(&(cdwl(i, k))),
+                                          sizeof(cdwl(i, k)));
+                    }
                 }
             }
+            cdwl_output.flush();
         }
-        cdwl_output.flush();
     }
 }
 
@@ -4457,18 +4461,20 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamTextHeader(
         }
     }
 
-    fs::path cdwl_filepath = fs::path(directory) /
-        fs::path("configs-l.textstream");
-    // only write the header if the file does not exist yet
-    if (not fs::exists(cdwl_filepath)) {
-        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
-        if (not cdwl_output) {
-            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
-            std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {
-            cdwl_output << simInfoHeaderText;
-            cdwl_output << "## l configuration stream\n";
-            cdwl_output.flush();
+    if (pars.cdwU) {                 // we have not assigned 0.0 to cdwU
+        fs::path cdwl_filepath = fs::path(directory) /
+            fs::path("configs-l.textstream");
+        // only write the header if the file does not exist yet
+        if (not fs::exists(cdwl_filepath)) {
+            std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
+            if (not cdwl_output) {
+                std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+                std::cerr << "Error code: " << strerror(errno) << "\n";
+            } else {
+                cdwl_output << simInfoHeaderText;
+                cdwl_output << "## l configuration stream\n";
+                cdwl_output.flush();
+            }
         }
     }
 }
@@ -4492,18 +4498,20 @@ void DetSDW<CB, OPDIM>::saveConfigurationStreamBinaryHeaderfile(
         }
     }
 
-    fs::path cdwl_filepath = fs::path(directory) /
-        fs::path("configs-l.infoheader");
-    // only write the header if the file does not exist yet
-    if (not fs::exists(cdwl_filepath)) {
-        std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
-        if (not cdwl_output) {
-            std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
-            std::cerr << "Error code: " << strerror(errno) << "\n";
-        } else {
-            cdwl_output << simInfoHeaderText;
-            cdwl_output << "## binary l configuration stream (32 bit signed integers) in file configs-l.binarystream\n";
-            cdwl_output.flush();
+    if (pars.cdwU) {                 // we have not assigned 0.0 to cdwU
+        fs::path cdwl_filepath = fs::path(directory) /
+            fs::path("configs-l.infoheader");
+        // only write the header if the file does not exist yet
+        if (not fs::exists(cdwl_filepath)) {
+            std::ofstream cdwl_output(cdwl_filepath.c_str(), std::ios::out);
+            if (not cdwl_output) {
+                std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
+                std::cerr << "Error code: " << strerror(errno) << "\n";
+            } else {
+                cdwl_output << simInfoHeaderText;
+                cdwl_output << "## binary l configuration stream (32 bit signed integers) in file configs-l.binarystream\n";
+                cdwl_output.flush();
+            }
         }
     }
 }
