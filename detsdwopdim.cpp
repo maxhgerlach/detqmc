@@ -4549,7 +4549,9 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
         if (not file_handle.phi_output_text) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
-        }        
+        }
+        file_handle.phi_output_text->precision(14);
+        file_handle.phi_output_text->setf(std::ios::scientific, std::ios::floatfield);
     }
     
     if (pars.cdwU) {

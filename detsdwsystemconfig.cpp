@@ -87,9 +87,6 @@ void DetSDW_SystemConfig::write_to_disk(DetSDW_SystemConfig_FileHandle& file_han
 }
 
 void DetSDW_SystemConfig::write_to_disk_phi_text(DetSDW_SystemConfig_FileHandle& file_handle) const {
-    file_handle.phi_output_text->precision(14);
-    file_handle.phi_output_text->setf(std::ios::scientific, std::ios::floatfield);
-
     for (uint32_t ix = 0; ix < L; ++ix) {
         for (uint32_t iy = 0; iy < L; ++iy) {
             uint32_t i = iy*L + ix;
