@@ -360,7 +360,9 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
     // [each process for its local replica]
     // Afterwards only the master process will continue to write to these files
     if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
+        namespace fs = boost::filesystem;
         std::string subdir_string = control_parameter_subdir(local_current_parameter_index);
+        fs::create_directories(subdir_string);
         std::string parname = parspt.controlParameterName;
         std::string parvalue = numToString(parspt.controlParameterValues[local_current_parameter_index]);            
         MetadataMap modelMeta_cpi = modelMeta;
@@ -656,15 +658,18 @@ DetQMCPT<Model, ModelParams>::~DetQMCPT() {
 
 template<class Model, class ModelParams>
 void DetQMCPT<Model, ModelParams>::setup_SaveConfigurations() {
+    namespace fs = boost::filesystem;
     if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
         sc = SaveConfigurations();
     
         if (processIndex == 0) {
             sc.par_fileHandle.resize(numProcesses);
             for (int cpi = 0; cpi < numProcesses; ++cpi) {
+                std::string subdirectory = control_parameter_subdir(cpi);
+                fs::create_directories(subdirectory);
                 sc.par_fileHandle[cpi] = replica->prepareSystemConfigurationStreamFileHandle(
                     parsmc.saveConfigurationStreamBinary, parsmc.saveConfigurationStreamText,
-                    control_parameter_subdir(cpi)
+                    subdirectory
                     );
             }
             sc.process_mpi_buffer.resize(numProcesses);
@@ -719,19 +724,23 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
 
         // write to the right files
 
-        for (int pi = 0; pi < numProcesses; ++pi) {
-            typename SaveConfigurations::SystemConfig pi_systemConfig;
-            deserialize_systemConfig_from_buffer(pi_systemConfig, sc.process_mpi_buffer[pi]);
-            int cpi = sc.process_controlParameterIndex[pi];
+        if (processIndex == 0) {
+            for (int pi = 0; pi < numProcesses; ++pi) {
+                typename SaveConfigurations::SystemConfig pi_systemConfig;
+                deserialize_systemConfig_from_buffer(pi_systemConfig, sc.process_mpi_buffer[pi]);
+                int cpi = sc.process_controlParameterIndex[pi];
 
-            pi_systemConfig.write_to_disk(sc.par_fileHandle[cpi]);
+                pi_systemConfig.write_to_disk(sc.par_fileHandle[cpi]);
+            }
         }
     }
 
     // flush all ofstreams
-    for (int cpi = 0; cpi < numProcesses; ++cpi) {
-        sc.par_fileHandle[cpi].flush();
-    }    
+    if (processIndex == 0) {
+        for (int cpi = 0; cpi < numProcesses; ++cpi) {
+            sc.par_fileHandle[cpi].flush();
+        }
+    }
 }
 
 
