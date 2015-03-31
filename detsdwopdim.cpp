@@ -4531,10 +4531,12 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
 
     DetSDW_SystemConfig_FileHandle file_handle;
 
+    typedef DetSDW_SystemConfig_FileHandle::OfstreamPointer OfstreamPointer;
+
     if (binaryStream) {
         fs::path phi_filepath = fs::path(directory) /
             fs::path("configs-phi.binarystream");
-        file_handle.phi_output_binary = std::unique_ptr<std::ofstream>(
+        file_handle.phi_output_binary = OfstreamPointer(
             new std::ofstream(phi_filepath.c_str(), std::ios::binary | std::ios::app) );
         if (not file_handle.phi_output_binary) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
@@ -4544,7 +4546,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
     if (textStream) {
         fs::path phi_filepath = fs::path(directory) /
             fs::path("configs-phi.textstream");
-        file_handle.phi_output_text = std::unique_ptr<std::ofstream>(
+        file_handle.phi_output_text = OfstreamPointer(
             new std::ofstream(phi_filepath.c_str(), std::ios::app) );
         if (not file_handle.phi_output_text) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
@@ -4559,7 +4561,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
             fs::path cdwl_filepath = fs::path(directory) /
                 fs::path("configs-l.binarystream");
 
-            file_handle.cdwl_output_binary = std::unique_ptr<std::ofstream>(
+            file_handle.cdwl_output_binary = OfstreamPointer(
                 new std::ofstream(cdwl_filepath.c_str(), std::ios::binary | std::ios::app));
             if (not file_handle.cdwl_output_binary) {
                 std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
@@ -4570,7 +4572,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
             fs::path cdwl_filepath = fs::path(directory) /
                 fs::path("configs-l.textstream");
 
-            file_handle.cdwl_output_text = std::unique_ptr<std::ofstream>(
+            file_handle.cdwl_output_text = OfstreamPointer(
                 new std::ofstream(cdwl_filepath.c_str(), std::ios::app));
             if (not file_handle.cdwl_output_text) {
                 std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";

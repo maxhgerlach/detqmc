@@ -5,10 +5,11 @@
 #include <fstream>
 
 struct DetSDW_SystemConfig_FileHandle {
-    std::unique_ptr<std::ofstream> phi_output_text;
-    std::unique_ptr<std::ofstream> cdwl_output_text; 
-    std::unique_ptr<std::ofstream> phi_output_binary;
-    std::unique_ptr<std::ofstream> cdwl_output_binary;
+    typedef std::shared_ptr<std::ofstream> OfstreamPointer;
+    OfstreamPointer phi_output_text;
+    OfstreamPointer cdwl_output_text; 
+    OfstreamPointer phi_output_binary;
+    OfstreamPointer cdwl_output_binary;
 
     void flush() {
         if (phi_output_text) phi_output_text->flush();
