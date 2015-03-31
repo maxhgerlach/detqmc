@@ -1056,7 +1056,7 @@ std::tuple<num,num> DetSDW<CB, OPDIM>::getCoshSinhTermCDWl(
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::updateCoshSinhTerms(uint32_t site, uint32_t k) {
     updateCoshSinhTermsPhi(site, k);
-    updateCoshSinhTermsCDWl(site, k);
+    if (pars.cdwU) updateCoshSinhTermsCDWl(site, k);
 }
 
 template<CheckerboardMethod CB, int OPDIM>
