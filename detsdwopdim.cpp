@@ -2050,7 +2050,7 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
             }
         }
 
-        if (not pars.turnoffFermions) {
+        if (not pars.turnoffFermions and pars.cdwU) { // we have not set cdwU to 0.0 and fermions are on
 
             //Update discrete cdwl fields
             //currently just discard this accratio
