@@ -1590,13 +1590,13 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
-    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl).eval() : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl).eval() : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl).eval() : (kphi2 % ksinhTermPhi).eval());
         max = -ax;
     }
     VecData b, bc;
@@ -1614,8 +1614,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl) : (-b  % ksinhTermPhi));
-    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl) : (-bc % ksinhTermPhi));
+    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl).eval() : (-b  % ksinhTermPhi).eval());
+    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl).eval() : (-bc % ksinhTermPhi).eval());
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(pars.dtau*pars.mu);
@@ -1689,13 +1689,13 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
-    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl).eval() : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl).eval() : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl).eval() : (kphi2 % ksinhTermPhi).eval());
         max = -ax;
     }
 
@@ -1714,8 +1714,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         setVectorImag(b,  -kphi1);
         setVectorImag(bc,  kphi1);
     }
-    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl) : (b  % ksinhTermPhi));
-    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl) : (bc % ksinhTermPhi));
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b  % ksinhTermPhi).eval());
+    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl).eval() : (bc % ksinhTermPhi).eval());
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(-pars.dtau*pars.mu);
@@ -1790,13 +1790,13 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     // #define ksinhTermCDWl sinhTermCDWl.col(k)
     // #define kcoshTermCDWl coshTermCDWl.col(k)
 
-    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
-    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl).eval() : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl).eval() : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         #define kphi2  phi.slice(k).col(2)
-        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl).eval() : (kphi2 % ksinhTermPhi).eval());
         max = -ax;
         #undef kphi2
     }
@@ -1829,8 +1829,8 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
         // CHECK_VEC_NAN(bc);
         #undef kphi1
     }
-    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl) : (-b  % ksinhTermPhi));
-    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl) : (-bc % ksinhTermPhi));
+    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl).eval() : (-b  % ksinhTermPhi).eval());
+    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl).eval() : (-bc % ksinhTermPhi).eval());
 
     // #undef ksinhTermPhi
     // #undef kcoshTermPhi
@@ -1924,13 +1924,13 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
     // const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
     // const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
-    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
-    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl).eval() : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl).eval() : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
+        ax  =  (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl).eval() : (kphi2 % ksinhTermPhi).eval());
         max = -ax;
     }
 
@@ -1949,8 +1949,8 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl) : (b % ksinhTermPhi));
-    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl) : (bc % ksinhTermPhi));
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b % ksinhTermPhi).eval());
+    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl).eval() : (bc % ksinhTermPhi).eval());
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(-pars.dtau*pars.mu);

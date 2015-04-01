@@ -2,6 +2,7 @@
 #pragma GCC diagnostic ignored "-Wpragmas"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wunused-variable"
 #include "boost/iostreams/stream.hpp"
 #include "boost/iostreams/device/back_inserter.hpp"
 #include "boost/iostreams/device/array.hpp"
