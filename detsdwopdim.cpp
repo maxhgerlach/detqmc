@@ -1184,6 +1184,8 @@ num DetSDW<CB, OPDIM>::compute_d_for_cdwl_site(int32_t cdwl) {
 template<CheckerboardMethod CB, int OPDIM>
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
+    // this routine is never called in performance-sensitive code, its speed does not matter 
+    
     //if (CB == CB_NONE) {
     {
         const auto N = pars.N;
@@ -1213,6 +1215,10 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             //      debugSaveMatrix(kphi2, "kphi2");
             const auto& kcoshTermPhi = coshTermPhi.col(k);
             const auto& ksinhTermPhi = sinhTermPhi.col(k);
+            if (not pars.cdwU) { // to be safe
+                coshTermCDWl.col(k).ones();
+                sinhTermCDWl.col(k).zeros();
+            }
             const auto& kcoshTermCDWl = coshTermCDWl.col(k);
             const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
 
@@ -1584,13 +1590,13 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
-    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
         max = -ax;
     }
     VecData b, bc;
@@ -1608,8 +1614,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& ori
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData mbx  = -b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData mbcx = -bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl) : (-b  % ksinhTermPhi));
+    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl) : (-bc % ksinhTermPhi));
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(pars.dtau*pars.mu);
@@ -1683,13 +1689,13 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
-    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
         max = -ax;
     }
 
@@ -1708,8 +1714,8 @@ DetSDW<CB, OPDIM>::leftMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData& 
         setVectorImag(b,  -kphi1);
         setVectorImag(bc,  kphi1);
     }
-    VecData bx  = b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData bcx = bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl) : (b  % ksinhTermPhi));
+    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl) : (bc % ksinhTermPhi));
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(-pars.dtau*pars.mu);
@@ -1784,13 +1790,13 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
     // #define ksinhTermCDWl sinhTermCDWl.col(k)
     // #define kcoshTermCDWl coshTermCDWl.col(k)
 
-    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
-    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         #define kphi2  phi.slice(k).col(2)
-        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  = (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
         max = -ax;
         #undef kphi2
     }
@@ -1823,8 +1829,8 @@ DetSDW<CB, OPDIM>::rightMultiplyBk(const typename DetSDW<CB, OPDIM>::MatData& or
         // CHECK_VEC_NAN(bc);
         #undef kphi1
     }
-    VecData mbx  = -b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData mbcx = -bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData mbx  = (pars.cdwU ? (-b  % ksinhTermPhi % kcoshTermCDWl) : (-b  % ksinhTermPhi));
+    VecData mbcx = (pars.cdwU ? (-bc % ksinhTermPhi % kcoshTermCDWl) : (-bc % ksinhTermPhi));
 
     // #undef ksinhTermPhi
     // #undef kcoshTermPhi
@@ -1916,13 +1922,15 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
     const auto& kcoshTermPhi = coshTermPhi.col(k);
     const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
     const auto& kcoshTermCDWl = coshTermCDWl.col(k);
-    const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
-    const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
+    // const VecNum cd  = kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl;
+    // const VecNum cmd = kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl;
+    const VecNum cd  = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) : kcoshTermPhi);
+    const VecNum cmd = (pars.cdwU ? (kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) : kcoshTermPhi);
 
     VecNum ax, max;
     if (OPDIM == 3) {
         const auto& kphi2 = phi.slice(k).col(2);
-        ax  =  kphi2 % ksinhTermPhi % kcoshTermCDWl;
+        ax  =  (pars.cdwU ? (kphi2 % ksinhTermPhi % kcoshTermCDWl) : (kphi2 % ksinhTermPhi));
         max = -ax;
     }
 
@@ -1941,8 +1949,8 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData bx  = b  % ksinhTermPhi % kcoshTermCDWl;
-    VecData bcx = bc % ksinhTermPhi % kcoshTermCDWl;
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl) : (b % ksinhTermPhi));
+    VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl) : (bc % ksinhTermPhi));
 
     //overall factor for entire matrix for chemical potential
 //    num ovFac = std::exp(-pars.dtau*pars.mu);
@@ -2767,51 +2775,57 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
         int sign,
         Phi kphi,
         num kcoshTermPhi, num ksinhTermPhi,
-        num kcoshTermCDWl, num ksinhTermCDWl) -> MatSmall {
+        num kcoshTermCDWl, num ksinhTermCDWl) -> MatSmall
+        {
+            MatSmall ev;
 
-        MatSmall ev;
+            typedef DetSDW<CB,OPDIM> D;
 
-        typedef DetSDW<CB,OPDIM> D;
-
-        D::setReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
-        D::setReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
+            D::setReal(ev(0,0), kcoshTermPhi * kcoshTermCDWl - sign * ksinhTermCDWl);
+            D::setReal(ev(1,1), kcoshTermPhi * kcoshTermCDWl + sign * ksinhTermCDWl);
 //        ev_real(0,1) = ev_real(1,0) = ev_real(2,3) = ev_real(3,2) = 0;  //zeros
-        D::setReal(ev(0,1), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
-        D::setReal(ev(1,0), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
-
-        if (OPDIM == 3) {
-            D::setReal(ev(2,2), std::real(ev(0,0)));
-            D::setReal(ev(3,3), std::real(ev(1,1)));
-            D::setReal(ev(0,3), sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
-            D::setReal(ev(3,0), std::real(ev(0,3)));
-            D::setReal(ev(3,2), std::real(ev(0,1)));
-            D::setReal(ev(2,3), std::real(ev(1,0)));
-            D::setReal(ev(2,1), -sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
-            D::setReal(ev(1,2), std::real(ev(2,1)));
-        }
-
-        if (OPDIM > 1) {
-            MatNum::fixed<MatrixSizeFactor, MatrixSizeFactor> ev_imag;
-            ev_imag.zeros();
-            ev_imag(0,1) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
-            ev_imag(1,0) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+            D::setReal(ev(0,1), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
+            D::setReal(ev(1,0), sign * kphi[0] * ksinhTermPhi * kcoshTermCDWl);
 
             if (OPDIM == 3) {
-                ev_imag(2,3) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
-                ev_imag(3,2) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+                D::setReal(ev(2,2), std::real(ev(0,0)));
+                D::setReal(ev(3,3), std::real(ev(1,1)));
+                D::setReal(ev(0,3), sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+                D::setReal(ev(3,0), std::real(ev(0,3)));
+                D::setReal(ev(3,2), std::real(ev(0,1)));
+                D::setReal(ev(2,3), std::real(ev(1,0)));
+                D::setReal(ev(2,1), -sign * kphi[2] * ksinhTermPhi * kcoshTermCDWl);
+                D::setReal(ev(1,2), std::real(ev(2,1)));
             }
-            ev.set_imag(ev_imag);
-        }
 
-        return ev;
-    };
-    MatSmall evOld = evMatrix(
-        +1,
-        getPhi(site, timeslice),
-        coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
-        coshTermCDWl(site, timeslice), sinhTermCDWl(site, timeslice)
-        );
+            if (OPDIM > 1) {
+                MatNum::fixed<MatrixSizeFactor, MatrixSizeFactor> ev_imag;
+                ev_imag.zeros();
+                ev_imag(0,1) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+                ev_imag(1,0) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
 
+                if (OPDIM == 3) {
+                    ev_imag(2,3) =  sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+                    ev_imag(3,2) = -sign * kphi[1] * ksinhTermPhi * kcoshTermCDWl;
+                }
+                ev.set_imag(ev_imag);
+            }
+
+            return ev;
+        };
+    MatSmall evOld = ( pars.cdwU ?
+                       evMatrix(
+                           +1,
+                           getPhi(site, timeslice),
+                           coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
+                           coshTermCDWl(site, timeslice), sinhTermCDWl(site, timeslice)
+                           ) :
+                       evMatrix(
+                           +1,
+                           getPhi(site, timeslice),
+                           coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
+                           0.0, 1.0
+                           ) );
     // //DEBUG
     // VecNum debug_phi0 = phi0.col(timeslice);
     // VecNum debug_phi1 = phi1.col(timeslice);
@@ -2827,13 +2841,22 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
 
     num coshTermPhi_new, sinhTermPhi_new, coshTermCDWl_new, sinhTermCDWl_new;
     std::tie(coshTermPhi_new, sinhTermPhi_new) = getCoshSinhTermPhi(newphi);
-    std::tie(coshTermCDWl_new, sinhTermCDWl_new) = getCoshSinhTermCDWl(new_cdwl);
-    MatSmall emvNew = evMatrix(
-        -1,
-        newphi,
-        coshTermPhi_new, sinhTermPhi_new,
-        coshTermCDWl_new, sinhTermCDWl_new
-        );
+    if (pars.cdwU) {
+        std::tie(coshTermCDWl_new, sinhTermCDWl_new) = getCoshSinhTermCDWl(new_cdwl);
+    }
+    MatSmall emvNew = ( pars.cdwU ?
+                        evMatrix(
+                            -1,
+                            newphi,
+                            coshTermPhi_new, sinhTermPhi_new,
+                            coshTermCDWl_new, sinhTermCDWl_new
+                            ) :
+                        evMatrix(
+                            -1,
+                            newphi,
+                            coshTermPhi_new, sinhTermPhi_new,
+                            0.0, 1.0
+                            ) );
 
     // //DEBUG
     // debug_phi0[site] = newphi[0];
