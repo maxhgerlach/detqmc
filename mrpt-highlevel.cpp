@@ -1595,6 +1595,9 @@ void handleObservableMomentsBC(ProvideObservableMoments_bc_cp callable, double c
             
         // estimate quantities, also non-linear combinations of expectation values:
         jackknife((*observable)[cp], (*observableError)[cp], moments_averaged.jkBlocks_o);
+        jackknife((*observableSquared)[cp], (*observableSquaredError)[cp], moments_averaged.jkBlocks_o2);
+        (*observableSquared)[cp] *= mrbc[PBC]->systemSize; // so it's really a susceptibility
+        (*observableSquaredError)[cp] *= mrbc[PBC]->systemSize;
             
         std::vector<double> jkBlocks_binderRatio(jackknifeBlocks, 0.0);
         std::vector<double> jkBlocks_susceptibility(jackknifeBlocks, 0.0);            
@@ -1609,6 +1612,7 @@ void handleObservableMomentsBC(ProvideObservableMoments_bc_cp callable, double c
             
     } else {
         (*observable)[cp] = moments_averaged.o;
+        (*observableSquared)[cp] = mrbc[PBC]->systemSize * moments_averaged.o2;        // so it's really a susceptibility
         (*binderRatio)[cp] = moments_averaged.o4 / std::pow(moments_averaged.o2, 2);
         (*susceptibility)[cp] = mrbc[PBC]->systemSize * (moments_averaged.o2 -
                                                          pow(moments_averaged.o, 2));
