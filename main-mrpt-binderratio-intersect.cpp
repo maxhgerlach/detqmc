@@ -109,8 +109,10 @@ void findBinderIntersection() {
     meta["N1"] = N1;
     meta["L2"] = L2;
     meta["N2"] = N2;
-    meta[cpName] = numToString(cp, 16);
-    if (use_jackknife) {
+    if (ok) {
+        meta[cpName] = numToString(cp, 16);
+    }
+    if (use_jackknife and ok) {
         meta[cpName + "Error"] = numToString(cpError, 16);
     }
     string comments = "Estimated intersection point of the Binder cumulants of " +

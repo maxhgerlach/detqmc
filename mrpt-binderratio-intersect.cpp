@@ -136,12 +136,18 @@ double findRoot(Callable f, double a, double b, bool& ok) {
     const boost::uintmax_t max_iter_target=500;
     boost::uintmax_t max_iter=max_iter_target;
 
-    auto r1 = toms748_solve( f , a, b,
-                             eps_tolerance<double>(7), max_iter );
+    try {
+        auto r1 = toms748_solve( f , a, b,
+                                 eps_tolerance<double>(7), max_iter );
 
-    ok = (max_iter <= max_iter_target);
+        ok = (max_iter <= max_iter_target);
 
-    return (r1.second + r1.first) / 2.0;
+        return (r1.second + r1.first) / 2.0;
+    } catch (const std::exception& e) {
+        std::cerr << "findRoot failed. what(): " << e.what() << std::endl;
+        ok = false;
+        return 0;
+    }
 }
 
 
@@ -195,7 +201,6 @@ void findBinderRatioIntersectBCError(double& cpOut, double& cpErrOut, bool& ok,
     }
 
     jackknife(cpOut, cpErrOut, jkCp_b);
-    
 }
 
 
