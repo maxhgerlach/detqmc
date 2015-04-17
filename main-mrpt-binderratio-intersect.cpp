@@ -80,6 +80,19 @@ void findBinderIntersection() {
 
     string cpName = mr1->getControlParameterName();
     assert(cpName == mr2->getControlParameterName());
+
+    // limit cpMin and cpMax to range available in data
+    auto iterator_pair1 = std::minmax_element(mr1->controlParameterValues.begin(),
+                                              mr1->controlParameterValues.end());
+    double cpMin_mr1 = *(iterator_pair1.first);
+    double cpMax_mr1 = *(iterator_pair1.second);
+    auto iterator_pair2 = std::minmax_element(mr2->controlParameterValues.begin(),
+                                              mr2->controlParameterValues.end());
+    double cpMin_mr2 = *(iterator_pair2.first);
+    double cpMax_mr2 = *(iterator_pair2.second);
+
+    cpMin = std::max( {cpMin, cpMin_mr1, cpMin_mr2} );
+    cpMax = std::min( {cpMax, cpMax_mr1, cpMax_mr2} );    
     
     cout << "Searching for intersection of Binder cumulants between "
          << cpMin << " and " << cpMax;
