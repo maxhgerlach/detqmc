@@ -457,12 +457,13 @@ void MultireweightHistosPTJK::findPartitionFunctionsAndDensityOfStates(double to
             }
             lZ_bl[b][0].lnx = 0;            //sets to 1 (normalize)
 
-            if (iterations % 10 == 0) {
-                out << "block " << b << ", Iteration " << iterations << ", deltaSquared=" << deltaSquared << endl;
-            }
+            // if (iterations % 10 == 0) {
+            //     out << "block " << b << ", Iteration " << iterations << ", deltaSquared=" << deltaSquared << endl;
+            // }
 
             updateDensityOfStatesJK(b);
         } while (iterations < maxIterations and deltaSquared >= tolerance * tolerance);
+        out << "block " << b << ": Iterations: " << iterations << "  deltaSquared: " << deltaSquared << endl;        
     }
     out << "Done." << endl;
 }

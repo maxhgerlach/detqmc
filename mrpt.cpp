@@ -1123,13 +1123,13 @@ void MultireweightHistosPT::findPartitionFunctionsAndDensityOfStates(double tole
         }
         lZ_l[0].lnx = 0;            //sets to 1 (normalize)
 
-        if (iterations % 10 == 0) {
-            out << " Iteration " << iterations << " deltaSquared=" << deltaSquared << endl;
-        }
+        // if (iterations % 10 == 0) {
+        //     out << " Iteration " << iterations << " deltaSquared=" << deltaSquared << endl;
+        // }
 
         updateDensityOfStates();
     } while (iterations < maxIterations and deltaSquared >= tolerance * tolerance);
-    out << "Done." << endl;
+    out << "Done. Iterations: " << iterations << "  deltaSquared: " << deltaSquared << endl;
 }
 
 MultireweightHistosPT::DoubleSeriesCollection MultireweightHistosPT::computeWeights(double targetControlParameter) {
