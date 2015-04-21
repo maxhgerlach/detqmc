@@ -139,8 +139,10 @@ public:
     void set_control_data(const std::string& buffer);
 protected:
 /*
-  The Green's function etc. are 4*N x 4*N matrices for the O(3)
-  model, 2*N x 2*N for the O(2) and O(1) models
+  The Green's function etc. are 4*N x 4*N matrices for the O(3) model,
+  2*N x 2*N for the O(2) and O(1) models.  In the case of turned off
+  fermions we do not really use those matrices in the base class
+  DetModelGC and just set the matrix size to 1.
 */    
     static constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
 
@@ -922,14 +924,20 @@ protected:
     	typedef std::tuple<uint32_t, uint32_t> SpaceTimeIndex;
     	//for the cluster update: keep book about which sites to try to add next
     	std::stack<SpaceTimeIndex> next_sites;
-    	GlobalMoveData(uint32_t N, uint32_t m) :
-            phi(N, OPDIM, m+1),
-            coshTermPhi(N, m+1), sinhTermPhi(N, m+1),
-            g(MatrixSizeFactor*N, MatrixSizeFactor*N),
-            g_inv_sv(MatrixSizeFactor*N),
-            UdVStorage(new checkarray<std::vector<UdVV>, 1>),
-            visited(N, m+1), next_sites()
-        { }
+    	GlobalMoveData(uint32_t N, uint32_t m, bool noFermions = false) {
+            phi.resize(N, OPDIM, m+1);
+            visited.resize(N, m+1);
+            next_sites = std::stack<SpaceTimeIndex>();            
+
+            if (not noFermions) {
+                coshTermPhi.resize(N, m+1);
+                sinhTermPhi.resize(N, m+1);
+                g.resize(MatrixSizeFactor*N, MatrixSizeFactor*N);
+                g_inv_sv.resize(MatrixSizeFactor*N);
+                UdVStorage = std::unique_ptr<checkarray<std::vector<UdVV>, 1>>(
+                    new checkarray<std::vector<UdVV>, 1>);
+            }                
+        }
     } gmd;
     //helper functions for global updates:
     void addGlobalRandomDisplacement(); // works directly on phi0,phi1,phi2

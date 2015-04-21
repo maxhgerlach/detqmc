@@ -149,7 +149,9 @@ template<CheckerboardMethod CB, int OPDIM>
 DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
                           const DetModelLoggingParams& loggingPars /*def arg*/,
                           const std::string& logfiledir_ /*def arg*/) :
-    Base(pars_, MatrixSizeFactor * pars_.L*pars_.L, loggingPars),
+    Base(pars_, (pars_.turnoffFermions ? 1  // save memory in no fermion case
+                 : (MatrixSizeFactor * pars_.L*pars_.L)),
+         loggingPars),
     smalleye(arma::eye<MatData>(MatrixSizeFactor, MatrixSizeFactor)),
     rng(rng_), normal_distribution(rng),
     pars(pars_),
@@ -179,7 +181,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     fermionEkinetic(0), fermionEcouple(0),
     occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
-    dud(pars.N, pars.delaySteps), gmd(pars.N, m),
+    dud(pars.N, pars.delaySteps), gmd(pars.N, m, pars_.turnoffFermions),
     greenConsistencyLogger(logfiledir_, loggingPars.logGreenConsistency), detRatioLogging(), greenLogging()
 {
     //use contents of ModelParams pars
@@ -229,68 +231,75 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     mu[XBAND] = pars.mux;
     mu[YBAND] = pars.muy;
 
-    setupPropK();
+    if (not pars.turnoffFermions) {
+        setupPropK();
+    }
 
     setupUdVStorage_and_calculateGreen();
 
     using std::cref;
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
-        ScalarObservable(cref(associatedEnergy), "associatedEnergy", ""),
-        ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
-        ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax")// ,
-        // ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
-        // ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple")
-        ;
+        ScalarObservable(cref(associatedEnergy), "associatedEnergy", "");
 
-    kOccX.zeros(pars.N);
-    kOccY.zeros(pars.N);
-    obsVector += VectorObservable(cref(kOccX), pars.N, "kOccX", "nkx"),
-        VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
-    // output some different sectors of the Green's function in the
-    // momentum space representation
-    obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
-        VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
-        VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
-        VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
-    kgreenXUP.zeros(pars.N);
-    kgreenYDOWN.zeros(pars.N);
-    kgreenXDOWN.zeros(pars.N);
-    kgreenYUP.zeros(pars.N);
+    if (not pars.turnoffFermions) {
+    
+        obsScalar +=
+            ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
+            ScalarObservable(cref(pairMinusMax), "pairMinusMax", "pmMax")// ,
+            // ScalarObservable(cref(fermionEkinetic), "fermionEkinetic", "fEkin"),
+            // ScalarObservable(cref(fermionEcouple), "fermionEcouple", "fEcouple")
+            ;
 
-    obsScalar += ScalarObservable(cref(greenK0), "greenK0", ""),
-        ScalarObservable(cref(greenLocal), "greenLocal", "");
+        kOccX.zeros(pars.N);
+        kOccY.zeros(pars.N);
+        obsVector += VectorObservable(cref(kOccX), pars.N, "kOccX", "nkx"),
+            VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
+        // output some different sectors of the Green's function in the
+        // momentum space representation
+        obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+            VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
+            VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+            VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
+        kgreenXUP.zeros(pars.N);
+        kgreenYDOWN.zeros(pars.N);
+        kgreenXDOWN.zeros(pars.N);
+        kgreenYUP.zeros(pars.N);
 
-    // occX.zeros(pars.N);
-    // occY.zeros(pars.N);
-    // obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
-    //     VectorObservable(cref(occY), pars.N, "occY", "ny");
+        obsScalar += ScalarObservable(cref(greenK0), "greenK0", ""),
+            ScalarObservable(cref(greenLocal), "greenLocal", "");
 
-    //attention:
-    // these do not have valid entries for site 0
-    pairPlus.zeros(pars.N);
-    pairMinus.zeros(pars.N);
-    obsVector += VectorObservable(cref(pairPlus), pars.N, "pairPlus", "pp"),
-        VectorObservable(cref(pairMinus), pars.N, "pairMinus", "pm");
+        // occX.zeros(pars.N);
+        // occY.zeros(pars.N);
+        // obsVector += VectorObservable(cref(occX), pars.N, "occX", "nx"),
+        //     VectorObservable(cref(occY), pars.N, "occY", "ny");
 
-    const Band BandValues[2] = {XBAND, YBAND};
-    for (Band b1 : BandValues) {
-    	for (Band b2 : BandValues) {
-            MatNum& occC = occCorr(b1, b2);
-            occC.zeros(pars.N,pars.N);
-            VecNum& occCFT = occCorrFT(b1, b2);
-            occCFT.zeros(pars.N);
-            obsVector += VectorObservable(cref(occCFT), pars.N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
-    	}
+        //attention:
+        // these do not have valid entries for site 0
+        pairPlus.zeros(pars.N);
+        pairMinus.zeros(pars.N);
+        obsVector += VectorObservable(cref(pairPlus), pars.N, "pairPlus", "pp"),
+            VectorObservable(cref(pairMinus), pars.N, "pairMinus", "pm");
+
+        const Band BandValues[2] = {XBAND, YBAND};
+        for (Band b1 : BandValues) {
+            for (Band b2 : BandValues) {
+                MatNum& occC = occCorr(b1, b2);
+                occC.zeros(pars.N,pars.N);
+                VecNum& occCFT = occCorrFT(b1, b2);
+                occCFT.zeros(pars.N);
+                obsVector += VectorObservable(cref(occCFT), pars.N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
+            }
+        }
+
+        chargeCorr.zeros(pars.N,pars.N);
+        chargeCorrFT.zeros(pars.N);
+        obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
+
+        occDiffSq = 0.0;
+        obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");
     }
-
-    chargeCorr.zeros(pars.N,pars.N);
-    chargeCorrFT.zeros(pars.N);
-    obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
-
-    occDiffSq = 0.0;
-    obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");
-
+    
     consistencyCheck();
 
     // for consistency checks:
