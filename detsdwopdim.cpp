@@ -2996,7 +2996,9 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
 
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == pars.m);
+    if (not pars.turnoffFermions) {
+        assert(currentTimeslice == pars.m);
+    }
 
     // The product of the singular values of g^{-1} is equal to the
     // absolute value of its determinant.  Don't compute the whole
@@ -3066,7 +3068,9 @@ void DetSDW<CB, OPDIM>::attemptGlobalShiftMove() {
     num old_scalar_action = phiAction();
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == pars.m);
+    if (not pars.turnoffFermions) {
+        assert(currentTimeslice == pars.m);
+    }
 
     // The product of the singular values of g^{-1} is equal to the
     // absolute value of its determinant.  Don't compute the whole
@@ -3145,7 +3149,10 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
 
     //UdV storage must be valid! attemptGlobalShiftMove() needs to be called
     //after sweepUp.
-    assert(currentTimeslice == pars.m);
+
+    if (not pars.turnoffFermions) {
+        assert(currentTimeslice == pars.m);
+    }
 
     // The product of the singular values of g^{-1} is equal to the
     // absolute value of its determinant.  Don't compute the whole
