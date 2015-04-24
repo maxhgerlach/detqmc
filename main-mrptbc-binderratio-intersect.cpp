@@ -93,9 +93,22 @@ void findBinderIntersection() {
                                                   mrbc2[bc]->controlParameterValues.end());
         double cpMin_mr2 = *(iterator_pair2.first);
         double cpMax_mr2 = *(iterator_pair2.second);
+        
+        //// this does not work with the Intel Compiler 13.1
+        // cpMin = std::max( {cpMin, cpMin_mr1, cpMin_mr2} );
+        // cpMax = std::min( {cpMax, cpMax_mr1, cpMax_mr2} );
 
-        cpMin = std::max( {cpMin, cpMin_mr1, cpMin_mr2} );
-        cpMax = std::min( {cpMax, cpMax_mr1, cpMax_mr2} );    
+        // find the maximum of {cpMin, cpMin_mr1, cpMin_mr2}
+        double cpMin_to_max[] = {cpMin_mr1, cpMin_mr2};
+        for (auto x : cpMin_to_max) {
+            cpMin = std::max(cpMin, x);
+        }
+        // find the minimum of {cpMax, cpMax_mr1, cpMax_mr2}
+        double cpMax_to_min[] = {cpMax_mr1, cpMax_mr2};
+        for (auto x : cpMax_to_min) {
+            cpMax = std::min(cpMax, x);
+        }
+        
     }
 
     cout << "Searching for intersection of Binder cumulants between "
