@@ -695,6 +695,10 @@ void DetQMCPT<Model, ModelParams>::gather_and_output_buffered_system_configurati
     namespace mpi = boost::mpi;
     mpi::communicator world;
 
+    if (not (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary)) {
+        return;
+    }
+
     while (not sc.local_bufferedConfigurations.empty()) {
         // collect at rank0
         
