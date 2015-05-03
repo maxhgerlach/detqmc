@@ -1469,8 +1469,10 @@ void DetModelGC<GC,V,TimeDisplaced>::sweepThermalization_skeleton(
 
 
 
-//compute e^{-scalar matrix}, matrix must be symmetric
+//compute e^{-scalar * real matrix}, matrix must be symmetric
 MatNum computePropagator(num scalar, const MatNum& matrix);
+//compute e^{-scalar * compex matrix}, matrix must be hermitian
+MatCpx computePropagator(num scalar, const MatCpx& matrix);
 
 
 

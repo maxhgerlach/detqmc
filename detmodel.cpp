@@ -19,6 +19,16 @@ MatNum computePropagator(num scalar, const MatNum& matrix) {
     return eigvec * diagmat(exp(-scalar * eigval)) * trans(eigvec);
 }
 
+MatCpx computePropagator(num scalar, const MatCpx& matrix) {
+    using namespace arma;
+
+    VecCpx eigval;
+    MatCpx eigvec;
+    eig_sym(eigval, eigvec, matrix); // for hermitian matrix
+
+    return eigvec * diagmat(exp(-scalar * eigval)) * trans(eigvec);
+}
+
 
 
 
