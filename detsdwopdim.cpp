@@ -1155,7 +1155,7 @@ void DetSDW<CB, OPDIM>::setupPropK() {
 //  for (auto band : {XBAND, YBAND}) {
     Band bands[2] = {XBAND, YBAND};
     for (Band band : bands) {
-        MatCpx k = -mu[band] * arma::eye(pars.N,pars.N);
+        MatCpx k = -mu[band] * arma::eye<MatCpx>(pars.N,pars.N);
 
         num zmag_here = 0.0;
         if      (band == XBAND) zmag_here = zmag[XUP];
@@ -1193,7 +1193,7 @@ void DetSDW<CB, OPDIM>::setupPropK() {
                     phase = std::exp(cpx(0.0, imag_argument));
                 }
                 // vertical bonds -- only those crossing the lattice boundary
-                if (dir == YPLUS and siteY == L-1) {
+                if (dir == YPLUS and siteY == pars.L-1) {
                     num imag_argument = +2.0 * pi * zmag_here * pars.L * siteX;
                     phase = std::exp(cpx(0.0, imag_argument));
                 }

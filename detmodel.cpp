@@ -22,7 +22,7 @@ MatNum computePropagator(num scalar, const MatNum& matrix) {
 MatCpx computePropagator(num scalar, const MatCpx& matrix) {
     using namespace arma;
 
-    VecCpx eigval;
+    VecNum eigval;              // hermitian matrix has real eigenvalues
     MatCpx eigvec;
     eig_sym(eigval, eigvec, matrix); // for hermitian matrix
 

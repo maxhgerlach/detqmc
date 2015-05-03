@@ -50,6 +50,7 @@ typedef arma::Col<int32_t> VecInt;
 typedef arma::Mat<int32_t> MatInt;
 typedef arma::Col<uint32_t> VecUint;
 typedef arma::Mat<uint32_t> MatUint;
+typedef arma::Col<cpx> VecCpx;
 typedef arma::Mat<cpx> MatCpx;
 typedef arma::SpMat<num> SpMatNum;
 typedef std::tuple<MatNum,MatNum,MatNum,MatNum> MatNum4;
