@@ -44,6 +44,12 @@ void ModelParamsDetSDW::check() {
     if (not bc_is_one_of_the_possible) {
         throw_ParameterWrong("bc", bc_string);
     }
+
+    if (weakZflux and opdim !=2) {
+        throw_ParameterWrong_message("Magnetic field specified for opdim=" + numToString(opdim) +
+                                     ", but currently only supported for opdim=2");
+    }
+
     std::string possibleUpdateMethods[] = {"iterative", "woodbury", "delayed"};
     bool updateMethod_is_one_of_the_possible = false;
     for (const std::string& test_updateMethod : possibleUpdateMethods) {
@@ -173,7 +179,6 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     META_INSERT(tyhor);
     META_INSERT(tyver);
     META_INSERT(cdwU);
-
     if (specified.count("mux") and specified.count("muy")) {
         META_INSERT(mux);
         META_INSERT(muy);    
@@ -181,6 +186,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     else {
         META_INSERT(mu);
     }
+    META_INSERT_TRUE_FALSE(weakZflux);
     META_INSERT(L);
     META_INSERT(d);
     META_INSERT(N);

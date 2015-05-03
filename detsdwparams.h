@@ -46,6 +46,7 @@ struct ModelParamsDetSDW {
                   // orbitals, if not specified we will set:
                   //    mux := muy := mu .
                   // Otherwise mux and muy supersede mu.
+    bool weakZflux;             // apply the weakest possible magnetic field (+- 1/L^2) in z-direction.
     uint32_t L;
     uint32_t N;                 // L*L, set in check()
     uint32_t d;                 // should be 2
@@ -76,7 +77,7 @@ struct ModelParamsDetSDW {
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
         adaptScaleVariance(), delaySteps(),
         opdim(3), phi2bosons(false), phiFixed(false), r(), c(1.0), u(1.0), lambda(),
-        txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), L(), N(), d(2),
+        txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), weakZflux(false), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
         globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatUpdateInSlice(),
         specified()
@@ -103,7 +104,8 @@ private:
             & adaptScaleVariance & delaySteps
             & opdim & phi2bosons & phiFixed & r & c & u & lambda
             & txhor & txver & tyhor & tyver
-            & cdwU & mu & mux & muy & L & N & d & beta & m & dtau & s & accRatio
+            & cdwU & mu & mux & muy & weakZflux
+            & L & N & d & beta & m & dtau & s & accRatio
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate
             & wolffClusterShiftUpdate
