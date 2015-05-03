@@ -324,6 +324,18 @@ protected:
     checkarray<num, 2> mu;
 
 
+/*
+
+    Per-spinor-component magnetic field in z-direction (orthogonal to
+    lattice plane), given in units of the flux quantum Phi_0
+
+    use one field strength for (XUP, YDOWN) and its negative for
+    (XDOWN, YUP)
+  
+*/
+    checkarray<num, 4> zmag;    // to be indexed by enum BandSpin
+    
+
 /*    
 
     Neighbor tables
@@ -338,19 +350,25 @@ protected:
 
     propK and variations
 
+    These are used for non-checkerboard routines (non-performance-
+    sensitive) when we need to involve the kinetic part of the
+    Hamiltonian.
+
+    They are complex to allow for a magnetic field.
+
 */
-    checkarray<MatNum, 2> propK;
-    MatNum& propKx;
-    MatNum& propKy;
+    checkarray<MatCpx, 2> propK; // e^{-dtau K[band]}
+    MatCpx& propKx;
+    MatCpx& propKy;
 
     //for shifting green functions to obtain equivalency of symmetric Trotter decomposition
     //[checker board decomposition could be applied alternatively]
-    checkarray<MatNum, 2> propK_half;       //factor of -dtau/2 in exponential
-    MatNum& propKx_half;
-    MatNum& propKy_half;
-    checkarray<MatNum, 2> propK_half_inv;   //factor of +dtau/2 in exponential
-    MatNum& propKx_half_inv;
-    MatNum& propKy_half_inv;
+    checkarray<MatCpx, 2> propK_half;       //factor of -dtau/2 in exponential
+    MatCpx& propKx_half;
+    MatCpx& propKy_half;
+    checkarray<MatCpx, 2> propK_half_inv;   //factor of +dtau/2 in exponential
+    MatCpx& propKx_half_inv;
+    MatCpx& propKy_half_inv;
 
 
 

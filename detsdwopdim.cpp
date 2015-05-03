@@ -230,6 +230,18 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     //So for actual calculations an additional minus-sign needs to be included.
     mu[XBAND] = pars.mux;
     mu[YBAND] = pars.muy;
+    //weak magnetic field in z-direction
+    if (pars.weakZflux) {
+        zmag[XUP]   = +1.0 / (pars.N);
+        zmag[YDOWN] = +1.0 / (pars.N);
+        zmag[YUP]   = -1.0 / (pars.N);
+        zmag[XDOWN] = -1.0 / (pars.N);        
+    } else {
+        zmag[XUP]   = 0.0;
+        zmag[YDOWN] = 0.0;
+        zmag[YUP]   = 0.0;
+        zmag[XDOWN] = 0.0;        
+    }
 
     if (not pars.turnoffFermions) {
         setupPropK();
@@ -1111,16 +1123,22 @@ void DetSDW<CB, OPDIM>::updateCoshSinhTermsCDWl() {
 // compute e^(-dtau*K^{\alpha}..) matrices by diagonalization
 // (\alpha = x, y):
 //
-//    K^{\alpha}[i, j] = - t^{\alpha}_ij
+//    K^{\alpha}[i, j] = - t^{\alpha}_ij * e^{i A^{\alpha}_ij}
 //
 //  default: t^{x}_{i, i \pm \hat{x}} = -1     [x hor]
 //           t^{x}_{i, i \pm \hat{y}} = -0.5   [x ver]
 //           t^{y}_{i, i \pm \hat{x}} = 0.5    [x hor]
 //           t^{y}_{i, i \pm \hat{y}} = 1      [x ver]
 //
-//  chemical potential term:  - \mu \delta_{ij} not included here
+//  for OPDIM==2 we also support a z-parallel magnetic field with
+//  vector potential A != 0.  For OPDIM==3 this needs to be
+//  generalized: we want one field for XUP and YDOWN, but another one
+//  (the inverse) for YUP and XDOWN to remain free of sign-problem.
+//
+//  chemical potential term: - \mu \delta_{ij} not included here
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::setupPropK() {
+    const num pi = M_PI;
     const uint32_t dim = 2;
     const uint32_t z = 2*dim;
 
@@ -1137,7 +1155,12 @@ void DetSDW<CB, OPDIM>::setupPropK() {
 //  for (auto band : {XBAND, YBAND}) {
     Band bands[2] = {XBAND, YBAND};
     for (Band band : bands) {
-        MatNum k = -mu[band] * arma::eye(pars.N,pars.N);
+        MatCpx k = -mu[band] * arma::eye(pars.N,pars.N);
+
+        num zmag_here = 0.0;
+        if      (band == XBAND) zmag_here = zmag[XUP];
+        else if (band == YBAND) zmag_here = zmag[YDOWN];
+        
         for (uint32_t site = 0; site < pars.N; ++site) {
             for (uint32_t dir = 0; dir < z; ++dir) {
                 uint32_t neigh = spaceNeigh(dir, site);
@@ -1158,7 +1181,28 @@ void DetSDW<CB, OPDIM>::setupPropK() {
                     }
                 }
 
-                k(site, neigh) -= hop;
+                // add magnetic field:
+                cpx phase(1.0, 0.0);
+                // horizontal bonds
+                if (dir == XPLUS) {
+                    num imag_argument = -2.0 * pi * zmag_here * siteY;
+                    phase = std::exp(cpx(0.0, imag_argument));
+                }
+                if (dir == XMINUS) {
+                    num imag_argument = +2.0 * pi * zmag_here * siteY;
+                    phase = std::exp(cpx(0.0, imag_argument));
+                }
+                // vertical bonds -- only those crossing the lattice boundary
+                if (dir == YPLUS and siteY == L-1) {
+                    num imag_argument = +2.0 * pi * zmag_here * pars.L * siteX;
+                    phase = std::exp(cpx(0.0, imag_argument));
+                }
+                if (dir == YMINUS and siteY == 0) {
+                    num imag_argument = -2.0 * pi * zmag_here * pars.L * siteX;
+                    phase = std::exp(cpx(0.0, imag_argument));
+                }
+
+                k(site, neigh) -= hop * phase;
             }
         }
         //debugSaveMatrix(k, "k" + bandstr(band));
