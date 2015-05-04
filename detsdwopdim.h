@@ -51,11 +51,16 @@ void createReplica(std::unique_ptr<DetSDW<CBM, OPDIM>>& replica_out,
 //   - values of 1, 2, 3 to be supported
 //   - dimension of the order parameter field phi
 template<CheckerboardMethod Checkerboard, int OPDIM>
+// class DetSDW: public DetModelGC<1,
+//                                 // the basic data type is complex for
+//                                 // O(3) or O(2) order parameters, real
+//                                 // for O(1):
+//                                 typename std::conditional<OPDIM==1, num, cpx>::type > {
 class DetSDW: public DetModelGC<1,
-                                // the basic data type is complex for
-                                // O(3) or O(2) order parameters, real
-                                // for O(1):
-                                typename std::conditional<OPDIM==1, num, cpx>::type > {
+                                // to support an extra magnetic field, we use
+                                // a complex basic data type for the O(1), O(2),
+                                // and O(3) models. ~~ no good way around this, unfortunately.
+                                cpx> {
 public:
     static_assert(OPDIM==1 or OPDIM==2 or OPDIM==3,
                   "Supported order parameter dimensions: 1, 2, or 3");
@@ -146,11 +151,13 @@ protected:
 */    
     static constexpr uint32_t MatrixSizeFactor = (OPDIM == 3 ? 4 : 2);
 
-/*    
-    the basic data type is complex for O(3) or O(2) order parameters,
-    real for O(1):
+/*
+    Originally the basic data type here used to be complex for O(3) or
+    O(2) order parameters, real for O(1).  However, this is not compatible
+    to having a magnetic field => need to use complex variables in all cases.
 */
-    typedef typename std::conditional<OPDIM==1, num, cpx>::type DataType;
+    // typedef typename std::conditional<OPDIM==1, num, cpx>::type DataType;
+    typedef cpx DataType;
     typedef arma::Mat<DataType> MatData;
     typedef typename arma::Mat<DataType>::template fixed<MatrixSizeFactor,MatrixSizeFactor> MatSmall;
     typedef arma::Col<DataType> VecData;
