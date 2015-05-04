@@ -1275,52 +1275,126 @@ DetSDW<CB, OPDIM>::computeBmatSDW(uint32_t k2, uint32_t k1) {
             const auto& kcoshTermCDWl = coshTermCDWl.col(k);
             const auto& ksinhTermCDWl = sinhTermCDWl.col(k);
 
-            //upper left 2*2 blocks
-            typedef DetSDW<CB,OPDIM> D;
-            D::setRealImag(block(0, 0),
-                           diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx,
-                           zeros(N, N));
-            // code setting the imaginary parts should just be fully ignored for OPDIM==1
-            D::setRealImag(block(0, 1),
-                           diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                           diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-            D::setRealImag(block(1, 0),
-                           diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                           diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-            D::setRealImag(block(1, 1),
-                           diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy,
-                           zeros(N,N));
+            auto approxZero = [](num var) -> bool {
+                return std::abs(var) <= 1E-10;
+            };
+            
+            // A) case without magnetic field
+            //    -> propKx, propKy are purely real
+            if (approxZero(zmag[XUP]) and approxZero(zmag[YDOWN]) and
+                approxZero(zmag[XDOWN]) and approxZero(zmag[YUP])) {
+            
+                //upper left 2*2 blocks
+                typedef DetSDW<CB,OPDIM> D;
+                // fully real parts
+                D::setRealImag(block(0, 0),
+                               diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * arma::real(propKx),
+                               zeros(N, N));
+                D::setRealImag(block(1, 1),
+                               diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * arma::real(propKy),
+                               zeros(N,N));
+                // O(1) model: only real part
+                if (OPDIM == 1) {
+                    D::setRealImag(block(0, 1),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy),
+                                   zeros(N,N));
+                    D::setRealImag(block(1, 0),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx),
+                                   zeros(N,N));
+                }
+                else {
+                    D::setRealImag(block(0, 1),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy),
+                                   diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy));
+                    D::setRealImag(block(1, 0),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx),
+                                   diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx));
+                }
 
-            if (OPDIM == 3) {
-                //lower right 2*2 blocks
-                block(2, 2) = block(0, 0);
-                D::setRealImag(block(2, 3),
-                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                               diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKy);
-                D::setRealImag(block(3, 2),
-                               diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                               diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * propKx);
-                block(3, 3) = block(1, 1);
+                if (OPDIM == 3) {
+                    //lower right 2*2 blocks
+                    block(2, 2) = block(0, 0);
+                    D::setRealImag(block(2, 3),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy),
+                                   diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy));
+                    D::setRealImag(block(3, 2),
+                                   diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx),
+                                   diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx));
+                    block(3, 3) = block(1, 1);
 
-                //anti-diagonal blocks
-                D::setRealImag(block(0, 3),
-                               diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                               zeros(N,N));
-                D::setRealImag(block(1, 2),
-                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                               zeros(N,N));
-                D::setRealImag(block(2, 1),
-                               diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKy,
-                               zeros(N,N));
-                D::setRealImag(block(3, 0),
-                               diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * propKx,
-                               zeros(N,N));
+                    //anti-diagonal blocks
+                    D::setRealImag(block(0, 3),
+                                   diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy),
+                                   zeros(N,N));
+                    D::setRealImag(block(1, 2),
+                                   diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx),
+                                   zeros(N,N));
+                    D::setRealImag(block(2, 1),
+                                   diagmat(+kphi2 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKy),
+                                   zeros(N,N));
+                    D::setRealImag(block(3, 0),
+                                   diagmat(-kphi2 % ksinhTermPhi % kcoshTermCDWl) * arma::real(propKx),
+                                   zeros(N,N));
 
-                //zero blocks
-                block(0, 2).zeros();
-                block(1, 3).zeros();
-                block(2, 0).zeros();
-                block(3, 1).zeros();
+                    //zero blocks
+                    block(0, 2).zeros();
+                    block(1, 3).zeros();
+                    block(2, 0).zeros();
+                    block(3, 1).zeros();
+                }
+            }
+            // B) case with magnetic field
+            //    -> need to consider complex propKx, propKy 
+            else {
+
+                //upper left 2*2 blocks
+                typedef DetSDW<CB,OPDIM> D;
+                block(0, 0) = diagmat(kcoshTermPhi % kcoshTermCDWl + ksinhTermCDWl) * propKx;
+                block(1, 1) = diagmat(kcoshTermPhi % kcoshTermCDWl - ksinhTermCDWl) * propKy;
+                
+                if (OPDIM == 1) {
+                    block(0,1) = diagmat(VecCpx(-kphi0 % ksinhTermPhi % kcoshTermCDWl,
+                                                zeros(N))) * propKy;
+                    block(1,0) = diagmat(VecCpx(-kphi0 % ksinhTermPhi % kcoshTermCDWl,
+                                                zeros(N))) * propKx;
+                } else {
+                    block(0,1) = diagmat(VecCpx(-kphi0 % ksinhTermPhi % kcoshTermCDWl,
+                                                +kphi1 % ksinhTermPhi % kcoshTermCDWl)) * propKy;
+                    block(1,0) = diagmat(VecCpx(-kphi0 % ksinhTermPhi % kcoshTermCDWl,
+                                                -kphi1 % ksinhTermPhi % kcoshTermCDWl)) * propKx;
+                }
+                if (OPDIM == 3) {
+                    //lower right 2*2 blocks
+
+                    //  TODO:  These need to be adapted for the case with magnetic field
+                    //         -> should amount to using the Hermitian conjugate of propK{x,y}
+                    
+                    block(2, 2) = block(0, 0);
+
+                    block(2, 3) = diagmat(VecCpx(diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl),
+                                                 diagmat(-kphi1 % ksinhTermPhi % kcoshTermCDWl))) * propKy;
+                    block(3, 2) = diagmat(VecCpx(diagmat(-kphi0 % ksinhTermPhi % kcoshTermCDWl),
+                                                 diagmat(+kphi1 % ksinhTermPhi % kcoshTermCDWl))) * propKx;
+                    block(3, 3) = block(1, 1);
+
+                    //anti-diagonal blocks
+                    block(0, 3) = diagmat(VecCpx(-kphi2 % ksinhTermPhi % kcoshTermCDWl,
+                                                 zeros(N))) * propKy;
+                    block(1, 2) = diagmat(VecCpx(+kphi2 % ksinhTermPhi % kcoshTermCDWl,
+                                                 zeros(N))) * propKx;
+                    block(2, 1) = diagmat(VecCpx(+kphi2 % ksinhTermPhi % kcoshTermCDWl,
+                                                 zeros(N))) * propKy;
+                    block(3, 0) = diagmat(VecCpx(-kphi2 % ksinhTermPhi % kcoshTermCDWl,
+                                                 zeros(N))) * propKx;
+
+                    //zero blocks
+                    block(0, 2).zeros();
+                    block(1, 3).zeros();
+                    block(2, 0).zeros();
+                    block(3, 1).zeros();
+                }
+                
+                
             }
 
             //      debugSaveMatrix(arma::real(result), "emdtauVemdtauK_real");
