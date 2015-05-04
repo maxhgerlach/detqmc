@@ -798,7 +798,11 @@ protected:
     // hopping matrices numerically in advance:
     void precalc_4site_hopping_exponentials();
     template<class Matrix>    
-    void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup /* parameter corresponding to precalced matrices */);
+    void cb_assaad_applyBondFactorsLeft_precalcedMatrices(Matrix& result, uint32_t subgroup,
+                                                          const ExpHop4SiteStorage& expHop4SiteMatrices);
+    template<class Matrix>    
+    void cb_assaad_applyBondFactorsRight_precalcedMatrices(Matrix& result, uint32_t subgroup,
+                                                           const ExpHop4SiteStorage& expHop4SiteMatrices);
     
     
 

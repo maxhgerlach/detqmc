@@ -1520,20 +1520,6 @@ DetSDW<CB, OPDIM>::computePotentialExponential(
 
 
 
-template<CheckerboardMethod CB, int OPDIM>
-template<class Matrix> inline
-typename DetSDW<CB, OPDIM>::MatData
-DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
-                                          const Matrix&, Band, int, bool) {
-    throw_GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
-    //TODO change things so this codepath is not needed
-    return MatData();
-}
-
-
-
-
-
 //subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
 //   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
 //   j = i + XPLUS
@@ -1544,49 +1530,6 @@ DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMet
 //   j = i + XPLUS
 //   k = i + YPLUS
 //   l = k + XPLUS
-template<CheckerboardMethod CB, int OPDIM>
-template<class Matrix>
-void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup,
-                                                       num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
-    const auto N = pars.N;
-    const auto L = pars.L;
-    assert(subgroup == 0 or subgroup == 1);
-    arma::Row<DataType> new_row_i(N);
-    arma::Row<DataType> new_row_j(N);
-    arma::Row<DataType> new_row_k(N);
-    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
-        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
-            uint32_t i = this->coordsToSite(i1, i2);
-            uint32_t j = spaceNeigh(XPLUS, i);
-            uint32_t k = spaceNeigh(YPLUS, i);
-            uint32_t l = spaceNeigh(XPLUS, k);
-            //change rows i,j,k,l of result
-            const arma::Row<DataType>& ri = result.row(i);
-            const arma::Row<DataType>& rj = result.row(j);
-            const arma::Row<DataType>& rk = result.row(k);
-            const arma::Row<DataType>& rl = result.row(l);
-            num b_sh_hor = sh_hor;
-            num b_sh_ver = sh_ver;
-            if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
-                //this plaquette has horizontal boundary crossing bonds and APBC
-                b_sh_hor *= -1;
-            }
-            if ((pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) and i2 == L-1) {
-                //this plaquette has vertical boundary crossing bonds and APBC
-                b_sh_ver *= -1;
-            }
-            new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
-            new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
-            new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
-            result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
-            result.row(i) = new_row_i;
-            result.row(j) = new_row_j;
-            result.row(k) = new_row_k;
-        }
-    }
-}
-
-
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::precalc_4site_hopping_exponentials() {
     const num pi = M_PI;
@@ -1673,8 +1616,152 @@ void DetSDW<CB, OPDIM>::precalc_4site_hopping_exponentials() {
             }
         }
     }
-    
 }
+
+template<CheckerboardMethod CB, int OPDIM>
+template<class Matrix>
+void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft_precalcedMatrices(Matrix& result, uint32_t subgroup,
+                                                                         const ExpHop4SiteStorage& expHop4SiteMatrices) {
+    const auto N = pars.N;
+    const auto L = pars.L;
+    assert(subgroup == 0 or subgroup == 1);
+    arma::Row<DataType> new_row_i(N);
+    arma::Row<DataType> new_row_j(N);
+    arma::Row<DataType> new_row_k(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+            uint32_t i = this->coordsToSite(i1, i2);
+            uint32_t j = spaceNeigh(XPLUS, i);
+            uint32_t k = spaceNeigh(YPLUS, i);
+            uint32_t l = spaceNeigh(XPLUS, k);
+            //change rows i,j,k,l of result
+            const arma::Row<DataType>& ri = result.row(i);
+            const arma::Row<DataType>& rj = result.row(j);
+            const arma::Row<DataType>& rk = result.row(k);
+            const arma::Row<DataType>& rl = result.row(l);
+
+            const Mat4Site& mat = expHop4SiteMatrices[subgroup].find(i)->second;
+
+            // indexes (0,1,2,3) correspond to (i,j,k,l)
+            new_row_i     = mat(0,0)*ri + mat(0,1)*rj + mat(0,2)*rk + mat(0,3)*rl;
+            new_row_j     = mat(1,0)*ri + mat(1,1)*rj + mat(1,2)*rk + mat(1,3)*rl;
+            new_row_k     = mat(2,0)*ri + mat(2,1)*rj + mat(2,2)*rk + mat(2,3)*rl;
+            result.row(l) = mat(3,0)*ri + mat(3,1)*rj + mat(3,2)*rk + mat(3,3)*rl;
+            result.row(i) = new_row_i;
+            result.row(j) = new_row_j;
+            result.row(k) = new_row_k;
+        }
+    }
+}
+
+template<CheckerboardMethod CB, int OPDIM>
+template<class Matrix>
+void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsRight_precalcedMatrices(Matrix& result, uint32_t subgroup,
+                                                                          const ExpHop4SiteStorage& expHop4SiteMatrices) {
+    const auto N = pars.N;
+    const auto L = pars.L;
+    assert(subgroup == 0 or subgroup == 1);
+    arma::Col<DataType> new_col_i(N);
+    arma::Col<DataType> new_col_j(N);
+    arma::Col<DataType> new_col_k(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+            uint32_t i = this->coordsToSite(i1, i2);
+            uint32_t j = spaceNeigh(XPLUS, i);
+            uint32_t k = spaceNeigh(YPLUS, i);
+            uint32_t l = spaceNeigh(XPLUS, k);
+            //change cols i,j,k,l of result
+            const arma::Col<DataType>& ci = result.col(i);
+            const arma::Col<DataType>& cj = result.col(j);
+            const arma::Col<DataType>& ck = result.col(k);
+            const arma::Col<DataType>& cl = result.col(l);
+
+            const Mat4Site& mat = expHop4SiteMatrices[subgroup].find(i)->second;
+
+            // indexes (0,1,2,3) correspond to (i,j,k,l)
+            new_col_i     = ci*mat(0,0) + cj*mat(1,0) + ck*mat(2,0) + cl*mat(3,0);
+            new_col_j     = ci*mat(0,1) + cj*mat(1,1) + ck*mat(2,1) + cl*mat(3,1);
+            new_col_k     = ci*mat(0,2) + cj*mat(1,2) + ck*mat(2,2) + cl*mat(3,2);
+            result.col(l) = ci*mat(0,3) + cj*mat(1,3) + ck*mat(2,3) + cl*mat(3,3);            
+            result.col(i) = new_col_i;
+            result.col(j) = new_col_j;
+            result.col(k) = new_col_k;
+        }
+    }
+}
+
+
+
+
+
+template<CheckerboardMethod CB, int OPDIM>
+template<class Matrix> inline
+typename DetSDW<CB, OPDIM>::MatData
+DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_NONE>,
+                                          const Matrix&, Band, int, bool) {
+    throw_GeneralError("CB_NONE makes no sense for the checkerboard multiplication routines");
+    //TODO change things so this codepath is not needed
+    return MatData();
+}
+
+
+
+
+
+//subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+//   i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+//   j = i + XPLUS
+//   k = i + YPLUS
+//   l = k + XPLUS
+//subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+//   i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+//   j = i + XPLUS
+//   k = i + YPLUS
+//   l = k + XPLUS
+template<CheckerboardMethod CB, int OPDIM>
+template<class Matrix>
+void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup,
+                                                       num ch_hor, num sh_hor, num ch_ver, num sh_ver) {
+    const auto N = pars.N;
+    const auto L = pars.L;
+    assert(subgroup == 0 or subgroup == 1);
+    arma::Row<DataType> new_row_i(N);
+    arma::Row<DataType> new_row_j(N);
+    arma::Row<DataType> new_row_k(N);
+    for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+        for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+            uint32_t i = this->coordsToSite(i1, i2);
+            uint32_t j = spaceNeigh(XPLUS, i);
+            uint32_t k = spaceNeigh(YPLUS, i);
+            uint32_t l = spaceNeigh(XPLUS, k);
+            //change rows i,j,k,l of result
+            const arma::Row<DataType>& ri = result.row(i);
+            const arma::Row<DataType>& rj = result.row(j);
+            const arma::Row<DataType>& rk = result.row(k);
+            const arma::Row<DataType>& rl = result.row(l);
+            num b_sh_hor = sh_hor;
+            num b_sh_ver = sh_ver;
+            if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and i1 == L-1) {
+                //this plaquette has horizontal boundary crossing bonds and APBC
+                b_sh_hor *= -1;
+            }
+            if ((pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) and i2 == L-1) {
+                //this plaquette has vertical boundary crossing bonds and APBC
+                b_sh_ver *= -1;
+            }
+            new_row_i     = ch_hor*ch_ver*ri + ch_ver*b_sh_hor*rj + ch_hor*b_sh_ver*rk + b_sh_hor*b_sh_ver*rl;
+            new_row_j     = ch_ver*b_sh_hor*ri + ch_hor*ch_ver*rj + b_sh_hor*b_sh_ver*rk + ch_hor*b_sh_ver*rl;
+            new_row_k     = ch_hor*b_sh_ver*ri + b_sh_hor*b_sh_ver*rj + ch_hor*ch_ver*rk + ch_ver*b_sh_hor*rl;
+            result.row(l) = b_sh_hor*b_sh_ver*ri + ch_hor*b_sh_ver*rj + ch_ver*b_sh_hor*rk + ch_hor*ch_ver*rl;
+            result.row(i) = new_row_i;
+            result.row(j) = new_row_j;
+            result.row(k) = new_row_k;
+        }
+    }
+}
+
+
+
 
 
 
