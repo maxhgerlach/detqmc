@@ -306,6 +306,9 @@ protected:
     
     Hopping constant representations
 
+    These are useful for the checkerboard break-up (4-site matrices)
+    in the case without a magnetic field.
+
 */  
     //hopping constants for XBAND and YBAND
     //these just contain the same values as t{x|y}{hor|ver} for historical reasons
@@ -323,6 +326,38 @@ protected:
     checkarray<num,2> coshHopVerHalf;
 
 
+/*
+    
+  Precalculated 4-site hopping matrix exponentials
+
+  These are used in the case of a perpendicular magnetic field.
+
+  We consider the following plaquettes:
+  
+    subgroup == 0: plaquettes A = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+      i = (2m, 2n), with m,n integer, 2m < L, 2n < L
+      j = i + XPLUS
+      k = i + YPLUS
+      l = k + XPLUS
+    subgroup == 1: plaquettes B = [i j k l] = bonds (<ij>,<ik>,<kl>,<jl>)
+      i = (2m+1, 2n+1), with m,n integer, 2m+1 < L, 2n+1 < L
+      j = i + XPLUS
+      k = i + YPLUS
+      l = k + XPLUS
+
+  To precalculate these, call precalc_4site_hopping_exponentials 
+  
+*/
+    typedef MatData::fixed<4,4> Mat4Site;
+    typedef checkarray<std::map<uint32_t, Mat4Site>, 2> ExpHop4SiteStorage; // indexed first by subgroup, then by site i
+
+    // these are first indexed by band index XBAND or YBAND:
+    checkarray<ExpHop4SiteStorage, 2> expHop4Site_minus;       // contains terms to compute exp(-dtau K_band)
+    checkarray<ExpHop4SiteStorage, 2> expHop4Site_minusHalf;   // contains terms to compute exp(-0.5 dtau K_band)
+    checkarray<ExpHop4SiteStorage, 2> expHop4Site_plus;        // contains terms to compute exp(+dtau K_band)
+    checkarray<ExpHop4SiteStorage, 2> expHop4Site_plusHalf;    // contains terms to compute exp(+0.5 dtau K_band)
+
+    
 /*
 
     Per-orbital chemical potential
@@ -752,11 +787,23 @@ protected:
     template <class Matrix>
     MatData cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                    const Matrix& A, Band band, int sign, bool invertedCbOrder = false);
-    //functions called by the above:
+    //functions called by the above if no magnetic field is applied:
     template<class Matrix>
     void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
     template<class Matrix>
     void cb_assaad_applyBondFactorsRight(Matrix& result, uint32_t subgroup, num ch_hor, num sh_hor, num ch_ver, num sh_ver);
+
+    // in the case with a non-zero magnetic field in z-direction, we
+    // need to compute the matrix exponentials of the 4-site (plaquette)
+    // hopping matrices numerically in advance:
+    void precalc_4site_hopping_exponentials();
+    template<class Matrix>    
+    void cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t subgroup /* parameter corresponding to precalced matrices */);
+    
+    
+
+    
+    // the following function prepares numerically exponentiated 4x4 
 
     //the following take a MatrixSizeFactor*N x MatrixSizeFactor*N
     //matrix A and effectively multiply B(k2,k1) or its inverse to the

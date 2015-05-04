@@ -204,32 +204,6 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         setupConstantField();
     }
 
-    //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
-    //So for actual calculations an additional minus-sign needs to be included.
-    //In the case of anti-periodic boundaries between i and j, another extra minus-sign
-    //must be added.
-    hopHor[XBAND] = pars.txhor;
-    hopVer[XBAND] = pars.txver;
-    hopHor[YBAND] = pars.tyhor;
-    hopVer[YBAND] = pars.tyver;
-    //precalculate hyperbolic functions, used in checkerboard decomposition
-    using std::sinh; using std::cosh;
-    num dtauHere = pars.dtau;                // to fix capture issues
-    for_each_band( [this, dtauHere](Band band) {
-            sinhHopHor[band] = sinh(-dtauHere * hopHor[band]);
-            coshHopHor[band] = cosh(-dtauHere * hopHor[band]);
-            sinhHopVer[band] = sinh(-dtauHere * hopVer[band]);
-            coshHopVer[band] = cosh(-dtauHere * hopVer[band]);
-            sinhHopHorHalf[band] = sinh(-0.5*dtauHere * hopHor[band]);
-            coshHopHorHalf[band] = cosh(-0.5*dtauHere * hopHor[band]);
-            sinhHopVerHalf[band] = sinh(-0.5*dtauHere * hopVer[band]);
-            coshHopVerHalf[band] = cosh(-0.5*dtauHere * hopVer[band]);
-        } );
-    //chemical potential
-    //These are the \mu in sum_<i> -\mu c^+_i c_i
-    //So for actual calculations an additional minus-sign needs to be included.
-    mu[XBAND] = pars.mux;
-    mu[YBAND] = pars.muy;
     //weak magnetic field in z-direction
     if (pars.weakZflux) {
         zmag[XUP]   = +1.0 / (pars.N);
@@ -242,6 +216,38 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         zmag[YUP]   = 0.0;
         zmag[XDOWN] = 0.0;        
     }
+
+    //hopping constants. These are the t_ij in sum_<i,j> -t_ij c^+_i c_j
+    //So for actual calculations an additional minus-sign needs to be included.
+    //In the case of anti-periodic boundaries between i and j, another extra minus-sign
+    //must be added.
+    hopHor[XBAND] = pars.txhor;
+    hopVer[XBAND] = pars.txver;
+    hopHor[YBAND] = pars.tyhor;
+    hopVer[YBAND] = pars.tyver;
+    //precalculate hyperbolic functions, used in checkerboard decomposition [without magnetic field]
+    using std::sinh; using std::cosh;
+    num dtauHere = pars.dtau;                // to fix capture issues
+    for_each_band( [this, dtauHere](Band band) {
+            sinhHopHor[band] = sinh(-dtauHere * hopHor[band]);
+            coshHopHor[band] = cosh(-dtauHere * hopHor[band]);
+            sinhHopVer[band] = sinh(-dtauHere * hopVer[band]);
+            coshHopVer[band] = cosh(-dtauHere * hopVer[band]);
+            sinhHopHorHalf[band] = sinh(-0.5*dtauHere * hopHor[band]);
+            coshHopHorHalf[band] = cosh(-0.5*dtauHere * hopHor[band]);
+            sinhHopVerHalf[band] = sinh(-0.5*dtauHere * hopVer[band]);
+            coshHopVerHalf[band] = cosh(-0.5*dtauHere * hopVer[band]);
+        } );
+    if (pars.weakZflux) {
+        // needed for checkerboard computations when we have a magnetic field
+        precalc_4site_hopping_exponentials(); 
+    }
+    
+    //chemical potential
+    //These are the \mu in sum_<i> -\mu c^+_i c_i
+    //So for actual calculations an additional minus-sign needs to be included.
+    mu[XBAND] = pars.mux;
+    mu[YBAND] = pars.muy;
 
     if (not pars.turnoffFermions) {
         setupPropK();
@@ -1579,6 +1585,99 @@ void DetSDW<CB, OPDIM>::cb_assaad_applyBondFactorsLeft(Matrix& result, uint32_t 
         }
     }
 }
+
+
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::precalc_4site_hopping_exponentials() {
+    const num pi = M_PI;
+    const auto L = pars.L;
+
+    num prefactors[4] = {
+        -pars.dtau,        -0.5*pars.dtau,        +pars.dtau,       +0.5*pars.dtau
+    };
+    typedef std::reference_wrapper<checkarray<ExpHop4SiteStorage, 2> > StorageRef;
+    StorageRef storage_collections[4] = {
+        expHop4Site_minus, expHop4Site_minusHalf, expHop4Site_plus, expHop4Site_plusHalf
+    };
+
+    for (uint32_t prefactor_index = 0; prefactor_index < 4; ++prefactor_index) {
+        num prefactor = prefactors[prefactor_index];
+        checkarray<ExpHop4SiteStorage, 2>& storage = storage_collections[prefactor_index];
+        
+        Band bands[2] = {XBAND, YBAND};
+        for (Band band : bands) {
+            // TODO: this needs to be extended to properly deal with the O(3) case
+            num zmag_here = 0.0;
+            if      (band == XBAND) zmag_here = zmag[XUP];
+            else if (band == YBAND) zmag_here = zmag[YDOWN];
+
+            uint32_t subgroups[2] = {0, 1};
+            for (uint32_t subgroup : subgroups) {
+                storage[band][subgroup] = std::map<uint32_t, Mat4Site>();
+                for (uint32_t i1 = subgroup; i1 < L; i1 += 2) {
+                    for (uint32_t i2 = subgroup; i2 < L; i2 += 2) {
+                        uint32_t i = this->coordsToSite(i1, i2);
+                        uint32_t j = spaceNeigh(XPLUS, i);
+                        uint32_t k = spaceNeigh(YPLUS, i);
+                        // uint32_t l = spaceNeigh(XPLUS, k);
+
+                        uint32_t j1 = j % L;
+                        uint32_t k2 = k / L;
+
+                        num hh = hopHor[band];
+                        num hv = hopVer[band];
+                    
+                        if ((pars.bc == BC_Type::APBC_X or pars.bc == BC_Type::APBC_XY) and (i1 == L-1)) {
+                            //this plaquette has horizontal boundary crossing bonds and APBC
+                            hh *= -1;
+                        }
+                        if ((pars.bc == BC_Type::APBC_Y or pars.bc == BC_Type::APBC_XY) and i2 == L-1) {
+                            //this plaquette has vertical boundary crossing bonds and APBC
+                            hv *= -1;
+                        }
+
+                        // phase factors due to magnetic field
+                        cpx ph_ij = std::exp(cpx(0.0, -2.0 * pi * zmag_here * i2)); // horizontal 1
+                        cpx ph_kl = std::exp(cpx(0.0, -2.0 * pi * zmag_here * k2)); // horizontal 2
+                        // vertical bonds pick up phase only if lattice boundary is crossed
+                        cpx ph_ik = cpx(1.0, 0.0);
+                        cpx ph_jl = cpx(1.0, 0.0);
+                        if (i2 == L-1) {
+                            ph_ik = std::exp(cpx(0.0, +2.0 * pi * zmag_here * L * i1)); // vertical 1
+                            ph_jl = std::exp(cpx(0.0, +2.0 * pi * zmag_here * L * j1)); // vertical 2
+                        }             
+
+                        Mat4Site hop_mat; // 4x4, corresponding to sites i,j,k,l
+                        hop_mat << 0 << ph_ij * hh << ph_ik * hv << 0         << arma::endr
+                                << 0 << 0          << 0          << ph_jl * hv << arma::endr
+                                << 0 << 0          << 0          << ph_kl * hh << arma::endr
+                                << 0 << 0          << 0          << 0          << arma::endr;
+                        hop_mat += arma::trans(hop_mat); // add hermitian conjugate for the other directions
+
+                        // overall factor of -1
+                        hop_mat *= -1;
+
+                        // compute matrix exponential (with prefactor in exponent)
+                        VecNum::fixed<4> eigval;       // hermitian matrix has real eigenvalues
+                        Mat4Site eigvec;
+                        arma::eig_sym(eigval, eigvec, hop_mat); // for hermitian matrix
+                        
+                        Mat4Site exp_hop_mat = eigvec *
+                            arma::diagmat(arma::exp( prefactor * eigval )) *
+                            arma::trans(eigvec);
+
+                        // insert into precal storage
+                        storage[band][subgroup][i] = exp_hop_mat;                    
+                    }
+                }
+            }
+        }
+    }
+    
+}
+
+
+
 
 // with sign = +/- 1, band = XBAND|YBAND: set R := E^(sign * dtau * K_band) * A
 // using the symmetric checkerboard break up
