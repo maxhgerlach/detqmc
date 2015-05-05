@@ -4337,30 +4337,56 @@ DetSDW<CB, OPDIM>::shiftGreenSymmetric() {
             );
     }
     else if (CB == CB_ASSAAD_BERG) {
-        return shiftGreenSymmetric_impl(
-            //rightMultiply
-            // output and input are NxN blocks of a complex matrix
-            // this effectively multiplies [Input] * e^{+ dtau K^band_b / 2} e^{+ dtau K^band_a / 2}
-            // to the right of input and stores the result in output
-            [this](SubMatData output, SubMatData input, Band band) -> void {
-                output = input;      //copy
-                this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
-                                                      coshHopVerHalf[band], +sinhHopVerHalf[band]);
-                this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
-                                                      coshHopVerHalf[band], +sinhHopVerHalf[band]);
-            },
-            //leftMultiply
-            // output and input are NxN blocks of a complex matrix
-            // this effectively multiplies e^{- dtau K^band_a / 2} e^{- dtau K^band_b / 2} * [Input]
-            // to the left of input and stores the result in output
-            [this](SubMatData output, SubMatData input, Band band) -> void {
-                output = input;      //copy
-                this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
-                                                     coshHopVerHalf[band], -sinhHopVerHalf[band]);
-                this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
-                                                     coshHopVerHalf[band], -sinhHopVerHalf[band]);
-            }
-            );
+        // here, we do not need to multiply the chemical potential
+        // terms, since those multiplied from the left and right would
+        // cancel.  e^{-mu dtau / 2} \Id from one side, e^{+mu dtau / 2} \Id
+        if (not pars.weakZflux) {
+            return shiftGreenSymmetric_impl(
+                //rightMultiply
+                // output and input are NxN blocks of a complex matrix
+                // this effectively multiplies [Input] * e^{+ dtau K^band_1 / 2} e^{+ dtau K^band_0 / 2}
+                // to the right of input and stores the result in output
+                [this](SubMatData output, SubMatData input, Band band) -> void {
+                    output = input;      //copy
+                    this->cb_assaad_applyBondFactorsRight(output, 1, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                          coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                    this->cb_assaad_applyBondFactorsRight(output, 0, coshHopHorHalf[band], +sinhHopHorHalf[band],
+                                                          coshHopVerHalf[band], +sinhHopVerHalf[band]);
+                },
+                //leftMultiply
+                // output and input are NxN blocks of a complex matrix
+                // this effectively multiplies e^{- dtau K^band_1 / 2} e^{- dtau K^band_0 / 2} * [Input]
+                // to the left of input and stores the result in output
+                [this](SubMatData output, SubMatData input, Band band) -> void {
+                    output = input;      //copy
+                    this->cb_assaad_applyBondFactorsLeft(output, 1, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                         coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                    this->cb_assaad_applyBondFactorsLeft(output, 0, coshHopHorHalf[band], -sinhHopHorHalf[band],
+                                                         coshHopVerHalf[band], -sinhHopVerHalf[band]);
+                }
+                );
+        } else {
+            return shiftGreenSymmetric_impl(
+                //rightMultiply
+                // output and input are NxN blocks of a complex matrix
+                // this effectively multiplies [Input] * e^{+ dtau K^band_1 / 2} e^{+ dtau K^band_0 / 2}
+                // to the right of input and stores the result in output
+                [this](SubMatData output, SubMatData input, Band band) -> void {
+                    output = input;      //copy
+                    this->cb_assaad_applyBondFactorsRight_precalcedMatrices(output, 1, expHop4Site_plusHalf[band]);
+                    this->cb_assaad_applyBondFactorsRight_precalcedMatrices(output, 0, expHop4Site_plusHalf[band]);
+                },
+                //leftMultiply
+                // output and input are NxN blocks of a complex matrix
+                // this effectively multiplies e^{- dtau K^band_1 / 2} e^{- dtau K^band_0 / 2} * [Input]
+                // to the left of input and stores the result in output
+                [this](SubMatData output, SubMatData input, Band band) -> void {
+                    output = input;      //copy
+                    this->cb_assaad_applyBondFactorsLeft_precalcedMatrices(output, 1, expHop4Site_minusHalf[band]);
+                    this->cb_assaad_applyBondFactorsLeft_precalcedMatrices(output, 0, expHop4Site_minusHalf[band]);
+                }
+                );
+        }
     }
 }
 
