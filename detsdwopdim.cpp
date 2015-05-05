@@ -4429,7 +4429,7 @@ DetSDW<CB, OPDIM>::shiftGreenSymmetric_impl(RightMultiply rightMultiply, LeftMul
 }
 
 
-
+// virtual function, called during sweep in base class DetModelGC
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::consistencyCheck() {
     if (pars.turnoffFermions) {
@@ -4483,68 +4483,70 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
         }
     }
     // compare bmat-evaluation
-//    constexpr auto MSF = MatrixSizeFactor;
-//    for (uint32_t k = 1; k <= m; ++k) {
-//    	MatData bk = computeBmatSDW(k, k-1);
-//    	MatData bk_inv = arma::inv(bk);
-//    	MatData checkbk_left = checkerboardLeftMultiplyBmat(
-//    			arma::eye<MatData>(MSF*N,MSF*N),
-//    			k, k-1);
-//    	MatData checkbk_right = checkerboardRightMultiplyBmat(
-//    			arma::eye<MatData>(MSF*N,MSF*N),
-//    			k, k-1);
-//    	MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
-//    			arma::eye<MatData>(MSF*N,MSF*N),
-//    			k, k-1);
-//    	MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
-//    			arma::eye<MatData>(MSF*N,MSF*N),
-//    			k, k-1);
-//    	std::cout << "cb:" << CB << " " << k << "\n";
-//    	print_matrix_diff(bk, checkbk_left, "bk_left");
-//    	print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
-//    	print_matrix_diff(bk, checkbk_right, "bk_right");
-//    	print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
-//         checkarray<VecNum, OPDIM> phik;
-//         phik[0] = phi.slice(k).col(0);
-//         if (OPDIM > 1) {
-//             phik[1] = phi.slice(k).col(1);
-//         }
-//         if (OPDIM > 2) {
-//             phik[2] = phi.slice(k).col(2);
-//         }
-//    	MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
-//    	MatNum propK_whole(MSF*N, MSF*N);
-//    	propK_whole.zeros();
-// #define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
-//    	block(propK_whole, 0, 0) = propKx;
-//    	block(propK_whole, 1, 1) = propKy;   // !
-//         if (OPDIM == 3) {
-//             block(propK_whole, 2, 2) = propKx;   // !
-//             block(propK_whole, 3, 3) = propKy;
-//         }
-//    	MatData bk_ref = emv * propK_whole;
-//    	print_matrix_diff(bk, bk_ref, "bk_ref");
-// #undef block
-//    	MatData bk_ref_inv = arma::inv(bk_ref);
-//    	print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
-//    	// spaceneigh.save();
-//    	// debugSaveMatrix(phi.slice(k).col(0), "phi0");
-//    	// debugSaveMatrix(phi.slice(k).col(1), "phi1");
-//         // debugSaveMatrix(phi.slice(k).col(2), "phi2");
-//    	// debugSaveMatrix(cdwl.col(k), "cdwl");
-//    	// debugSaveMatrix(propKx, "propkx");
-//    	// debugSaveMatrix(propKy, "propky");
-//    	// debugSaveMatrixCpx(emv, "emv");
-//    	// debugSaveMatrixCpx(bk, "bk");
-//    	// debugSaveMatrixCpx(bk_inv, "bk_inv");
-//    	// debugSaveMatrixCpx(checkbk_left, "check_bk_left");
-//    	// debugSaveMatrixCpx(checkbk_inv_left, "check_bk_inv_left");
-//    	// debugSaveMatrixCpx(checkbk_right, "check_bk_right");
-//    	// debugSaveMatrixCpx(checkbk_inv_right, "check_bk_inv_right");
-//    	// debugSaveMatrixCpx(bk_ref, "bk_ref");
-//    	// debugSaveMatrixCpx(bk_ref_inv, "bk_ref_inv");
-//    	// exit(0);
-//    }
+    if (loggingParams.checkCheckerboardConsistency) {
+        constexpr auto MSF = MatrixSizeFactor;
+        for (uint32_t k = 1; k <= m; ++k) {
+            MatData bk = computeBmatSDW(k, k-1);
+            MatData bk_inv = arma::inv(bk);
+            MatData checkbk_left = checkerboardLeftMultiplyBmat(
+                arma::eye<MatData>(MSF*N,MSF*N),
+                k, k-1);
+            MatData checkbk_right = checkerboardRightMultiplyBmat(
+                arma::eye<MatData>(MSF*N,MSF*N),
+                k, k-1);
+            MatData checkbk_inv_left = checkerboardLeftMultiplyBmatInv(
+                arma::eye<MatData>(MSF*N,MSF*N),
+                k, k-1);
+            MatData checkbk_inv_right = checkerboardRightMultiplyBmatInv(
+                arma::eye<MatData>(MSF*N,MSF*N),
+                k, k-1);
+            std::cout << "cb:" << CB << " " << k << "\n";
+            print_matrix_diff(bk, checkbk_left, "bk_left");
+            print_matrix_diff(bk_inv, checkbk_inv_left, "bk_inv_left");
+            print_matrix_diff(bk, checkbk_right, "bk_right");
+            print_matrix_diff(bk_inv, checkbk_inv_right, "bk_inv_right");
+            checkarray<VecNum, OPDIM> phik;
+            phik[0] = phi.slice(k).col(0);
+            if (OPDIM > 1) {
+                phik[1] = phi.slice(k).col(1);
+            }
+            if (OPDIM > 2) {
+                phik[2] = phi.slice(k).col(2);
+            }
+            MatData emv = computePotentialExponential(-1, phik, cdwl.col(k));
+            MatData propK_whole(MSF*N, MSF*N);
+            propK_whole.zeros();
+#define block(matrix, row, col) matrix.submat((row) * N, (col) * N, ((row) + 1) * N - 1, ((col) + 1) * N - 1)
+            block(propK_whole, 0, 0) = propKx;
+            block(propK_whole, 1, 1) = propKy;   // !
+            if (OPDIM == 3) {
+                block(propK_whole, 2, 2) = propKx;   // !
+                block(propK_whole, 3, 3) = propKy;
+            }
+            MatData bk_ref = emv * propK_whole;
+            print_matrix_diff(bk, bk_ref, "bk_ref");
+#undef block
+            MatData bk_ref_inv = arma::inv(bk_ref);
+            print_matrix_diff(bk_inv, bk_ref_inv, "bk_ref_inv");
+            // spaceneigh.save();
+            // debugSaveMatrix(phi.slice(k).col(0), "phi0");
+            // debugSaveMatrix(phi.slice(k).col(1), "phi1");
+            // debugSaveMatrix(phi.slice(k).col(2), "phi2");
+            // debugSaveMatrix(cdwl.col(k), "cdwl");
+            // debugSaveMatrix(propKx, "propkx");
+            // debugSaveMatrix(propKy, "propky");
+            // debugSaveMatrixCpx(emv, "emv");
+            // debugSaveMatrixCpx(bk, "bk");
+            // debugSaveMatrixCpx(bk_inv, "bk_inv");
+            // debugSaveMatrixCpx(checkbk_left, "check_bk_left");
+            // debugSaveMatrixCpx(checkbk_inv_left, "check_bk_inv_left");
+            // debugSaveMatrixCpx(checkbk_right, "check_bk_right");
+            // debugSaveMatrixCpx(checkbk_inv_right, "check_bk_inv_right");
+            // debugSaveMatrixCpx(bk_ref, "bk_ref");
+            // debugSaveMatrixCpx(bk_ref_inv, "bk_ref_inv");
+            // exit(0);
+        }
+    }
 
 //     // Verify get_delta_forsite
 //     for (uint32_t k = 1; k <= m; ++k) {

@@ -35,6 +35,11 @@ struct DetModelLoggingParams {
 
     bool logGreenConsistency;   // check green consistency between wrapping / advancing, log differences
 
+    bool checkCheckerboardConsistency; // compare results obtained by
+                                       // multiplying dense / sparse
+                                       // hopping matrix exponentials.
+                                       // this one just prints to stdout
+
     std::set<std::string> specified;
 
     DetModelLoggingParams() :
@@ -42,6 +47,7 @@ struct DetModelLoggingParams {
         checkAndLogDetRatio(false), logDetRatio_filename(""),
         checkAndLogGreen(false), logGreen_filename(""),
         logGreenConsistency(false),
+        checkCheckerboardConsistency(false),
         specified()
     { }
     void check();
@@ -55,6 +61,7 @@ private:
             & checkAndLogDetRatio & logDetRatio_filename
             & checkAndLogGreen & logGreen_filename
             & logGreenConsistency
+            & checkCheckerboardConsistency
             & specified;
     }
 };
