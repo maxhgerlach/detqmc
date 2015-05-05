@@ -103,6 +103,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("s", po::value<uint32_t>(&modelpar.s)->default_value(1), "separation of timeslices where the Green-function is calculated from scratch with stabilized updates.")
         ("accRatio", po::value<num>(&modelpar.accRatio)->default_value(0.5), "target acceptance ratio for tuning spin update box size")
         ("bc", po::value<string>(&modelpar.bc_string)->default_value("pbc"), "boundary conditions to use: pbc (periodic), apbc-x, apbc-y or apbc-xy (anti-periodic in x- and/or y-direction)")
+        ("weakZflux", po::value<bool>(&modelpar.weakZflux)->default_value(false), "Apply a weak (generalized) magnetic field in z-direction, perpendicular to the lattice plane.  This reduces finite-size effects")
         ("txhor", po::value<num>(&modelpar.txhor)->default_value(-1.0), "hopping x left-right")
         ("txver", po::value<num>(&modelpar.txver)->default_value(-0.5), "hopping x up-down")
         ("tyhor", po::value<num>(&modelpar.tyhor)->default_value(0.5), "hopping y left-right")
