@@ -1775,13 +1775,31 @@ DetSDW<CB, OPDIM>::cbLMultHoppingExp_impl(std::integral_constant<CheckerboardMet
                                           const Matrix& A, Band band, int sign, bool) {
     MatData result = A;      //can't avoid this copy
 
-    // perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
-    cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-                                   coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-    cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band],
-                                   coshHopVer[band], sign * sinhHopVer[band]);
-    cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-                                   coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    assert(sign == 1 or sign == -1);
+
+    if (not pars.weakZflux) {
+        // perform the multiplication e^(+-dtau (K_1)/2) e^(+-dtau K_0) e^(+-dtau (K_1)/2) X
+        cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                       coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+        cb_assaad_applyBondFactorsLeft(result, 0, coshHopHor[band], sign * sinhHopHor[band],
+                                       coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsLeft(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                       coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    } else {
+        //order of matrix multiplications symmetric
+        //perform the multiplication e^(+-dtau (K_1)/2) e^(+-dtau K_0) e^(+-dtau (K_1)/2) X
+        if (sign == +1) {
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 1, expHop4Site_plusHalf[band]);
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 0, expHop4Site_plus[band]);
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 1, expHop4Site_plusHalf[band]);
+        }
+        else if (sign == -1) {
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 1, expHop4Site_minusHalf[band]);
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 0, expHop4Site_minus[band]);
+            cb_assaad_applyBondFactorsLeft_precalcedMatrices(result, 1, expHop4Site_minusHalf[band]);
+        }
+    }
+
     return result;
 }
 
@@ -1864,17 +1882,33 @@ template<class Matrix> inline
 typename DetSDW<CB, OPDIM>::MatData
 DetSDW<CB, OPDIM>::cbRMultHoppingExp_impl(std::integral_constant<CheckerboardMethod, CB_ASSAAD_BERG>,
                                           const Matrix& A, Band band, int sign, bool) {
-    typename DetSDW<CB, OPDIM>::MatData
-        result = A;      //can't avoid this copy
+    typename DetSDW<CB, OPDIM>::MatData result = A;      //can't avoid this copy
 
-    //order of matrix multiplications symmetric
-    //perform the multiplication e^(+-dtau K_1/2) e^(+-dtau K_0) e^(+-dtau K_a/2) X
-    cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
-    cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band],
-                                    coshHopVer[band], sign * sinhHopVer[band]);
-    cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
-                                    coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    assert(sign == 1 or sign == -1);
+
+    if (not pars.weakZflux) {
+        //order of matrix multiplications symmetric
+        //perform the multiplication X e^(+-dtau (K_1)/2) e^(+-dtau K_0) e^(+-dtau (K_1)/2)
+        cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                        coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+        cb_assaad_applyBondFactorsRight(result, 0, coshHopHor[band], sign * sinhHopHor[band],
+                                        coshHopVer[band], sign * sinhHopVer[band]);
+        cb_assaad_applyBondFactorsRight(result, 1, coshHopHorHalf[band], sign * sinhHopHorHalf[band],
+                                        coshHopVerHalf[band], sign * sinhHopVerHalf[band]);
+    } else {
+        //order of matrix multiplications symmetric
+        //perform the multiplication X e^(+-dtau (K_1)/2) e^(+-dtau K_0) e^(+-dtau (K_1)/2)
+        if (sign == +1) {
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 1, expHop4Site_plusHalf[band]);
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 0, expHop4Site_plus[band]);
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 1, expHop4Site_plusHalf[band]);
+        }
+        else if (sign == -1) {
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 1, expHop4Site_minusHalf[band]);
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 0, expHop4Site_minus[band]);
+            cb_assaad_applyBondFactorsRight_precalcedMatrices(result, 1, expHop4Site_minusHalf[band]);
+        }
+    }
 
     return result;
 }
