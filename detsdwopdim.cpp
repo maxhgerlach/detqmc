@@ -1958,7 +1958,7 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b % ksinhTermPhi).eval());
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b  % ksinhTermPhi).eval());
     VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl).eval() : (bc % ksinhTermPhi).eval());
 
     //overall factor for entire matrix for chemical potential
