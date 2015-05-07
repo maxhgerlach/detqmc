@@ -2833,7 +2833,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
                            +1,
                            getPhi(site, timeslice),
                            coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
-                           0.0, 1.0
+                           1.0, 0.0
                            ) );
     // //DEBUG
     // VecNum debug_phi0 = phi0.col(timeslice);
@@ -2864,7 +2864,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
                             -1,
                             newphi,
                             coshTermPhi_new, sinhTermPhi_new,
-                            0.0, 1.0
+                            1.0, 0.0
                             ) );
 
     // //DEBUG
