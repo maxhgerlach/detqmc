@@ -195,7 +195,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     cdwl.zeros();
     coshTermPhi.zeros();
     sinhTermPhi.zeros();
-    coshTermCDWl.zeros();
+    coshTermCDWl.ones();
     sinhTermCDWl.zeros();
 
     if (not pars.phiFixed) {
@@ -2296,7 +2296,7 @@ DetSDW<CB, OPDIM>::rightMultiplyBkInv(const typename DetSDW<CB, OPDIM>::MatData&
         setVectorImag(b, -kphi1);
         setVectorImag(bc, kphi1);
     }
-    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b % ksinhTermPhi).eval());
+    VecData bx  = (pars.cdwU ? (b  % ksinhTermPhi % kcoshTermCDWl).eval() : (b  % ksinhTermPhi).eval());
     VecData bcx = (pars.cdwU ? (bc % ksinhTermPhi % kcoshTermCDWl).eval() : (bc % ksinhTermPhi).eval());
 
     //overall factor for entire matrix for chemical potential
@@ -3171,7 +3171,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
                            +1,
                            getPhi(site, timeslice),
                            coshTermPhi(site, timeslice), sinhTermPhi(site, timeslice),
-                           0.0, 1.0
+                           1.0, 0.0
                            ) );
     // //DEBUG
     // VecNum debug_phi0 = phi0.col(timeslice);
@@ -3202,7 +3202,7 @@ DetSDW<CB, OPDIM>::get_delta_forsite(
                             -1,
                             newphi,
                             coshTermPhi_new, sinhTermPhi_new,
-                            0.0, 1.0
+                            1.0, 0.0
                             ) );
 
     // //DEBUG
