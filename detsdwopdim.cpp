@@ -195,7 +195,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     cdwl.zeros();
     coshTermPhi.zeros();
     sinhTermPhi.zeros();
-    coshTermCDWl.zeros();
+    coshTermCDWl.ones();
     sinhTermCDWl.zeros();
 
     if (not pars.phiFixed) {
