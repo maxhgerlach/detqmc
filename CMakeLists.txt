@@ -91,6 +91,7 @@ endif (NOT ${USE_CLANG} AND ${THP_DOMAIN})
 # Cheops, Intel compiler
 if (${CHEOPS_FOUND})
   # set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.6.4/bin/gcc")
+  set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.8.2/bin/gcc")
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_GCC_LOCATION_FLAGS}")
 endif (${CHEOPS_FOUND})
