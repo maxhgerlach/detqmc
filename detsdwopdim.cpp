@@ -1540,7 +1540,8 @@ void DetSDW<CB, OPDIM>::precalc_4site_hopping_exponentials() {
     };
     typedef std::reference_wrapper<checkarray<ExpHop4SiteStorage, 2> > StorageRef;
     StorageRef storage_collections[4] = {
-        expHop4Site_minus, expHop4Site_minusHalf, expHop4Site_plus, expHop4Site_plusHalf
+        // expHop4Site_minus, expHop4Site_minusHalf, expHop4Site_plus, expHop4Site_plusHalf   // fails on Intel compiler
+        std::ref(expHop4Site_minus), std::ref(expHop4Site_minusHalf), std::ref(expHop4Site_plus), std::ref(expHop4Site_plusHalf)
     };
 
     for (uint32_t prefactor_index = 0; prefactor_index < 4; ++prefactor_index) {
@@ -2859,9 +2860,9 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
             //the determinant ratio for the spin update is given by the determinant
             //of the following matrix M
-            M = smalleye + (smalleye - g_sub) * delta_forsite;
+            // M = smalleye + (smalleye - g_sub) * delta_forsite;
+            M = (smalleye + (smalleye - g_sub) * delta_forsite).eval(); // work around Intel compiler bug
             DataType det = arma::det(M);
-
 
             // consistency check
             if (loggingParams.checkAndLogDetRatio and performedSweeps >= 10 and changed == PHI) {
@@ -3012,7 +3013,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 
                 takesomecols(dud.Sj, dud.Rj, site);
 
-                dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
+                // dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
+                dud.Mj = (smalleye - dud.Sj * delta_forsite + delta_forsite).eval(); // work around Intel compiler bug
 
                 DataType det = arma::det(dud.Mj);
 
@@ -3254,9 +3256,9 @@ void DetSDW<CB, OPDIM>::updateInSliceThermalization(uint32_t timeslice) {
     //Hold a reference to the accRatioLocal_*_RA we currently need
     std::reference_wrapper<RunningAverage> ra(ad.accRatioLocal_box_RA);
     switch (adapting_what) {
-    case ADAPT_BOX: ra = ad.accRatioLocal_box_RA; break;
-    case ADAPT_ROTATE: ra = ad.accRatioLocal_rotate_RA; break;
-    case ADAPT_SCALE: ra = ad.accRatioLocal_scale_RA; break;
+    case ADAPT_BOX: ra = std::ref(ad.accRatioLocal_box_RA); break;
+    case ADAPT_ROTATE: ra = std::ref(ad.accRatioLocal_rotate_RA); break;
+    case ADAPT_SCALE: ra = std::ref(ad.accRatioLocal_scale_RA); break;
     }
 
     ra.get().addValue(ad.lastAccRatioLocal_phi);
