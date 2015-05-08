@@ -4545,6 +4545,9 @@ void DetSDW<CB, OPDIM>::consistencyCheck() {
             // debugSaveMatrixCpx(bk_ref, "bk_ref");
             // debugSaveMatrixCpx(bk_ref_inv, "bk_ref_inv");
             // exit(0);
+            //// save a single B-matrix 
+            // debugSaveMatrixCpx(bk, "bk");
+            // exit(0);
         }
     }
 
