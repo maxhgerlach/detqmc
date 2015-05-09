@@ -2860,8 +2860,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_woodbury(uint32_t timeslice,
 
             //the determinant ratio for the spin update is given by the determinant
             //of the following matrix M
-            // M = smalleye + (smalleye - g_sub) * delta_forsite;
-            M = (smalleye + (smalleye - g_sub) * delta_forsite).eval(); // work around Intel compiler bug
+            M = smalleye + (smalleye - g_sub) * delta_forsite; // should work with new workaraound in Armadillo
+            //M = (smalleye + (smalleye - g_sub) * delta_forsite).eval(); // work around Intel compiler bug
             DataType det = arma::det(M);
 
             // consistency check
@@ -3013,8 +3013,8 @@ num DetSDW<CB, OPDIM>::updateInSlice_delayed(uint32_t timeslice, Callable propos
 
                 takesomecols(dud.Sj, dud.Rj, site);
 
-                // dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite;
-                dud.Mj = (smalleye - dud.Sj * delta_forsite + delta_forsite).eval(); // work around Intel compiler bug
+                dud.Mj = smalleye - dud.Sj * delta_forsite + delta_forsite; // should work with new workaround in Armadillo
+                // dud.Mj = (smalleye - dud.Sj * delta_forsite + delta_forsite).eval(); // work around Intel compiler bug
 
                 DataType det = arma::det(dud.Mj);
 
