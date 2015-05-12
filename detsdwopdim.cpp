@@ -260,7 +260,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
         ScalarObservable(cref(associatedEnergy), "associatedEnergy", "");
 
-    if (not pars.turnoffFermions) {
+    if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
     
         obsScalar +=
             ScalarObservable(cref(pairPlusMax), "pairPlusMax", "ppMax"),
@@ -434,7 +434,7 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
 
     associatedEnergy = 0;
 
-    if (not pars.turnoffFermions) {
+    if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
 
         // some sectors of the momentum space Green's function,
         // helpers:
@@ -503,7 +503,7 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         associatedEnergy += arma::dot(phi_site, phi_site);
     }
 
-    if (not pars.turnoffFermions) {
+    if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
 
         MatData gshifted = shiftGreenSymmetric();
 
@@ -868,7 +868,7 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
 
     associatedEnergy /= (2.0 * N * m);
 
-    if (not pars.turnoffFermions) {
+    if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {    
 
         // some sectors of the momentum space Green's function
         greenXUPXUP_summed /= num(m);
