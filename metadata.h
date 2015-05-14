@@ -15,6 +15,8 @@
 #include <map>
 #include <string>
 #include <sstream>
+#include <iterator>             // std::iterator_traits
+#include <type_traits>          // std::is_same
 #include "exceptions.h"
 
 typedef std::map<std::string, std::string> MetadataMap;
@@ -53,5 +55,21 @@ void writeOnlyMetaData(const std::string& filename, const MetadataMap& meta,
 
 // return a map with the (key, value) pairs that are equal in meta1 and meta2
 MetadataMap getCommonMetadata(const MetadataMap& meta1, const MetadataMap& meta2);
+
+// return a map with the (key, value) pairs that are equal in all the MetadataMaps
+// in the range pointed to by the Iter iterators
+template<typename Iter>
+typename std::enable_if<std::is_same<typename std::iterator_traits<Iter>::value_type,
+                                     MetadataMap>::value,
+                        MetadataMap>::type
+getCommonMetadata(Iter curr, Iter end) {
+    MetadataMap commonMetadata = *curr;
+    ++curr;
+    while (curr != end) {
+        commonMetadata = getCommonMetadata(commonMetadata, *curr);
+        ++curr;
+    }
+    return commonMetadata;
+}
 
 #endif /* METADATA_H_ */
