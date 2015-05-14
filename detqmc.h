@@ -169,7 +169,7 @@ void DetQMC<Model,ModelParams>::initFromParameters(const ModelParams& parsmodel_
         std::cout << "No rng seed specified, will use std::time(0)" << std::endl;
         parsmc.rngSeed = (uint32_t) std::time(0);
     }
-    rng = RngWrapper(parsmc.rngSeed);
+    rng = RngWrapper(parsmc.rngSeed, (parsmc.simindex + 1));
 
     createReplica(replica, rng, parsmodel, parslogging);    
 

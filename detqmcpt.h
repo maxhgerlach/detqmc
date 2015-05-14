@@ -289,7 +289,7 @@ void DetQMCPT<Model,ModelParams>::initFromParameters(const ModelParams& parsmode
         //MPI_Bcast(&broadcast_rngSeed, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
         mpi::broadcast(world, parsmc.rngSeed, 0);
     }
-    rng = RngWrapper(parsmc.rngSeed, processIndex);
+    rng = RngWrapper(parsmc.rngSeed, (parsmc.simindex + 1) * processIndex);
 
     // set up control parameters for current process replica parameters
     local_current_parameter_index = processIndex;

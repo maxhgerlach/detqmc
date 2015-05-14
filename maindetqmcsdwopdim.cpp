@@ -133,6 +133,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
     po::options_description mcOptions("Parameters for Monte Carlo simulation, specify via command line or config file");
     mcpar.saveInterval = 0;
     mcOptions.add_options()
+        ("simindex", po::value<uint32_t>(&mcpar.simindex)->default_value(0), "Give a value larger than 1, to identify this as one of multiple equivalent simulation instances that will be averaged over in the end; we will use (simindex + 1) to shift the rng seed to avoid collisions")
         ("greenUpdate", po::value<std::string>(&mcpar.greenUpdateType_string)->default_value("stabilized"), "method to use for updating the Green function: simple or stabilized")
         ("sweeps", po::value<uint32_t>(&mcpar.sweeps), "number of sweeps used for measurements, must be even for serialization consistency")
         ("thermalization", po::value<uint32_t>(&mcpar.thermalization), "number of warm-up sweeps, must be even for serialization consistency")

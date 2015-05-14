@@ -29,6 +29,7 @@ typedef double num;     //possibility to switch to single precision if ever desi
 // Representation of Monte Carlo simulation parameters for DetQMC
 struct DetQMCParams {
     //public data members, call check() after setting these
+    uint32_t simindex;          // an index to discriminate between multiple simulation instances for the same set of parameters
     uint32_t sweeps;            // number of sweeps used for measurements
     uint32_t thermalization;    // number of warm-up sweeps allowed before equilibrium is assumed
     uint32_t jkBlocks;          // number of jackknife blocks for error estimation
@@ -50,7 +51,7 @@ struct DetQMCParams {
     std::set<std::string> specified; // used to record names of specified parameters
 
     DetQMCParams() :
-        sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
+        simindex(0), sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
         rngSeed(), greenUpdateType_string(), saveConfigurationStreamText(false), saveConfigurationStreamBinary(false),
         stateFileName(), sweepsHasChanged(false), specified()
     { }
@@ -66,7 +67,8 @@ private:
     template<class Archive>
     void serialize(Archive& ar, const uint32_t version) {
         (void)version;
-        ar  & sweeps & thermalization & jkBlocks & timeseries
+        ar  & simindex
+            & sweeps & thermalization & jkBlocks & timeseries
             & measureInterval & saveInterval & rngSeed
             & greenUpdateType_string & greenUpdateType
             & saveConfigurationStreamText & saveConfigurationStreamBinary

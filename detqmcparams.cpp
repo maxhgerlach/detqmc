@@ -63,6 +63,7 @@ MetadataMap DetQMCParams::prepareMetadataMap() const {
     MetadataMap meta;
 #define META_INSERT(VAR) meta[#VAR] = numToString(VAR)
     META_INSERT(greenUpdateType_string);
+    META_INSERT(simindex);
     META_INSERT(sweeps);
     META_INSERT(thermalization);
     META_INSERT(jkBlocks);
