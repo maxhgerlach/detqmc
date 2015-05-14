@@ -63,7 +63,7 @@ public:
     //write meta data and header text to the file
     void writeHeader();
 
-    //write the whole data from the two containers to the file
+    //write the whole data from the container to the file
     void writeData(const Container& dataSeries);
     void writeData(const Container& dataSeries, uint32_t floatPrecision);
     //write a single data point to the file
