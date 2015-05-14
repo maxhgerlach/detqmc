@@ -439,6 +439,11 @@ add_executable(detevalbc ${detevalbc_SRC})
 target_link_libraries(detevalbc general_common
   boost_program_options boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
+set(jointimeseries_SRC mainjointimeseries.cpp)
+add_executable(jointimeseries ${jointimeseries_SRC})
+target_link_libraries(jointimeseries general_common
+  boost_program_options boost_filesystem boost_system ${EXTRA_LIBRARIES})
+
 
 set(testspheresampling_SRC maintestspheresampling.cpp)
 add_executable(testspheresampling ${testspheresampling_SRC})
