@@ -116,7 +116,12 @@ int main(int argc, char **argv) {
         //take simulation metadata from subdirectory file info.dat, remove some unnecessary parts.
         //this tells us the simindex.
         MetadataMap this_meta = readOnlyMetadata(info_dat_fname);
-        uint32_t this_simindex = fromString<uint32_t>(this_meta["simindex"]);
+        uint32_t this_simindex = 0; // default simindex is 0
+        if (this_meta.count("simindex")) {
+            this_simindex = fromString<uint32_t>(this_meta["simindex"]);
+        } else {
+            this_meta["simindex"] = "0";
+        }
         if (simindex_samples.count(this_simindex)) {
             throw_GeneralError("simindex " + numToString(this_simindex) + " appears more than one time");
         }
