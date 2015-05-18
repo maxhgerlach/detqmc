@@ -19,8 +19,6 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/program_options.hpp"
 #include "boost/filesystem.hpp"
-#define BOOST_RESULT_OF_USE_DECLTYPE
-#include "boost/iterator/transform_iterator.hpp" // boost::make_transform_iterator
 #pragma GCC diagnostic pop
 #include "git-revision.h"
 #include "tools.h"                      //glob
@@ -174,9 +172,21 @@ int main(int argc, char **argv) {
         
     // reduce simindex_meta to a common metadata map, to do this we want iterators
     // over the values of simindex_meta
-    auto get_second = [](const std::pair<uint32_t, MetadataMap>& p){ return p.second; };
-    auto beg = boost::make_transform_iterator(simindex_meta.begin(), get_second);
-    auto end = boost::make_transform_iterator(simindex_meta.end(), get_second);
+    
+    //// This nice code does not work with the Intel compiler 15.0, probably due to
+    //// a bug in their decltype implementation.
+    // auto get_second = [](const std::pair<uint32_t, MetadataMap>& p) -> MetadataMap { return p.second; };
+    // auto beg = boost::make_transform_iterator(simindex_meta.begin(), get_second);
+    // auto end = boost::make_transform_iterator(simindex_meta.end(), get_second);
+    
+    // There will not be a huge number of simindex values, so it is
+    // not expensive to just create a vector of MetadataMap instances
+    std::vector<MetadataMap> temp_vector;
+    for (const auto& si_metadatamap_pair : simindex_meta) {
+        temp_vector.push_back(si_metadatamap_pair.second);
+    }
+    auto beg = temp_vector.begin();
+    auto end = temp_vector.end();
     MetadataMap common_meta = getCommonMetadata(beg, end);
     common_meta["simindex"] = std::string("joined");    
     common_meta["join-discard"] = numToString(discard);
