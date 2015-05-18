@@ -53,14 +53,14 @@ MetadataMap readOnlyMetadata(const std::string & filename) {
     bool done = false;
     if (inFile) {
     	do {
-    		std::getline(inFile, line);
-    		boost::algorithm::trim_left(line);
-    		if (line[0] == '#') {
-    			line[0] = ' ';
-    			collectedLines += line + '\n';
-    		} else {
-    			done = true;
-    		}
+            std::getline(inFile, line);
+            boost::algorithm::trim_left(line);
+            if (line[0] == '#') {
+                line[0] = ' ';
+                collectedLines += line + '\n';
+            } else {
+                done = true;
+            }
     	} while (inFile and not done);
     } else {
     	std::cerr << "Could not open file " << filename << " for reading.\n";
