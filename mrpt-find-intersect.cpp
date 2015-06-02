@@ -43,17 +43,19 @@ public:
 
 class ScaledKTSusceptibilityDifference {
     MRPT_Pointer mr1, mr2;
+    double systemSize1, systemSize2;
     unsigned systemL1, systemL2;
     double divisor1, divisor2;
 public:
     ScaledKTSusceptibilityDifference(MRPT_Pointer mr1_, MRPT_Pointer mr2_) :
         mr1(mr1_), mr2(mr2_),
+        systemSize1(mr1->getSystemSize()), systemSize2(mr2->getSystemSize()),
         systemL1(mr1->getSystemL()), systemL2(mr2->getSystemL()),
         divisor1(std::pow(double(systemL1), 2.0 - 0.25)),
         divisor2(std::pow(double(systemL2), 2.0 - 0.25)) { }
     double operator()(double controlParameter) {
-        double s1 = mr1->reweightObservableSquared(controlParameter) / divisor1;
-        double s2 = mr2->reweightObservableSquared(controlParameter) / divisor2;
+        double s1 = systemSize1 * mr1->reweightObservableSquared(controlParameter) / divisor1;
+        double s2 = systemSize2 * mr2->reweightObservableSquared(controlParameter) / divisor2;
         double diff = s1 - s2;
         std::cout << diff << std::endl;
         return diff;
@@ -63,17 +65,19 @@ public:
 class ScaledKTSusceptibilityDifferenceJK {
     MRPTJK_Pointer mr1, mr2;
     unsigned jkBlock;
+    double systemSize1, systemSize2;
     unsigned systemL1, systemL2;
     double divisor1, divisor2;
 public:
     ScaledKTSusceptibilityDifferenceJK(MRPTJK_Pointer mr1_, MRPTJK_Pointer mr2_, unsigned jkBlock_) :
         mr1(mr1_), mr2(mr2_), jkBlock(jkBlock_),
+        systemSize1(mr1->getSystemSize()), systemSize2(mr2->getSystemSize()),
         systemL1(mr1->getSystemL()), systemL2(mr2->getSystemL()),
         divisor1(std::pow(double(systemL1), 2.0 - 0.25)),
         divisor2(std::pow(double(systemL2), 2.0 - 0.25)) { }
     double operator()(double controlParameter) {
-        double s1 = mr1->reweightObservableSquaredJK(controlParameter, jkBlock) / divisor1;
-        double s2 = mr2->reweightObservableSquaredJK(controlParameter, jkBlock) / divisor2;
+        double s1 = systemSize1 * mr1->reweightObservableSquaredJK(controlParameter, jkBlock) / divisor1;
+        double s2 = systemSize2 * mr2->reweightObservableSquaredJK(controlParameter, jkBlock) / divisor2;
         double diff = s1 - s2;
         return diff;
     }
