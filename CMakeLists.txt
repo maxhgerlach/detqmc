@@ -467,11 +467,14 @@ add_executable(mrpt-binderratio-intersect main-mrpt-binderratio-intersect.cpp)
 target_link_libraries(mrpt-binderratio-intersect mrpt_binderRatioIntersect mrpt_COMMON)
 add_executable(mrptbc-binderratio-intersect main-mrptbc-binderratio-intersect.cpp)
 target_link_libraries(mrptbc-binderratio-intersect mrpt_binderRatioIntersect mrpt_COMMON)
+add_library(mrpt_findIntersect mrpt-find-intersect.cpp)
+add_executable(mrpt-find-intersect main-mrpt-find-intersect.cpp)
+target_link_libraries(mrpt-find-intersect mrpt_findIntersect mrpt_COMMON)
 if(${OPENMP_FOUND})
   # add -fopenmp or -openmp or whatever
   set(MRPT_TARGETS
-    mrpt_HIGHLEVEL mrpt_COMMON mrpt_binderRatioIntersect
-    mrpt-binderratio-intersect mrptbc-binderratio-intersect mrpt mrptbc)
+    mrpt_HIGHLEVEL mrpt_COMMON mrpt_binderRatioIntersect mrpt_findIntersect
+    mrpt-binderratio-intersect mrptbc-binderratio-intersect mrpt mrptbc mrpt-find-intersect)
   foreach( target ${MRPT_TARGETS} )
     set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
                                                LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
@@ -481,6 +484,7 @@ target_link_libraries(mrpt general_common boost_filesystem boost_system ${EXTRA_
 target_link_libraries(mrptbc general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 target_link_libraries(mrpt-binderratio-intersect general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 target_link_libraries(mrptbc-binderratio-intersect general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
+target_link_libraries(mrpt-find-intersect general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 
 
