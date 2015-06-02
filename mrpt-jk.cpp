@@ -603,6 +603,26 @@ void MultireweightHistosPTJK::reweight1stMomentInternalJK(const DoubleSeriesColl
     firstMoment = first;
 }
 
+void MultireweightHistosPTJK::reweight2ndMomentInternalJK(const DoubleSeriesCollection& timeSeries, const DoubleSeriesCollection& w_kn, unsigned jkBlock, double& secondMoment) {
+    double second = 0;
+    for (int k = 0; k < (signed)numReplicas; ++k) {
+        unsigned N_k = (unsigned)timeSeries[k]->size();
+        unsigned jkBlockSize = N_k / blockCount;
+        for (unsigned n = 0; n < N_k; ++n) {
+            const unsigned curBlock = n / jkBlockSize;
+            if (curBlock == jkBlock) {
+                n += jkBlockSize;
+                continue;
+            } else {
+                double v = (*timeSeries[k])[n];
+                second += v*v * (*w_kn[k])[n];
+            }
+        }
+    }
+    secondMoment = second;
+}
+
+
 void MultireweightHistosPTJK::reweight1stMoment2ndMomentInternalJK(
         const DoubleSeriesCollection& timeSeries,
         const DoubleSeriesCollection& w_kn, unsigned jkBlock,
@@ -684,6 +704,17 @@ double MultireweightHistosPTJK::reweightObservableJK(double targetControlParamet
 
     double result = 0;
     reweight1stMomentInternalJK(observableTimeSeries, w_kn, jkBlock, result);
+
+    //destroyAll(w_kn);
+
+    return result;
+}
+
+double MultireweightHistosPTJK::reweightObservableSquaredJK(double targetControlParameter, unsigned jkBlock) {
+    DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
+
+    double result = 0;
+    reweight2ndMomentInternalJK(observableTimeSeries, w_kn, jkBlock, result);
 
     //destroyAll(w_kn);
 

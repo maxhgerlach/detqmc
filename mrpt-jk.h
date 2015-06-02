@@ -64,6 +64,9 @@ private:
     void reweight1stMomentInternalJK(const DoubleSeriesCollection& timeSeries,
             const DoubleSeriesCollection& w_kn, unsigned jkBlock,
             double& firstMoment);
+    void reweight2ndMomentInternalJK(const DoubleSeriesCollection& timeSeries,
+                                     const DoubleSeriesCollection& w_kn, unsigned jkBlock,
+                                     double& secondMoment);
     void reweight1stMoment2ndMomentInternalJK(
             const DoubleSeriesCollection& timeSeries,
             const DoubleSeriesCollection& w_kn, unsigned jkBlock,
@@ -76,6 +79,7 @@ private:
     double reweightSpecificHeatJK(double targetControlParameter, unsigned jkBlock);
     double reweightSpecificHeatDiscreteJK(double targetControlParameter, unsigned jkBlock);
     double reweightObservableJK(double targetControlParameter, unsigned jkBlock);
+    double reweightObservableSquaredJK(double targetControlParameter, unsigned jkBlock);
     double reweightObservableSusceptibilityJK(double targetControlParameter,
             unsigned jkBlock);
     double reweightObservableBinderJK(double targetControlParameter, unsigned jkBlock);
@@ -89,6 +93,7 @@ private:
     HistogramDouble* reweightObservableHistogramJK(double targetControlParameter,
             unsigned numBins, unsigned jkBlock);
 
+    // it would be better to have a clean interface not requiring these friend statements... 
     friend class SuscMinCallableJK;
     friend class SpecificHeatDiscreteMinCallableJK;
     friend class EnergyHistogramPeakDiffMinCallableJK;
@@ -98,7 +103,8 @@ private:
     friend class BinderMinCallableJK;
     friend class BinderDiffMinCallableJK;    
     friend class BinderRatioDifferenceJK; 
-    friend class BinderRatioDifferenceBCJK;   
+    friend class BinderRatioDifferenceBCJK;
+    friend class ScaledKTSusceptibilityDifferenceJK;
 public:
     MultireweightHistosPTJK(unsigned jkTotalBlocks, std::ostream& outStream = std::cout);
     virtual ~MultireweightHistosPTJK();

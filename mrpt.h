@@ -199,6 +199,7 @@ public:
     virtual double reweightEnergy(double targetControlParameter);
     virtual double reweightSpecificHeat(double targetControlParameter);
     virtual double reweightObservable(double targetControlParameter);
+    virtual double reweightObservableSquared(double targetControlParameter);
     virtual double reweightObservableSusceptibility(double targetControlParameter);
     virtual double reweightObservableBinder(double targetControlParameter);
     virtual double reweightObservableBinderRatio(double targetControlParameter);    
@@ -299,6 +300,11 @@ protected:
     void reweight1stMomentInternalWithoutErrors(
         const DoubleSeriesCollection& timeSeries,
         const DoubleSeriesCollection& w_kn, double& firstMoment);
+    //return the expectation value of the second moment of some observable
+    //with given weights, put the result into secondMoment
+    void reweight2ndMomentInternalWithoutErrors(
+        const DoubleSeriesCollection& timeSeries,
+        const DoubleSeriesCollection& w_kn, double& secondMoment);
     //return the expectation value of the first and second moments of some
     //observable at a given temperature with given weights, put the result
     //into firstMoment, secondMoment

@@ -1240,6 +1240,22 @@ void MultireweightHistosPT::reweight1stMomentInternalWithoutErrors(const DoubleS
     firstMoment = first;
 }
 
+void MultireweightHistosPT::reweight2ndMomentInternalWithoutErrors(const DoubleSeriesCollection& timeSeries, const DoubleSeriesCollection& w_kn, double& secondMoment) {
+    double second = 0;
+    #pragma omp parallel for reduction( + : second)
+    for (int k = 0; k < (signed)numReplicas; ++k) {
+        unsigned N_k = (unsigned)timeSeries[k]->size();
+        for (unsigned n = 0; n < N_k; ++n) {
+            double v = (*timeSeries[k])[n];
+            second += v*v * (*w_kn[k])[n];
+        }
+        out << ".";
+    }
+    out << '\n';
+    secondMoment = second;
+}
+
+
 void MultireweightHistosPT::reweight1stMoment2ndMomentInternalWithoutErrors(
         const DoubleSeriesCollection& timeSeries,
         const DoubleSeriesCollection& w_kn,
@@ -1356,6 +1372,19 @@ double MultireweightHistosPT::reweightObservable(double targetControlParameter) 
 
     return result;
 }
+
+double MultireweightHistosPT::reweightObservableSquared(double targetControlParameter) {
+    DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
+
+    double result = 0;
+    reweight2ndMomentInternalWithoutErrors(observableTimeSeries, w_kn, result);
+
+    w_kn.clear();
+    // destroyAll(w_kn);
+
+    return result;
+}
+
 
 double MultireweightHistosPT::reweightObservableSusceptibility(double targetControlParameter) {
     DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
