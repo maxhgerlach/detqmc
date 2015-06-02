@@ -105,6 +105,7 @@ public:
     void addSimulationInfo(const std::string& filename);        //pass "info.dat"...
     unsigned getSystemN() const { return systemN; }
     unsigned getSystemL() const { return systemL; }
+    double getSystemSize() const { return systemSize; }    
     std::string getObservableName() const { return observable; }
     std::string getControlParameterName() const { return controlParameterName; }
 
