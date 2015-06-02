@@ -374,7 +374,7 @@ void initFromCommandLine(int argc, char** argv) {
 
     const clp::option_type& br = parser.option("cp-range");
     if (not br) {
-    	cerr << "Specify inverse temperatures between which to search for intersection of Binder cumulants (option --cp-range)" << endl;
+    	cerr << "Specify control parameter values between which to search for intersection of Binder cumulants (option --cp-range)" << endl;
     	exit(2);
     }
     cpMin = dlib::sa = br.argument(0);
