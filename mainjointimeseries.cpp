@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
 
     
 
+    std::vector<fs::path> skipped_inputDirectories; // if data is corrupt in one input directory: skip that one
     // process one input directory of time series after the other
     for (fs::path in_path : inputDirectories_path) {
         std::string info_dat_fname = (in_path / fs::path("info.dat")).string();
@@ -133,12 +134,13 @@ int main(int argc, char **argv) {
                 this_meta.erase(key);
             }
         }
-        simindex_meta[this_simindex] = this_meta;
         
         uint32_t guessedLength = static_cast<uint32_t>(fromString<double>(this_meta.at("sweeps")) /
                                                        fromString<double>(this_meta.at("measureInterval")));
 
-        //read in time series files -- if necessary, discard or subsample data
+        // read in time series files -- if necessary, discard or subsample data;
+        // if we notice corruption, skip this input directory
+        bool corrupt = false;
         std::vector<std::string> filenames = glob((in_path / fs::path("*.series")).string());
         for (std::string fn : filenames) {
             std::cout << "Processing " << fn << ", ";
@@ -156,7 +158,10 @@ int main(int argc, char **argv) {
             uint32_t samples = static_cast<uint32_t>(data->size());
             if (simindex_samples.count(this_simindex)) {
                 if (samples != simindex_samples[this_simindex]) {
-                    throw_GeneralError("Sample count mismatch in file " + fn);
+                    std::cerr << "Sample count mismatch in file " << fn << "\n"
+                              << "Skipping this directory.\n";
+                    corrupt = true;
+                    break;
                 }
             }
             simindex_samples[this_simindex] = samples;
@@ -168,7 +173,18 @@ int main(int argc, char **argv) {
             }
             std::cout << std::endl;
         }
+
+        if (corrupt) {
+            skipped_inputDirectories.push_back(in_path);
+            continue;
+        }
+        
+        simindex_meta[this_simindex] = this_meta;
     }
+
+    // corrupt data will not be taken into consideration below
+    
+    
     // compute joined number of samples
     uint32_t total_samples = 0;
     for (const auto& si_samples_pair : simindex_samples) {
