@@ -132,9 +132,13 @@ void DataSeriesLoader<ValueType>::readFromFile(
         //the line that was already read in earlier has to be discarded:
         for (int c = 0; c < columns; ++c) data.at(c)->pop_back();
 
-        for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
+        for (uint32_t linesRead = 1; input and linesRead < discardData; ++linesRead) {
             getline(input, line);
         }
+    }
+
+    if (not input) {            // discarded all there is
+        return;
     }
 
     //read in the remaining data
@@ -243,9 +247,13 @@ void DataSeriesLoader<double>::readFromFile(
         //the line that was already read in earlier has to be discarded:
         for (int c = 0; c < columns; ++c) data.at(c)->pop_back();
 
-        for (uint32_t linesRead = 1; linesRead < discardData; ++linesRead) {
+        for (uint32_t linesRead = 1; input and linesRead < discardData; ++linesRead) {
             getline(input, line);
         }
+    }
+
+    if (not input) {            // discarded all there is
+        return;
     }
 
     //read in the remaining data
