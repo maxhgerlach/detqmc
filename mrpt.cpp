@@ -1373,11 +1373,12 @@ double MultireweightHistosPT::reweightObservable(double targetControlParameter) 
     return result;
 }
 
-double MultireweightHistosPT::reweightObservableSquared(double targetControlParameter) {
+double MultireweightHistosPT::reweightObservableSusceptibilityDisconnected(double targetControlParameter) {
     DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
-    double result = 0;
-    reweight2ndMomentInternalWithoutErrors(observableTimeSeries, w_kn, result);
+    double secondMoment = 0;
+    reweight2ndMomentInternalWithoutErrors(observableTimeSeries, w_kn, secondMoment);
+    double result = systemSize * secondMoment;
 
     w_kn.clear();
     // destroyAll(w_kn);

@@ -200,7 +200,7 @@ public:
     virtual double reweightEnergy(double targetControlParameter);
     virtual double reweightSpecificHeat(double targetControlParameter);
     virtual double reweightObservable(double targetControlParameter);
-    virtual double reweightObservableSquared(double targetControlParameter);
+    virtual double reweightObservableSusceptibilityDisconnected(double targetControlParameter);
     virtual double reweightObservableSusceptibility(double targetControlParameter);
     virtual double reweightObservableBinder(double targetControlParameter);
     virtual double reweightObservableBinderRatio(double targetControlParameter);    

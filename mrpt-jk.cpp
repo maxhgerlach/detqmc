@@ -710,11 +710,12 @@ double MultireweightHistosPTJK::reweightObservableJK(double targetControlParamet
     return result;
 }
 
-double MultireweightHistosPTJK::reweightObservableSquaredJK(double targetControlParameter, unsigned jkBlock) {
+double MultireweightHistosPTJK::reweightObservableSusceptibilityDisconnectedJK(double targetControlParameter, unsigned jkBlock) {
     DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
-    double result = 0;
-    reweight2ndMomentInternalJK(observableTimeSeries, w_kn, jkBlock, result);
+    double secondMoment = 0;
+    reweight2ndMomentInternalJK(observableTimeSeries, w_kn, jkBlock, secondMoment);
+    double result = systemSize * secondMoment;
 
     //destroyAll(w_kn);
 
