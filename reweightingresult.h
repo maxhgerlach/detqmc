@@ -28,8 +28,8 @@ struct ReweightingResult {
     double heatCapacityError;
     double obsAvg;
     double obsError;
-    double obsSquared;          // systemSize * (<o^2>)
-    double obsSquaredError;
+    double obsSuscDisc;         // systemSize * (<o^2>)
+    double obsSuscDiscError;
     double obsSusc;             // systemSize * (<o^2> - <o>^2)
     double obsSuscError;
     double obsBinder;           // 1 - <o^4> / (3 <o^2>^2)
@@ -45,7 +45,7 @@ struct ReweightingResult {
     //default constructor: all zero
     ReweightingResult() :
         energyAvg(0), energyError(0), heatCapacity(0), heatCapacityError(0),
-        obsAvg(0), obsError(0), obsSquared(0), obsSquaredError(0),
+        obsAvg(0), obsError(0), obsSuscDisc(0), obsSuscDiscError(0),
         obsSusc(0), obsSuscError(0), obsBinder(0),
         obsBinderError(0), obsBinderRatio(0),
         obsBinderRatioError(0),
@@ -61,11 +61,11 @@ struct ReweightingResult {
     //             obsBinderError(-1), energyHistogram(0), obsHistogram(0)
     // { }
     ReweightingResult(double energy, double heatCapacity, double obs,
-                      double obsSquared, 
+                      double obsSuscDisc,
                       double susc, double binder, double binderRatio) :
         energyAvg(energy), energyError(-1), heatCapacity(heatCapacity),
         heatCapacityError(-1), obsAvg(obs), obsError(-1),
-        obsSquared(obsSquared), obsSquaredError(-1),        
+        obsSuscDisc(obsSuscDisc), obsSuscDiscError(-1),
         obsSusc(susc), obsSuscError(-1), obsBinder(binder),
         obsBinderError(-1), obsBinderRatio(binderRatio),
         obsBinderRatioError(-1),
@@ -83,13 +83,13 @@ struct ReweightingResult {
     // { }
     ReweightingResult(double energy, double energyErr, double heatCapacity,
                       double heatCapacityError, double obs, double obsErr,
-                      double obsSquared, double obsSquaredErr,
+                      double obsSuscDisc, double obsSuscDiscErr,
                       double susc, double suscErr,
                       double binder, double binderErr,
                       double binderRatio, double binderRatioErr) :
         energyAvg(energy), energyError(energyErr), heatCapacity(heatCapacity),
         heatCapacityError(heatCapacityError), obsAvg(obs),
-        obsError(obsErr), obsSquared(obsSquared), obsSquaredError(obsSquaredErr),
+        obsError(obsErr), obsSuscDisc(obsSuscDisc), obsSuscDiscError(obsSuscDiscErr),
         obsSusc(susc), obsSuscError(suscErr),
         obsBinder(binder), obsBinderError(binderErr),
         obsBinderRatio(binderRatio), obsBinderRatioError(binderRatioErr),        
