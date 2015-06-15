@@ -577,10 +577,10 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
     double suscObservable = systemSize * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
     double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
-    double squaredObservable = systemSize * meanObservableSquared;
+    double suscDiscObservable = systemSize * meanObservableSquared;
 
     return ReweightingResult(meanEnergy, heatCapacity, meanObservable,
-                             squaredObservable, suscObservable, binderObservable, binderRatioObservable);
+                             suscDiscObservable, suscObservable, binderObservable, binderRatioObservable);
 }
 
 
@@ -828,7 +828,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
     vector<double> jkEnergy_b(blockCount);
     vector<double> jkHeatCapacity_b(blockCount);
     vector<double> jkObs_b(blockCount);
-    vector<double> jkObsSq_b(blockCount);    
+    vector<double> jkSuscDisc_b(blockCount);
     vector<double> jkSusc_b(blockCount);
     vector<double> jkBinder_b(blockCount);
     vector<double> jkBinderRatio_b(blockCount);    
@@ -841,7 +841,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
         jkEnergy_b[b] = results.energyAvg;
         jkHeatCapacity_b[b] = results.heatCapacity;
         jkObs_b[b] = results.obsAvg;
-        jkObsSq_b[b] = results.obsSquared;
+        jkSuscDisc_b[b] = results.obsSuscDisc;
         jkSusc_b[b] = results.obsSusc;
         jkBinder_b[b] = results.obsBinder;
         jkBinderRatio_b[b] = results.obsBinderRatio;
@@ -856,7 +856,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
     jackknife(totalResult.heatCapacity, totalResult.heatCapacityError,
             jkHeatCapacity_b);
     jackknife(totalResult.obsAvg, totalResult.obsError, jkObs_b);
-    jackknife(totalResult.obsSquared, totalResult.obsSquaredError, jkObsSq_b);    
+    jackknife(totalResult.obsSuscDisc, totalResult.obsSuscDiscError, jkSuscDisc_b);
     jackknife(totalResult.obsSusc, totalResult.obsSuscError, jkSusc_b);
     jackknife(totalResult.obsBinder, totalResult.obsBinderError, jkBinder_b);
     jackknife(totalResult.obsBinderRatio, totalResult.obsBinderRatioError, jkBinderRatio_b);
