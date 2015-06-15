@@ -188,6 +188,14 @@ void processTimeseries(const std::string& filename) {
                     pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2);
             }
 
+            estimates["phiSusceptibilityDisconnected"] = (dtau * m * N) * 
+                estimates["normMeanPhiSquared"];
+            jkBlockEstimates["phiSusceptibilityDisconnected"] = std::vector<double>(jkBlocks, 0);
+            for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                jkBlockEstimates["phiSusceptibilityDisconnected"][jb] = (dtau * m * N) *
+                    jkBlockEstimates["normMeanPhiSquared"][jb];
+            }
+
             estimates["phiSusceptibility"] = (dtau * m * N) * (
                 estimates["normMeanPhiSquared"] -
                 pow(estimates["normMeanPhi"], 2)

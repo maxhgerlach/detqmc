@@ -340,6 +340,13 @@ int main(int argc, char **argv) {
             pow(avg_jkBlockEstimates["normMeanPhiSquared"][jb], 2);
     }
 
+    avg_estimates["phiSusceptibilityDisconnected"] = (dtau * m * N) * 
+        avg_estimates["normMeanPhiSquared"];
+    avg_jkBlockEstimates["phiSusceptibilityDisconnected"] = std::vector<double>(jkBlocks, 0);
+    for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+        avg_jkBlockEstimates["phiSusceptibilityDisconnected"][jb] = (dtau * m * N) * 
+            avg_jkBlockEstimates["normMeanPhiSquared"][jb];
+    }
 
     avg_estimates["phiSusceptibility"] = (dtau * m * N) * (
         avg_estimates["normMeanPhiSquared"] -
