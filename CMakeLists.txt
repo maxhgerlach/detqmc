@@ -420,10 +420,18 @@ if ("${MPI_CXX_FOUND}")
   
 endif ("${MPI_CXX_FOUND}")
 
+
 set(binarystreamtotext_SRC mainbinarystreamtotext.cpp)
 add_executable(binarystreamtotext
   ${binarystreamtotext_SRC})
 target_link_libraries(binarystreamtotext general_common ${EXTRA_LIBRARIES})
+
+
+set(extractfrombinarystream_SRC mainextractfrombinarystream.cpp)
+add_executable(extractfrombinarystream
+  ${extractfrombinarystream_SRC})
+target_link_libraries(extractfrombinarystream general_common boost_program_options ${EXTRA_LIBRARIES})
+
 
 set(tauintsimple_SRC maintauintsimple.cpp)
 add_executable(tauintsimple
