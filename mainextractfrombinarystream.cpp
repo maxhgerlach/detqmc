@@ -54,11 +54,15 @@ uint32_t extract(const std::string& input_data_file,
     uint32_t extracted_counter = 0;
     while (binary_float_input) {
         binary_float_input.read(sample_buffer_begin, read_length);
-        if (uint32_t(binary_float_input.gcount()) != read_length) {
+        uint32_t actually_read = uint32_t(binary_float_input.gcount());
+        if (actually_read == 0) {
+            // nothing left
+            continue;
+        }
+        else if (actually_read != read_length) {
             throw_GeneralError("Could not read " + numToString(read_length) +
                                " characters from file: actually read " +
-                               numToString(binary_float_input.gcount()) +
-                               " characters.");
+                               numToString(actually_read) + " characters.");
         }
         ++sample_counter;
         if (sample_counter <= discard) {
