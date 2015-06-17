@@ -21,6 +21,8 @@ struct ModelParamsDetSDW {
 
     bool turnoffFermionMeasurements; // normally false. If turnoffFermions is true, but this is false, we simulate a model
                                      // with fermions, but don't compute observables from the Green's function.
+
+    bool dumpGreensFunction;    // dump the various blocks of the Green's function in real space when measuring.  Defaults to false, use very sparingly!
     
     bool checkerboard;               //use a checkerboard decomposition for computing the propagator
     std::string updateMethod_string; //"iterative", "woodbury", or "delayed"
@@ -75,6 +77,7 @@ struct ModelParamsDetSDW {
 
     ModelParamsDetSDW() :
         model("sdw"), turnoffFermions(false), turnoffFermionMeasurements(false),
+        dumpGreensFunction(false),
         checkerboard(),
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
@@ -101,6 +104,7 @@ private:
         void serialize(Archive& ar, const uint32_t version) {
         (void)version;
         ar  & model & turnoffFermions & turnoffFermionMeasurements
+            & dumpGreensFunction
             & checkerboard
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod

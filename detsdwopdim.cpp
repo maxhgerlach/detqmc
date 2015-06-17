@@ -173,6 +173,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     associatedEnergy(0),
     kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
     greenXUPXUP_summed(), greenYDOWNYDOWN_summed(), greenXDOWNXDOWN_summed(), greenYUPYUP_summed(),
+    greenXUPYDOWN_summed(), greenYDOWNXUP_summed(),
     greenK0(), greenLocal(),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
     occ(), occX(occ[XBAND]), occY(occ[YBAND]),
@@ -444,6 +445,8 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
             greenXDOWNXDOWN_summed.zeros(pars.N, pars.N);
             greenYUPYUP_summed.zeros(pars.N, pars.N);
         }
+        greenXUPYDOWN_summed.zeros(pars.N, pars.N);
+        greenYDOWNXUP_summed.zeros(pars.N, pars.N);
 
         // scalar functions of the Green's function
         greenK0 = 0.;
@@ -513,12 +516,14 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             return gshifted.submat(row * N, col * N,
                                    (row + 1) * N - 1, (col + 1) * N - 1);
         };
-        greenXUPXUP_summed   += gblock(0, 0);
+        greenXUPXUP_summed     += gblock(0, 0);
         greenYDOWNYDOWN_summed += gblock(1, 1);
         if (OPDIM == 3) {
             greenXDOWNXDOWN_summed += gblock(2, 2);
-            greenYUPYUP_summed   += gblock(3, 3);
+            greenYUPYUP_summed     += gblock(3, 3);
         }
+        greenXUPYDOWN_summed += gblock(0, 1);
+        greenYDOWNXUP_summed += gblock(1, 0);
 
         // scalar functions of the Green's function
         if (OPDIM == 3) {
@@ -886,7 +891,17 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
             kgreenXDOWN = kgreenXUP;
             kgreenYUP = kgreenYDOWN;
         }
+        greenXUPYDOWN_summed /= num(m);
+        greenYDOWNXUP_summed /= num(m);
 
+        if (pars.dumpGreensFunction) {
+            // HACK - save current real-space Green's function
+            debugSaveMatrixCpx(greenXUPXUP_summed,     "green_eqtime_realspace_XUPXUP_" + numToString(performedSweeps+1));
+            debugSaveMatrixCpx(greenXUPYDOWN_summed,   "green_eqtime_realspace_XUPYDOWN_" + numToString(performedSweeps+1));        
+            debugSaveMatrixCpx(greenYDOWNXUP_summed,   "green_eqtime_realspace_YDOWNXUP_" + numToString(performedSweeps+1));
+            debugSaveMatrixCpx(greenYDOWNYDOWN_summed, "green_eqtime_realspace_YDOWNYDOWN_" + numToString(performedSweeps+1));        
+        }
+            
         // scalar functions of the Green's function
         greenK0 /= num(m);
         greenLocal /= num(m);

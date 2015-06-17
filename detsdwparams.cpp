@@ -152,6 +152,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     META_INSERT_TRUE_FALSE(checkerboard);
     META_INSERT_TRUE_FALSE(phi2bosons);
     META_INSERT_TRUE_FALSE(phiFixed);
+    META_INSERT_TRUE_FALSE(dumpGreensFunction);
     META_INSERT_TRUE_FALSE(turnoffFermions);
     META_INSERT_TRUE_FALSE(turnoffFermionMeasurements);    
     meta["updateMethod"] = updateMethodstr(updateMethod);

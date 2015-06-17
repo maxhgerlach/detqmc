@@ -82,6 +82,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
     po::options_description modelOptions("SDW Model parameters, specify via command line or config file");
     modelOptions.add_options()
         ("model", po::value<string>(&modelpar.model)->default_value("sdw"), "only the sdw model is supported")
+        ("dumpGreensFunction", po::value<bool>(&modelpar.dumpGreensFunction)->default_value(false), "Dump the various blocks of the Green's function in real space when measuring.  Defaults to false, use very sparingly!")
         ("turnoffFermions", po::value<bool>(&modelpar.turnoffFermions)->default_value(false), "normally false, if true: simulate a pure O(opdim) model, without considering fermion determinants")
         ("turnoffFermionMeasurements", po::value<bool>(&modelpar.turnoffFermionMeasurements)->default_value(false), "normally false. If turnoffFermions is true, but this is false, we simulate a model with fermions, but don't compute observables from the Green's function.")
         ("opdim", po::value<uint32_t>(&modelpar.opdim)->default_value(default_opdim), "Dimension of the antiferromagneic order parameter.  O(1), O(2) and O(3) models are supported.  If specified explicitly, must agree with the template instantiations included in the compiled executable")

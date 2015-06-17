@@ -601,7 +601,8 @@ protected:
     MatData greenXDOWNXDOWN_summed;
     MatData greenYUPYUP_summed;
     // also include some of the off-diagonal blocks:
-    
+    MatData greenXUPYDOWN_summed;
+    MatData greenYDOWNXUP_summed;
     
     // greenK0 is the sum over all entries of G
     num greenK0;
