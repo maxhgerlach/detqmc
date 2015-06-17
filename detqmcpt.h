@@ -772,6 +772,14 @@ void DetQMCPT<Model, ModelParams>::run() {
             std::cout << "Measurements finished\n" << std::endl;
         }
     };
+    // helper function for saving state, results, timeseries, configuration streams
+    auto save = [&]() {
+        if (stage == Stage::M) {
+            this->gather_and_output_buffered_system_configurations();
+            this->saveResults();
+        }
+        this->saveState();
+    };
 
     if (parsmc.saveConfigurationStreamText or parsmc.saveConfigurationStreamBinary) {
         setup_SaveConfigurations();
@@ -827,10 +835,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                               << " sweeps done measurements:   " << sweepsDone << "\n";
                     std::cout << "Save state / results and exit gracefully." << std::endl;
                 }
-                if (stage == Stage::M) {
-                    saveResults();
-                }
-                saveState();
+                save();
                 std::cout << " OK " << std::endl;
                 break;  //while
             }
@@ -855,7 +860,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                     std::cout << "  " << sweepsDoneThermalization << " ... saving state...";
                 }
                 swCounter = 0;
-                saveState();
+                save();
                 //MPI_Barrier(MPI_COMM_WORLD);
                 world.barrier();
                 if (processIndex == 0) {
@@ -911,9 +916,7 @@ void DetQMCPT<Model, ModelParams>::run() {
                     std::cout << "  " << sweepsDone << " ... saving results and state ...";
                 }
                 swCounter = 0;
-                saveResults();
-                gather_and_output_buffered_system_configurations();
-                saveState();
+                save();
                 //MPI_Barrier(MPI_COMM_WORLD);
                 world.barrier();
                 if (processIndex == 0) {
