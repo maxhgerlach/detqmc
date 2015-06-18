@@ -36,6 +36,7 @@ struct DetQMCParams {
     bool timeseries;            // if true, write time series of individual measurements to disk
     uint32_t measureInterval;   // take measurements every measureInterval sweeps
     uint32_t saveInterval;      // write measurements to disk every saveInterval sweeps
+    uint32_t saveConfigurationStreamInterval; // interval in sweeps where full system configurations are buffered and saved to disk.  Must be an integer multiple of measureInterval.  This is only effective if one of the boolean flags for saving configurations is set to true.
     uint32_t rngSeed;           // seed for random number generator
 
     std::string greenUpdateType_string;    //"simple" or "stabilized"
@@ -52,6 +53,7 @@ struct DetQMCParams {
 
     DetQMCParams() :
         simindex(0), sweeps(), thermalization(), jkBlocks(), timeseries(false), measureInterval(), saveInterval(),
+        saveConfigurationStreamInterval(0),
         rngSeed(), greenUpdateType_string(), saveConfigurationStreamText(false), saveConfigurationStreamBinary(false),
         stateFileName(), sweepsHasChanged(false), specified()
     { }
@@ -69,7 +71,8 @@ private:
         (void)version;
         ar  & simindex
             & sweeps & thermalization & jkBlocks & timeseries
-            & measureInterval & saveInterval & rngSeed
+            & measureInterval & saveInterval & saveConfigurationStreamInterval
+            & rngSeed
             & greenUpdateType_string & greenUpdateType
             & saveConfigurationStreamText & saveConfigurationStreamBinary
             & stateFileName

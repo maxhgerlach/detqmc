@@ -139,6 +139,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
         ("measureInterval", po::value<uint32_t>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
         ("saveInterval", po::value<uint32_t>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation, must be even for serialization consistency")
+        ("saveConfigurationStreamInterval", po::value<uint32_t>(&mcpar.saveConfigurationStreamInterval), "interval in sweeps where full system configurations are buffered and saved to disk.  Must be an integer multiple of measureInterval.  This is only effective if one of the boolean flags for saving configurations is set to true.")
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
         ("saveConfigurationStreamText", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
          "when measuring, also save raw system configurations to disk, in text format")

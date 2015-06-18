@@ -898,7 +898,9 @@ void DetQMCPT<Model, ModelParams>::run() {
                     (*ph)->insertValue(sweepsDone);
                 }
 
-                buffer_local_system_configuration();
+                if (swCounter % parsmc.saveConfigurationStreamInterval == 0) {
+                    buffer_local_system_configuration();
+                }
 
                 // // This is a good time to write the current system configuration to disk
                 // if (parsmc.saveConfigurationStreamText) {

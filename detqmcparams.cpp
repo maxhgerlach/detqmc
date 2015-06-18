@@ -57,6 +57,15 @@ void DetQMCParams::check() {
                                      ") needs to be a divisor of sweeps (" + numToString(sweeps) + ")");
     }
 
+    if (specified.count("saveConfigurationStreamInterval") and
+        (saveConfigurationStreamInterval % measureInterval != 0)) {
+        throw_ParameterWrong_message("saveConfigurationStreamInterval must be an integer multiple of measureInterval");
+    }
+
+    if (not specified.count("saveConfigurationStreamInterval")) {
+        saveConfigurationStreamInterval = measureInterval;
+    }
+
 }
 
 MetadataMap DetQMCParams::prepareMetadataMap() const {
@@ -69,6 +78,7 @@ MetadataMap DetQMCParams::prepareMetadataMap() const {
     META_INSERT(jkBlocks);
     META_INSERT(measureInterval);
     META_INSERT(saveInterval);
+    META_INSERT(saveConfigurationStreamInterval);
     META_INSERT(rngSeed);
 #undef META_INSERT
     meta["timeseries"] = (timeseries ? "true" : "false");

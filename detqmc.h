@@ -472,12 +472,14 @@ void DetQMC<Model, ModelParams>::run() {
                     (*ph)->insertValue(sweepsDone);
                 }
 
-                // This is a good time to write the current system configuration to disk
-                if (parsmc.saveConfigurationStreamText) {
-                    replica->saveConfigurationStreamText();
-                }
-                if (parsmc.saveConfigurationStreamBinary) {
-                    replica->saveConfigurationStreamBinary();
+                if (swCounter % parsmc.saveConfigurationStreamInterval == 0) {
+                    // This is a good time to write the current system configuration to disk
+                    if (parsmc.saveConfigurationStreamText) {
+                        replica->saveConfigurationStreamText();
+                    }
+                    if (parsmc.saveConfigurationStreamBinary) {
+                        replica->saveConfigurationStreamBinary();
+                    }
                 }
             }
             ++sweepsDone;

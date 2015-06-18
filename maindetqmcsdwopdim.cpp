@@ -142,6 +142,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
         ("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
         ("measureInterval", po::value<uint32_t>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
         ("saveInterval", po::value<uint32_t>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation, must be even for serialization consistency")
+        ("saveConfigurationStreamInterval", po::value<uint32_t>(&mcpar.saveConfigurationStreamInterval), "interval in sweeps where full system configurations are buffered and saved to disk.  Must be an integer multiple of measureInterval.  This is only effective if one of the boolean flags for saving configurations is set to true.  Default value: measureInterval")
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
         ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
          "file, the simulation state will be dumped to.  If it exists, resume the simulation from here.  If you now specify a value for sweeps that is larger than the original setting, an according number of extra-sweeps will be performed.  However, on-the-fly calculation of error bars will no longer work.  Also the headers of timeseries files will still show the wrong number of sweeps")
