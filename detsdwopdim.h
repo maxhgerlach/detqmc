@@ -586,14 +586,14 @@ protected:
 
     num associatedEnergy;       // to enable reweighting measure: 1/2 1/(N*m) sum phi^2
 
-    // diagonal blocks of the (equal time) Green's function in
-    // momentum space
-    VecNum kgreenXUP;
-    VecNum kgreenYDOWN;
-    // the following two are equal to the upper to in the cases of
-    // OPDIM == 1 or 2
-    VecNum kgreenXDOWN;
-    VecNum kgreenYUP;
+    // // diagonal blocks of the (equal time) Green's function in
+    // // momentum space
+    // VecNum kgreenXUP;
+    // VecNum kgreenYDOWN;
+    // // the following two are equal to the upper to in the cases of
+    // // OPDIM == 1 or 2
+    // VecNum kgreenXDOWN;
+    // VecNum kgreenYUP;
     // helpers for the above: real space, summed and averaged over
     // imaginary time during a sweep
     MatData greenXUPXUP_summed;
@@ -617,9 +617,9 @@ protected:
 //    VecNum& kOccXimag;
 //    VecNum& kOccYimag;
 
-    checkarray<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
-    VecNum& occX;
-    VecNum& occY;
+    // checkarray<VecNum, 2> occ;     //Fermion occupation number in Real space for x/y-band; indexed by site
+    // VecNum& occX;
+    // VecNum& occY;
 //    checkarray<VecNum, 2> occImag;
 //    VecNum& occXimag;
 //    VecNum& occYimag;
@@ -647,17 +647,17 @@ protected:
     // rows: site i, cols: site j
     // <n_{a,i} n_{b,j}>
     // Here: Do not use symmat because of site resolution
-    GenMat<MatNum, 2> occCorr;  // index by [XBAND,YBAND] etc.
-    // charge-charge correlations
-    // <n_i n_j> = <n_{x,i}n_{x,i}> + <n_{x,i}n_{y,i}> + <n_{y,i}n_{x,i}> + <n_{y,i}n_{y,i}>
-    MatNum chargeCorr;
+    // GenMat<MatNum, 2> occCorr;  // index by [XBAND,YBAND] etc.
+    // // charge-charge correlations
+    // // <n_i n_j> = <n_{x,i}n_{x,i}> + <n_{x,i}n_{y,i}> + <n_{y,i}n_{x,i}> + <n_{y,i}n_{y,i}>
+    // MatNum chargeCorr;
     // Fourier transforms, index by wave-vector k = (kx,ky)
     // represented as ksite (like kOcc)
     //
     // We only need to write out the measurements in the form of the
     // fourier-transformed version
-    GenMat<VecNum, 2> occCorrFT;
-    VecNum chargeCorrFT;
+    // GenMat<VecNum, 2> occCorrFT;
+    // VecNum chargeCorrFT;
 
     // This measures the local occupation difference of the x and y
     // orbitals: 1/N \sum_i <(n_{xi} - n_{yi})^2>

@@ -171,16 +171,16 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     performedSweeps(0),
     meanPhi(), normMeanPhi(0),
     associatedEnergy(0),
-    kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
+    // kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
     greenXUPXUP_summed(), greenYDOWNYDOWN_summed(), greenXDOWNXDOWN_summed(), greenYUPYUP_summed(),
     greenXUPYDOWN_summed(), greenYDOWNXUP_summed(),
     greenK0(), greenLocal(),
     kOcc(), kOccX(kOcc[XBAND]), kOccY(kOcc[YBAND]),
-    occ(), occX(occ[XBAND]), occY(occ[YBAND]),
+    // occ(), occX(occ[XBAND]), occY(occ[YBAND]),
     pairPlusMax(0.0), pairMinusMax(0.0),
     pairPlus(), pairMinus(),
     fermionEkinetic(0), fermionEcouple(0),
-    occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
+    // occCorr(), chargeCorr(), occCorrFT(), chargeCorrFT(), occDiffSq(),
     timeslices_included_in_measurement(),
     dud(pars.N, pars.delaySteps), gmd(pars.N, m, pars_.turnoffFermions),
     greenConsistencyLogger(logfiledir_, loggingPars.logGreenConsistency), detRatioLogging(), greenLogging()
@@ -276,14 +276,14 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
             VectorObservable(cref(kOccY), pars.N, "kOccY", "nky");
         // output some different sectors of the Green's function in the
         // momentum space representation
-        obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
-            VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
-            VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
-            VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
-        kgreenXUP.zeros(pars.N);
-        kgreenYDOWN.zeros(pars.N);
-        kgreenXDOWN.zeros(pars.N);
-        kgreenYUP.zeros(pars.N);
+        // obsVector += VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+        //     VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", ""),
+        //     VectorObservable(cref(kgreenXUP), pars.N, "kgreenXUP", ""),
+        //     VectorObservable(cref(kgreenYDOWN), pars.N, "kgreenYDOWN", "");
+        // kgreenXUP.zeros(pars.N);
+        // kgreenYDOWN.zeros(pars.N);
+        // kgreenXDOWN.zeros(pars.N);
+        // kgreenYUP.zeros(pars.N);
 
         obsScalar += ScalarObservable(cref(greenK0), "greenK0", ""),
             ScalarObservable(cref(greenLocal), "greenLocal", "");
@@ -300,20 +300,20 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
         obsVector += VectorObservable(cref(pairPlus), pars.N, "pairPlus", "pp"),
             VectorObservable(cref(pairMinus), pars.N, "pairMinus", "pm");
 
-        const Band BandValues[2] = {XBAND, YBAND};
-        for (Band b1 : BandValues) {
-            for (Band b2 : BandValues) {
-                MatNum& occC = occCorr(b1, b2);
-                occC.zeros(pars.N,pars.N);
-                VecNum& occCFT = occCorrFT(b1, b2);
-                occCFT.zeros(pars.N);
-                obsVector += VectorObservable(cref(occCFT), pars.N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
-            }
-        }
+        // const Band BandValues[2] = {XBAND, YBAND};
+        // for (Band b1 : BandValues) {
+        //     for (Band b2 : BandValues) {
+        //         MatNum& occC = occCorr(b1, b2);
+        //         occC.zeros(pars.N,pars.N);
+        //         VecNum& occCFT = occCorrFT(b1, b2);
+        //         occCFT.zeros(pars.N);
+        //         obsVector += VectorObservable(cref(occCFT), pars.N, "occCorrFT" + bandstr(b1) + bandstr(b2), "");
+        //     }
+        // }
 
-        chargeCorr.zeros(pars.N,pars.N);
-        chargeCorrFT.zeros(pars.N);
-        obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
+        // chargeCorr.zeros(pars.N,pars.N);
+        // chargeCorrFT.zeros(pars.N);
+        // obsVector += VectorObservable(cref(chargeCorrFT), pars.N, "chargeCorrFT", "");
 
         occDiffSq = 0.0;
         obsScalar += ScalarObservable(cref(occDiffSq), "occDiffSq", "");
@@ -437,17 +437,19 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
 
     if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
 
-        // some sectors of the momentum space Green's function,
-        // helpers:
-        greenXUPXUP_summed.zeros(pars.N, pars.N);
-        greenYDOWNYDOWN_summed.zeros(pars.N, pars.N);
-        if (OPDIM == 3) {
-            greenXDOWNXDOWN_summed.zeros(pars.N, pars.N);
-            greenYUPYUP_summed.zeros(pars.N, pars.N);
+        if (pars.dumpGreensFunction) {
+            // some sectors of the momentum space Green's function,
+            // helpers:
+            greenXUPXUP_summed.zeros(pars.N, pars.N);
+            greenYDOWNYDOWN_summed.zeros(pars.N, pars.N);
+            if (OPDIM == 3) {
+                greenXDOWNXDOWN_summed.zeros(pars.N, pars.N);
+                greenYUPYUP_summed.zeros(pars.N, pars.N);
+            }
+            greenXUPYDOWN_summed.zeros(pars.N, pars.N);
+            greenYDOWNXUP_summed.zeros(pars.N, pars.N);
         }
-        greenXUPYDOWN_summed.zeros(pars.N, pars.N);
-        greenYDOWNXUP_summed.zeros(pars.N, pars.N);
-
+        
         // scalar functions of the Green's function
         greenK0 = 0.;
         greenLocal = 0.;
@@ -468,14 +470,14 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
         // fermionEkinetic = 0;
         // fermionEcouple = 0;
 
-        // band occupation / charge correlations
-        const Band BandValues[2] = {XBAND, YBAND};
-        for (Band b1 : BandValues) {
-            for (Band b2 : BandValues) {
-                MatNum& occC = occCorr(b1, b2);
-                occC.zeros(pars.N,pars.N);
-            }
-        }
+        // // band occupation / charge correlations
+        // const Band BandValues[2] = {XBAND, YBAND};
+        // for (Band b1 : BandValues) {
+        //     for (Band b2 : BandValues) {
+        //         MatNum& occC = occCorr(b1, b2);
+        //         occC.zeros(pars.N,pars.N);
+        //     }
+        // }
         occDiffSq = 0.0;
 
     }
@@ -516,15 +518,17 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
             return gshifted.submat(row * N, col * N,
                                    (row + 1) * N - 1, (col + 1) * N - 1);
         };
-        greenXUPXUP_summed     += gblock(0, 0);
-        greenYDOWNYDOWN_summed += gblock(1, 1);
-        if (OPDIM == 3) {
-            greenXDOWNXDOWN_summed += gblock(2, 2);
-            greenYUPYUP_summed     += gblock(3, 3);
+        if (pars.dumpGreensFunction) {
+            greenXUPXUP_summed     += gblock(0, 0);
+            greenYDOWNYDOWN_summed += gblock(1, 1);
+            if (OPDIM == 3) {
+                greenXDOWNXDOWN_summed += gblock(2, 2);
+                greenYUPYUP_summed     += gblock(3, 3);
+            }
+            greenXUPYDOWN_summed += gblock(0, 1);
+            greenYDOWNXUP_summed += gblock(1, 0);
         }
-        greenXUPYDOWN_summed += gblock(0, 1);
-        greenYDOWNXUP_summed += gblock(1, 0);
-
+        
         // scalar functions of the Green's function
         if (OPDIM == 3) {
             greenK0 += std::real(arma::accu( gshifted ));
@@ -748,79 +752,79 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         // band occupation / charge correlations
         // -------------------------------------
         // code generated in Mathematica: sdw-cdw-corr-obs.nb
-        for (uint32_t i = 0; i < N; ++i) {
-            for (uint32_t j = 0; j < N; ++j) {
-                if (i != j) {
-                    //unequal sites, slightly generic
-                    const Band BandValues[2] = {XBAND, YBAND};
-                    for (Band b1 : BandValues) {
-                        for (Band b2 : BandValues) {
-                            DataType contrib = 4.0 -
-                                gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
-                                gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
-                                gl(i, b1, SPINUP, j, b2, SPINDOWN)*
-                                gl(j, b2, SPINDOWN, i, b1, SPINUP) - 2.0*
-                                gl(j, b2, SPINDOWN, j, b2, SPINDOWN) -
-                                gl(i, b1, SPINDOWN, j, b2, SPINUP)*
-                                gl(j, b2, SPINUP, i, b1, SPINDOWN) -
-                                gl(i, b1, SPINUP, j, b2, SPINUP)*
-                                gl(j, b2, SPINUP, i, b1, SPINUP) - 2.0*
-                                gl(j, b2, SPINUP, j, b2, SPINUP) +
-                                gl(i, b1, SPINDOWN, i, b1, SPINDOWN)*
-                                (-2.0 +
-                                 gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
-                                 gl(j, b2, SPINUP, j, b2, SPINUP)) +
-                                gl(i, b1, SPINUP, i, b1, SPINUP)*
-                                (-2.0 +
-                                 gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
-                                 gl(j, b2, SPINUP, j, b2, SPINUP));
-                            occCorr(b1, b2)(i, j) += std::real(contrib);
-                        }
-                    }
-                } else {
-                    //equal site i, use band-specific code
-                    DataType contribxx = 4.0 - 2.0*
-                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
-                        gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
-                        gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
-                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
-                        (-3.0 + 2.0*
-                         gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
-                    occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
+        // for (uint32_t i = 0; i < N; ++i) {
+        //     for (uint32_t j = 0; j < N; ++j) {
+        //         if (i != j) {
+        //             //unequal sites, slightly generic
+        //             const Band BandValues[2] = {XBAND, YBAND};
+        //             for (Band b1 : BandValues) {
+        //                 for (Band b2 : BandValues) {
+        //                     DataType contrib = 4.0 -
+        //                         gl(i, b1, SPINDOWN, j, b2, SPINDOWN)*
+        //                         gl(j, b2, SPINDOWN, i, b1, SPINDOWN) -
+        //                         gl(i, b1, SPINUP, j, b2, SPINDOWN)*
+        //                         gl(j, b2, SPINDOWN, i, b1, SPINUP) - 2.0*
+        //                         gl(j, b2, SPINDOWN, j, b2, SPINDOWN) -
+        //                         gl(i, b1, SPINDOWN, j, b2, SPINUP)*
+        //                         gl(j, b2, SPINUP, i, b1, SPINDOWN) -
+        //                         gl(i, b1, SPINUP, j, b2, SPINUP)*
+        //                         gl(j, b2, SPINUP, i, b1, SPINUP) - 2.0*
+        //                         gl(j, b2, SPINUP, j, b2, SPINUP) +
+        //                         gl(i, b1, SPINDOWN, i, b1, SPINDOWN)*
+        //                         (-2.0 +
+        //                          gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+        //                          gl(j, b2, SPINUP, j, b2, SPINUP)) +
+        //                         gl(i, b1, SPINUP, i, b1, SPINUP)*
+        //                         (-2.0 +
+        //                          gl(j, b2, SPINDOWN, j, b2, SPINDOWN) +
+        //                          gl(j, b2, SPINUP, j, b2, SPINUP));
+        //                     occCorr(b1, b2)(i, j) += std::real(contrib);
+        //                 }
+        //             }
+        //         } else {
+        //             //equal site i, use band-specific code
+        //             DataType contribxx = 4.0 - 2.0*
+        //                 gl(i, XBAND, SPINDOWN, i, XBAND, SPINUP)*
+        //                 gl(i, XBAND, SPINUP, i, XBAND, SPINDOWN) - 3.0*
+        //                 gl(i, XBAND, SPINUP, i, XBAND, SPINUP) +
+        //                 gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+        //                 (-3.0 + 2.0*
+        //                  gl(i, XBAND, SPINUP, i, XBAND, SPINUP));
+        //             occCorr(XBAND,XBAND)(i, i) += std::real(contribxx);
 
-                    DataType contribxy = 4.0 -
-                        gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-                        gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
-                        gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
-                        gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) - 2.0*
-                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) -
-                        gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
-                        gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) -
-                        gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
-                        gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
-                        gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
-                        gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
-                        (-2.0 +
-                         gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
-                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
-                        gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
-                        (-2.0 +
-                         gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
-                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                    occCorr(XBAND,YBAND)(i,i) += std::real(contribxy);
-                    occCorr(YBAND,XBAND)(i,i) += std::real(contribxy); // it's symmetric in xy
+        //             DataType contribxy = 4.0 -
+        //                 gl(i, XBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+        //                 gl(i, YBAND, SPINDOWN, i, XBAND, SPINDOWN) -
+        //                 gl(i, XBAND, SPINUP, i, YBAND, SPINDOWN)*
+        //                 gl(i, YBAND, SPINDOWN, i, XBAND, SPINUP) - 2.0*
+        //                 gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) -
+        //                 gl(i, XBAND, SPINDOWN, i, YBAND, SPINUP)*
+        //                 gl(i, YBAND, SPINUP, i, XBAND, SPINDOWN) -
+        //                 gl(i, XBAND, SPINUP, i, YBAND, SPINUP)*
+        //                 gl(i, YBAND, SPINUP, i, XBAND, SPINUP) - 2.0*
+        //                 gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+        //                 gl(i, XBAND, SPINDOWN, i, XBAND, SPINDOWN)*
+        //                 (-2.0 +
+        //                  gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+        //                  gl(i, YBAND, SPINUP, i, YBAND, SPINUP)) +
+        //                 gl(i, XBAND, SPINUP, i, XBAND, SPINUP)*
+        //                 (-2.0 +
+        //                  gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN) +
+        //                  gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+        //             occCorr(XBAND,YBAND)(i,i) += std::real(contribxy);
+        //             occCorr(YBAND,XBAND)(i,i) += std::real(contribxy); // it's symmetric in xy
 
-                    DataType contribyy = 4.0 - 2.0*
-                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
-                        gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
-                        gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
-                        gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
-                        (-3.0 + 2.0*
-                         gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
-                    occCorr(YBAND,YBAND)(i,i) += std::real(contribyy);
-                }
-            }
-        }
+        //             DataType contribyy = 4.0 - 2.0*
+        //                 gl(i, YBAND, SPINDOWN, i, YBAND, SPINUP)*
+        //                 gl(i, YBAND, SPINUP, i, YBAND, SPINDOWN) - 3.0*
+        //                 gl(i, YBAND, SPINUP, i, YBAND, SPINUP) +
+        //                 gl(i, YBAND, SPINDOWN, i, YBAND, SPINDOWN)*
+        //                 (-3.0 + 2.0*
+        //                  gl(i, YBAND, SPINUP, i, YBAND, SPINUP));
+        //             occCorr(YBAND,YBAND)(i,i) += std::real(contribyy);
+        //         }
+        //     }
+        // }
 
         DataType occDiffSqContrib = 0.0;
         for (uint32_t i = 0; i < N; ++i) {
@@ -875,26 +879,27 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
 
     if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {    
 
-        // some sectors of the momentum space Green's function
-        greenXUPXUP_summed /= num(m);
-        greenYDOWNYDOWN_summed /= num(m);
-        computeStructureFactor(kgreenXUP, greenXUPXUP_summed);
-        computeStructureFactor(kgreenYDOWN, greenYDOWNYDOWN_summed);
-        if (OPDIM == 3) {
-            greenXDOWNXDOWN_summed /= num(m);
-            greenYUPYUP_summed   /= num(m);
-            computeStructureFactor(kgreenXDOWN, greenXDOWNXDOWN_summed);
-            computeStructureFactor(kgreenYUP, greenYUPYUP_summed);
-        } else {
-            // the following equalities are up to complex conjugation,
-            // but we only consider real parts anyway
-            kgreenXDOWN = kgreenXUP;
-            kgreenYUP = kgreenYDOWN;
-        }
-        greenXUPYDOWN_summed /= num(m);
-        greenYDOWNXUP_summed /= num(m);
-
         if (pars.dumpGreensFunction) {
+
+            // some sectors of the momentum space Green's function
+            greenXUPXUP_summed /= num(m);
+            greenYDOWNYDOWN_summed /= num(m);
+            // computeStructureFactor(kgreenXUP, greenXUPXUP_summed);
+            // computeStructureFactor(kgreenYDOWN, greenYDOWNYDOWN_summed);
+            if (OPDIM == 3) {
+                greenXDOWNXDOWN_summed /= num(m);
+                greenYUPYUP_summed   /= num(m);
+                // computeStructureFactor(kgreenXDOWN, greenXDOWNXDOWN_summed);
+                // computeStructureFactor(kgreenYUP, greenYUPYUP_summed);
+            } else {
+                // the following equalities are up to complex conjugation,
+                // but we only consider real parts anyway
+                // kgreenXDOWN = kgreenXUP;
+                // kgreenYUP = kgreenYDOWN;
+            }
+            greenXUPYDOWN_summed /= num(m);
+            greenYDOWNXUP_summed /= num(m);
+
             // HACK - save current real-space Green's function
             debugSaveMatrixCpx(greenXUPXUP_summed,     "green_eqtime_realspace_XUPXUP_" + numToString(performedSweeps+1));
             debugSaveMatrixCpx(greenXUPYDOWN_summed,   "green_eqtime_realspace_XUPYDOWN_" + numToString(performedSweeps+1));        
@@ -943,24 +948,24 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
         // fermionEcouple /= num(m*N);
 
 
-        // band occupation / charge correlations
-        // -------------------------------------
-        const Band BandValues[2] = {XBAND, YBAND};
-        for (Band b1 : BandValues) {
-            for (Band b2 : BandValues) {
-                occCorr(b1,b2) /= num(m);
-            }
-        }
-        chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
-            occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
+        // // band occupation / charge correlations
+        // // -------------------------------------
+        // const Band BandValues[2] = {XBAND, YBAND};
+        // for (Band b1 : BandValues) {
+        //     for (Band b2 : BandValues) {
+        //         occCorr(b1,b2) /= num(m);
+        //     }
+        // }
+        // chargeCorr = occCorr(XBAND,XBAND) + occCorr(XBAND,YBAND) +
+        //     occCorr(YBAND,XBAND) + occCorr(YBAND,YBAND);
 
-        // Fourier transforms
-        for (Band b1 : BandValues) {
-            for (Band b2 : BandValues) {
-                computeStructureFactor(occCorrFT(b1,b2), occCorr(b1,b2));
-            }
-        }
-        computeStructureFactor(chargeCorrFT, chargeCorr);
+        // // Fourier transforms
+        // for (Band b1 : BandValues) {
+        //     for (Band b2 : BandValues) {
+        //         computeStructureFactor(occCorrFT(b1,b2), occCorr(b1,b2));
+        //     }
+        // }
+        // computeStructureFactor(chargeCorrFT, chargeCorr);
 
         occDiffSq /= num(m);
 
