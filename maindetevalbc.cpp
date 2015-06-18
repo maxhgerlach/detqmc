@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
         avg_estimates[obs] /= 4.0;
     }
 
-    // now deal with non-linear combinations of averages: connected
+    // now deal with non-linear combinations of averages:
     // susceptibility, Binder cumulant
     avg_estimates["phiBinder"] =
         1.0 - (3.0*avg_estimates["normMeanPhiFourth"]) /
@@ -340,11 +340,11 @@ int main(int argc, char **argv) {
             pow(avg_jkBlockEstimates["normMeanPhiSquared"][jb], 2);
     }
 
-    avg_estimates["phiSusceptibilityDisconnected"] = (dtau * m * N) * 
+    avg_estimates["phiSusceptibilityPart"] = (dtau * m * N) * 
         avg_estimates["normMeanPhiSquared"];
-    avg_jkBlockEstimates["phiSusceptibilityDisconnected"] = std::vector<double>(jkBlocks, 0);
+    avg_jkBlockEstimates["phiSusceptibilityPart"] = std::vector<double>(jkBlocks, 0);
     for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-        avg_jkBlockEstimates["phiSusceptibilityDisconnected"][jb] = (dtau * m * N) * 
+        avg_jkBlockEstimates["phiSusceptibilityPart"][jb] = (dtau * m * N) * 
             avg_jkBlockEstimates["normMeanPhiSquared"][jb];
     }
 

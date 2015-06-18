@@ -79,7 +79,7 @@ private:
     double reweightSpecificHeatJK(double targetControlParameter, unsigned jkBlock);
     double reweightSpecificHeatDiscreteJK(double targetControlParameter, unsigned jkBlock);
     double reweightObservableJK(double targetControlParameter, unsigned jkBlock);
-    double reweightObservableSusceptibilityDisconnectedJK(double targetControlParameter, unsigned jkBlock);
+    double reweightObservableSusceptibilityPartJK(double targetControlParameter, unsigned jkBlock);
     double reweightObservableSusceptibilityJK(double targetControlParameter,
             unsigned jkBlock);
     double reweightObservableBinderJK(double targetControlParameter, unsigned jkBlock);

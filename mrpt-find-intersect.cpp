@@ -52,8 +52,8 @@ public:
         divisor1(std::pow(double(systemL1), 2.0 - 0.25)),
         divisor2(std::pow(double(systemL2), 2.0 - 0.25)) { }
     double operator()(double controlParameter) {
-        double s1 = mr1->reweightObservableSusceptibilityDisconnected(controlParameter) / divisor1;
-        double s2 = mr2->reweightObservableSusceptibilityDisconnected(controlParameter) / divisor2;
+        double s1 = mr1->reweightObservableSusceptibilityPart(controlParameter) / divisor1;
+        double s2 = mr2->reweightObservableSusceptibilityPart(controlParameter) / divisor2;
         double diff = s1 - s2;
         std::cout << diff << std::endl;
         return diff;
@@ -72,8 +72,8 @@ public:
         divisor1(std::pow(double(systemL1), 2.0 - 0.25)),
         divisor2(std::pow(double(systemL2), 2.0 - 0.25)) { }
     double operator()(double controlParameter) {
-        double s1 = mr1->reweightObservableSusceptibilityDisconnectedJK(controlParameter, jkBlock) / divisor1;
-        double s2 = mr2->reweightObservableSusceptibilityDisconnectedJK(controlParameter, jkBlock) / divisor2;
+        double s1 = mr1->reweightObservableSusceptibilityPartJK(controlParameter, jkBlock) / divisor1;
+        double s2 = mr2->reweightObservableSusceptibilityPartJK(controlParameter, jkBlock) / divisor2;
         double diff = s1 - s2;
         return diff;
     }

@@ -239,7 +239,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
     //average over replicas -- divide, compute quantities from higher moments
     Double2Array heatCapacity_bl(boost::extents[blockCount][numReplicas]);
     Double2Array suscObs_bl(boost::extents[blockCount][numReplicas]);
-    Double2Array suscDiscObs_bl(boost::extents[blockCount][numReplicas]);
+    Double2Array suscPartObs_bl(boost::extents[blockCount][numReplicas]);
     Double2Array binderObs_bl(boost::extents[blockCount][numReplicas]);
     Double2Array binderRatioObs_bl(boost::extents[blockCount][numReplicas]);    
     for (unsigned b = 0; b < blockCount; ++b) {
@@ -252,7 +252,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
             meanObsToTheFourth_bl[b][bi] /= double(numReplicas);
             heatCapacity_bl[b][bi] = systemSize * cp*cp *
                     (meanEnergySquared_bl[b][bi] - pow(meanEnergy_bl[b][bi], 2));
-            suscDiscObs_bl[b][bi] = systemSize * (meanObsSquared_bl[b][bi]);
+            suscPartObs_bl[b][bi] = systemSize * (meanObsSquared_bl[b][bi]);
             suscObs_bl[b][bi] = systemSize *
                     (meanObsSquared_bl[b][bi] - pow(meanObs_bl[b][bi], 2));
             binderObs_bl[b][bi] = 1.0 - (meanObsToTheFourth_bl[b][bi] /
@@ -269,7 +269,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
         double jkSumEnergy = 0;
         double jkSumHeatCapacity = 0;
         double jkSumObs = 0;
-        double jkSumSuscDisc = 0;
+        double jkSumSuscPart = 0;
         double jkSumSusc = 0;
         double jkSumBinder = 0;
         double jkSumBinderRatio = 0;        
@@ -277,7 +277,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
             jkSumEnergy += meanEnergy_bl[b][bi];
             jkSumHeatCapacity += heatCapacity_bl[b][bi];
             jkSumObs += meanObs_bl[b][bi];
-            jkSumSuscDisc += suscDiscObs_bl[b][bi];
+            jkSumSuscPart += suscPartObs_bl[b][bi];
             jkSumSusc += suscObs_bl[b][bi];
             jkSumBinder += binderObs_bl[b][bi];
             jkSumBinderRatio += binderRatioObs_bl[b][bi];            
@@ -285,7 +285,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
         double resEnergy = jkSumEnergy / blockCount;
         double resHeatCapacity = jkSumHeatCapacity / blockCount;
         double resObs = jkSumObs / blockCount;
-        double resSuscDisc = jkSumSuscDisc / blockCount;
+        double resSuscPart = jkSumSuscPart / blockCount;
         double resSusc = jkSumSusc / blockCount;
         double resBinder = jkSumBinder / blockCount;
         double resBinderRatio = jkSumBinderRatio / blockCount;        
@@ -294,7 +294,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
         double sqDevEnergy = 0;
         double sqDevHeatCapacity = 0;
         double sqDevObs = 0;
-        double sqDevSuscDisc = 0;
+        double sqDevSuscPart = 0;
         double sqDevSusc = 0;
         double sqDevBinder = 0;
         double sqDevBinderRatio = 0;        
@@ -303,7 +303,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
             sqDevHeatCapacity +=
                     pow(resHeatCapacity- heatCapacity_bl[b][bi], 2);
             sqDevObs += pow(resObs - meanObs_bl[b][bi], 2);
-            sqDevSuscDisc += pow(resSuscDisc - suscDiscObs_bl[b][bi], 2);
+            sqDevSuscPart += pow(resSuscPart - suscPartObs_bl[b][bi], 2);
             sqDevSusc += pow(resSusc - suscObs_bl[b][bi], 2);
             sqDevBinder += pow(resBinder - binderObs_bl[b][bi], 2);
             sqDevBinderRatio += pow(resBinderRatio - binderRatioObs_bl[b][bi], 2);            
@@ -312,7 +312,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPTJK::directNoReweighting(
         (*results)[cp] = ReweightingResult(resEnergy, sqrt(sqDevEnergy),
                                            resHeatCapacity, sqrt(sqDevHeatCapacity),
                                            resObs, sqrt(sqDevObs),
-                                           resSuscDisc, sqrt(sqDevSuscDisc),
+                                           resSuscPart, sqrt(sqDevSuscPart),
                                            resSusc, sqrt(sqDevSusc),
                                            resBinder, sqrt(sqDevBinder),
                                            resBinderRatio, sqrt(sqDevBinderRatio));
@@ -579,10 +579,10 @@ ReweightingResult MultireweightHistosPTJK::reweightJackknifeInternal(
     double suscObservable = systemSize * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
     double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
-    double suscDiscObservable = systemSize * meanObservableSquared;
+    double suscPartObservable = systemSize * meanObservableSquared;
 
     return ReweightingResult(meanEnergy, heatCapacity, meanObservable,
-                             suscDiscObservable, suscObservable, binderObservable, binderRatioObservable);
+                             suscPartObservable, suscObservable, binderObservable, binderRatioObservable);
 }
 
 
@@ -712,7 +712,7 @@ double MultireweightHistosPTJK::reweightObservableJK(double targetControlParamet
     return result;
 }
 
-double MultireweightHistosPTJK::reweightObservableSusceptibilityDisconnectedJK(double targetControlParameter, unsigned jkBlock) {
+double MultireweightHistosPTJK::reweightObservableSusceptibilityPartJK(double targetControlParameter, unsigned jkBlock) {
     DoubleSeriesCollection w_kn = computeWeightsJK(targetControlParameter, jkBlock);
 
     double secondMoment = 0;
@@ -830,7 +830,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
     vector<double> jkEnergy_b(blockCount);
     vector<double> jkHeatCapacity_b(blockCount);
     vector<double> jkObs_b(blockCount);
-    vector<double> jkSuscDisc_b(blockCount);
+    vector<double> jkSuscPart_b(blockCount);
     vector<double> jkSusc_b(blockCount);
     vector<double> jkBinder_b(blockCount);
     vector<double> jkBinderRatio_b(blockCount);    
@@ -843,7 +843,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
         jkEnergy_b[b] = results.energyAvg;
         jkHeatCapacity_b[b] = results.heatCapacity;
         jkObs_b[b] = results.obsAvg;
-        jkSuscDisc_b[b] = results.obsSuscDisc;
+        jkSuscPart_b[b] = results.obsSuscPart;
         jkSusc_b[b] = results.obsSusc;
         jkBinder_b[b] = results.obsBinder;
         jkBinderRatio_b[b] = results.obsBinderRatio;
@@ -858,7 +858,7 @@ ReweightingResult MultireweightHistosPTJK::reweight(double targetControlParamete
     jackknife(totalResult.heatCapacity, totalResult.heatCapacityError,
             jkHeatCapacity_b);
     jackknife(totalResult.obsAvg, totalResult.obsError, jkObs_b);
-    jackknife(totalResult.obsSuscDisc, totalResult.obsSuscDiscError, jkSuscDisc_b);
+    jackknife(totalResult.obsSuscPart, totalResult.obsSuscPartError, jkSuscPart_b);
     jackknife(totalResult.obsSusc, totalResult.obsSuscError, jkSusc_b);
     jackknife(totalResult.obsBinder, totalResult.obsBinderError, jkBinder_b);
     jackknife(totalResult.obsBinderRatio, totalResult.obsBinderRatioError, jkBinderRatio_b);

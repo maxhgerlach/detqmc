@@ -155,10 +155,8 @@ void processTimeseries(const std::string& filename) {
         estimates[obsName] = average_maybe_reweight();
         jkBlockEstimates[obsName] = jackknifeBlockEstimates_maybe_reweight();
 
-        // compute Binder cumulant and susceptibility (connected,
-        // i.e. with the disconnected part substracted), 
-        // the suscseptibility *without* the subtracted part:
-        //   normMeanPhiSquared
+        // compute Binder cumulant and susceptibility (<.^2> - <.>^2);
+        // part susceptibility: <.^2>
         if (obsName == "normMeanPhi") {
             using std::pow;
             estimates["normMeanPhiSquared"] = average_func_maybe_reweight(
@@ -188,11 +186,11 @@ void processTimeseries(const std::string& filename) {
                     pow(jkBlockEstimates["normMeanPhiSquared"][jb], 2);
             }
 
-            estimates["phiSusceptibilityDisconnected"] = (dtau * m * N) * 
+            estimates["phiSusceptibilityPart"] = (dtau * m * N) * 
                 estimates["normMeanPhiSquared"];
-            jkBlockEstimates["phiSusceptibilityDisconnected"] = std::vector<double>(jkBlocks, 0);
+            jkBlockEstimates["phiSusceptibilityPart"] = std::vector<double>(jkBlocks, 0);
             for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-                jkBlockEstimates["phiSusceptibilityDisconnected"][jb] = (dtau * m * N) *
+                jkBlockEstimates["phiSusceptibilityPart"][jb] = (dtau * m * N) *
                     jkBlockEstimates["normMeanPhiSquared"][jb];
             }
 

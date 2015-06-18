@@ -302,14 +302,14 @@ typedef std::shared_ptr<Map> MapPtr;
 MapPtr energy;
 MapPtr specificHeat;
 MapPtr observable;              // <m> = 1/systemSize * <M>
-MapPtr susceptibilityDisconnected;       // systemSize * <m^2>
+MapPtr susceptibilityPart;       // systemSize * <m^2>
 MapPtr susceptibility;          // systemSize * (<m^2> - <m>^2)
 MapPtr binder;
 MapPtr binderRatio;
 MapPtr energyError;
 MapPtr specificHeatError;
 MapPtr observableError;
-MapPtr susceptibilityDisconnectedError;
+MapPtr susceptibilityPartError;
 MapPtr susceptibilityError;
 MapPtr binderError;
 MapPtr binderRatioError;
@@ -317,14 +317,14 @@ MapPtr binderRatioError;
 MapPtr direct_energy;
 MapPtr direct_specificHeat;
 MapPtr direct_observable;
-MapPtr direct_susceptibilityDisconnected;
+MapPtr direct_susceptibilityPart;
 MapPtr direct_susceptibility;
 MapPtr direct_binder;
 MapPtr direct_binderRatio;
 MapPtr direct_energyError;
 MapPtr direct_specificHeatError;
 MapPtr direct_observableError;
-MapPtr direct_susceptibilityDisconnectedError;
+MapPtr direct_susceptibilityPartError;
 MapPtr direct_susceptibilityError;
 MapPtr direct_binderError;
 MapPtr direct_binderRatioError;
@@ -380,22 +380,22 @@ void writeOutResults() {
         observableOut.writeToFile(outputDirPrefix + "mrpt-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
-    if (susceptibilityDisconnected and not susceptibilityDisconnected->empty()) {
-        DoubleMapWriter susceptibilityDisconnectedOut;
-        susceptibilityDisconnectedOut.setData(susceptibilityDisconnected);
-        if (use_jackknife) susceptibilityDisconnectedOut.setErrors(susceptibilityDisconnectedError);
-        susceptibilityDisconnectedOut.addHeaderText("MRPT estimates of " + getObservableName() + " disconnected susceptibility");
-        if (use_jackknife) susceptibilityDisconnectedOut.addHeaderText("jackknife error estimation");
-        susceptibilityDisconnectedOut.addMeta("energyBins", binCount);
-        susceptibilityDisconnectedOut.addMeta("observable", "suscdisc-" + getObservableName());
-        susceptibilityDisconnectedOut.addMeta("L", getSystemL());
-        susceptibilityDisconnectedOut.addMeta("N", getSystemN());
-        susceptibilityDisconnectedOut.addMeta("controlParameterName", getControlParameterName());
-        if (use_jackknife) susceptibilityDisconnectedOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        susceptibilityDisconnectedOut.addHeaderText(getControlParameterName()+"\t " +
-                                                    getObservableName() + "SusceptibilityDisconnected" +
+    if (susceptibilityPart and not susceptibilityPart->empty()) {
+        DoubleMapWriter susceptibilityPartOut;
+        susceptibilityPartOut.setData(susceptibilityPart);
+        if (use_jackknife) susceptibilityPartOut.setErrors(susceptibilityPartError);
+        susceptibilityPartOut.addHeaderText("MRPT estimates of " + getObservableName() + " part susceptibility");
+        if (use_jackknife) susceptibilityPartOut.addHeaderText("jackknife error estimation");
+        susceptibilityPartOut.addMeta("energyBins", binCount);
+        susceptibilityPartOut.addMeta("observable", "suscpart-" + getObservableName());
+        susceptibilityPartOut.addMeta("L", getSystemL());
+        susceptibilityPartOut.addMeta("N", getSystemN());
+        susceptibilityPartOut.addMeta("controlParameterName", getControlParameterName());
+        if (use_jackknife) susceptibilityPartOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
+        susceptibilityPartOut.addHeaderText(getControlParameterName()+"\t " +
+                                                    getObservableName() + "SusceptibilityPart" +
                                                     headerSuffix);
-        susceptibilityDisconnectedOut.writeToFile(outputDirPrefix + "mrpt-suscdisc-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
+        susceptibilityPartOut.writeToFile(outputDirPrefix + "mrpt-suscpart-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
     
 
@@ -494,21 +494,21 @@ void writeOutResults() {
         observableOut.writeToFile(outputDirPrefix + "mrpt-direct-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
-    if (direct_susceptibilityDisconnected and not direct_susceptibilityDisconnected->empty()) {
-        DoubleMapWriter susceptibilityDisconnectedOut;
-        susceptibilityDisconnectedOut.setData(direct_susceptibilityDisconnected);
-        if (use_jackknife) susceptibilityDisconnectedOut.setErrors(direct_susceptibilityDisconnectedError);
-        susceptibilityDisconnectedOut.addHeaderText("Direct estimates of " + getObservableName() + " disconnected susceptibility");
-        if (use_jackknife) susceptibilityDisconnectedOut.addHeaderText("jackknife error estimation");
-        susceptibilityDisconnectedOut.addMeta("observable", "suscdisc-" + getObservableName());
-        susceptibilityDisconnectedOut.addMeta("L", getSystemL());
-        susceptibilityDisconnectedOut.addMeta("N", getSystemN());
-        susceptibilityDisconnectedOut.addMeta("controlParameterName", getControlParameterName());
-        if (use_jackknife) susceptibilityDisconnectedOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
-        susceptibilityDisconnectedOut.addHeaderText(getControlParameterName()+"\t " +
-                                                    getObservableName() + " suscdisc" +
+    if (direct_susceptibilityPart and not direct_susceptibilityPart->empty()) {
+        DoubleMapWriter susceptibilityPartOut;
+        susceptibilityPartOut.setData(direct_susceptibilityPart);
+        if (use_jackknife) susceptibilityPartOut.setErrors(direct_susceptibilityPartError);
+        susceptibilityPartOut.addHeaderText("Direct estimates of " + getObservableName() + " part susceptibility");
+        if (use_jackknife) susceptibilityPartOut.addHeaderText("jackknife error estimation");
+        susceptibilityPartOut.addMeta("observable", "suscpart-" + getObservableName());
+        susceptibilityPartOut.addMeta("L", getSystemL());
+        susceptibilityPartOut.addMeta("N", getSystemN());
+        susceptibilityPartOut.addMeta("controlParameterName", getControlParameterName());
+        if (use_jackknife) susceptibilityPartOut.addMeta("jackknifeBlockcount", jackknifeBlocks);
+        susceptibilityPartOut.addHeaderText(getControlParameterName()+"\t " +
+                                                    getObservableName() + " suscpart" +
                                                     headerSuffix);
-        susceptibilityDisconnectedOut.writeToFile(outputDirPrefix + "mrpt-direct-suscdisc-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
+        susceptibilityPartOut.writeToFile(outputDirPrefix + "mrpt-direct-suscpart-" + getObservableName() + "-l-" + numToString(getSystemL()) + ".values");
     }
 
 
@@ -600,28 +600,28 @@ void init() {
     energy = MapPtr(new Map());
     specificHeat = MapPtr(new Map());
     observable = MapPtr(new Map());
-    susceptibilityDisconnected = MapPtr(new Map());    
+    susceptibilityPart = MapPtr(new Map());    
     susceptibility = MapPtr(new Map());
     binder = MapPtr(new Map());
     binderRatio = MapPtr(new Map());    
     energyError = MapPtr(new Map());
     specificHeatError = MapPtr(new Map());
     observableError = MapPtr(new Map());
-    susceptibilityDisconnectedError = MapPtr(new Map());    
+    susceptibilityPartError = MapPtr(new Map());    
     susceptibilityError = MapPtr(new Map());
     binderError = MapPtr(new Map());
     binderRatioError = MapPtr(new Map());    
     direct_energy = MapPtr(new Map());
     direct_specificHeat = MapPtr(new Map());
     direct_observable = MapPtr(new Map());
-    direct_susceptibilityDisconnected = MapPtr(new Map());    
+    direct_susceptibilityPart = MapPtr(new Map());    
     direct_susceptibility = MapPtr(new Map());
     direct_binder = MapPtr(new Map());
     direct_binderRatio = MapPtr(new Map());    
     direct_energyError = MapPtr(new Map());
     direct_specificHeatError = MapPtr(new Map());
     direct_observableError = MapPtr(new Map());
-    direct_susceptibilityDisconnectedError = MapPtr(new Map());    
+    direct_susceptibilityPartError = MapPtr(new Map());    
     direct_susceptibilityError = MapPtr(new Map());
     direct_binderError = MapPtr(new Map());
     direct_binderRatioError = MapPtr(new Map());    
@@ -729,7 +729,7 @@ void directResults() {
         (*direct_energy)[cp] = values.energyAvg;
         (*direct_specificHeat)[cp] = values.heatCapacity;
         (*direct_observable)[cp] = values.obsAvg;
-        (*direct_susceptibilityDisconnected)[cp] = values.obsSuscDisc;
+        (*direct_susceptibilityPart)[cp] = values.obsSuscPart;
         (*direct_susceptibility)[cp] = values.obsSusc;
         (*direct_binder)[cp] = values.obsBinder;
         (*direct_binderRatio)[cp] = values.obsBinderRatio;        
@@ -737,7 +737,7 @@ void directResults() {
             (*direct_energyError)[cp] = values.energyError;
             (*direct_specificHeatError)[cp] = values.heatCapacityError;
             (*direct_observableError)[cp] = values.obsError;
-            (*direct_susceptibilityDisconnectedError)[cp] = values.obsSuscDiscError;            
+            (*direct_susceptibilityPartError)[cp] = values.obsSuscPartError;            
             (*direct_susceptibilityError)[cp] = values.obsSuscError;
             (*direct_binderError)[cp] = values.obsBinderError;
             (*direct_binderRatioError)[cp] = values.obsBinderRatioError;                                                                  
@@ -766,7 +766,7 @@ public:
         (*energy)[cp] = result.energyAvg;
         (*specificHeat)[cp] = result.heatCapacity;
         (*observable)[cp] = result.obsAvg;
-        (*susceptibilityDisconnected)[cp] = result.obsSuscDisc;
+        (*susceptibilityPart)[cp] = result.obsSuscPart;
         (*susceptibility)[cp] = result.obsSusc;
         (*binder)[cp] = result.obsBinder;
         (*binderRatio)[cp] = result.obsBinderRatio;
@@ -774,7 +774,7 @@ public:
             (*energyError)[cp] = result.energyError;
             (*specificHeatError)[cp] = result.heatCapacityError;
             (*observableError)[cp] = result.obsError;
-            (*susceptibilityDisconnectedError)[cp] = result.obsSuscDiscError;
+            (*susceptibilityPartError)[cp] = result.obsSuscPartError;
             (*susceptibilityError)[cp] = result.obsSuscError;
             (*binderError)[cp] = result.obsBinderError;            
             (*binderRatioError)[cp] = result.obsBinderRatioError;
@@ -1324,22 +1324,22 @@ unsigned getSystemN() {
 
 void initBC() {
     observable = MapPtr(new Map());
-    susceptibilityDisconnected = MapPtr(new Map());    
+    susceptibilityPart = MapPtr(new Map());    
     susceptibility = MapPtr(new Map());
     binder = MapPtr(new Map());
     binderRatio = MapPtr(new Map());    
     observableError = MapPtr(new Map());
-    susceptibilityDisconnectedError = MapPtr(new Map());    
+    susceptibilityPartError = MapPtr(new Map());    
     susceptibilityError = MapPtr(new Map());
     binderError = MapPtr(new Map());
     binderRatioError = MapPtr(new Map());    
     direct_observable = MapPtr(new Map());
-    direct_susceptibilityDisconnected = MapPtr(new Map());    
+    direct_susceptibilityPart = MapPtr(new Map());    
     direct_susceptibility = MapPtr(new Map());
     direct_binder = MapPtr(new Map());
     direct_binderRatio = MapPtr(new Map());    
     direct_observableError = MapPtr(new Map());
-    direct_susceptibilityDisconnectedError = MapPtr(new Map());    
+    direct_susceptibilityPartError = MapPtr(new Map());    
     direct_susceptibilityError = MapPtr(new Map());
     direct_binderError = MapPtr(new Map());
     direct_binderRatioError = MapPtr(new Map());    
@@ -1595,9 +1595,9 @@ void handleObservableMomentsBC(ProvideObservableMoments_bc_cp callable, double c
             
         // estimate quantities, also non-linear combinations of expectation values:
         jackknife((*observable)[cp], (*observableError)[cp], moments_averaged.jkBlocks_o);
-        jackknife((*susceptibilityDisconnected)[cp], (*susceptibilityDisconnectedError)[cp], moments_averaged.jkBlocks_o2);
-        (*susceptibilityDisconnected)[cp] *= mrbc[PBC]->systemSize; // so it's really a susceptibility
-        (*susceptibilityDisconnectedError)[cp] *= mrbc[PBC]->systemSize;
+        jackknife((*susceptibilityPart)[cp], (*susceptibilityPartError)[cp], moments_averaged.jkBlocks_o2);
+        (*susceptibilityPart)[cp] *= mrbc[PBC]->systemSize; // so it's really a susceptibility
+        (*susceptibilityPartError)[cp] *= mrbc[PBC]->systemSize;
             
         std::vector<double> jkBlocks_binderRatio(jackknifeBlocks, 0.0);
         std::vector<double> jkBlocks_susceptibility(jackknifeBlocks, 0.0);            
@@ -1612,7 +1612,7 @@ void handleObservableMomentsBC(ProvideObservableMoments_bc_cp callable, double c
             
     } else {
         (*observable)[cp] = moments_averaged.o;
-        (*susceptibilityDisconnected)[cp] = mrbc[PBC]->systemSize * moments_averaged.o2;        // so it's really a susceptibility
+        (*susceptibilityPart)[cp] = mrbc[PBC]->systemSize * moments_averaged.o2;        // so it's really a susceptibility
         (*binderRatio)[cp] = moments_averaged.o4 / std::pow(moments_averaged.o2, 2);
         (*susceptibility)[cp] = mrbc[PBC]->systemSize * (moments_averaged.o2 -
                                                          pow(moments_averaged.o, 2));

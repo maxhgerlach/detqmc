@@ -431,7 +431,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
         double cp = controlParameterValues[cpi];
         double heatCapacity = systemSize * cp*cp *
             (meanEnergySquared_l[cpi] - pow(meanEnergy_l[cpi], 2));
-        double suscDiscObs = systemSize * meanObsSquared_l[cpi];
+        double suscPartObs = systemSize * meanObsSquared_l[cpi];
         double suscObs = systemSize *
             (meanObsSquared_l[cpi] - pow(meanObs_l[cpi], 2));
         double binderObs = 1.0 - (meanObsToTheFourth_l[cpi] /
@@ -442,7 +442,7 @@ MultireweightHistosPT::ResultsMap* MultireweightHistosPT::
         (*results)[cp] = ReweightingResult(meanEnergy_l[cpi],
                                            heatCapacity,
                                            meanObs_l[cpi],
-                                           suscDiscObs,
+                                           suscPartObs,
                                            suscObs,
                                            binderObs,
                                            binderRatioObs);
@@ -1326,12 +1326,12 @@ ReweightingResult MultireweightHistosPT::reweightWithoutErrorsInternal
     double suscObservable = systemSize * (meanObservableSquared - pow(meanObservable, 2));
     double binderObservable = 1.0 - (meanObservableToTheFourth / (3 * pow(meanObservableSquared, 2)));
     double binderRatioObservable = meanObservableToTheFourth / pow(meanObservableSquared, 2);
-    double suscDiscObservable = systemSize * meanObservableSquared;
+    double suscPartObservable = systemSize * meanObservableSquared;
 
     out << " Done." << endl;
 
     return ReweightingResult(meanEnergy, heatCapacity, meanObservable,
-        suscDiscObservable, suscObservable, binderObservable, binderRatioObservable);
+        suscPartObservable, suscObservable, binderObservable, binderRatioObservable);
 }
 
 double MultireweightHistosPT::reweightEnergy(double targetControlParameter) {
@@ -1373,7 +1373,7 @@ double MultireweightHistosPT::reweightObservable(double targetControlParameter) 
     return result;
 }
 
-double MultireweightHistosPT::reweightObservableSusceptibilityDisconnected(double targetControlParameter) {
+double MultireweightHistosPT::reweightObservableSusceptibilityPart(double targetControlParameter) {
     DoubleSeriesCollection w_kn = computeWeights(targetControlParameter);
 
     double secondMoment = 0;
