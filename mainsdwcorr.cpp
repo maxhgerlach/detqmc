@@ -28,9 +28,17 @@ typedef arma::Cube<num> CubeNum;
 // [Data layout; slice after slice, matrices then column major] 
 typedef CubeNum PhiConfig;
 
+
+// TODO: clarify index values
+
+// for real space:
 // < phi_(iy_delta, ix_delta)(k_delta) phi_(0,0)(0) >
 // row indexes site-y-delta, column indexes site-x-delta,
 // slice indexes timeslice-delta
+
+// for Fourier space:
+// row indexes ky, column indexes kx, slice indexes omega
+
 // [Index order: row, col, slice]
 typedef CubeNum PhiCorrelations;
 
@@ -103,6 +111,7 @@ inline int32_t pbc_diff(int32_t x1, int32_t x2, int32_t ring_length) {
     return delta_x;
 }
 
+// real space index
 inline uint32_t pbc_diff_to_array_index(int32_t pbc_diff, int32_t ring_length) {
     assert(-ring_length/2 < pbc_diff);
     assert(pbc_diff <= ring_length/2);
@@ -111,6 +120,30 @@ inline uint32_t pbc_diff_to_array_index(int32_t pbc_diff, int32_t ring_length) {
     assert(index <  ring_length);
     return static_cast<uint32_t>(index);
 }
+
+
+// give meaning to array indices (1)
+VecNum get_pbc_diff_values(int32_t ring_length) {
+    VecNum pbc_diffs(ring_length);
+    pbc_diffs[ring_length - 1] = l / 2;
+    for (uint32_t counter = l - 2; counter >= 0; --counter) {
+        pbc_diffs[counter] = pbc_diffs[counter + 1] - 1;
+    }
+    return pbc_diffs;
+}
+
+// give meaning to array indices (2)
+VecNum get_k_values(int32_t ring_length) {
+    using arma::datum::pi;
+    VecNum k_values(ring_length);
+    k_values[0] = -pi;
+    for (uint32_t counter = 1; counter < ring_length; ++counter) {
+        k_values[counter] = k_values[counter - 1] + 2*pi / ring_length;
+    }
+    return k_values;
+}
+
+
 
 
 // to speed things up do not use translational invariance
