@@ -26,6 +26,8 @@ typedef arma::Col<cpx> VecCpx;
 typedef arma::Mat<num> MatNum;
 typedef arma::Mat<cpx> MatCpx;
 typedef arma::Cube<num> CubeNum;
+typedef arma::Cube<cpx> CubeCpx;
+
 
 // slice indexes timeslice, column indexes order parameter
 // dimension, row indexes site    
@@ -90,7 +92,13 @@ bool readSystemConfiguration(PhiConfig& phi_target, std::ifstream& binary_float_
                     }
                 }
             }
-            phi_target.slice(0).zeros();
+            // in the files on disk we stored time slices 1 ... m,
+            // for our calculations here it is easier to consider time slices,
+            // 0 ... m-1, where, due to periodic boundary conditions, slice m ==
+            // slice 0
+            phi_target.slice(0) = phi_target.slice(conf_params.m);
+            phi_target.shed_slice(conf_params.m);
+            
             return_success  = true;
         }
     }
@@ -198,7 +206,7 @@ void computeCorrelations_reduced(PhiCorrelations& corr_target, const PhiConfig& 
     uint32_t i2x = 0;
     uint32_t i2 = i2y * conf_params.L + i2x;
     uint32_t nt2 = 1;
-    for (uint32_t nt1 = 1; nt1 <= conf_params.m; ++nt1) {
+    for (uint32_t nt1 = 0; nt1 < conf_params.m; ++nt1) {
         for (uint32_t i1y = 0; i1y < conf_params.L; ++i1y) {
             for (uint32_t i1x = 0; i1x < conf_params.L; ++i1x) {
                 uint32_t i1 = i1y * conf_params.L + i1x;
@@ -229,8 +237,8 @@ void computeCorrelations_full(PhiCorrelations& corr_target, const PhiConfig& con
                       conf_params.L, // cols ... site x delta
                       conf_params.m  // slcs ... time slice delta
         );
-    for (uint32_t nt1 = 1; nt1 <= conf_params.m; ++nt1) {
-        for (uint32_t nt2 = 1; nt2 <= conf_params.m; ++nt2) {
+    for (uint32_t nt1 = 0; nt1 < conf_params.m; ++nt1) {
+        for (uint32_t nt2 = 0; nt2 < conf_params.m; ++nt2) {
             for (uint32_t i1y = 0; i1y < conf_params.L; ++i1y) {
                 for (uint32_t i1x = 0; i1x < conf_params.L; ++i1x) {
                     uint32_t i1 = i1y * conf_params.L + i1x;
@@ -326,6 +334,14 @@ public:
                          false, // do not copy aux_mem
                          true // strict
             );
+        VecCpx test( reinterpret_cast<cpx*>(in), n,
+                     false, // do not copy aux_mem
+                     true // strict
+            );
+        
+        std::cout << in << std::endl;
+        std::cout << test.memptr() << std::endl;        
+        std::cout << vec_in.memptr() << std::endl;
     }
     void get_arma_vec_out(VecCpx& vec_out) {
         vec_out = VecCpx( reinterpret_cast<cpx*>(out), n,
@@ -392,6 +408,77 @@ public:
 };
 
 
+// Armadillo seems to lack the necessary overload
+void vecCpx_set_real_from_cubeNum_tube(VecCpx& vec, const CubeNum& cube,
+                                       uint32_t row, uint32_t col) {
+    for (uint32_t slice = 0; slice < cube.n_slices; ++slice) {
+        vec[slice].real(cube(row, col, slice));
+    }
+}
+
+
+// compute Fourier transformed correlations for one system configuration
+void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
+                             const ConfigParameters& conf_params) {
+    // temporal FFT set up
+    FFT1d fft_temporal(conf_params.m, +1);
+    VecCpx vec_in;
+    fft_temporal.get_arma_vec_in(vec_in);
+    std::cout << vec_in.memptr() << std::endl;    
+    vec_in.zeros();
+    std::cout << vec_in.memptr() << std::endl;    
+    VecCpx vec_out;
+    fft_temporal.get_arma_vec_out(vec_out);
+    vec_out.zeros();
+
+    // spatial FFT set up
+    FFT2d fft_spatial(conf_params.L, conf_params.L, -1);
+    MatCpx mat_in;
+    fft_spatial.get_arma_mat_in(mat_in);
+    mat_in.zeros();
+    MatCpx mat_out;
+    fft_spatial.get_arma_mat_out(mat_out);
+    mat_out.zeros();
+
+    // complex intermediary
+    CubeCpx phi_ft(conf_params.L, conf_params.L, conf_params.m);
+
+    // real result
+    corr_ft.zeros(conf_params.L, conf_params.L, conf_params.m);
+    
+    // FFTs in time and space for each order parameter dimension
+    for (uint32_t dim = 0; dim < conf_params.opdim; ++dim) {
+        phi_ft.zeros();
+
+        // temporal
+        for (uint32_t site = 0; site < conf_params.N; ++site) {
+            // instead of
+            //    vec_in.set_real( conf.tube(site, dim) );
+            // do this:
+            vecCpx_set_real_from_cubeNum_tube(vec_in, conf, site, dim);
+            fft_temporal.execute();
+            uint32_t y_index = site / conf_params.L;
+            uint32_t x_index = site % conf_params.L;
+            phi_ft.tube(y_index, x_index) = vec_out; 
+        }
+
+        // spatial
+        for (uint32_t nt = 0; nt < conf_params.m; ++nt) {
+            mat_in = phi_ft.slice(nt);
+            fft_spatial.execute();
+            phi_ft.slice(nt) = mat_out;
+        }
+
+        // the FT'ed correlation function is given by the squared modulus of the 
+        // FT'ed spin correlation function
+        corr_ft += arma::real(phi_ft % arma::conj(phi_ft));
+    }
+    
+    // normalization of Fourier transforms was missing, correct for that:
+    corr_ft /= (conf_params.N * conf_params.N * conf_params.m * conf_params.m); 
+}
+
+
 
 int main(int argc, char *argv[]) {
     // test
@@ -409,6 +496,19 @@ int main(int argc, char *argv[]) {
     PhiCorrelations corr_full_ft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     slow_ft(corr_full_ft, corr_full, params);
 
+    printMatrixReal(corr_full_ft.slice(10).eval());
+
+    PhiCorrelations corr_fft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    computeCorrelations_fft(corr_fft, config, params);
+
+    printMatrixReal(corr_fft.slice(10).eval());
+
+    PhiCorrelations diff_corr_ft = arma::abs((corr_full_ft - corr_fft) / corr_full_ft);
+
+    std::cout << "full_ft vs fft --- max: " << diff_corr_ft.max()
+              << ", mean: " << arma::accu(diff_corr_ft) / diff_corr_ft.n_elem << std::endl;
+
+
     PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     computeCorrelations_reduced(corr_reduced, config, params);
     PhiCorrelations diff = arma::abs((corr_full - corr_reduced) / corr_full);
@@ -419,3 +519,4 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
