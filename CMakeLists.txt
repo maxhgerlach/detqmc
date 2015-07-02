@@ -229,6 +229,13 @@ else (${CHEOPS_FOUND})
 endif (${CHEOPS_FOUND})
 
 
+# FFTW3
+if (${CHEOPS_FOUND})
+  # ...
+else (${CHEOPS_FOUND})
+  set(FFTW3_LIBRARIES
+    "-lfftw3")
+endif (${CHEOPS_FOUND})
 
 
 link_directories(${EXTRA_LIBRARY_LOCATIONS})
@@ -440,7 +447,7 @@ target_link_libraries(extractfrombinarystream general_common boost_program_optio
 set(sdwcorr_SRC mainsdwcorr.cpp)
 add_executable(sdwcorr
   ${sdwcorr_SRC})
-target_link_libraries(sdwcorr general_common boost_program_options ${ARMADILLO_LIBRARIES} ${EXTRA_LIBRARIES})
+target_link_libraries(sdwcorr general_common boost_program_options ${ARMADILLO_LIBRARIES} ${FFTW3_LIBRARIES} ${EXTRA_LIBRARIES})
 
 
 set(tauintsimple_SRC maintauintsimple.cpp)

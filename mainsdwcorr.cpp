@@ -7,7 +7,9 @@
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/program_options.hpp"
 #pragma GCC diagnostic pop
+#include <complex>
 #include <armadillo>
+#include <fftw3.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -18,8 +20,11 @@
 
 
 typedef double num;
+typedef std::complex<double> cpx;
 typedef arma::Col<num> VecNum;
+typedef arma::Col<cpx> VecCpx;
 typedef arma::Mat<num> MatNum;
+typedef arma::Mat<cpx> MatCpx;
 typedef arma::Cube<num> CubeNum;
 
 // slice indexes timeslice, column indexes order parameter
@@ -32,7 +37,7 @@ typedef CubeNum PhiConfig;
 // TODO: clarify index values
 
 // for real space:
-// < phi_(iy_delta, ix_delta)(k_delta) phi_(0,0)(0) >
+// < phi_(iy_delta, ix_delta)(nt_delta) phi_(0,0)(0) >
 // row indexes site-y-delta, column indexes site-x-delta,
 // slice indexes timeslice-delta
 
@@ -47,6 +52,7 @@ struct ConfigParameters {
     // uint32_t d;                 // lattice dimension, should be 2
     uint32_t N;                 // total lattice volume
     uint32_t m;                 // number of timeslices
+    num dtau;                   // beta = m * dtau
     uint32_t opdim;             // 1, 2, or 3
 };
 
@@ -111,34 +117,68 @@ inline int32_t pbc_diff(int32_t x1, int32_t x2, int32_t ring_length) {
     return delta_x;
 }
 
-// real space index
-inline uint32_t pbc_diff_to_array_index(int32_t pbc_diff, int32_t ring_length) {
-    assert(-ring_length/2 < pbc_diff);
-    assert(pbc_diff <= ring_length/2);
-    int32_t index = pbc_diff + ring_length / 2 - 1;
-    assert(index >= 0);
-    assert(index <  ring_length);
-    return static_cast<uint32_t>(index);
+
+// compute positive delta_x = x2 - x1 on a periodic ring of length
+// ring_length, 0 <= delta_x < ring_length -- so this gives 'too long'
+// distances.  This can directly be used as real space index.
+inline int32_t pos_pbc_dist(int32_t x1, int32_t x2, int32_t ring_length) {
+    // difference restricted to pbc ring
+    int32_t delta_x = (x2 - x1) % ring_length;
+    if (delta_x < 0) {
+        delta_x += ring_length;
+    }
+    assert(delta_x >= 0);
+    assert(delta_x < ring_length);
+    return delta_x;
 }
+
+
+// // real space index
+// inline uint32_t pbc_diff_to_array_index(int32_t pbc_diff, int32_t ring_length) {
+//     assert(-ring_length/2 < pbc_diff);
+//     assert(pbc_diff <= ring_length/2);
+//     int32_t index = pbc_diff + ring_length / 2 - 1;
+//     assert(index >= 0);
+//     assert(index <  ring_length);
+//     return static_cast<uint32_t>(index);
+// }
 
 
 // give meaning to array indices (1)
-VecNum get_pbc_diff_values(int32_t ring_length) {
-    VecNum pbc_diffs(ring_length);
-    pbc_diffs[ring_length - 1] = l / 2;
-    for (uint32_t counter = l - 2; counter >= 0; --counter) {
-        pbc_diffs[counter] = pbc_diffs[counter + 1] - 1;
+// 0 ... (L-1) * spacing
+VecNum get_pos_pbc_dist_values(uint32_t ring_length, num spacing=1.0) {
+    assert(ring_length > 0);
+    assert(spacing > 0);
+    VecNum dists(ring_length);
+    for (uint32_t counter = 0; counter < ring_length; ++counter) {
+        dists[counter] = counter * spacing;
     }
-    return pbc_diffs;
+    return dists;
 }
 
+// VecNum get_pbc_diff_values(uint32_t ring_length, num spacing=1.0) {
+//     assert(ring_length > 0);
+//     VecNum pbc_diffs(ring_length);
+//     // this was intended for even ring_length, but seems to work fine
+//     // with odd ring_length too
+//     pbc_diffs[ring_length - 1] = spacing * (ring_length / 2);
+//     for (int32_t counter = ring_length - 2; counter >= 0; --counter) {
+//         pbc_diffs[counter] = pbc_diffs[counter + 1] - spacing;
+//     }
+//     return pbc_diffs;
+// }
+
+
+
 // give meaning to array indices (2)
-VecNum get_k_values(int32_t ring_length) {
-    using arma::datum::pi;
+// k values: 0 ... (L-1)*2pi / (L*spacing)
+VecNum get_k_values(uint32_t ring_length, num spacing=1.0) {
+    assert(ring_length > 0);
+    const auto pi = arma::datum::pi;
     VecNum k_values(ring_length);
-    k_values[0] = -pi;
+    k_values[0] = 0.0;
     for (uint32_t counter = 1; counter < ring_length; ++counter) {
-        k_values[counter] = k_values[counter - 1] + 2*pi / ring_length;
+        k_values[counter] = k_values[counter - 1] + 2*pi / (ring_length * spacing);
     }
     return k_values;
 }
@@ -146,7 +186,8 @@ VecNum get_k_values(int32_t ring_length) {
 
 
 
-// to speed things up do not use translational invariance
+// to speed things up do not use translational invariance -- needs way
+// more samples
 void computeCorrelations_reduced(PhiCorrelations& corr_target, const PhiConfig& conf,
                                  const ConfigParameters& conf_params) {
     corr_target.zeros(conf_params.L, // rows ... site y delta
@@ -156,24 +197,25 @@ void computeCorrelations_reduced(PhiCorrelations& corr_target, const PhiConfig& 
     uint32_t i2y = 0;
     uint32_t i2x = 0;
     uint32_t i2 = i2y * conf_params.L + i2x;
-    uint32_t k2 = 1;
-    for (uint32_t k1 = 1; k1 <= conf_params.m; ++k1) {
+    uint32_t nt2 = 1;
+    for (uint32_t nt1 = 1; nt1 <= conf_params.m; ++nt1) {
         for (uint32_t i1y = 0; i1y < conf_params.L; ++i1y) {
             for (uint32_t i1x = 0; i1x < conf_params.L; ++i1x) {
                 uint32_t i1 = i1y * conf_params.L + i1x;
-                int32_t ix_delta = pbc_diff(i1x, i2x, conf_params.L);
-                int32_t iy_delta = pbc_diff(i1y, i2y, conf_params.L);
-                int32_t k_delta  = pbc_diff(k1,  k2,  conf_params.m);
+                int32_t ix_delta = pos_pbc_dist(i1x, i2x, conf_params.L);
+                int32_t iy_delta = pos_pbc_dist(i1y, i2y, conf_params.L);
+                int32_t nt_delta = pos_pbc_dist(nt1, nt2, conf_params.m);
                             
                 num dot_product = 0.0;
                 for (uint32_t dim = 0; dim < conf_params.opdim; ++dim) {
-                    dot_product += conf(i1, dim, k1) * conf(i2, dim, k2);
+                    dot_product += conf(i1, dim, nt1) * conf(i2, dim, nt2);
                 }
 
-                corr_target(pbc_diff_to_array_index(iy_delta, conf_params.L),
-                            pbc_diff_to_array_index(ix_delta, conf_params.L),
-                            pbc_diff_to_array_index(k_delta,  conf_params.m))
-                    += dot_product;
+                // corr_target(pbc_diff_to_array_index(iy_delta, conf_params.L),
+                //             pbc_diff_to_array_index(ix_delta, conf_params.L),
+                //             pbc_diff_to_array_index(nt_delta,  conf_params.m))
+                //     += dot_product;
+                corr_target(iy_delta, ix_delta, nt_delta) += dot_product;
             }
         }
     }
@@ -187,8 +229,8 @@ void computeCorrelations_full(PhiCorrelations& corr_target, const PhiConfig& con
                       conf_params.L, // cols ... site x delta
                       conf_params.m  // slcs ... time slice delta
         );
-    for (uint32_t k1 = 1; k1 <= conf_params.m; ++k1) {
-        for (uint32_t k2 = 1; k2 <= conf_params.m; ++k2) {
+    for (uint32_t nt1 = 1; nt1 <= conf_params.m; ++nt1) {
+        for (uint32_t nt2 = 1; nt2 <= conf_params.m; ++nt2) {
             for (uint32_t i1y = 0; i1y < conf_params.L; ++i1y) {
                 for (uint32_t i1x = 0; i1x < conf_params.L; ++i1x) {
                     uint32_t i1 = i1y * conf_params.L + i1x;
@@ -196,27 +238,20 @@ void computeCorrelations_full(PhiCorrelations& corr_target, const PhiConfig& con
                         for (uint32_t i2x = 0; i2x < conf_params.L; ++i2x) {
                             uint32_t i2 = i2y * conf_params.L + i2x;
 
-                            // int32_t ix_delta = (i1x - i2x) % conf_params.L;
-                            // int32_t iy_delta = (i1y - i2y) % conf_params.L;
-                            // int32_t k_delta  = (k1  - k2)  % conf_params.m;;
-
-                            // int32_t ix_delta = i2x - i1x;
-                            // int32_t iy_delta = i2y - i1y;
-                            // int32_t k_delta  = k2  - k1;
-
-                            int32_t ix_delta = pbc_diff(i1x, i2x, conf_params.L);
-                            int32_t iy_delta = pbc_diff(i1y, i2y, conf_params.L);
-                            int32_t k_delta  = pbc_diff(k1,  k2,  conf_params.m);
+                            int32_t ix_delta = pos_pbc_dist(i1x, i2x, conf_params.L);
+                            int32_t iy_delta = pos_pbc_dist(i1y, i2y, conf_params.L);
+                            int32_t nt_delta = pos_pbc_dist(nt1, nt2, conf_params.m);
                             
                             num dot_product = 0.0;
                             for (uint32_t dim = 0; dim < conf_params.opdim; ++dim) {
-                                dot_product += conf(i1, dim, k1) * conf(i2, dim, k2);
+                                dot_product += conf(i1, dim, nt1) * conf(i2, dim, nt2);
                             }
 
-                            corr_target(pbc_diff_to_array_index(iy_delta, conf_params.L),
-                                        pbc_diff_to_array_index(ix_delta, conf_params.L),
-                                        pbc_diff_to_array_index(k_delta,  conf_params.m))
-                                += dot_product;
+                            // corr_target(pbc_diff_to_array_index(iy_delta, conf_params.L),
+                            //             pbc_diff_to_array_index(ix_delta, conf_params.L),
+                            //             pbc_diff_to_array_index(nt_delta, conf_params.m))
+                            //     += dot_product;
+                            corr_target(iy_delta, ix_delta, nt_delta) += dot_product;
                         }
                     }
                 }                
@@ -227,24 +262,160 @@ void computeCorrelations_full(PhiCorrelations& corr_target, const PhiConfig& con
     corr_target /= num(conf_params.N * conf_params.m);
 }
 
+// this assumes corr(r) = corr(-r), so its Fourier transform is real
+void slow_ft(PhiCorrelations& corr_ft, const PhiCorrelations& corr, const ConfigParameters& conf_params) {
+    corr_ft.zeros(conf_params.L,
+                  conf_params.L,
+                  conf_params.m
+        );
+
+    VecNum k_values = get_k_values(conf_params.L, 1.0);
+    VecNum omega_values = get_k_values(conf_params.m, conf_params.dtau);
+
+    VecNum xy_values = get_pos_pbc_dist_values(conf_params.L, 1.0);
+    VecNum t_values  = get_pos_pbc_dist_values(conf_params.m, conf_params.dtau);
+    
+    for (uint32_t omega_index = 0; omega_index < conf_params.m; ++omega_index) {
+        num omega = omega_values[omega_index];
+        for (uint32_t ky_index = 0; ky_index < conf_params.L; ++ky_index) {
+            num ky = k_values[ky_index];
+            for (uint32_t kx_index = 0; kx_index < conf_params.L; ++kx_index) {
+                num kx = k_values[kx_index];
+                for (uint32_t y_index = 0; y_index < conf_params.L; ++y_index) {
+                    num y = xy_values[y_index];
+                    for (uint32_t x_index = 0; x_index < conf_params.L; ++x_index) {
+                        num x = xy_values[x_index];
+                        for (uint32_t t_index = 0; t_index < conf_params.m; ++t_index) {
+                            num t = t_values[t_index];
+
+                            num argument = -(kx * x + ky * y) + t * omega;
+                            cpx phase = std::exp(cpx(0, argument));
+
+                            cpx contrib = phase * corr(y_index, x_index, t_index);
+                            corr_ft(ky_index, kx_index, omega_index) += contrib.real();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    corr_ft /= (conf_params.L * conf_params.L * conf_params.m);
+}
+
+// use FFTW3 on Armadillo vector
+class FFT1d {
+    int n;
+    fftw_complex *in, *out;
+    fftw_plan my_plan;
+public:
+    FFT1d(int n_elem, int sign) :
+        n(n_elem),
+        in(  reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
+        out( reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
+        my_plan() 
+        {
+            // sign == -1: FFTW_FORWARD
+            // sign == +1: FFTW_BACKWARD
+            my_plan = fftw_plan_dft_1d(n, in, out, sign, FFTW_ESTIMATE);    
+        }
+    
+    // get Armadillo views on the input/output vectors
+    void get_arma_vec_in(VecCpx& vec_in) {
+        vec_in = VecCpx( reinterpret_cast<cpx*>(in), n,
+                         false, // do not copy aux_mem
+                         true // strict
+            );
+    }
+    void get_arma_vec_out(VecCpx& vec_out) {
+        vec_out = VecCpx( reinterpret_cast<cpx*>(out), n,
+                          false, // do not copy aux_mem
+                          true // strict
+            );
+    }
+    
+    void execute() {
+        fftw_execute(my_plan);
+    }
+    
+    ~FFT1d() {
+        fftw_destroy_plan(my_plan);
+        fftw_free(in);
+        fftw_free(out);
+    }    
+};
+
+class FFT2d {
+    int rows, cols;
+    int n;
+    fftw_complex *in, *out;     // we will store column-major data in here (like BLAS/Lapack/Armadillo)
+    fftw_plan my_plan;
+public:
+    FFT2d(int n_rows, int n_cols, int sign) :
+        rows(n_rows), cols(n_cols), n(n_rows * n_cols),
+        in(  reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
+        out( reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
+        my_plan() 
+        {
+            // sign == -1: FFTW_FORWARD
+            // sign == +1: FFTW_BACKWARD
+            //
+            // switch row & column dimensions: understand our column-major data
+            // as row-major
+            my_plan = fftw_plan_dft_2d(cols, rows, in, out, sign, FFTW_ESTIMATE);    
+        }
+    
+    // get Armadillo views on the input/output matrices -- data
+    // treated as column-major
+    void get_arma_mat_in(MatCpx& mat_in) {
+        mat_in = MatCpx( reinterpret_cast<cpx*>(in), rows, cols,
+                         false, // do not copy aux_mem
+                         true // strict
+            );
+    }
+    void get_arma_mat_out(MatCpx& mat_out) {
+        mat_out = MatCpx( reinterpret_cast<cpx*>(out), rows, cols,
+                          false, // do not copy aux_mem
+                          true // strict
+            );
+    }
+    
+    void execute() {
+        fftw_execute(my_plan);
+    }
+    
+    ~FFT2d() {
+        fftw_destroy_plan(my_plan);
+        fftw_free(in);
+        fftw_free(out);
+    }    
+};
+
 
 
 int main(int argc, char *argv[]) {
     // test
     ConfigParameters params;
 //    assert(2 > 3); // assert really are ignored in our debug builds
-    params.L = 10;
-    params.N = 100;
-    params.m = 200;
+    params.L = 6;
+    params.N = params.L * params.L;
+    params.m = 50;
+    params.dtau = 0.1;
     params.opdim = 2;
     PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m + 1);
     PhiCorrelations corr_full = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     computeCorrelations_full(corr_full, config, params);
+
+    PhiCorrelations corr_full_ft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    slow_ft(corr_full_ft, corr_full, params);
+
+    PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     computeCorrelations_reduced(corr_reduced, config, params);
     PhiCorrelations diff = arma::abs((corr_full - corr_reduced) / corr_full);
-    std::cout << "max: " << diff.max() << ", mean: " << arma::accu(diff) / diff.n_elem << std::endl;
+    std::cout << "full vs reduced --- max: " << diff.max() << ", mean: " << arma::accu(diff) / diff.n_elem << std::endl;
     // for a single purely random sample there will of course be a
     // significant difference between _reduced and _full
+
+
     return 0;
 }
