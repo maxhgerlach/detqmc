@@ -2,17 +2,19 @@
 #include "dumapp.h"
 #endif
 
+#include <chrono>
+#include <memory>
+#include <complex>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <armadillo>
+#include <fftw3.h>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/program_options.hpp"
 #pragma GCC diagnostic pop
-#include <complex>
-#include <armadillo>
-#include <fftw3.h>
-#include <fstream>
-#include <iostream>
-#include <string>
 #include "exceptions.h"
 #include "metadata.h"
 #include "git-revision.h"
@@ -317,37 +319,18 @@ class FFT1d {
     fftw_complex *in, *out;
     fftw_plan my_plan;
 public:
-    FFT1d(int n_elem, int sign) :
-        n(n_elem),
-        in(  reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
-        out( reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
-        my_plan() 
-        {
-            // sign == -1: FFTW_FORWARD
-            // sign == +1: FFTW_BACKWARD
-            my_plan = fftw_plan_dft_1d(n, in, out, sign, FFTW_ESTIMATE);    
-        }
-    
-    // get Armadillo views on the input/output vectors
-    void get_arma_vec_in(VecCpx& vec_in) {
-        vec_in = VecCpx( reinterpret_cast<cpx*>(in), n,
-                         false, // do not copy aux_mem
-                         true // strict
-            );
-        VecCpx test( reinterpret_cast<cpx*>(in), n,
-                     false, // do not copy aux_mem
-                     true // strict
-            );
-        
-        std::cout << in << std::endl;
-        std::cout << test.memptr() << std::endl;        
-        std::cout << vec_in.memptr() << std::endl;
-    }
-    void get_arma_vec_out(VecCpx& vec_out) {
-        vec_out = VecCpx( reinterpret_cast<cpx*>(out), n,
-                          false, // do not copy aux_mem
-                          true // strict
-            );
+    // We use pointers to make sure the vectors use the same memory
+    // all the time. Pass pointers to vectors of equal length.
+    // Keep using the same vectors.    
+    // sign == -1: FFTW_FORWARD
+    // sign == +1: FFTW_BACKWARD
+    FFT1d(std::shared_ptr<VecCpx> vec_in, std::shared_ptr<VecCpx> vec_out,
+          int sign) {
+        assert(vec_in->n_elem == vec_out->n_elem);
+        n = vec_in->n_elem;
+        in  = reinterpret_cast<fftw_complex*>(vec_in->memptr());
+        out = reinterpret_cast<fftw_complex*>(vec_out->memptr());
+        my_plan = fftw_plan_dft_1d(n, in, out, sign, FFTW_ESTIMATE);
     }
     
     void execute() {
@@ -356,8 +339,6 @@ public:
     
     ~FFT1d() {
         fftw_destroy_plan(my_plan);
-        fftw_free(in);
-        fftw_free(out);
     }    
 };
 
@@ -367,33 +348,23 @@ class FFT2d {
     fftw_complex *in, *out;     // we will store column-major data in here (like BLAS/Lapack/Armadillo)
     fftw_plan my_plan;
 public:
-    FFT2d(int n_rows, int n_cols, int sign) :
-        rows(n_rows), cols(n_cols), n(n_rows * n_cols),
-        in(  reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
-        out( reinterpret_cast<fftw_complex*>(fftw_malloc(sizeof(fftw_complex) * n)) ),
-        my_plan() 
-        {
-            // sign == -1: FFTW_FORWARD
-            // sign == +1: FFTW_BACKWARD
-            //
-            // switch row & column dimensions: understand our column-major data
-            // as row-major
-            my_plan = fftw_plan_dft_2d(cols, rows, in, out, sign, FFTW_ESTIMATE);    
-        }
-    
-    // get Armadillo views on the input/output matrices -- data
-    // treated as column-major
-    void get_arma_mat_in(MatCpx& mat_in) {
-        mat_in = MatCpx( reinterpret_cast<cpx*>(in), rows, cols,
-                         false, // do not copy aux_mem
-                         true // strict
-            );
-    }
-    void get_arma_mat_out(MatCpx& mat_out) {
-        mat_out = MatCpx( reinterpret_cast<cpx*>(out), rows, cols,
-                          false, // do not copy aux_mem
-                          true // strict
-            );
+    // We use pointers to make sure the matrices use the same memory
+    // all the time. Pass pointers to matrices of equal dimensions.
+    // Keep using the same matrices.
+    // sign == -1: FFTW_FORWARD
+    // sign == +1: FFTW_BACKWARD
+    FFT2d(std::shared_ptr<MatCpx> mat_in, std::shared_ptr<MatCpx> mat_out,
+          int sign) {
+        assert(mat_in->n_rows == mat_out->n_rows);
+        assert(mat_in->n_cols == mat_out->n_cols);
+        rows = mat_in->n_rows;
+        cols = mat_in->n_cols;
+        n = rows * cols;
+        in  = reinterpret_cast<fftw_complex*>(mat_in->memptr());
+        out = reinterpret_cast<fftw_complex*>(mat_out->memptr());
+        // switch row & column dimensions: understand our column-major data
+        // as row-major
+        my_plan = fftw_plan_dft_2d(cols, rows, in, out, sign, FFTW_ESTIMATE);    
     }
     
     void execute() {
@@ -402,8 +373,6 @@ public:
     
     ~FFT2d() {
         fftw_destroy_plan(my_plan);
-        fftw_free(in);
-        fftw_free(out);
     }    
 };
 
@@ -421,24 +390,16 @@ void vecCpx_set_real_from_cubeNum_tube(VecCpx& vec, const CubeNum& cube,
 void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
                              const ConfigParameters& conf_params) {
     // temporal FFT set up
-    FFT1d fft_temporal(conf_params.m, +1);
-    VecCpx vec_in;
-    fft_temporal.get_arma_vec_in(vec_in);
-    std::cout << vec_in.memptr() << std::endl;    
-    vec_in.zeros();
-    std::cout << vec_in.memptr() << std::endl;    
-    VecCpx vec_out;
-    fft_temporal.get_arma_vec_out(vec_out);
-    vec_out.zeros();
+    std::shared_ptr<VecCpx> vec_in (new VecCpx(conf_params.m));
+    std::shared_ptr<VecCpx> vec_out(new VecCpx(conf_params.m));
+    FFT1d fft_temporal(vec_in, vec_out, +1);
+    vec_in ->zeros();
 
     // spatial FFT set up
-    FFT2d fft_spatial(conf_params.L, conf_params.L, -1);
-    MatCpx mat_in;
-    fft_spatial.get_arma_mat_in(mat_in);
-    mat_in.zeros();
-    MatCpx mat_out;
-    fft_spatial.get_arma_mat_out(mat_out);
-    mat_out.zeros();
+    std::shared_ptr<MatCpx> mat_in (new MatCpx(conf_params.L, conf_params.L));
+    std::shared_ptr<MatCpx> mat_out(new MatCpx(conf_params.L, conf_params.L));
+    FFT2d fft_spatial(mat_in, mat_out, -1);
+    mat_in ->zeros();
 
     // complex intermediary
     CubeCpx phi_ft(conf_params.L, conf_params.L, conf_params.m);
@@ -453,20 +414,20 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
         // temporal
         for (uint32_t site = 0; site < conf_params.N; ++site) {
             // instead of
-            //    vec_in.set_real( conf.tube(site, dim) );
+            //    vec_in->set_real( conf.tube(site, dim) );
             // do this:
-            vecCpx_set_real_from_cubeNum_tube(vec_in, conf, site, dim);
+            vecCpx_set_real_from_cubeNum_tube(*vec_in, conf, site, dim);
             fft_temporal.execute();
             uint32_t y_index = site / conf_params.L;
             uint32_t x_index = site % conf_params.L;
-            phi_ft.tube(y_index, x_index) = vec_out; 
+            phi_ft.tube(y_index, x_index) = *vec_out;
         }
 
         // spatial
         for (uint32_t nt = 0; nt < conf_params.m; ++nt) {
-            mat_in = phi_ft.slice(nt);
+            *mat_in = phi_ft.slice(nt); // copies into mat_in's memory
             fft_spatial.execute();
-            phi_ft.slice(nt) = mat_out;
+            phi_ft.slice(nt) = *mat_out;
         }
 
         // the FT'ed correlation function is given by the squared modulus of the 
@@ -479,29 +440,32 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
 }
 
 
-
-int main(int argc, char *argv[]) {
-    // test
+void test_corr_ft() {
     ConfigParameters params;
-//    assert(2 > 3); // assert really are ignored in our debug builds
-    params.L = 6;
+    params.L = 10;
     params.N = params.L * params.L;
-    params.m = 50;
+    params.m = 200;
     params.dtau = 0.1;
     params.opdim = 2;
-    PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m + 1);
-    PhiCorrelations corr_full = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    computeCorrelations_full(corr_full, config, params);
+    PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m);
 
-    PhiCorrelations corr_full_ft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    slow_ft(corr_full_ft, corr_full, params);
-
-    printMatrixReal(corr_full_ft.slice(10).eval());
-
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     PhiCorrelations corr_fft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     computeCorrelations_fft(corr_fft, config, params);
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "corr_fft: "
+              << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+              << " microseconds" << std::endl;
 
-    printMatrixReal(corr_fft.slice(10).eval());
+    start = std::chrono::steady_clock::now();
+    PhiCorrelations corr_full = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    computeCorrelations_full(corr_full, config, params);
+    PhiCorrelations corr_full_ft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    slow_ft(corr_full_ft, corr_full, params);
+    end = std::chrono::steady_clock::now();
+    std::cout << "corr_full & corr_full_ft: "
+              << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+              << " microseconds" << std::endl;    
 
     PhiCorrelations diff_corr_ft = arma::abs((corr_full_ft - corr_fft) / corr_full_ft);
 
@@ -509,13 +473,18 @@ int main(int argc, char *argv[]) {
               << ", mean: " << arma::accu(diff_corr_ft) / diff_corr_ft.n_elem << std::endl;
 
 
-    PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    computeCorrelations_reduced(corr_reduced, config, params);
-    PhiCorrelations diff = arma::abs((corr_full - corr_reduced) / corr_full);
-    std::cout << "full vs reduced --- max: " << diff.max() << ", mean: " << arma::accu(diff) / diff.n_elem << std::endl;
-    // for a single purely random sample there will of course be a
-    // significant difference between _reduced and _full
+    // PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    // computeCorrelations_reduced(corr_reduced, config, params);
+    // PhiCorrelations diff = arma::abs((corr_full - corr_reduced) / corr_full);
+    // std::cout << "full vs reduced --- max: " << diff.max() << ", mean: " << arma::accu(diff) / diff.n_elem << std::endl;
+    // // for a single purely random sample there will of course be a
+    // // significant difference between _reduced and _full
+    
+}
 
+
+int main(int argc, char *argv[]) {
+    test_corr_ft();
 
     return 0;
 }

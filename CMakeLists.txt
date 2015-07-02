@@ -230,12 +230,13 @@ endif (${CHEOPS_FOUND})
 
 
 # FFTW3
-if (${CHEOPS_FOUND})
-  # ...
-else (${CHEOPS_FOUND})
-  set(FFTW3_LIBRARIES
-    "-lfftw3")
-endif (${CHEOPS_FOUND})
+# if (${CHEOPS_FOUND})
+#   # ...
+# else (${CHEOPS_FOUND})
+#   set(FFTW3_LIBRARIES
+#     "-lfftw3")
+# endif (${CHEOPS_FOUND})
+set(FFTW3_LIBRARIES "-lfftw3")
 
 
 link_directories(${EXTRA_LIBRARY_LOCATIONS})
