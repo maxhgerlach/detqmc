@@ -330,7 +330,7 @@ public:
         n = vec_in->n_elem;
         in  = reinterpret_cast<fftw_complex*>(vec_in->memptr());
         out = reinterpret_cast<fftw_complex*>(vec_out->memptr());
-        my_plan = fftw_plan_dft_1d(n, in, out, sign, FFTW_ESTIMATE);
+        my_plan = fftw_plan_dft_1d(n, in, out, sign, FFTW_MEASURE);
     }
     
     void execute() {
@@ -364,7 +364,7 @@ public:
         out = reinterpret_cast<fftw_complex*>(mat_out->memptr());
         // switch row & column dimensions: understand our column-major data
         // as row-major
-        my_plan = fftw_plan_dft_2d(cols, rows, in, out, sign, FFTW_ESTIMATE);    
+        my_plan = fftw_plan_dft_2d(cols, rows, in, out, sign, FFTW_MEASURE);    
     }
     
     void execute() {
@@ -386,21 +386,32 @@ void vecCpx_set_real_from_cubeNum_tube(VecCpx& vec, const CubeNum& cube,
 }
 
 
+// temporal and spatial FFT set up
+struct FFT_workspace {
+    std::shared_ptr<VecCpx> vec_in, vec_out;
+    std::shared_ptr<MatCpx> mat_in, mat_out;
+    FFT1d fft_temporal;
+    FFT2d fft_spatial;
+
+    FFT_workspace(const ConfigParameters& conf_params)
+        : vec_in(new VecCpx(conf_params.m)),
+          vec_out(new VecCpx(conf_params.m)),
+          mat_in (new MatCpx(conf_params.L, conf_params.L)),          
+          mat_out(new MatCpx(conf_params.L, conf_params.L)),
+          fft_temporal(vec_in, vec_out, +1),
+          fft_spatial(mat_in, mat_out, -1)
+    {
+        vec_in ->zeros();
+        mat_in ->zeros();
+    }
+    
+};
+
+
 // compute Fourier transformed correlations for one system configuration
 void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
-                             const ConfigParameters& conf_params) {
-    // temporal FFT set up
-    std::shared_ptr<VecCpx> vec_in (new VecCpx(conf_params.m));
-    std::shared_ptr<VecCpx> vec_out(new VecCpx(conf_params.m));
-    FFT1d fft_temporal(vec_in, vec_out, +1);
-    vec_in ->zeros();
-
-    // spatial FFT set up
-    std::shared_ptr<MatCpx> mat_in (new MatCpx(conf_params.L, conf_params.L));
-    std::shared_ptr<MatCpx> mat_out(new MatCpx(conf_params.L, conf_params.L));
-    FFT2d fft_spatial(mat_in, mat_out, -1);
-    mat_in ->zeros();
-
+                             const ConfigParameters& conf_params,
+                             FFT_workspace& fft) {
     // complex intermediary
     CubeCpx phi_ft(conf_params.L, conf_params.L, conf_params.m);
 
@@ -416,18 +427,18 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
             // instead of
             //    vec_in->set_real( conf.tube(site, dim) );
             // do this:
-            vecCpx_set_real_from_cubeNum_tube(*vec_in, conf, site, dim);
-            fft_temporal.execute();
+            vecCpx_set_real_from_cubeNum_tube(*(fft.vec_in), conf, site, dim);
+            fft.fft_temporal.execute();
             uint32_t y_index = site / conf_params.L;
             uint32_t x_index = site % conf_params.L;
-            phi_ft.tube(y_index, x_index) = *vec_out;
+            phi_ft.tube(y_index, x_index) = *(fft.vec_out);
         }
 
         // spatial
         for (uint32_t nt = 0; nt < conf_params.m; ++nt) {
-            *mat_in = phi_ft.slice(nt); // copies into mat_in's memory
-            fft_spatial.execute();
-            phi_ft.slice(nt) = *mat_out;
+            *(fft.mat_in) = phi_ft.slice(nt); // copies into mat_in's memory
+            fft.fft_spatial.execute();
+            phi_ft.slice(nt) = *(fft.mat_out);
         }
 
         // the FT'ed correlation function is given by the squared modulus of the 
@@ -449,18 +460,21 @@ void test_corr_ft() {
     params.opdim = 2;
     PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m);
 
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     PhiCorrelations corr_fft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    computeCorrelations_fft(corr_fft, config, params);
+    FFT_workspace fft(params);
+    
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+    computeCorrelations_fft(corr_fft, config, params, fft);
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "corr_fft: "
               << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
               << " microseconds" << std::endl;
 
-    start = std::chrono::steady_clock::now();
     PhiCorrelations corr_full = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
-    computeCorrelations_full(corr_full, config, params);
     PhiCorrelations corr_full_ft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    
+    start = std::chrono::steady_clock::now();
+    computeCorrelations_full(corr_full, config, params);
     slow_ft(corr_full_ft, corr_full, params);
     end = std::chrono::steady_clock::now();
     std::cout << "corr_full & corr_full_ft: "

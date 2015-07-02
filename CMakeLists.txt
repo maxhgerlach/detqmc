@@ -94,6 +94,7 @@ if (${CHEOPS_FOUND})
   set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.8.2/bin/gcc")
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_GCC_LOCATION_FLAGS}")
+  set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "/opt/rrzk/compiler/gnu/4.8.2/lib64")
 endif (${CHEOPS_FOUND})
 
 
@@ -213,7 +214,6 @@ if (${CHEOPS_FOUND})
   set(ARMADILLO_LIBRARIES
     "-lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -liomp5 -lpthread")
   # do not link -lgfortran
-  set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "/opt/rrzk/compiler/gnu/4.6.4/lib64")
 else (${CHEOPS_FOUND})
   if (${L71_FOUND})
     set(ARMADILLO_LIBRARIES
