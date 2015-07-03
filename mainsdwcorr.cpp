@@ -13,6 +13,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#include "boost/filesystem.hpp"
 #include "boost/program_options.hpp"
 #pragma GCC diagnostic pop
 #include "exceptions.h"
@@ -497,9 +498,51 @@ void test_corr_ft() {
 }
 
 
-int main(int argc, char *argv[]) {
-    test_corr_ft();
+uintmax_t get_file_size(const std::string& filename) {
+    return boost::filesystem::file_size(filename);
+}
 
+ConfigParameters get_conf_params(const std::string& metadata_filename) {
+    ConfigParameters conf_params;
+    MetadataMap meta = readOnlyMetadata(metadata_filename);
+    getMeta(meta, "L", conf_params.L);
+    getMeta(meta, "m", conf_params.m);
+    getMeta(meta, "dtau", conf_params.dtau);
+    getMeta(meta, "opdim", conf_params.opdim);
+    conf_params.N = conf_params.L * conf_params.L;
+    return conf_params;
+}
+
+
+int main(int argc, char *argv[]) {
+    //parse command line options
+    namespace po = boost::program_options;
+    po::options_description options("Options for extraction of data from config binarystream");
+    options.add_options()
+        ("help", "print help on allowed options and exit")
+        ("version,v", "print version information (git hash, build date) and exit")
+        ("test", "run a simple test routine")
+        ;
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, options), vm);
+    po::notify(vm);
+
+    //handle simple options
+    if (vm.count("help")) {
+        std::cout << options << std::endl;
+        return 0;
+    }
+    if (vm.count("version")) {
+        std::cout << "Build info:\n"
+                  << metadataToString(collectVersionInfo())
+                  << std::endl;
+        return 0;
+    }
+    if (vm.count("test")) {
+        test_corr_ft();
+        return 0;
+    }
+    
     return 0;
 }
 
