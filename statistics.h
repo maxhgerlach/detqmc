@@ -124,8 +124,8 @@ T jackknife(
         const std::vector<T>& blockValues, T blockAverage, const T& zeroValue = T()) {
     using std::pow;
     using std::sqrt;
-    using arma::pow;
-    using arma::sqrt;
+    using arma::pow;            // element-wise
+    using arma::sqrt;           // element-wise
     uint32_t bc = static_cast<uint32_t>(blockValues.size());
     T squaredDeviation = zeroValue;
     for (uint32_t b = 0; b < bc; ++b) {
@@ -134,20 +134,27 @@ T jackknife(
     return sqrt((double(bc - 1) / double(bc)) * squaredDeviation);
 }
 
+
 //Take a vector of block values, calculate their average and estimate
 //their error using standard jackknife
 template<typename T> void jackknife(T& outBlockAverage, T& outBlockError,
-                                    const std::vector<T>& blockValues) {
+                                    const std::vector<T>& blockValues,
+                                    const T& zeroValue = T()) {
+    using std::pow;
+    using std::sqrt;
+    using arma::pow;            // element-wise
+    using arma::sqrt;           // element-wise
     std::size_t bc = blockValues.size();
+    outBlockAverage = zeroValue;
     for (std::size_t b = 0; b < bc; ++b) {
         outBlockAverage += blockValues[b];
     }
-    outBlockAverage /= static_cast<T>(bc);
-    T squaredDeviation = 0;
+    outBlockAverage /= double(bc);
+    T squaredDeviation = zeroValue;
     for (std::size_t b = 0; b < bc; ++b) {
-        squaredDeviation += std::pow(outBlockAverage - blockValues[b], 2);
+        squaredDeviation += pow(outBlockAverage - blockValues[b], 2);
     }
-    outBlockError = std::sqrt(double(bc - 1) / double(bc) * squaredDeviation);
+    outBlockError = sqrt(double(bc - 1) / double(bc) * squaredDeviation);
 }
 
 
