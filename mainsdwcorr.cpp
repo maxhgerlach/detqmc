@@ -19,6 +19,7 @@
 #include "exceptions.h"
 #include "metadata.h"
 #include "git-revision.h"
+#include "statistics.h"
 #include "tools.h"
 
 
@@ -59,6 +60,18 @@ struct ConfigParameters {
     uint32_t m;                 // number of timeslices
     num dtau;                   // beta = m * dtau
     uint32_t opdim;             // 1, 2, or 3
+
+    bool operator==(const ConfigParameters& other) const {
+        return (L == other.L) and
+               (N == other.N) and
+               (m == other.m) and
+               (opdim == opdim) and
+               (std::abs(dtau - other.dtau) < 1E-7);
+    }
+    bool operator!=(const ConfigParameters& other) const {
+        return not operator==(other);
+    }
+
 };
 
 // return size of sample in units of doubles
@@ -402,8 +415,8 @@ struct FFT_workspace {
           fft_temporal(vec_in, vec_out, +1),
           fft_spatial(mat_in, mat_out, -1)
     {
-        vec_in ->zeros();
-        mat_in ->zeros();
+        vec_in->zeros();
+        mat_in->zeros();
     }
     
 };
@@ -513,8 +526,139 @@ ConfigParameters get_conf_params(const std::string& metadata_filename) {
     return conf_params;
 }
 
+ConfigParameters get_conf_params_for_directories(const std::vector< std::string >& input_directories) {
+    namespace fs = boost::filesystem;
+    ConfigParameters params;
+    bool first = false;
+    for (const auto& d : input_directories) {
+        ConfigParameters d_params = get_conf_params((fs::path(d) / "info.dat").string());
+        if (not first) {
+            params = d_params;
+            first = true;
+        } else {
+            if (params != d_params) {
+                throw_GeneralError("configuration parameters do not agree");
+            }
+        }
+    }
+    return params;
+}
+
+std::vector<uintmax_t> get_sample_counts_for_directories(const std::vector< std::string >& input_directories,
+                                                         const ConfigParameters& params) {
+    namespace fs = boost::filesystem;
+    // get number of samples for each directory
+    std::vector<uintmax_t> sample_counts;
+    uintmax_t sample_size = get_size_of_one_sample(params);
+    for (const auto& d : input_directories) {
+        std::string f = (fs::path(d) / "configs-phi.binarystream").string();
+        uintmax_t file_size = get_file_size(f);
+        if (file_size % (sample_size * sizeof(double)) != 0) {
+            throw_GeneralError("unexpected binarystream file size");
+        }
+        uintmax_t this_sample_count = file_size / (sample_size * sizeof(double));
+        sample_counts.push_back(this_sample_count);
+    }
+    return sample_counts;
+}
+
+
+// main entry for work
+void process(const std::vector< std::string >& input_directories,
+             const std::string& output_directory,
+             uint32_t discard = 0, uint32_t jkblocks = 1) {
+    namespace fs = boost::filesystem;
+
+    uint32_t dir_count = input_directories.size();
+
+    ConfigParameters params = get_conf_params_for_directories(input_directories);
+
+    std::vector<uintmax_t> sample_counts = get_sample_counts_for_directories(
+        input_directories, params);
+
+    // we leave out directories where we do not have more than $discard samples
+    std::vector<uintmax_t> effective_sample_counts;
+    uintmax_t total_sample_count = 0;
+    for (uint32_t i = 0; i < dir_count; ++i) {
+        uintmax_t effective_count = 0;
+        if (sample_counts[i] > discard) {
+            effective_count = sample_counts[i] - discard;
+        }
+        effective_sample_counts.push_back(effective_count);
+        total_sample_count += effective_count;
+    }
+
+    // set up fft workspace
+    FFT_workspace fft(params);
+
+    // go through all input directories one after the other and
+    // compute correlations for one sample after the other.  Find out,
+    // what overall jackknife block we are at, and do the averages
+    // correspondingly.
+    uintmax_t jkblock_size = total_sample_count / jkblocks;
+    // if jkblocks is not a divisor or total_sample_count, some data at the end will be discarded (just a small bit)
+    uintmax_t total_sample_count_jk = jkblocks * jkblock_size;
+    PhiConfig cur_config;
+    PhiCorrelations cur_corr_ft;
+    std::vector<PhiCorrelations> jkblock_corr_ft(
+        jkblocks, arma::zeros<PhiCorrelations>(params.L, params.L, params.m));
+    uintmax_t effective_sample_counter = 0;
+    
+    for (uint32_t i = 0; i < dir_count; ++i) {
+        if (effective_sample_counts[i] == 0) {
+            continue;
+        }
+        
+        std::string d = input_directories[i];
+        std::string f = (fs::path(d) / "configs-phi.binarystream").string();
+        std::ifstream binary_float_input(f.c_str(),
+                                         std::ios::in | std::ios::binary);
+        if (not binary_float_input) {
+            throw_ReadError(f);
+        }
+        uintmax_t this_directory_sample_counter = 0;
+        while (readSystemConfiguration(cur_config, binary_float_input, params)) {
+            if (effective_sample_counter > total_sample_count_jk) {
+                // too many samples, skip the remaining
+                break;
+            }
+            if (this_directory_sample_counter < discard) {
+                // discard some initial configurations
+                continue;
+            } else {
+                computeCorrelations_fft(cur_corr_ft, cur_config,
+                                        params, fft);
+                uintmax_t cur_block = effective_sample_counter / jkblock_size;
+                for (uint32_t jb = 0; jb < jkblocks; ++jb) {
+                    if (jb != cur_block) {
+                        jkblock_corr_ft[jb] += cur_corr_ft;
+                    }
+                }
+                ++effective_sample_counter;
+            }
+            ++this_directory_sample_counter;
+        }
+    }
+
+    for (auto& single_block_corr_ft : jkblock_corr_ft) {
+        single_block_corr_ft /= double((jkblocks - 1) * jkblock_size);
+    }
+
+    // average and error bars
+    PhiCorrelations avg_corr_ft, err_corr_ft;
+    jackknife(avg_corr_ft, err_corr_ft,
+              jkblock_corr_ft,
+              arma::zeros<PhiCorrelations>(params.L, params.L, params.m).eval());
+
+}
+
 
 int main(int argc, char *argv[]) {
+    std::vector< std::string > input_directories;
+    std::string output_directory;
+    uint32_t discard = 0;
+    uint32_t jkblocks = 1;
+    
     //parse command line options
     namespace po = boost::program_options;
     po::options_description options("Options for extraction of data from config binarystream");
@@ -522,6 +666,14 @@ int main(int argc, char *argv[]) {
         ("help", "print help on allowed options and exit")
         ("version,v", "print version information (git hash, build date) and exit")
         ("test", "run a simple test routine")
+        ("input", po::value< std::vector< std::string > >(&input_directories)->multitoken(),
+         "list of directories cotaining input data (multiple simindex for the same data point)")
+        ("output", po::value< std::string >(&output_directory),
+         "directory where to put results")
+        ("discard,d", po::value<uint32_t>(&discard)->default_value(0),
+         "number of initial configuration samples to discard (additional thermalization)")
+        ("jkblocks,j", po::value<uint32_t>(&jkblocks)->default_value(1),
+         "number jackknife blocks for estimating error bars")
         ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, options), vm);
@@ -542,6 +694,17 @@ int main(int argc, char *argv[]) {
         test_corr_ft();
         return 0;
     }
+
+    if (not (vm.count("input") or vm.count("output"))) {
+        std::cerr << "pass --input and --output options\n";
+        return 1;
+    }
+         
+    std::cout << "input: ";
+    for (const auto& s : input_directories) {
+        std::cout << s << " ";
+    }
+    std::cout << std::endl;
     
     return 0;
 }
