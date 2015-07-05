@@ -251,9 +251,9 @@ arma::Cube<Val> transpose_3d(const arma::Cube<Val>& orig) {
     arma::Cube<Val> result(orig.n_slices,
                            orig.n_cols,
                            orig.n_rows); // flipped dimensions
-    for (int s = 0; s < orig.n_slices; ++s) {
-        for (int r = 0; r < orig.n_rows; ++r) {
-            for (int c = 0; c < orig.n_cols; ++c) {
+    for (uint32_t s = 0; s < orig.n_slices; ++s) {
+        for (uint32_t r = 0; r < orig.n_rows; ++r) {
+            for (uint32_t c = 0; c < orig.n_cols; ++c) {
                 result(s, c, r) = orig(r, c, s);
             }
         }

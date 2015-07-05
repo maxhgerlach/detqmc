@@ -445,12 +445,12 @@ add_executable(extractfrombinarystream
   ${extractfrombinarystream_SRC})
 target_link_libraries(extractfrombinarystream general_common boost_program_options ${EXTRA_LIBRARIES})
 
-set(sdwcorr_SRC mainsdwcorr.cpp)
+set(sdwcorr_SRC mainsdwcorr.cpp cnpy.cpp)
 add_executable(sdwcorr
   ${sdwcorr_SRC})
 target_link_libraries(sdwcorr general_common
   boost_program_options boost_filesystem boost_system
-  ${ARMADILLO_LIBRARIES} ${FFTW3_LIBRARIES} ${EXTRA_LIBRARIES})
+  "z" ${ARMADILLO_LIBRARIES} ${FFTW3_LIBRARIES} ${EXTRA_LIBRARIES})
 
 
 set(tauintsimple_SRC maintauintsimple.cpp)

@@ -13,8 +13,11 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "boost/filesystem.hpp"
 #include "boost/program_options.hpp"
+#include "cnpy.h"
 #pragma GCC diagnostic pop
 #include "exceptions.h"
 #include "metadata.h"
@@ -569,7 +572,7 @@ void process(const std::vector< std::string >& input_directories,
              uint32_t discard = 0, uint32_t jkblocks = 1) {
     namespace fs = boost::filesystem;
 
-    uint32_t dir_count = input_directories.size();
+    uintmax_t dir_count = input_directories.size();
 
     ConfigParameters params = get_conf_params_for_directories(input_directories);
 
@@ -650,6 +653,31 @@ void process(const std::vector< std::string >& input_directories,
               jkblock_corr_ft,
               arma::zeros<PhiCorrelations>(params.L, params.L, params.m).eval());
 
+
+    // wavevector and frequency values matching the Fourier transforms
+    VecNum k_values = get_k_values(params.L, 1.0);
+    unsigned int k_values_shape[] = {k_values.n_elem};
+    VecNum omega_values = get_k_values(params.m, params.dtau);
+    unsigned int omega_values_shape[] = {omega_values.n_elem};
+
+    
+    // Save results to a Numpy npz file, first convert cubes to
+    // C-order.  The package Cnpy does not readily support writing
+    // C-ordered data.
+    PhiCorrelations avg_corr_ft_c_ordered = transpose_3d(avg_corr_ft);
+    PhiCorrelations err_corr_ft_c_ordered = transpose_3d(err_corr_ft);
+    unsigned int corr_ft_c_ordered_shape[] = {avg_corr_ft.n_slices, avg_corr_ft.n_cols, avg_corr_ft.n_rows};
+    fs::path od(output_directory);
+    fs::create_directories(od);
+    std::string f = (od / "corr_ft.npz").string(); 
+    cnpy::npz_save(f, "k_values",
+                   k_values.memptr(), k_values_shape, 1, "w");
+    cnpy::npz_save(f, "omega_values",
+                   omega_values.memptr(), omega_values_shape, 1, "a");
+    cnpy::npz_save(f, "avg_corr_ft__ky_kx_omega", 
+                   avg_corr_ft_c_ordered.memptr(), corr_ft_c_ordered_shape, 3, "a");
+    cnpy::npz_save(f, "err_corr_ft__ky_kx_omega", 
+                   err_corr_ft_c_ordered.memptr(), corr_ft_c_ordered_shape, 3, "a");
 }
 
 
