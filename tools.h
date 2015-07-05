@@ -243,6 +243,26 @@ void setVectorImag(arma::Col<num>& out, const VectorInImagPart& in) {
 }
 
 
+// transpose a Cube in all three indices.  The (linear) representation
+// in memory of the result corresponds is the C-ordered representation
+// of a Fortran-ordered original.
+template<typename Val>
+arma::Cube<Val> transpose_3d(const arma::Cube<Val>& orig) {
+    arma::Cube<Val> result(orig.n_slices,
+                           orig.n_cols,
+                           orig.n_rows); // flipped dimensions
+    for (int s = 0; s < orig.n_slices; ++s) {
+        for (int r = 0; r < orig.n_rows; ++r) {
+            for (int c = 0; c < orig.n_cols; ++c) {
+                result(s, c, r) = orig(r, c, s);
+            }
+        }
+    }
+    return result;
+}
+
+
+
 // given a container of numeric values, find the index of the element
 // that is numerically nearest to a value to search for.  This does
 // *not* require the container to be sorted.
