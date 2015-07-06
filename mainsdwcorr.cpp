@@ -411,7 +411,7 @@ struct FFT_workspace {
     FFT2d fft_spatial;
 
     FFT_workspace(const ConfigParameters& conf_params)
-        : vec_in(new VecCpx(conf_params.m)),
+        : vec_in (new VecCpx(conf_params.m)),
           vec_out(new VecCpx(conf_params.m)),
           mat_in (new MatCpx(conf_params.L, conf_params.L)),          
           mat_out(new MatCpx(conf_params.L, conf_params.L)),
@@ -563,6 +563,11 @@ std::vector<uintmax_t> get_sample_counts_for_directories(const std::vector< std:
         sample_counts.push_back(this_sample_count);
     }
     return sample_counts;
+}
+
+
+void debug_print_slice(const PhiCorrelations& cube, uint32_t slc) {
+    cube.slice(slc).eval().print();
 }
 
 
