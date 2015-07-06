@@ -694,6 +694,14 @@ void process(const std::vector< std::string >& input_directories,
                    avg_corr_ft_c_ordered.memptr(), corr_ft_c_ordered_shape, 3, "a");
     cnpy::npz_save(f, "err_corr_ft__ky_kx_omega", 
                    err_corr_ft_c_ordered.memptr(), corr_ft_c_ordered_shape, 3, "a");
+
+    // writeout some info
+    std::string finfo = (od / "corr_ft-info.dat").string();
+    MetadataMap info;
+    info["sdwcorr-discard"] = numToString(discard);
+    info["sdwcorr-jkblocks"] = numToString(jkblocks);
+    info["sdwcorr-totalsamples"] = numToString(total_sample_count_jk);
+    writeOnlyMetaData(finfo, info, "sdwcorr info");
 }
 
 
