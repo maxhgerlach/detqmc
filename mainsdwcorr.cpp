@@ -570,6 +570,8 @@ std::vector<uintmax_t> get_sample_counts_for_directories(const std::vector< std:
 void process(const std::vector< std::string >& input_directories,
              const std::string& output_directory,
              uint32_t discard = 0, uint32_t jkblocks = 1) {
+    if (jkblocks == 0) jkblocks = 1;
+
     namespace fs = boost::filesystem;
 
     uintmax_t dir_count = input_directories.size();
@@ -631,28 +633,36 @@ void process(const std::vector< std::string >& input_directories,
             } else {
                 computeCorrelations_fft(cur_corr_ft, cur_config,
                                         params, fft);
-                uintmax_t cur_block = effective_sample_counter / jkblock_size;
-                for (uint32_t jb = 0; jb < jkblocks; ++jb) {
-                    if (jb != cur_block) {
-                        jkblock_corr_ft[jb] += cur_corr_ft;
+                if (jkblocks > 1) {
+                    uintmax_t cur_block = effective_sample_counter / jkblock_size;
+                    for (uint32_t jb = 0; jb < jkblocks; ++jb) {
+                        if (jb != cur_block) {
+                            jkblock_corr_ft[jb] += cur_corr_ft;
+                        }
                     }
+                } else {
+                    jkblock_corr_ft[0] = cur_corr_ft;
                 }
                 ++effective_sample_counter;
             }
             ++this_directory_sample_counter;
         }
     }
-
-    for (auto& single_block_corr_ft : jkblock_corr_ft) {
-        single_block_corr_ft /= double((jkblocks - 1) * jkblock_size);
-    }
-
+    
     // average and error bars
     PhiCorrelations avg_corr_ft, err_corr_ft;
-    jackknife(avg_corr_ft, err_corr_ft,
-              jkblock_corr_ft,
-              arma::zeros<PhiCorrelations>(params.L, params.L, params.m).eval());
-
+    
+    if (jkblocks > 1) {
+        for (auto& single_block_corr_ft : jkblock_corr_ft) {
+            single_block_corr_ft /= double((jkblocks - 1) * jkblock_size);
+        }
+        jackknife(avg_corr_ft, err_corr_ft,
+                  jkblock_corr_ft,
+                  arma::zeros<PhiCorrelations>(params.L, params.L, params.m).eval());
+    } else {
+        avg_corr_ft = jkblock_corr_ft[0];
+        err_corr_ft.zeros(params.L, params.L, params.m);
+    }
 
     // wavevector and frequency values matching the Fourier transforms
     VecNum k_values = get_k_values(params.L, 1.0);
@@ -728,11 +738,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
          
-    std::cout << "input: ";
+    std::cout << "processing input: ";
     for (const auto& s : input_directories) {
         std::cout << s << " ";
     }
     std::cout << std::endl;
+
+    process(input_directories, output_directory, discard, jkblocks);
     
     return 0;
 }
