@@ -646,8 +646,9 @@ void process(const std::vector< std::string >& input_directories,
                         }
                     }
                 } else {
-                    jkblock_corr_ft[0] = cur_corr_ft;
+                    jkblock_corr_ft[0] += cur_corr_ft;
                 }
+
                 ++effective_sample_counter;
             }
             ++this_directory_sample_counter;
@@ -665,7 +666,7 @@ void process(const std::vector< std::string >& input_directories,
                   jkblock_corr_ft,
                   arma::zeros<PhiCorrelations>(params.L, params.L, params.m).eval());
     } else {
-        avg_corr_ft = jkblock_corr_ft[0];
+        avg_corr_ft = jkblock_corr_ft[0] / double(total_sample_count_jk);
         err_corr_ft.zeros(params.L, params.L, params.m);
     }
 
