@@ -179,7 +179,16 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
   #  link_directories("$ENV{HOME}/packages/duma_2_5_15")
   #  include_directories("$ENV{HOME}/packages/duma_2_5_15")
   #  set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} duma)
+
+if (${CHEOPS_FOUND})
+  # disable GLIBCXX debug version on the cluster, where we use the Intel compiler
+  # -> some code using std::map::operator[] failed to build
+  add_definitions(-DMAX_DEBUG)
+else (${CHEOPS_FOUND})
   add_definitions(-D_GLIBCXX_DEBUG -DMAX_DEBUG)
+endif (${CHEOPS_FOUND})
+
+
 endif(CMAKE_BUILD_TYPE MATCHES "Debug")
 
 # TODO: make sure only Intel compiler used on Cheops
