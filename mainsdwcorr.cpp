@@ -628,11 +628,12 @@ void process(const std::vector< std::string >& input_directories,
         }
         uintmax_t this_directory_sample_counter = 0;
         while (readSystemConfiguration(cur_config, binary_float_input, params)) {
+            ++this_directory_sample_counter;
             if (effective_sample_counter > total_sample_count_jk) {
                 // too many samples, skip the remaining
                 break;
             }
-            if (this_directory_sample_counter < discard) {
+            if (this_directory_sample_counter <= discard) {
                 // discard some initial configurations
                 continue;
             } else {
@@ -651,7 +652,6 @@ void process(const std::vector< std::string >& input_directories,
 
                 ++effective_sample_counter;
             }
-            ++this_directory_sample_counter;
         }
     }
     
