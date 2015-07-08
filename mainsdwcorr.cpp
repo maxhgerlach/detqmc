@@ -680,9 +680,17 @@ void process(const std::vector< std::string >& input_directories,
     // Save results to a Numpy npz file, first convert cubes to
     // C-order.  The package Cnpy does not readily support writing
     // C-ordered data.
+
+    // avg_corr_ft is a (Ly,Lx,m) array [Fortran-interpreted memory]
+    // 
+    // transpose_3d(avg_corr_ft) is a (m,Lx,Ly) array if the memory is
+    // Fortran-interpreted.  With C interpretation it is a (Ly,Lx,m)
+    // array. -> use the latter as the shape for the numpy export.
+
     PhiCorrelations avg_corr_ft_c_ordered = transpose_3d(avg_corr_ft);
     PhiCorrelations err_corr_ft_c_ordered = transpose_3d(err_corr_ft);
-    unsigned int corr_ft_c_ordered_shape[] = {avg_corr_ft.n_slices, avg_corr_ft.n_cols, avg_corr_ft.n_rows};
+//    unsigned int corr_ft_c_ordered_shape[] = {avg_corr_ft.n_slices, avg_corr_ft.n_cols, avg_corr_ft.n_rows};
+    unsigned int corr_ft_c_ordered_shape[] = {avg_corr_ft.n_rows, avg_corr_ft.n_cols, avg_corr_ft.n_slices};
     fs::path od(output_directory);
     fs::create_directories(od);
     std::string f = (od / "corr_ft.npz").string(); 

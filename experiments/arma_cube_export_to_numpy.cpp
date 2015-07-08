@@ -45,8 +45,5 @@ int main() {
     const unsigned int shape[] = {nz,ny,nx};
     cnpy::npy_save("test.npy",transp.memptr(),shape,3,"w");
 
-
-    
-
     return 0;
 }
