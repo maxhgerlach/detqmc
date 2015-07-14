@@ -15,6 +15,16 @@ if ("${CHEOPS_POSITION}" LESS 0)
 else ()
   set(CHEOPS_FOUND "TRUE")
 endif ()
+# some specific settings for the Jureca cluster.
+set (FZ_JUELICH_ID_FILE "/etc/FZJ/systemname")
+if (EXISTS "${FZ_JUELICH_ID_FILE}")
+  file (STRINGS "${FZ_JUELICH_ID_FILE}" FZ_JUELICH_SYSTEMNAME)
+  if (${FZ_JUELICH_SYSTEMNAME} STREQUAL "jureca")
+    set(JURECA_FOUND "TRUE")
+  else ()
+    set(JURECA_FOUND "FALSE")
+  endif ()
+endif ()
 # some specific settings for the l71 work station:
 string(FIND "${HOST_NAME}" "l71" L71_POSITION)
 if ("${L71_POSITION}" LESS 0)
@@ -23,11 +33,11 @@ else ()
   set(L71_FOUND "TRUE")
 endif ()
 # some specific settings for the Thinkpad notebook:
-string(FIND "${HOST_NAME}" "max-ThinkPad-X220" THINKPAD_POSITION)
-if ("${THINKPAD_POSITION}" LESS 0)
-  set(THINKPAD_FOUND "FALSE")
+string(FIND "${HOST_NAME}" "max-ThinkPad-X220" MAX_THINKPAD_POSITION)
+if ("${MAX_THINKPAD_POSITION}" LESS 0)
+  set(MAX_THINKPAD_FOUND "FALSE")
 else ()
-  set(THINKPAD_FOUND "TRUE")
+  set(MAX_THINKPAD_FOUND "TRUE")
 endif ()
 # some specific settings for thp domain computers:
 execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
@@ -43,15 +53,20 @@ endif ()
 # g++ 4.8 and 4.9 currently still have a bug preventing them to
 # compile this code. So on the Thinkpad just use g++-4.7 manually
 # unless we prefer Clang.
+# On the clusters use Intel compiler
 option(USE_CLANG
   "Use the clang compiler" OFF)
 if (${USE_CLANG})
   set(CMAKE_C_COMPILER "clang-3.4")
   set(CMAKE_CXX_COMPILER "clang++-3.4")  
 else()
-  if (${THINKPAD_FOUND})
+  if (${MAX_THINKPAD_FOUND})
     set(CMAKE_C_COMPILER "gcc-4.7")
     set(CMAKE_CXX_COMPILER "g++-4.7")
+  elseif (${CHEOPS_FOUND} OR ${JURECA_FOUND})
+    set(USING_INTEL_COMPILER "TRUE")
+    set(CMAKE_C_COMPILER "icc")
+    set(CMAKE_CXX_COMPILER "icpc")
   endif ()
 endif ()
 
@@ -89,7 +104,7 @@ endif ()
 
 
 # Cheops, Intel compiler
-if (${CHEOPS_FOUND})
+if (${CHEOPS_FOUND} and ${USING_INTEL_COMPILER})
   # set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.6.4/bin/gcc")
   set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.8.2/bin/gcc")
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
@@ -166,7 +181,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 # TODO: support option to enable timing
 
 # TODO: make sure only Intel compiler used on Cheops
-if (${CHEOPS_FOUND})
+if (${USING_INTEL_COMPILER})
   set(EXTRA_FLAGS_DEBUG "-g -O0")
   # floating-point traps for division by zero, invalid operation, and overflow
 else ()
@@ -180,19 +195,17 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
   #  include_directories("$ENV{HOME}/packages/duma_2_5_15")
   #  set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} duma)
 
-if (${CHEOPS_FOUND})
+  if (${CHEOPS_FOUND} AND ${USING_INTEL_COMPILER})
   # disable GLIBCXX debug version on the cluster, where we use the Intel compiler
   # -> some code using std::map::operator[] failed to build
-  add_definitions(-DMAX_DEBUG)
-else ()
-  add_definitions(-D_GLIBCXX_DEBUG -DMAX_DEBUG)
+    add_definitions(-DMAX_DEBUG)
+  else ()
+    add_definitions(-D_GLIBCXX_DEBUG -DMAX_DEBUG)
+  endif ()
 endif ()
 
 
-endif ()
-
-# TODO: make sure only Intel compiler used on Cheops
-if (${CHEOPS_FOUND})
+if (${USING_INTEL_COMPILER})
   set(EXTRA_FLAGS_RELEASE
     "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div")
 else ()
@@ -219,9 +232,11 @@ endif ()
 
 # External libraries -- Armadillo
 set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "$ENV{HOME}/lib" "$ENV{HOME}/opt/lib")
-if (${CHEOPS_FOUND})
+if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
+  # set(ARMADILLO_LIBRARIES
+  #   "-lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -liomp5 -lpthread")
   set(ARMADILLO_LIBRARIES
-    "-lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -liomp5 -lpthread")
+      "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread")
   # do not link -lgfortran
 else ()
   if (${L71_FOUND})
@@ -257,7 +272,7 @@ link_directories(${EXTRA_LIBRARY_LOCATIONS})
 option(USE_PYTOOLS
   "include some python routines for interactivity (does not work on Cheops cluster)" ON)
 
-if (${CHEOPS_FOUND})
+if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
   set(USE_PYTOOLS OFF)
 endif ()
 
