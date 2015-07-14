@@ -12,31 +12,31 @@ site_name(HOST_NAME)
 string(FIND "${HOST_NAME}" "cheops" CHEOPS_POSITION)
 if ("${CHEOPS_POSITION}" LESS 0)
   set(CHEOPS_FOUND "FALSE")
-else ("${CHEOPS_POSITION}" LESS 0)
+else ()
   set(CHEOPS_FOUND "TRUE")
-endif ("${CHEOPS_POSITION}" LESS 0)
+endif ()
 # some specific settings for the l71 work station:
 string(FIND "${HOST_NAME}" "l71" L71_POSITION)
 if ("${L71_POSITION}" LESS 0)
   set(L71_FOUND "FALSE")
-else ("${L71_POSITION}" LESS 0)
+else ()
   set(L71_FOUND "TRUE")
-endif ("${L71_POSITION}" LESS 0)
+endif ()
 # some specific settings for the Thinkpad notebook:
 string(FIND "${HOST_NAME}" "max-ThinkPad-X220" THINKPAD_POSITION)
 if ("${THINKPAD_POSITION}" LESS 0)
   set(THINKPAD_FOUND "FALSE")
-else ("${THINKPAD_POSITION}" LESS 0)
+else ()
   set(THINKPAD_FOUND "TRUE")
-endif ("${THINKPAD_POSITION}" LESS 0)
+endif ()
 # some specific settings for thp domain computers:
 execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
 string(FIND "${DOMAIN_NAME}" "thp" THP_POSITION)
 if ("${THP_POSITION}" LESS 0)
   set(THP_DOMAIN "FALSE")
-else ("${THP_POSITION}" LESS 0)
+else ()
   set(THP_DOMAIN "TRUE")
-endif ("${THP_POSITION}" LESS 0)
+endif ()
 
 
 
@@ -48,12 +48,12 @@ option(USE_CLANG
 if (${USE_CLANG})
   set(CMAKE_C_COMPILER "clang-3.4")
   set(CMAKE_CXX_COMPILER "clang++-3.4")  
-else (${USE_CLANG})
+else()
   if (${THINKPAD_FOUND})
     set(CMAKE_C_COMPILER "gcc-4.7")
     set(CMAKE_CXX_COMPILER "g++-4.7")
-  endif (${THINKPAD_FOUND})
-endif (${USE_CLANG})
+  endif ()
+endif ()
 
 
 project (Det)
@@ -63,7 +63,7 @@ option(BUILD_TIMING
   "include timing routines into the code" OFF)
 if (${BUILD_TIMING})
   add_definitions("-DTIMING")
-endif (${BUILD_TIMING})  
+endif ()  
 
 
 
@@ -76,15 +76,15 @@ include_directories("${PROJECT_SOURCE_DIR}"
 # CLang THP workarounds
 if (${USE_CLANG} AND ${THP_DOMAIN})
   add_definitions("-D__extern_always_inline=inline")
-endif (${USE_CLANG} AND ${THP_DOMAIN})
+endif ()
 
 # GCC 4.6.3 on THP workarounds
 if (NOT ${USE_CLANG} AND ${THP_DOMAIN})
   # prevent segfaults -O3 compilation
   set(OPTIMIZATION_LEVEL "-O2")
-else (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+else()
   set(OPTIMIZATION_LEVEL "-O3")  
-endif (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+endif ()
 
 
 
@@ -95,7 +95,7 @@ if (${CHEOPS_FOUND})
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_GCC_LOCATION_FLAGS}")
   set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "/opt/rrzk/compiler/gnu/4.8.2/lib64")
-endif (${CHEOPS_FOUND})
+endif ()
 
 
 
@@ -110,9 +110,9 @@ find_package(MPI)
 # MPI_<lang>_LIBRARIES       All libraries to link MPI programs against
 if (NOT ${MPI_CXX_FOUND})
   message("No MPI CXX compiler found!")
-else (NOT ${MPI_CXX_FOUND})
+else ()
   include_directories(${MPI_CXX_INCLUDE_PATH})
-endif (NOT ${MPI_CXX_FOUND})
+endif ()
 # -> remember to link ${MPI_CXX_LIBRARIES} for the respective
 #    executables
 # -> remember to set additional flags ${MPI_CXX_COMPILE_FLAGS},
@@ -137,9 +137,9 @@ if (${USE_DUMA})
   set(EXTRA_LIBRARIES "${EXTRA_LIBRARIES}" -lduma)
   include_directories("$ENV{HOME}/packages/duma_2_5_15")
   add_definitions(-DDUMA_NO_DUMA) #test
-else (${USE_DUMA})
+else ()
   add_definitions(-DDUMA_NO_DUMA)
-endif (${USE_DUMA})
+endif ()
 
 #message("${EXTRA_LIBRARY_LOCATIONS}")
 
@@ -149,12 +149,12 @@ endif (${USE_DUMA})
 # -march settings
 if (${USE_CLANG} OR NOT ${THP_DOMAIN})
   set(MARCH_FLAGS "-march=native")
-else (${USE_CLANG} OR NOT ${THP_DOMAIN})
+else ()
   # setting to use instead of --march=native -- to be able to run on Core2 computers in the thp domain
   # use a safer setting
   # [obtained via `cc -march=native -E -v - </dev/null 2>&1 | grep cc1` on l07]
   set(MARCH_FLAGS "-march=core2 -mcx16 -msahf -mno-movbe -mno-aes -mno-pclmul -mno-popcnt -mno-abm -mno-lwp -mno-fma -mno-fma4 -mno-xop -mno-bmi -mno-tbm -mno-avx -mno-sse4.2 -msse4.1 --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=6144 -mtune=core2 -fstack-protector")
-endif (${USE_CLANG} OR NOT ${THP_DOMAIN})
+endif ()
 set(WARNING_FLAGS "-Wall -Winit-self -Wextra -Woverloaded-virtual -Wconversion")
 set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${MARCH_FLAGS} ${WARNING_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++0x")
@@ -169,9 +169,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 if (${CHEOPS_FOUND})
   set(EXTRA_FLAGS_DEBUG "-g -O0")
   # floating-point traps for division by zero, invalid operation, and overflow
-else (${CHEOPS_FOUND})
+else ()
   set(EXTRA_FLAGS_DEBUG "-g -O0")
-endif (${CHEOPS_FOUND})
+endif ()
 set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG}   ${EXTRA_FLAGS_DEBUG}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${EXTRA_FLAGS_DEBUG}")
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -184,27 +184,27 @@ if (${CHEOPS_FOUND})
   # disable GLIBCXX debug version on the cluster, where we use the Intel compiler
   # -> some code using std::map::operator[] failed to build
   add_definitions(-DMAX_DEBUG)
-else (${CHEOPS_FOUND})
+else ()
   add_definitions(-D_GLIBCXX_DEBUG -DMAX_DEBUG)
-endif (${CHEOPS_FOUND})
+endif ()
 
 
-endif(CMAKE_BUILD_TYPE MATCHES "Debug")
+endif ()
 
 # TODO: make sure only Intel compiler used on Cheops
 if (${CHEOPS_FOUND})
   set(EXTRA_FLAGS_RELEASE
     "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div")
-else (${CHEOPS_FOUND})
+else ()
   set(EXTRA_FLAGS_RELEASE
     "${OPTIMIZATION_LEVEL} -fno-strict-aliasing -ffast-math")
-endif (${CHEOPS_FOUND})
+endif ()
 set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_C_FLAGS_RELEASE}   ${EXTRA_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_FLAGS_RELEASE}")
 
 if(CMAKE_BUILD_TYPE MATCHES "Release")
   add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
-endif(CMAKE_BUILD_TYPE MATCHES "Release")
+endif ()
 
 
 set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   ${EXTRA_FLAGS_RELEASE} -g")
@@ -212,7 +212,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${EXTRA_FL
 
 if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
   add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
-endif(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+endif ()
 
 
 
@@ -223,28 +223,28 @@ if (${CHEOPS_FOUND})
   set(ARMADILLO_LIBRARIES
     "-lmkl_intel_lp64 -lmkl_gnu_thread -lmkl_core -liomp5 -lpthread")
   # do not link -lgfortran
-else (${CHEOPS_FOUND})
+else ()
   if (${L71_FOUND})
     set(ARMADILLO_LIBRARIES
       "-llapack -lblas -lgfortran")
-  else (${L71_FOUND})
+  else ()
     set(ARMADILLO_LIBRARIES "-larmadillo")
-  endif (${L71_FOUND})
+  endif ()
   if (${THP_DOMAIN})
     # on thp machines: explicitly link to Lapack, not the Atlas implementation (which is not compatible to Openblas)
     set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "/usr/lib/lapack/")
-  else (${THP_DOMAIN})
-  endif (${THP_DOMAIN})
-endif (${CHEOPS_FOUND})
+  else ()
+  endif ()
+endif ()
 
 
 # FFTW3
 # if (${CHEOPS_FOUND})
 #   # ...
-# else (${CHEOPS_FOUND})
+# else ()
 #   set(FFTW3_LIBRARIES
 #     "-lfftw3")
-# endif (${CHEOPS_FOUND})
+# endif ()
 set(FFTW3_LIBRARIES "-lfftw3")
 
 
@@ -259,15 +259,15 @@ option(USE_PYTOOLS
 
 if (${CHEOPS_FOUND})
   set(USE_PYTOOLS OFF)
-endif (${CHEOPS_FOUND})
+endif ()
 
 if (USE_PYTOOLS)
   set(PYTOOLS_SRC "pytools.cpp")
   set(PYTHON_LIB "-lpython2.7")
-else (USE_PYTOOLS)
+else ()
   set(PYTOOLS_SRC "")
   set(PYTHON_LIB "")
-endif (USE_PYTOOLS)
+endif ()
 
 
 ## foreign code in subdirectories -> have a separate CMakeLists.txt for those
@@ -435,7 +435,7 @@ if ("${MPI_CXX_FOUND}")
     COMPILE_FLAGS "${MPI_CXX_COMPILE_FLAGS}"
     LINK_FLAGS "${MPI_CXX_LINK_FLAGS}")
   
-endif ("${MPI_CXX_FOUND}")
+endif ()
 
 
 set(binarystreamtotext_SRC mainbinarystreamtotext.cpp)
@@ -516,7 +516,7 @@ if(${OPENMP_FOUND})
     set_target_properties(${target} PROPERTIES COMPILE_FLAGS "${OpenMP_CXX_FLAGS}"
                                                LINK_FLAGS    "${OpenMP_CXX_FLAGS}")
   endforeach( target ${MRPT_TARGETS} )                                        
-endif(${OPENMP_FOUND})
+endif ()
 target_link_libraries(mrpt general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 target_link_libraries(mrptbc general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
 target_link_libraries(mrpt-binderratio-intersect general_common boost_filesystem boost_system ${EXTRA_LIBRARIES})
