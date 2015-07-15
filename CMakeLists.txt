@@ -57,30 +57,52 @@ endif ()
 
 
 
-# g++ 4.8 and 4.9 currently still have a bug preventing them to
-# compile this code. So on the Thinkpad just use g++-4.7 manually
-# unless we prefer Clang.
 # On the clusters use Intel compiler
-option(USE_CLANG
+
+option(USE_GNU_COMPILER
+  "Use gcc and g++ (default)" ON)
+
+option(USE_INTEL_COMPILER 
+  "Use Intel compiler" OFF)
+
+option(USE_CLANG_COMPILER
   "Use the clang compiler" OFF)
-if (${USE_CLANG})
-  set(USING_INTEL_COMPILER "FALSE")  
+
+if (${USE_CLANG_COMPILER})
+  message("Using clang/clang++-3.4 compilers")
+  set(USE_GNU_COMPILER "FALSE")
+  if (${USE_INTEL_COMPILER})
+    message(FATAL_ERROR "Specify either clang or Intel compilers")
+  endif()
   set(CMAKE_C_COMPILER "clang-3.4")
-  set(CMAKE_CXX_COMPILER "clang++-3.4")  
-else()
-  if (${MAX_THINKPAD_FOUND})
-    set(CMAKE_C_COMPILER "gcc-4.7")
-    set(CMAKE_CXX_COMPILER "g++-4.7")
-    set(USING_INTEL_COMPILER "FALSE")
-  elseif (${CHEOPS_FOUND} OR ${JURECA_FOUND})
-    set(USING_INTEL_COMPILER "TRUE")
-    set(CMAKE_C_COMPILER "icc")
-    set(CMAKE_CXX_COMPILER "icpc")
-  else ()
-    set(USING_INTEL_COMPILER "FALSE")
-  endif ()
+  set(CMAKE_CXX_COMPILER "clang++-3.4")
 endif ()
 
+if (${USE_INTEL_COMPILER})
+  message("Using Intel icc/icpc compilers")
+  set(USE_GNU_COMPILER "FALSE")
+  if (${USE_CLANG_COMPILER})
+    message(FATAL_ERROR "Specify either clang or Intel compilers")
+  endif()
+  set(CMAKE_C_COMPILER "icc")
+  set(CMAKE_CXX_COMPILER "icpc")
+endif ()
+
+
+if (${USE_GNU_COMPILER})
+  if (${MAX_THINKPAD_FOUND})
+    # g++ 4.8 and 4.9 currently still have a bug preventing them to
+    # compile this code. So on the Thinkpad just use g++-4.7 manually
+    # unless we prefer Clang.
+    message("Using gcc/g++ 4.7 compilers")
+    set(CMAKE_C_COMPILER "gcc-4.7")
+    set(CMAKE_CXX_COMPILER "g++-4.7")
+  else ()
+    message("Using gcc/g++ compilers")
+    set(CMAKE_C_COMPILER "gcc")
+    set(CMAKE_CXX_COMPILER "g++")
+  endif ()
+endif ()
 
 project (Det)
 
@@ -100,12 +122,12 @@ include_directories("${PROJECT_SOURCE_DIR}"
 
 
 # CLang THP workarounds
-if (${USE_CLANG} AND ${THP_DOMAIN})
+if (${USE_CLANG_COMPILER} AND ${THP_DOMAIN})
   add_definitions("-D__extern_always_inline=inline")
 endif ()
 
 # GCC 4.6.3 on THP workarounds
-if (NOT ${USE_CLANG} AND ${THP_DOMAIN})
+if (NOT ${USE_CLANG_COMPILER} AND ${THP_DOMAIN})
   # prevent segfaults -O3 compilation
   set(OPTIMIZATION_LEVEL "-O2")
 else()
@@ -115,7 +137,7 @@ endif ()
 
 
 # Cheops, Intel compiler
-if (${CHEOPS_FOUND} AND ${USING_INTEL_COMPILER})
+if (${CHEOPS_FOUND} AND ${USE_INTEL_COMPILER})
   # set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.6.4/bin/gcc")
   set(EXTRA_GCC_LOCATION_FLAGS "-gcc-name=/opt/rrzk/compiler/gnu/4.8.2/bin/gcc")
   set(CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${EXTRA_GCC_LOCATION_FLAGS}")
@@ -173,7 +195,7 @@ endif ()
 
 # CXX flags:
 # -march settings
-if (${USE_CLANG} OR NOT ${THP_DOMAIN})
+if (${USE_CLANG_COMPILER} OR NOT ${THP_DOMAIN})
   set(MARCH_FLAGS "-march=native")
 else ()
   # setting to use instead of --march=native -- to be able to run on Core2 computers in the thp domain
@@ -191,8 +213,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 
 # TODO: support option to enable timing
 
-# TODO: make sure only Intel compiler used on Cheops
-if (${USING_INTEL_COMPILER})
+if (${USE_INTEL_COMPILER})
   set(EXTRA_FLAGS_DEBUG "-g -O0")
   # floating-point traps for division by zero, invalid operation, and overflow
 else ()
@@ -206,7 +227,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
   #  include_directories("$ENV{HOME}/packages/duma_2_5_15")
   #  set(EXTRA_LIBRARIES ${EXTRA_LIBRARIES} duma)
 
-  if (${CHEOPS_FOUND} AND ${USING_INTEL_COMPILER})
+  if (${CHEOPS_FOUND} AND ${USE_INTEL_COMPILER})
   # disable GLIBCXX debug version on the cluster, where we use the Intel compiler
   # -> some code using std::map::operator[] failed to build
     add_definitions(-DMAX_DEBUG)
@@ -216,7 +237,7 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
 endif ()
 
 
-if (${USING_INTEL_COMPILER})
+if (${USE_INTEL_COMPILER})
   set(EXTRA_FLAGS_RELEASE
     "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div")
 else ()
