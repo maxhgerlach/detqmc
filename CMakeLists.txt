@@ -292,8 +292,12 @@ endif ()
 #   set(FFTW3_LIBRARIES
 #     "-lfftw3")
 # endif ()
-set(FFTW3_LIBRARIES "-lfftw3")
-
+if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
+  # Use Intel's MKL FFTW3 compatibility wrapper
+  set(FFTW3_LIBRARIES ${ARMADILLO_LIBRARIES})
+else ()
+  set(FFTW3_LIBRARIES "-lfftw3")
+endif ()
 
 link_directories(${EXTRA_LIBRARY_LOCATIONS})
 
