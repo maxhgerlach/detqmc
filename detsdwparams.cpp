@@ -96,6 +96,7 @@ void ModelParamsDetSDW::check() {
         }                                       \
     }
     CHECK_POSITIVE(L);
+    CHECK_POSITIVE(repeatWolffPerSweep);
 #undef CHECK_POSITIVE
 #undef IF_NOT_POSITIVE
 
@@ -201,6 +202,9 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     META_INSERT(wolffClusterShiftUpdate);
     if (globalShift or wolffClusterUpdate or wolffClusterShiftUpdate) {
         META_INSERT(globalUpdateInterval);
+    }
+    if (wolffClusterUpdate or wolffClusterShiftUpdate) {
+        META_INSERT(repeatWolffPerSweep);
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT

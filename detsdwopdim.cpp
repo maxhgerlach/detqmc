@@ -3373,7 +3373,11 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
 
     const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
 
-    uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
+    std::vector<uint32_t> cluster_sizes;
+    for (uint32_t c = 0; c < pars.repeatWolffPerSweep; ++c) {
+        uint32_t cluster_size = buildAndFlipCluster(true); // need to update cosh/sinh terms
+        cluster_sizes.push_back(cluster_size);
+    }
 
     num prob_fermion = 1.0;
 
@@ -3409,7 +3413,9 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterUpdate() {
     if (prob_fermion >= 1. or rng.rand01() < prob_fermion) {
         //update accepted
         us.acceptedWolffClusterUpdates += 1;
-        us.addedWolffClusterSize += num(cluster_size);
+        for (uint32_t cluster_size : cluster_sizes) {
+            us.addedWolffClusterSize += num(cluster_size);
+        }
         //std::cout << "accept cluster\n";
     } else {
         //update rejected, restore previous state
@@ -3527,7 +3533,11 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
 
     const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
 
-    uint32_t cluster_size = buildAndFlipCluster(false);
+    std::vector<uint32_t> cluster_sizes;
+    for (uint32_t c = 0; c < pars.repeatWolffPerSweep; ++c) {
+        uint32_t cluster_size = buildAndFlipCluster(false);
+        cluster_sizes.push_back(cluster_size);
+    }
 
     // compute current bosonic weight [after having flipped the cluster]
     num old_scalar_action = phiAction();
@@ -3578,7 +3588,9 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     if (prob >= 1. or rng.rand01() < prob) {
         //update accepted
         us.acceptedWolffClusterShiftUpdates += 1;
-        us.addedWolffClusterSize += num(cluster_size);
+        for (uint32_t cluster_size : cluster_sizes) {
+            us.addedWolffClusterSize += num(cluster_size);
+        }
         //std::cout << "accept cluster and shift\n";
     } else {
         //update rejected, restore previous state
@@ -4171,7 +4183,8 @@ void DetSDW<CB, OPDIM>::thermalizationOver(int processIndex) {
         }
         num avgsize = 0.;
         if (us.acceptedWolffClusterUpdates) {
-            avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterUpdates);
+            avgsize = us.addedWolffClusterSize / num(pars.repeatWolffPerSweep * 
+                                                     us.acceptedWolffClusterUpdates);
         }
         std::cout << prefix
                   << "wolffClusterUpdate acceptance ratio = " << ratio
@@ -4186,7 +4199,8 @@ void DetSDW<CB, OPDIM>::thermalizationOver(int processIndex) {
         }
         num avgsize = 0;
         if (us.acceptedWolffClusterShiftUpdates != 0) {
-            avgsize = us.addedWolffClusterSize / num(us.acceptedWolffClusterShiftUpdates);
+            avgsize = us.addedWolffClusterSize / num(pars.repeatWolffPerSweep *
+                                                     us.acceptedWolffClusterShiftUpdates);
         }
         std::cout << prefix
                   << "wolffClusterShiftUpdate acceptance ratio = " << ratio

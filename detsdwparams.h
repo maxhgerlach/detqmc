@@ -71,6 +71,8 @@ struct ModelParamsDetSDW {
     bool wolffClusterUpdate;       //perform a Wolff single cluster update?
     bool wolffClusterShiftUpdate;  // perform a combined global constant shift and Wolff single cluster update
 
+    uint32_t repeatWolffPerSweep; // how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.  Default: 1
+
     uint32_t repeatUpdateInSlice;  //how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
     std::set<std::string> specified;
@@ -85,7 +87,8 @@ struct ModelParamsDetSDW {
         opdim(3), phi2bosons(false), phiFixed(false), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), weakZflux(false), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
-        globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatUpdateInSlice(),
+        globalShift(), wolffClusterUpdate(), wolffClusterShiftUpdate(), repeatWolffPerSweep(1),
+        repeatUpdateInSlice(),
         specified()
     { }
 
@@ -116,6 +119,7 @@ private:
             & bc_string & bc
             & globalUpdateInterval & globalShift & wolffClusterUpdate
             & wolffClusterShiftUpdate
+            & repeatWolffPerSweep
             & repeatUpdateInSlice
             & specified;
     }

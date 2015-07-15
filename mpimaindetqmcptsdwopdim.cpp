@@ -115,6 +115,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("globalShift", po::value<bool>(&modelpar.globalShift)->default_value(false), "perform global constant shift move")
         ("wolffClusterUpdate", po::value<bool>(&modelpar.wolffClusterUpdate)->default_value(false), "perform global Wolff-like single cluster update")
         ("wolffClusterShiftUpdate", po::value<bool>(&modelpar.wolffClusterShiftUpdate)->default_value(false), "perform global Wolff-like single cluster update combined with the global shift move")
+        ("repeatWolffPerSweep", po::value<uint32_t>(&modelpar.repeatWolffPerSweep)->default_value(1), "how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.  Default: 1")
         ("repeatUpdateInSlice", po::value<uint32_t>(&modelpar.repeatUpdateInSlice)->default_value(1), "how often to repeat updateInSlice for eacht timeslice per sweep, default: 1")
         ;
 
