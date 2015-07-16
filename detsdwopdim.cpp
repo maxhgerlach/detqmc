@@ -169,7 +169,7 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     coshTermCDWl(pars.N, pars.m+1), sinhTermCDWl(pars.N, pars.m+1),
     ad(pars),                   // AdjustmentData
     performedSweeps(0),
-    meanPhi(), normMeanPhi(0),
+    meanPhi(), normMeanPhi(0), phiRhoS_Gs(0), phiRhoS_Gc(0),
     associatedEnergy(0),
     // kgreenXUP(), kgreenYDOWN(), kgreenXDOWN(), kgreenYUP(),
     greenXUPXUP_summed(), greenYDOWNYDOWN_summed(), greenXDOWNXDOWN_summed(), greenYUPYUP_summed(),
@@ -259,7 +259,12 @@ DetSDW<CB, OPDIM>::DetSDW(RngWrapper& rng_, const ModelParams& pars_,
     using std::cref;
     using namespace boost::assign;
     obsScalar += ScalarObservable(cref(normMeanPhi), "normMeanPhi", "nmp"),
-        ScalarObservable(cref(associatedEnergy), "associatedEnergy", "");
+                 ScalarObservable(cref(associatedEnergy), "associatedEnergy", "");
+
+    if (OPDIM == 2) {
+        obsScalar += ScalarObservable(cref(phiRhoS_Gs), "phiRhoS_Gs", "");
+        obsScalar += ScalarObservable(cref(phiRhoS_Gc), "phiRhoS_Gc", "");
+    }
 
     if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
     
@@ -433,6 +438,12 @@ void DetSDW<CB, OPDIM>::initMeasurements() {
     meanPhi.zeros();
     normMeanPhi = 0;
 
+    // bosonic spin stiffness
+    if (OPDIM == 2) {
+        phiRhoS_Gs = 0.0;
+        phiRhoS_Gc = 0.0;
+    }
+
     associatedEnergy = 0;
 
     if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
@@ -498,8 +509,24 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     // to ease notation in here
     const auto L = pars.L;
     const auto N = pars.N;
+    const auto dtau = pars.dtau;
 
     timeslices_included_in_measurement.insert(timeslice);
+
+    // bosonic spin stiffness
+    if (OPDIM == 2) {
+        for (uint32_t site = 0; site < N; ++site) {
+            Phi phi_site   = getPhi(site, timeslice);
+            Phi phi_xneigh = getPhi(spaceNeigh(XPLUS, site), timeslice);
+            Phi phi_yneigh = getPhi(spaceNeigh(YPLUS, site), timeslice);
+
+            phiRhoS_Gc += arma::dot(phi_site, phi_xneigh) +
+                          arma::dot(phi_site, phi_yneigh);
+
+            phiRhoS_Gs += phi_xneigh[0] * phi_site[1] - 
+                          phi_xneigh[1] * phi_site[0];
+        }
+    }
 
     //normphi, meanPhi, sdw-susceptibility, associatedEnergy
     for (uint32_t site = 0; site < pars.N; ++site) {
@@ -507,6 +534,8 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
         meanPhi += phi_site;
         associatedEnergy += arma::dot(phi_site, phi_site);
     }
+
+    
 
     if (not (pars.turnoffFermions or pars.turnoffFermionMeasurements)) {
 
@@ -868,12 +897,19 @@ void DetSDW<CB, OPDIM>::finishMeasurements() {
     const auto L = pars.L;
     const auto N = pars.N;
     const auto m = pars.m;
+    const auto dtau = pars.dtau;
 
     assert(timeslices_included_in_measurement.size() == m);
 
     //normphi, meanPhi, sdw-susceptibility
     meanPhi /= num(N * m);
     normMeanPhi = arma::norm(meanPhi, 2);
+
+    // bosonic spin stiffness
+    if (OPDIM == 2) {
+        phiRhoS_Gc *= (0.5 * dtau);
+        phiRhoS_Gs *= dtau;
+    }
 
     associatedEnergy /= (2.0 * N * m);
 
