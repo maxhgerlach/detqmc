@@ -509,7 +509,6 @@ void DetSDW<CB, OPDIM>::measure(uint32_t timeslice) {
     // to ease notation in here
     const auto L = pars.L;
     const auto N = pars.N;
-    const auto dtau = pars.dtau;
 
     timeslices_included_in_measurement.insert(timeslice);
 
