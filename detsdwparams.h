@@ -34,6 +34,8 @@ struct ModelParamsDetSDW {
     bool adaptScaleVariance;         //valid unless spinProposalMethod=="box" -- this controls if the variance of the spin updates should be adapted during thermalization
     uint32_t delaySteps;             //parameter in case updateMethod is "delayed"
 
+    bool overRelaxation;        // for no-fermion simulations:  additional non-ergodic, microcanonical over relaxation moves
+
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
     bool phiFixed;              // if this is true: set a constant, fixed phi field -- all phi_i(tau) equal to (1 [, 0[, 0]])
@@ -83,7 +85,7 @@ struct ModelParamsDetSDW {
         checkerboard(),
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
-        adaptScaleVariance(), delaySteps(),
+        adaptScaleVariance(), delaySteps(), overRelaxation(false),
         opdim(3), phi2bosons(false), phiFixed(false), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), weakZflux(false), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
@@ -112,6 +114,7 @@ private:
             & updateMethod_string & updateMethod
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
+            & overRelaxation
             & opdim & phi2bosons & phiFixed & r & c & u & lambda
             & txhor & txver & tyhor & tyver
             & cdwU & mu & mux & muy & weakZflux

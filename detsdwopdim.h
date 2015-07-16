@@ -728,6 +728,11 @@ protected:
         }
         return result;
     }
+    void setPhi(uint32_t site, uint32_t timeslice, Phi new_phi) {
+        for (uint32_t dim = 0; dim < OPDIM; ++dim) {
+            phi(site, dim, timeslice) = new_phi[dim];
+        }
+    }
 
 
 /*
@@ -910,7 +915,8 @@ protected:
     Monte Carlo updates, some related data structures
     
 */
-    //update the auxiliary field and the green function in the single timeslice
+    //update the auxiliary field and the green function in the single timeslice,
+    //using Metropolis updates
     void updateInSlice(uint32_t timeslice);
     //this template member function calls the right one of those below
     //return acceptance ratio for that sweep
@@ -981,6 +987,15 @@ protected:
     MatSmall get_delta_forsite(
         Phi newphi, int32_t new_cdwl, uint32_t timeslice, uint32_t site);
 
+    // over-relaxation update
+    //-----------------------
+    // this is only for simulations without fermions
+    void updateInSlice_overRelaxation(uint32_t timeslice);
+
+
+
+    //global updates
+    //--------------
     void globalMove();
     //Try a global move, where the fields on all sites and timeslices are shifted
     //by the same constant amount.  Only do this after a certain number of sweeps.

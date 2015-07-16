@@ -139,6 +139,11 @@ void ModelParamsDetSDW::check() {
         throw_ParameterWrong_message("Cannot turn off fermions and have delayed updates at the same time");
     }
 
+    // overrelaxation moves: only if fermions are turned off
+    if (overRelaxation and not turnoffFermions) {
+        throw_ParameterWrong_message("Cannot have overRelaxation moves if the fermions are turned on");
+    }
+
     // computed parameters
     N = L*L;
 }
