@@ -175,7 +175,8 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     META_INSERT_TRUE_FALSE(phiFixed);
     META_INSERT_TRUE_FALSE(dumpGreensFunction);
     META_INSERT_TRUE_FALSE(turnoffFermions);
-    META_INSERT_TRUE_FALSE(turnoffFermionMeasurements);    
+    META_INSERT_TRUE_FALSE(turnoffFermionMeasurements);
+    META_INSERT_TRUE_FALSE(overRelaxation);
     meta["updateMethod"] = updateMethodstr(updateMethod);
     meta["spinProposalMethod"] = spinProposalMethodstr(spinProposalMethod);
     if (spinProposalMethod != BOX) {
