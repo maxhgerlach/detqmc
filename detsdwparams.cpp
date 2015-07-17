@@ -146,6 +146,21 @@ void ModelParamsDetSDW::check() {
 
     // computed parameters
     N = L*L;
+
+    // handle repeatWolffPerSweep
+    updateTemperatureParameters(*this); // it's ok to do this call repeatedly
+    if (specified.count("repeatWolffPerSweep")) {
+        if (repeatWolffPerSweep_string == "systemSize") {
+            repeatWolffPerSweep = N * m;
+        } else {
+            uint32_t rwps = fromString<uint32_t>(repeatWolffPerSweep_string);
+            if (rwps == 0) {
+                throw_ParameterWrong("repeatWolffPerSweep", repeatWolffPerSweep_string);
+            } else {
+                repeatWolffPerSweep = rwps;
+            }
+        }
+    }
 }
 
 

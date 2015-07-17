@@ -54,6 +54,7 @@ std::string numToString(T i, uint32_t floatPrecision) {
 }
 
 
+// returns 0 if str cannot be parsed as a number
 template<typename T> inline
 T fromString(const std::string& str) {
     std::stringstream s(str);
