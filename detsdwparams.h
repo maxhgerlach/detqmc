@@ -74,7 +74,7 @@ struct ModelParamsDetSDW {
     bool wolffClusterShiftUpdate;  // perform a combined global constant shift and Wolff single cluster update
 
     uint32_t repeatWolffPerSweep;
-    std::string repeatWolffPerSweep_string; // how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.    Pass \"systemSize\" to use a number growing with system size: N * beta/dtau.  Default: 1
+    std::string repeatWolffPerSweep_string; // how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.    Pass \"systemSize\" to use a number growing with system size: N * beta/dtau <-- this is way too much, though.  Default: 1
 
     uint32_t repeatUpdateInSlice;  //how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 
