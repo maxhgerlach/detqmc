@@ -585,7 +585,7 @@ protected:
     num normMeanPhi;            //norm of averaged field
 
     // for O(2) model without fermions: parts of the bosonic spin stiffness
-    // rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 + - <Gs**2> )
+    // rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 - <Gs**2> )
     num phiRhoS_Gs;
     num phiRhoS_Gc;
 
