@@ -123,6 +123,8 @@ void processTimeseries(const std::string& filename) {
     std::cout << std::flush;
 
     if (not noexp) {
+        using std::pow;
+
         auto average_func_maybe_reweight = [&]( const std::function<double(double)>& func ) -> double {
             if (reweight) {
                 return average<double>( func, *data, *reweightingFactors );
@@ -158,7 +160,6 @@ void processTimeseries(const std::string& filename) {
         // compute Binder cumulant and susceptibility (<.^2> - <.>^2);
         // part susceptibility: <.^2>
         if (obsName == "normMeanPhi") {
-            using std::pow;
             estimates["normMeanPhiSquared"] = average_func_maybe_reweight(
                 [](double v) { return pow(v, 2); } );
             jkBlockEstimates["normMeanPhiSquared"] = jackknifeBlockEstimates_func_maybe_reweight(
@@ -207,7 +208,19 @@ void processTimeseries(const std::string& filename) {
             }
                 
         }
+
+        // also compute bosonic spin stiffness, if the data is present
+        //   rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 + - <Gs**2> )
+        // ==> need to compute <Gs**2>
+        
+        if (obsName == "phiRhoS_Gs") {
+            estimates["phiRhoS_Gs_squared"] = average_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+            jkBlockEstimates["phiRhoS_Gs_squared"] = jackknifeBlockEstimates_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+        }
     }
+
 //      std::copy(std::begin(jkBlockEstimates[obsName]), std::end(jkBlockEstimates[obsName]), std::ostream_iterator<double>(std::cout, " "));
 //      std::cout << std::endl;
 //      std::cout << average(jkBlockEstimates[obsName]);
@@ -219,6 +232,28 @@ void processTimeseries(const std::string& filename) {
     evalSamples = static_cast<uint32_t>(data->size());
 
     std::cout << std::endl;
+}
+
+
+void evaluateCombinedQuantities() {
+    using std::pow;
+    // also compute bosonic spin stiffness, if the data is present
+    //   rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 + - <Gs**2> )
+    
+    if (estimates.count("phiRhoS_Gs") and estimates.count("phiRhoS_Gc")) {
+        assert(estimates.count("phiRhoS_Gs_squared"));
+        estimates["phiRhoS"] = ((dtau * m) / N) *
+            (  pow(estimates["phiRhoS_Gs"], 2)
+             + estimates["phiRhoS_Gc"]
+             - estimates["phiRhoS_Gs_squared"]);
+        jkBlockEstimates["phiRhoS"] = std::vector<double>(jkBlocks, 0);
+        for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+            jkBlockEstimates["phiRhoS"][jb] = ((dtau * m) / N) * 
+                (  pow(jkBlockEstimates["phiRhoS_Gs"][jb], 2)
+                 + jkBlockEstimates["phiRhoS_Gc"][jb]
+                 - jkBlockEstimates["phiRhoS_Gs_squared"][jb]);
+        }
+    }    
 }
 
 
@@ -339,6 +374,11 @@ int main(int argc, char **argv) {
     std::vector<std::string> filenames = glob("*.series");
     for (std::string fn : filenames) {
         processTimeseries(fn);
+    }
+
+    //maybe compute bosonic spin stiffness
+    if (not noexp) {
+        evaluateCombinedQuantities();
     }
 
     //calculate error bars from jackknife block estimates
