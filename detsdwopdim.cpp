@@ -3609,14 +3609,26 @@ void DetSDW<CB, OPDIM>::attemptWolffClusterShiftUpdate() {
     // Do this computation logarithmically for stability, else scales
     // would be mixed even if ordered.
 
-    globalMoveStoreBackups();
+    if (not pars.turnoffFermions) {
+        // in case the move is rejected finally due to the fermion
+        // determinant, we need to restore the situation before the
+        // cluster flips
+        globalMoveStoreBackups();
+    }
 
-    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values
+    const VecNum& old_g_inv_sv = gmd.g_inv_sv; // backed up: old singular values [only used with fermions turned on]
 
     std::vector<uint32_t> cluster_sizes;
     for (uint32_t c = 0; c < pars.repeatWolffPerSweep; ++c) {
         uint32_t cluster_size = buildAndFlipCluster(false);
         cluster_sizes.push_back(cluster_size);
+    }
+
+    if (pars.turnoffFermions) {
+        // in case the global shift move is rejected for a purely
+        // bosonic model, we need to restore the situation after the
+        // cluster flips
+        globalMoveStoreBackups();
     }
 
     // compute current bosonic weight [after having flipped the cluster]
