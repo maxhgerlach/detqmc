@@ -138,14 +138,14 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("sweeps", po::value<uint32_t>(&mcpar.sweeps), "number of sweeps used for measurements, must be even for serialization consistency")
         ("thermalization", po::value<uint32_t>(&mcpar.thermalization), "number of warm-up sweeps, must be even for serialization consistency")
         ("jkBlocks", po::value<uint32_t>(&mcpar.jkBlocks)->default_value(1), "number of jackknife blocks for error estimation")
-        ("timeseries", po::bool_switch(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
+        ("timeseries", po::value<bool>(&mcpar.timeseries)->default_value(false), "if specified, write time series of individual measurements to disk")
         ("measureInterval", po::value<uint32_t>(&mcpar.measureInterval)->default_value(1), "take measurements every [arg] sweeps")
         ("saveInterval", po::value<uint32_t>(&mcpar.saveInterval), "write measurements to disk every [arg] sweeps; default: only at end of simulation, must be even for serialization consistency")
         ("saveConfigurationStreamInterval", po::value<uint32_t>(&mcpar.saveConfigurationStreamInterval), "interval in sweeps where full system configurations are buffered and saved to disk.  Must be an integer multiple of measureInterval.  This is only effective if one of the boolean flags for saving configurations is set to true.")
         ("rngSeed", po::value<uint32_t>(&mcpar.rngSeed), "seed for pseudo random number generator")
-        ("saveConfigurationStreamText", po::bool_switch(&mcpar.saveConfigurationStreamText)->default_value(false),
+        ("saveConfigurationStreamText", po::value<bool>(&mcpar.saveConfigurationStreamText)->default_value(false),
          "when measuring, also save raw system configurations to disk, in text format")
-        ("saveConfigurationStreamBinary", po::bool_switch(&mcpar.saveConfigurationStreamBinary)->default_value(false),
+        ("saveConfigurationStreamBinary", po::value<bool>(&mcpar.saveConfigurationStreamBinary)->default_value(false),
          "when measuring, also save raw system configurations to disk, in binary format")
         //Multiple processes -- only use standard state file names
         // ("state", po::value<string>(&mcpar.stateFileName)->default_value("simulation.state"),
