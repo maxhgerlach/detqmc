@@ -24,6 +24,7 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wshadow"
 #include "boost/program_options.hpp"
+#include "boost/filesystem.hpp"
 #pragma GCC diagnostic pop
 #include "git-revision.h"
 #include "tools.h"                      //glob
@@ -106,8 +107,16 @@ void processTimeseries(const std::string& filename) {
     std::cout << "Processing " << filename << ", ";
     DoubleSeriesLoader reader;
     reader.readFromFile(filename, subsample_interval, discard, read_maximally, guessedLength);
-    if (reader.getColumns() != 1) {
-        throw_GeneralError("File " + filename + " does not have exactly 1 column");
+    
+    int reader_cols = reader.getColumns();
+
+    if (reader_cols == 0) {
+        // time series is empty
+        std::cout << "Time series " + filename + " is empty, skip" << std::endl;
+        return;
+    }
+    else if (reader_cols != 1) {
+        throw_GeneralError("File " + filename + " does not have exactly 1 column, but " + numToString(reader_cols));
     }
 
     std::shared_ptr<std::vector<double>> data = reader.getData();
@@ -265,7 +274,23 @@ void jackknifeEvaluation() {
     }
 }
 
+std::string get_results_filename() {
+    std::string filename_insert = (reweight ? "-reweighted-r" + numToString(reweight_to_this_r) : "");
+    return "eval-results" + filename_insert + ".values";
+}
+
+void removeOldResultsFile() {
+    std::string fname = get_results_filename();
+    if(boost::filesystem::exists(fname)) {
+        boost::filesystem::remove(fname);
+    }
+}
+
 void writeoutResults(MetadataMap meta) {
+    if (estimates.empty()) {
+        // nothing to write out, create no file
+        return;
+    }
     StringDoubleMapWriter resultsWriter;
     if (reweight) {
         meta["r"] = numToString(reweight_to_this_r);
@@ -290,11 +315,25 @@ void writeoutResults(MetadataMap meta) {
         resultsWriter.addHeaderText("Averages computed from time series");
         resultsWriter.setData(std::make_shared<ObsValMap>(estimates));
     }
-    std::string filename_insert = (reweight ? "-reweighted-r" + numToString(reweight_to_this_r) : "");
-    resultsWriter.writeToFile("eval-results" + filename_insert + ".values");
+    resultsWriter.writeToFile(get_results_filename());
+}
+
+std::string get_tauint_filename() {
+    return "eval-tauint.values";
+}
+
+void removeOldTauintFile() {
+    std::string fname = get_tauint_filename();
+    if(boost::filesystem::exists(fname)) {
+        boost::filesystem::remove(fname);
+    }
 }
 
 void writeoutTauints(MetadataMap meta) {
+    if (tauints.empty()) {
+        // nothing to write out, create no file
+        return;
+    }
     StringDoubleMapWriter tauintWriter;
     tauintWriter.addMetadataMap(meta);
     tauintWriter.addMeta("eval-discard", discard);
@@ -303,7 +342,7 @@ void writeoutTauints(MetadataMap meta) {
     tauintWriter.addMeta("eval-samples", evalSamples);
     tauintWriter.addHeaderText("Tauint estimates computed from time series");
     tauintWriter.setData(std::make_shared<ObsValMap>(tauints));
-    tauintWriter.writeToFile("eval-tauint.values");
+    tauintWriter.writeToFile(get_tauint_filename());
 }
 
 
@@ -387,10 +426,12 @@ int main(int argc, char **argv) {
     }
 
     if (not noexp) {
+        removeOldResultsFile();
         writeoutResults(meta);
     }
 
     if (not notau) {
+        removeOldTauintFile();
         writeoutTauints(meta);
     }
 

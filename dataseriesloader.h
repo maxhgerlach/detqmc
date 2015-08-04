@@ -49,7 +49,7 @@ public:
                                                 // If = 0: don't stop reading ever
                       uint32_t sizeHint = 0);
 
-    int getColumns();
+    int getColumns();           // if this is 0: time series is empty
 
     typedef std::shared_ptr<std::vector<ValueType>> TimeSeriesPtr;
     TimeSeriesPtr getData(int column = 0);

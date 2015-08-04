@@ -520,7 +520,7 @@ target_link_libraries(tauintsimple general_common ${EXTRA_LIBRARIES})
 
 set(deteval_SRC maindeteval.cpp)
 add_executable(deteval ${deteval_SRC})
-target_link_libraries(deteval general_common boost_program_options ${EXTRA_LIBRARIES})
+target_link_libraries(deteval general_common boost_program_options boost_filesystem boost_system ${EXTRA_LIBRARIES})
 
 set(detevalbc_SRC maindetevalbc.cpp)
 add_executable(detevalbc ${detevalbc_SRC})
