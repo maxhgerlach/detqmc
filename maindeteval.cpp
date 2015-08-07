@@ -247,17 +247,17 @@ void processTimeseries(const std::string& filename) {
 void evaluateCombinedQuantities() {
     using std::pow;
     // also compute bosonic spin stiffness, if the data is present
-    //   rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 + - <Gs**2> )
+    //   rhoS = (1. / (L**2 beta)) * ( <Gc> + <Gs>**2 - <Gs**2> )
     
     if (estimates.count("phiRhoS_Gs") and estimates.count("phiRhoS_Gc")) {
         assert(estimates.count("phiRhoS_Gs_squared"));
-        estimates["phiRhoS"] = ((dtau * m) / N) *
+        estimates["phiRhoS"] = (1.0 / ((dtau * m) * N)) *
             (  pow(estimates["phiRhoS_Gs"], 2)
              + estimates["phiRhoS_Gc"]
              - estimates["phiRhoS_Gs_squared"]);
         jkBlockEstimates["phiRhoS"] = std::vector<double>(jkBlocks, 0);
         for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
-            jkBlockEstimates["phiRhoS"][jb] = ((dtau * m) / N) * 
+            jkBlockEstimates["phiRhoS"][jb] = (1.0 / ((dtau * m) * N)) * 
                 (  pow(jkBlockEstimates["phiRhoS_Gs"][jb], 2)
                  + jkBlockEstimates["phiRhoS_Gc"][jb]
                  - jkBlockEstimates["phiRhoS_Gs_squared"][jb]);
