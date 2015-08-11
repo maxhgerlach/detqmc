@@ -5082,7 +5082,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
             fs::path("configs-phi.binarystream");
         file_handle.phi_output_binary = OfstreamPointer(
             new std::ofstream(phi_filepath.c_str(), std::ios::binary | std::ios::app) );
-        if (not file_handle.phi_output_binary) {
+        if (file_handle.phi_output_binary->fail()) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
         }
@@ -5092,7 +5092,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
             fs::path("configs-phi.textstream");
         file_handle.phi_output_text = OfstreamPointer(
             new std::ofstream(phi_filepath.c_str(), std::ios::app) );
-        if (not file_handle.phi_output_text) {
+        if (file_handle.phi_output_text->fail()) {
             std::cerr << "Could not open file " << phi_filepath.string() << " for writing.\n";
             std::cerr << "Error code: " << strerror(errno) << "\n";
         }
@@ -5107,7 +5107,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
 
             file_handle.cdwl_output_binary = OfstreamPointer(
                 new std::ofstream(cdwl_filepath.c_str(), std::ios::binary | std::ios::app));
-            if (not file_handle.cdwl_output_binary) {
+            if (file_handle.cdwl_output_binary->fail()) {
                 std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
                 std::cerr << "Error code: " << strerror(errno) << "\n";
             }            
@@ -5118,7 +5118,7 @@ DetSDW_SystemConfig_FileHandle DetSDW<CB, OPDIM>::prepareSystemConfigurationStre
 
             file_handle.cdwl_output_text = OfstreamPointer(
                 new std::ofstream(cdwl_filepath.c_str(), std::ios::app));
-            if (not file_handle.cdwl_output_text) {
+            if (file_handle.cdwl_output_text->fail()) {
                 std::cerr << "Could not open file " << cdwl_filepath.string() << " for writing.\n";
                 std::cerr << "Error code: " << strerror(errno) << "\n";
             }
