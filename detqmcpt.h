@@ -793,7 +793,7 @@ void DetQMCPT<Model, ModelParams>::run() {
         finishedStage();
     }
 
-    const uint32_t SavetyMinutes = 35;
+    const uint32_t SafetyMinutes = 35;
 
     const std::string abortFilenames[] = { "ABORT." + jobid,
                                            "../ABORT." + jobid,
@@ -808,8 +808,8 @@ void DetQMCPT<Model, ModelParams>::run() {
     	if (swCounter % 2 == 0) {
             char stop_now = false;
             if (processIndex == 0) {
-                if (curWalltimeSecs() > grantedWalltimeSecs - SavetyMinutes*60) {
-                    std::cout << "Granted walltime will be exceeded in less than " << SavetyMinutes << " minutes.\n";
+                if (curWalltimeSecs() > grantedWalltimeSecs - SafetyMinutes*60) {
+                    std::cout << "Granted walltime will be exceeded in less than " << SafetyMinutes << " minutes.\n";
                     stop_now = true;
                 } else {
                     for (auto abortfn : abortFilenames) {
