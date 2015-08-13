@@ -3410,6 +3410,43 @@ void DetSDW<CB, OPDIM>::updateInSlice_overRelaxation(uint32_t timeslice) {
 }
 
 
+template<CheckerboardMethod CB, int OPDIM>
+void DetSDW<CB, OPDIM>::overRelaxationSweep() {
+    assert(pars.turnoffFermions); // makes no sense with fermions
+
+    const auto N = pars.N;
+    const auto dtau = pars.dtau;
+    const auto m = pars.m;    
+    const auto c = pars.c;
+
+    for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
+        for (uint32_t site = 0; site < pars.N; ++site) {
+#ifdef MAX_DEBUG
+            num old_action = phiAction();
+#endif
+
+            Phi old_phi = getPhi(site, timeslice);
+
+            Phi b_eff = (1.0 / (c * c * dtau)) * ( getPhi(site, timeNeigh(ChainDir::MINUS, timeslice)) +
+                                                   getPhi(site, timeNeigh(ChainDir::PLUS,  timeslice)) );       
+            for (auto iter = spaceNeigh.beginNeighbors(site); iter != spaceNeigh.endNeighbors(site); ++iter) {
+                uint32_t neigh_site = *iter;
+                b_eff += dtau * getPhi(neigh_site, timeslice);
+            }
+
+            Phi new_phi = -old_phi + (2. * arma::dot(old_phi, b_eff) / arma::dot(b_eff, b_eff)) * b_eff;
+
+            // this does not change the bosonic action
+            setPhi(site, timeslice, new_phi);
+
+#ifdef MAX_DEBUG
+            num new_action = phiAction();
+            assert( std::abs(old_action - new_action) < 1E-10 );
+#endif
+            
+        }
+    }
+}
 
 
 template<CheckerboardMethod CB, int OPDIM>

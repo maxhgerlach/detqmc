@@ -989,8 +989,18 @@ protected:
 
     // over-relaxation update
     //-----------------------
-    // this is only for simulations without fermions
+    // this is only for simulations without fermions.  This variation
+    // picks out random sites in a single timeslice.  This makes less
+    // sense than just going linearly through the entire space-time
+    // lattice.
     void updateInSlice_overRelaxation(uint32_t timeslice);
+
+
+    // Entire space-time sweeps of local updates
+    // -----------------------------------------
+    // This is only for simulations without fermions.  Linear sweep over
+    // entire space-time lattice.
+    void overRelaxationSweep();
 
 
 
