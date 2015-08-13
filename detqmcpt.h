@@ -952,6 +952,8 @@ void DetQMCPT<Model, ModelParams>::run() {
 
 template<class Model, class ModelParams>
 void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
+    timing.start("detqmcpt-replicaExchangeStep");
+
     namespace mpi = boost::mpi;
     mpi::communicator world;
     
@@ -1102,6 +1104,8 @@ void DetQMCPT<Model, ModelParams>::replicaExchangeStep() {
     //              MPI_COMM_WORLD
     //     );
     replica->set_control_data(local_control_data_buffer);
+
+    timing.stop("detqmcpt-replicaExchangeStep");
 }
 
 

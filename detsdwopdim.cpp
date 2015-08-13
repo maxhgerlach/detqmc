@@ -3407,6 +3407,8 @@ void DetSDW<CB, OPDIM>::updateInSlice_overRelaxation(uint32_t timeslice) {
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::overRelaxationSweep() {
+    timing.start("sdw-overRelaxationSweep");
+
     assert(pars.turnoffFermions); // makes no sense with fermions
 
     const auto N = pars.N;
@@ -3441,11 +3443,15 @@ void DetSDW<CB, OPDIM>::overRelaxationSweep() {
             
         }
     }
+    
+    timing.stop("sdw-overRelaxationSweep");
 }
 
 
 template<CheckerboardMethod CB, int OPDIM>
 void DetSDW<CB, OPDIM>::globalMove() {
+    timing.start("sdw-globalMove");
+    
     //This is called before the sweep, i.e. before performedSweeps is updated
     if (not pars.phiFixed and ((performedSweeps) % pars.globalUpdateInterval == 0)) {
         //the current sweep count is a multiple of globalMoveInterval
@@ -3463,7 +3469,10 @@ void DetSDW<CB, OPDIM>::globalMove() {
         for (uint32_t count = 0; count < pars.repeatOverRelaxation; ++count) {
             overRelaxationSweep();
         }
+        
     }    
+    
+    timing.stop("sdw-globalMove");
 }
 
 template<CheckerboardMethod CB, int OPDIM>

@@ -212,8 +212,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MARCH_FLAGS} ${WARNING_FLAGS} -std=c++
 # build type specific flags:
 # these are appended to ${CMAKE_C[XX]_FLAGS} for DEBUG / RELEASE / ETC builds
 
-# TODO: support option to enable timing
-
 if (${USE_INTEL_COMPILER})
   set(EXTRA_FLAGS_DEBUG "-g -O0")
   # floating-point traps for division by zero, invalid operation, and overflow
