@@ -36,7 +36,7 @@ struct ModelParamsDetSDW {
 
     bool overRelaxation;        // for no-fermion simulations:  additional non-ergodic, microcanonical over relaxation sweeps
     uint32_t repeatOverRelaxation;
-    std::string repeatOverRelaxation_string; // how many overRelaxationSweeps to carry out in a row during a single sweep; only if the fermions are turned off.  Pass \"systemSize\" to use a number growing with system size: N * beta/dtau <-- this is way too much, though.  Default: 1
+    std::string repeatOverRelaxation_string; // how many overRelaxationSweeps to carry out in a row during a single sweep; only if the fermions are turned off.  Pass \"systemSize\" to use a number growing with system size: N * m <-- this is way too much, though.  Other options:  \"systemL\", \"systemm\", \"sqrtSystemLm\".  Default: 1
 
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
@@ -76,7 +76,7 @@ struct ModelParamsDetSDW {
     bool wolffClusterShiftUpdate;  // perform a combined global constant shift and Wolff single cluster update
 
     uint32_t repeatWolffPerSweep;
-    std::string repeatWolffPerSweep_string; // how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.    Pass \"systemSize\" to use a number growing with system size: N * beta/dtau <-- this is way too much, though.  Default: 1
+    std::string repeatWolffPerSweep_string; // how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.    Pass \"systemSize\" to use a number growing with system size: N * beta/dtau <-- this is way too much, though.  Other options:  \"systemL\", \"systemm\", \"sqrtSystemLm\".  Default: 1
 
     uint32_t repeatUpdateInSlice;  //how often to repeat updateInSlice for eacht timeslice per sweep, default: 1
 

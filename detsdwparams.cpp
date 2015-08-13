@@ -137,12 +137,18 @@ void ModelParamsDetSDW::check() {
     // computed parameters
     N = L*L;
 
-    // parse repeat* settings
+    // helper to parse repeat* settings
     auto handle_repeatSetting = [&](const std::string& parameterName,
                                     const std::string& parameterStringValue) -> uint32_t {
         uint32_t repeat = 0;
         if (parameterStringValue == "systemSize") {
             repeat = N * m;
+        } else if (parameterStringValue == "systemL") {
+            repeat = L;
+        } else if (parameterStringValue == "systemm") {
+            repeat = m;
+        } else if (parameterStringValue == "sqrtSystemLm") {
+            repeat = static_cast<uint32_t>(std::sqrt( L * m ));
         } else {
             repeat = fromString<uint32_t>(parameterStringValue);
             if (repeat == 0) {
