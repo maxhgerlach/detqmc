@@ -34,7 +34,9 @@ struct ModelParamsDetSDW {
     bool adaptScaleVariance;         //valid unless spinProposalMethod=="box" -- this controls if the variance of the spin updates should be adapted during thermalization
     uint32_t delaySteps;             //parameter in case updateMethod is "delayed"
 
-    bool overRelaxation;        // for no-fermion simulations:  additional non-ergodic, microcanonical over relaxation moves
+    bool overRelaxation;        // for no-fermion simulations:  additional non-ergodic, microcanonical over relaxation sweeps
+    uint32_t repeatOverRelaxation;
+    std::string repeatOverRelaxation_string; // how many overRelaxationSweeps to carry out in a row during a single sweep; only if the fermions are turned off.  Pass \"systemSize\" to use a number growing with system size: N * beta/dtau <-- this is way too much, though.  Default: 1
 
     uint32_t opdim;             // order parameter dimension: 1, 2 or 3 (default: 3)
     bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
@@ -87,6 +89,7 @@ struct ModelParamsDetSDW {
         updateMethod_string("woodbury"), updateMethod(WOODBURY),
         spinProposalMethod_string("box"), spinProposalMethod(BOX),
         adaptScaleVariance(), delaySteps(), overRelaxation(false),
+        repeatOverRelaxation(1), repeatOverRelaxation_string(""),
         opdim(3), phi2bosons(false), phiFixed(false), r(), c(1.0), u(1.0), lambda(),
         txhor(), txver(), tyhor(), tyver(), cdwU(), mu(), mux(0.), muy(0.), weakZflux(false), L(), N(), d(2),
         beta(), m(), dtau(), s(), accRatio(), bc_string("pbc"), bc(PBC), globalUpdateInterval(),
@@ -116,6 +119,7 @@ private:
             & spinProposalMethod_string & spinProposalMethod
             & adaptScaleVariance & delaySteps
             & overRelaxation
+            & repeatOverRelaxation & repeatOverRelaxation_string
             & opdim & phi2bosons & phiFixed & r & c & u & lambda
             & txhor & txver & tyhor & tyver
             & cdwU & mu & mux & muy & weakZflux

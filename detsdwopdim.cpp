@@ -2461,11 +2461,6 @@ void DetSDW<CB, OPDIM>::updateInSlice(uint32_t timeslice) {
             }
         }
 
-        if (pars.turnoffFermions and pars.overRelaxation) {
-            // TODO: maybe it would be even better to have this pick
-            // spins randomly accross all timeslices
-            updateInSlice_overRelaxation(timeslice);
-        }
 
         if (not pars.turnoffFermions and pars.cdwU) { // we have not set cdwU to 0.0 and fermions are on
 
@@ -3420,7 +3415,7 @@ void DetSDW<CB, OPDIM>::overRelaxationSweep() {
     const auto c = pars.c;
 
     for (uint32_t timeslice = 1; timeslice <= m; ++timeslice) {
-        for (uint32_t site = 0; site < pars.N; ++site) {
+        for (uint32_t site = 0; site < N; ++site) {
 #ifdef MAX_DEBUG
             num old_action = phiAction();
 #endif
@@ -3464,6 +3459,11 @@ void DetSDW<CB, OPDIM>::globalMove() {
             attemptWolffClusterShiftUpdate();
         }
     }
+    if (pars.turnoffFermions and pars.overRelaxation) {
+        for (uint32_t count = 0; count < pars.repeatOverRelaxation; ++count) {
+            overRelaxationSweep();
+        }
+    }    
 }
 
 template<CheckerboardMethod CB, int OPDIM>

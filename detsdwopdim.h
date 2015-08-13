@@ -1002,10 +1002,13 @@ protected:
     // entire space-time lattice.
     void overRelaxationSweep();
 
-
-
     //global updates
     //--------------
+    // These are not restricted to operation on a single timeslice.
+    // True global updates: cluster / global shift moves.  For
+    // non-fermion simulations: overRelaxationSweep is also to be
+    // called in globalMove()
+
     void globalMove();
     //Try a global move, where the fields on all sites and timeslices are shifted
     //by the same constant amount.  Only do this after a certain number of sweeps.

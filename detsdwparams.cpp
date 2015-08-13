@@ -89,16 +89,6 @@ void ModelParamsDetSDW::check() {
     if (checkerboard and L % 2 != 0) {
         throw_ParameterWrong_message("Checker board decomposition only supported for even linear lattice sizes");
     }
-#define IF_NOT_POSITIVE(x) if (specified.count(#x) > 0 and x <= 0)
-#define CHECK_POSITIVE(x)   {                   \
-        IF_NOT_POSITIVE(x) {                    \
-            throw_ParameterWrong(#x, x);   \
-        }                                       \
-    }
-    CHECK_POSITIVE(L);
-    CHECK_POSITIVE(repeatWolffPerSweep);
-#undef CHECK_POSITIVE
-#undef IF_NOT_POSITIVE
 
     // convert strings to enums
     if (bc_string == "pbc") {
@@ -147,20 +137,43 @@ void ModelParamsDetSDW::check() {
     // computed parameters
     N = L*L;
 
-    // handle repeatWolffPerSweep
+    // parse repeat* settings
+    auto handle_repeatSetting = [&](const std::string& parameterName,
+                                    const std::string& parameterStringValue) -> uint32_t {
+        uint32_t repeat = 0;
+        if (parameterStringValue == "systemSize") {
+            repeat = N * m;
+        } else {
+            repeat = fromString<uint32_t>(parameterStringValue);
+            if (repeat == 0) {
+                throw_ParameterWrong(parameterName, parameterStringValue);
+            } 
+        }
+        return repeat;
+    };
+
+    // handle repeatWolffPerSweep and repeatOverRelaxation
     updateTemperatureParameters(*this); // it's ok to do this call repeatedly
     if (specified.count("repeatWolffPerSweep")) {
-        if (repeatWolffPerSweep_string == "systemSize") {
-            repeatWolffPerSweep = N * m;
-        } else {
-            uint32_t rwps = fromString<uint32_t>(repeatWolffPerSweep_string);
-            if (rwps == 0) {
-                throw_ParameterWrong("repeatWolffPerSweep", repeatWolffPerSweep_string);
-            } else {
-                repeatWolffPerSweep = rwps;
-            }
-        }
+        repeatWolffPerSweep = handle_repeatSetting("repeatWolffPerSweep",
+                                                   repeatWolffPerSweep_string);
     }
+    if (specified.count("repeatOverRelaxation")) {
+        repeatOverRelaxation = handle_repeatSetting("repeatOverRelaxation",
+                                                    repeatOverRelaxation_string);
+    }
+
+#define IF_NOT_POSITIVE(x) if (specified.count(#x) > 0 and x <= 0)
+#define CHECK_POSITIVE(x)   {                   \
+        IF_NOT_POSITIVE(x) {                    \
+            throw_ParameterWrong(#x, x);   \
+        }                                       \
+    }
+    CHECK_POSITIVE(L);
+    CHECK_POSITIVE(repeatWolffPerSweep);
+    CHECK_POSITIVE(repeatOverRelaxation);
+#undef CHECK_POSITIVE
+#undef IF_NOT_POSITIVE
 }
 
 
@@ -226,6 +239,9 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
     }
     if (wolffClusterUpdate or wolffClusterShiftUpdate) {
         META_INSERT(repeatWolffPerSweep);
+    }
+    if (overRelaxation) {
+        META_INSERT(repeatOverRelaxation);
     }
     META_INSERT(repeatUpdateInSlice);
 #undef META_INSERT
