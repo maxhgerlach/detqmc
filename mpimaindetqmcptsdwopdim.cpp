@@ -90,6 +90,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("updateMethod", po::value<std::string>(&modelpar.updateMethod_string)->default_value("iterative"), "How to do the local updates: iterative, woodbury or delayed")
         ("delaySteps", po::value<uint32_t>(&modelpar.delaySteps)->default_value(16), "parameter to use with delayedUpdates")
         ("overRelaxation", po::value<bool>(&modelpar.overRelaxation)->default_value(false), "for no-fermion simulations:  additional non-ergodic, microcanonical over relaxation moves")
+        ("repeatOverRelaxation", po::value<std::string>(&modelpar.repeatOverRelaxation_string)->default_value("1"), "how many overRelaxationSweeps to carry out in a row during a single sweep if they are turned on; only if the fermions are turned off.  Pass \"systemSize\" to use a number growing with system size: N * m <-- this is way too much, though.  Other options:  \"systemL\", \"systemm\", \"sqrtSystemLm\".  Default: 1")
         ("phi2bosons", po::value<bool>(&modelpar.phi2bosons)->default_value(false), "if this is true: run calculations with a simple theory (r/2)\\sum_i \\phi_i^2 -- ignores parameter u and spatial terms in the bosonic action")
         ("phiFixed", po::value<bool>(&modelpar.phiFixed)->default_value(false), "if this is true: set a constant, fixed phi field -- all phi_i(tau) equal to (1 [, 0[, 0]])")        
         ("u", po::value<num>(&modelpar.u)->default_value(1.0), "non-linear self-coupling of phi")
@@ -116,7 +117,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams,DetQMC
         ("globalShift", po::value<bool>(&modelpar.globalShift)->default_value(false), "perform global constant shift move")
         ("wolffClusterUpdate", po::value<bool>(&modelpar.wolffClusterUpdate)->default_value(false), "perform global Wolff-like single cluster update")
         ("wolffClusterShiftUpdate", po::value<bool>(&modelpar.wolffClusterShiftUpdate)->default_value(false), "perform global Wolff-like single cluster update combined with the global shift move")
-        ("repeatWolffPerSweep", po::value<std::string>(&modelpar.repeatWolffPerSweep_string)->default_value("1"), "how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.  Pass \"systemSize\" to use a number growing with system size: N * beta/dtau.  <-- this is way too much, though.  Default: 1")
+        ("repeatWolffPerSweep", po::value<std::string>(&modelpar.repeatWolffPerSweep_string)->default_value("1"), "how many Wolff cluster flips we attempt in a row during a single sweep; this is mostly useful if the fermions are turned off, as the fermion determinant is only taken into consideration after the whole series of updates.  Pass \"systemSize\" to use a number growing with system size: N * beta/dtau.  <-- this is way too much, though.  Other options:  \"systemL\", \"systemm\", \"sqrtSystemLm\".  Default: 1")
         ("repeatUpdateInSlice", po::value<uint32_t>(&modelpar.repeatUpdateInSlice)->default_value(1), "how often to repeat updateInSlice for eacht timeslice per sweep, default: 1")
         ;
 
