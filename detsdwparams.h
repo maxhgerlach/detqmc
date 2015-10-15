@@ -42,7 +42,7 @@ struct ModelParamsDetSDW {
     bool phi2bosons;            // if this is true: run calculations with a simple theory (r/2)\sum_i \phi_i^2 -- ignores parameter u and spatial terms in the bosonic action
     bool phiFixed;              // if this is true: set a constant, fixed phi field -- all phi_i(tau) equal to (1 [, 0[, 0]])
     num r;
-    num c;                      // currently fixed to 1.0
+    num c;                      // boson velocity, default value 1.0
     num u;
     num lambda;	//fermion-boson coupling strength
     num txhor;	//hopping constants depending on direction and band

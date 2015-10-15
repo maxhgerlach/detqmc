@@ -175,6 +175,7 @@ void ModelParamsDetSDW::check() {
             throw_ParameterWrong(#x, x);   \
         }                                       \
     }
+    CHECK_POSITIVE(c);
     CHECK_POSITIVE(L);
     CHECK_POSITIVE(repeatWolffPerSweep);
     CHECK_POSITIVE(repeatOverRelaxation);
@@ -214,6 +215,7 @@ MetadataMap ModelParamsDetSDW::prepareMetadataMap() const {
         meta["bc"] = "apbc-xy";
     }
     META_INSERT(accRatio);
+    META_INSERT(c);
     META_INSERT(r);
     META_INSERT(u);
     META_INSERT(lambda);

@@ -95,6 +95,7 @@ std::tuple<bool,bool,DetModelLoggingParams,ModelParamsDetSDW,DetQMCParams> confi
         ("repeatOverRelaxation", po::value<std::string>(&modelpar.repeatOverRelaxation_string)->default_value("1"), "how many overRelaxationSweeps to carry out in a row during a single sweep if they are turned on; only if the fermions are turned off.  Pass \"systemSize\" to use a number growing with system size: N * m <-- this is way too much, though.  Other options:  \"systemL\", \"systemm\", \"sqrtSystemLm\".  Default: 1")
         ("phi2bosons", po::value<bool>(&modelpar.phi2bosons)->default_value(false), "if this is true: run calculations with a simple theory (r/2)\\sum_i \\phi_i^2 -- ignores parameter u and spatial terms in the bosonic action")
         ("phiFixed", po::value<bool>(&modelpar.phiFixed)->default_value(false), "if this is true: set a constant, fixed phi field -- all phi_i(tau) equal to (1 [, 0[, 0]])")
+        ("c", po::value<num>(&modelpar.c)->default_value(1.0), "boson velocity")
         ("r", po::value<num>(&modelpar.r), "parameter tuning SDW transition")
         ("u", po::value<num>(&modelpar.u)->default_value(1.0), "non-linear self-coupling of phi")
         ("lambda", po::value<num>(&modelpar.lambda)->default_value(1.0), "fermion-boson coupling")
