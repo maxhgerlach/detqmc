@@ -547,6 +547,24 @@ ConfigParameters get_conf_params_for_directories(const std::vector< std::string 
     return params;
 }
 
+//return path to configs-phi.binarystream or extracted-configs-phi.binarystream
+//if more appropriate
+boost::filesystem::path get_input_file_path(const std::string& input_directory) {
+    namespace fs = boost::filesystem;
+    fs::path p_result;
+    fs::path p_1 = fs::path(input_directory) / "configs-phi.binarystream";
+    fs::path p_2 = fs::path(input_directory) / "extracted-configs-phi.binarystream";
+    if (fs::exists(p_1)) {
+        p_result = p_1;
+    } else {
+        if (not fs::exists(p_2)) {
+            throw_GeneralError("No binary configuration stream file found");
+        }
+        p_result = p_2;
+    }
+    return p_result;
+}
+
 std::vector<uintmax_t> get_sample_counts_for_directories(const std::vector< std::string >& input_directories,
                                                          const ConfigParameters& params) {
     namespace fs = boost::filesystem;
@@ -554,7 +572,7 @@ std::vector<uintmax_t> get_sample_counts_for_directories(const std::vector< std:
     std::vector<uintmax_t> sample_counts;
     uintmax_t sample_size = get_size_of_one_sample(params);
     for (const auto& d : input_directories) {
-        std::string f = (fs::path(d) / "configs-phi.binarystream").string();
+        std::string f = get_input_file_path(d).string();
         uintmax_t file_size = get_file_size(f);
         if (file_size % (sample_size * sizeof(double)) != 0) {
             throw_GeneralError("unexpected binarystream file size");
@@ -620,7 +638,7 @@ void process(const std::vector< std::string >& input_directories,
         }
         
         std::string d = input_directories[i];
-        std::string f = (fs::path(d) / "configs-phi.binarystream").string();
+        std::string f = get_input_file_path(d).string();
         std::ifstream binary_float_input(f.c_str(),
                                          std::ios::in | std::ios::binary);
         if (not binary_float_input) {
