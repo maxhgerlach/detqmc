@@ -218,6 +218,26 @@ void processTimeseries(const std::string& filename) {
                 
         }
 
+        // experimental: compute a Binder parameter for the energy
+        if (obsName == "associatedEnergy") {
+            auto eSquared = average_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+            auto jbe_eSquared = jackknifeBlockEstimates_func_maybe_reweight(
+                [](double v) { return pow(v, 2); } );
+            auto eForth = average_func_maybe_reweight(
+                [](double v) { return pow(v, 4); } );
+            auto jbe_eForth = jackknifeBlockEstimates_func_maybe_reweight(
+                [](double v) { return pow(v, 4); } );
+            estimates["energyBinder"] = 1.0 - (3.0*eForth) /
+                (5.0*pow(eSquared, 2));
+            jkBlockEstimates["energyBinder"] = std::vector<double>(jkBlocks, 0);
+            for (uint32_t jb = 0; jb < jkBlocks; ++jb) {
+                jkBlockEstimates["energyBinder"][jb] =
+                    1.0 - (3.0*jbe_eForth[jb]) /
+                    (5.0*pow(jbe_eSquared[jb], 2));
+            }
+        }
+
         // also compute bosonic spin stiffness, if the data is present
         //   rhoS = (beta / L**2) * ( <Gc> + <Gs>**2 + - <Gs**2> )
         // ==> need to compute <Gs**2>
