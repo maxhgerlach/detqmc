@@ -46,6 +46,8 @@ namespace {
     bool reweight = false;
     num original_r = 0;
     num reweight_to_this_r = 0;
+    std::vector<std::string> noncollect_observables; // do not process these observables
+    
 
     //Store averages / nonlinear estimates, jackknife errors,
     //integrated autocorrelation times here
@@ -68,7 +70,6 @@ namespace {
     // for reweighting the other timeseries: need to store a function
     // of the timeseries of associatedEnergy
     std::shared_ptr<std::vector<num>> reweightingFactors;
-
 };
 
 
@@ -123,6 +124,13 @@ void processTimeseries(const std::string& filename) {
     std::string obsName;
     reader.getMeta("observable", obsName);
     std::cout << "observable: " << obsName << "...";
+    
+    if (std::any_of(std::begin(noncollect_observables),
+                    std::end(noncollect_observables),
+                    [&](const std::string& nc_obs) { return nc_obs == obsName; })) {
+        std::cout << " skip" << std::endl;
+        return;
+    }
 
     if (reweight) {
         std::cout << " [reweighting from r=" << original_r
@@ -388,6 +396,8 @@ int main(int argc, char **argv) {
          "switch off estimation of expectation values and errorbars")
         ("reweight", po::value<double>(&reweight_to_this_r), "reweight timeseries to a new value of parameter r (SDW-model) "
             "[will not affect tauint]")
+        ("noncollect,n", po::value<std::vector<std::string>>(&noncollect_observables)->multitoken(),
+         "do not process these observables")
         ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, evalOptions), vm);
