@@ -538,6 +538,9 @@ target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt ${EXTRA_LIBRARIES})
 
 
+add_executable(feedback feedback.cc)
+
+
 set(mrpt_COMMON_SRC
   mrpt.cpp
   mrpt-jk.cpp
