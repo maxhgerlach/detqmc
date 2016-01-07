@@ -235,13 +235,14 @@ if(CMAKE_BUILD_TYPE MATCHES "Debug")
   endif ()
 endif ()
 
-
+# Note: Let's use -g also for Release builds to make core dumps more
+# readable in the debugger, we do not really need separate RelWithDebInfo
 if (${USE_INTEL_COMPILER})
   set(EXTRA_FLAGS_RELEASE
-    "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div")
+    "${OPTIMIZATION_LEVEL} -ansi-alias -xSSE4.2 -no-prec-div -g")
 else ()
   set(EXTRA_FLAGS_RELEASE
-    "${OPTIMIZATION_LEVEL} -fno-strict-aliasing -ffast-math")
+    "${OPTIMIZATION_LEVEL} -fno-strict-aliasing -ffast-math -g")
 endif ()
 set(CMAKE_C_FLAGS_RELEASE   "${CMAKE_C_FLAGS_RELEASE}   ${EXTRA_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${EXTRA_FLAGS_RELEASE}")
@@ -251,12 +252,12 @@ if(CMAKE_BUILD_TYPE MATCHES "Release")
 endif ()
 
 
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   ${EXTRA_FLAGS_RELEASE} -g")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${EXTRA_FLAGS_RELEASE} -g")
+# set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${CMAKE_C_FLAGS_RELWITHDEBINFO}   ${EXTRA_FLAGS_RELEASE} -g")
+# set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${EXTRA_FLAGS_RELEASE} -g")
 
-if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-  add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
-endif ()
+# if(CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
+#   add_definitions(-DBOOST_DISABLE_ASSERTS -DARMA_NO_DEBUG -DNDEBUG -DHAVE_SSE2)
+# endif ()
 
 
 
