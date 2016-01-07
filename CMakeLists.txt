@@ -512,6 +512,13 @@ target_link_libraries(sdwcorr general_common
   boost_program_options boost_filesystem boost_system
   "z" ${ARMADILLO_LIBRARIES} ${FFTW3_LIBRARIES} ${EXTRA_LIBRARIES})
 
+set(sdweqtimesusc_SRC mainsdweqtimesusc.cpp)
+add_executable(sdweqtimesusc
+  ${sdweqtimesusc_SRC})
+target_link_libraries(sdweqtimesusc general_common
+  boost_program_options boost_filesystem boost_system
+  ${ARMADILLO_LIBRARIES} ${EXTRA_LIBRARIES})
+
 
 set(tauintsimple_SRC maintauintsimple.cpp)
 add_executable(tauintsimple
