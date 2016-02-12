@@ -102,7 +102,7 @@ int main(int argc, char* argv[]) {
     if(Derivative[i]>0) {
 	  std::cerr << "\n  Derivative of fraction is positive at temperature " << T[i] << std::endl
 	            << "  Your data may not be equilibrated." << std::endl
-				<< "  To enforce feedback you may try to determine derivatives using a linear regression with more regression points." << std::endl;
+                    << "  To enforce feedback you may try to determine derivatives using a linear regression with more regression points." << std::endl;
 	  exit(1);
 	}
   }
