@@ -494,10 +494,16 @@ add_executable(binarystreamtotext
   ${binarystreamtotext_SRC})
 target_link_libraries(binarystreamtotext general_common ${EXTRA_LIBRARIES})
 
+
 set(binarystreamtonormmeanseries_SRC mainbinarystreamtonormmeanseries.cpp)
 add_executable(binarystreamtonormmeanseries
   ${binarystreamtonormmeanseries_SRC})
 target_link_libraries(binarystreamtonormmeanseries general_common ${EXTRA_LIBRARIES})
+
+set(binarystreamtonormmeanseriesrepeated_SRC mainbinarystreamtonormmeanseriesrepeated.cpp)
+add_executable(binarystreamtonormmeanseriesrepeated
+  ${binarystreamtonormmeanseriesrepeated_SRC})
+target_link_libraries(binarystreamtonormmeanseriesrepeated general_common ${EXTRA_LIBRARIES})
 
 
 set(extractfrombinarystream_SRC mainextractfrombinarystream.cpp)
