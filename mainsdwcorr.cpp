@@ -471,7 +471,8 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
 void test_corr_ft() {
     ConfigParameters params;
     // params.L = 10;
-    params.L = 14;
+    // params.L = 14;
+    params.L = 12;
     params.N = params.L * params.L;
     // params.m = 200;
     params.m = 350;
@@ -505,7 +506,6 @@ void test_corr_ft() {
     std::cout << "full_ft vs fft --- max: " << diff_corr_ft.max()
               << ", mean: " << arma::accu(diff_corr_ft) / diff_corr_ft.n_elem << std::endl;
 
-
     // PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     // computeCorrelations_reduced(corr_reduced, config, params);
     // PhiCorrelations diff = arma::abs((corr_full - corr_reduced) / corr_full);
@@ -514,6 +514,12 @@ void test_corr_ft() {
     // // significant difference between _reduced and _full
     
 }
+
+
+// void test_corr_ft_00() {
+//     // test routine that just compares the zero frequency, zero momentum correlation function
+// }
+
 
 
 uintmax_t get_file_size(const std::string& filename) {
