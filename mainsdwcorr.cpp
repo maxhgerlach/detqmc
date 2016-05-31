@@ -281,13 +281,33 @@ void computeCorrelations_full(PhiCorrelations& corr_target, const PhiConfig& con
                             corr_target(iy_delta, ix_delta, nt_delta) += dot_product;
                         }
                     }
-                }                
+                }
             }
         }
     }
 
     corr_target /= num(conf_params.N * conf_params.m);
 }
+
+
+num computeCorrelations_00(const PhiConfig& conf, const ConfigParameters& conf_params) {
+    // compute [mean of phi(r,t)]^2 [the zero-frequency, zero-momentum susceptibility]
+    VecNum mean_phi = arma::zeros<VecNum>(conf_params.opdim);
+    for (uint32_t nt = 0; nt < conf_params.m; ++nt) {
+        for (uint32_t i = 0; i < conf_params.N; ++i) {
+            for (uint32_t dim = 0; dim < conf_params.opdim; ++dim) {
+                mean_phi[dim] += conf(i, dim, nt);
+            }
+        }
+    }
+    mean_phi /= num(conf_params.m * conf_params.N);
+    num result = 0.0;
+    for (uint32_t dim = 0; dim < conf_params.opdim; ++dim) {
+        result += mean_phi[dim] * mean_phi[dim];
+    }
+    return result;
+}
+
 
 // this assumes corr(r) = corr(-r), so its Fourier transform is real
 void slow_ft(PhiCorrelations& corr_ft, const PhiCorrelations& corr, const ConfigParameters& conf_params) {
@@ -471,11 +491,13 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
 void test_corr_ft() {
     ConfigParameters params;
     // params.L = 10;
-    // params.L = 14;
-    params.L = 12;
+    params.L = 14;
+    // params.L = 12;
+    // params.L = 4;
     params.N = params.L * params.L;
     // params.m = 200;
     params.m = 350;
+    // params.m = 20;
     params.dtau = 0.1;
     params.opdim = 2;
     PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m);
@@ -505,6 +527,9 @@ void test_corr_ft() {
 
     std::cout << "full_ft vs fft --- max: " << diff_corr_ft.max()
               << ", mean: " << arma::accu(diff_corr_ft) / diff_corr_ft.n_elem << std::endl;
+    std::cout << "values at k=0, omega=0: \n";
+    std::cout << "full_ft: " << corr_full_ft(0,0,0) << "\n";
+    std::cout << "fft: " << corr_fft(0,0,0) << "\n";
 
     // PhiCorrelations corr_reduced = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
     // computeCorrelations_reduced(corr_reduced, config, params);
@@ -516,9 +541,60 @@ void test_corr_ft() {
 }
 
 
-// void test_corr_ft_00() {
-//     // test routine that just compares the zero frequency, zero momentum correlation function
-// }
+void test_corr_ft_00() {
+    // test routine that just compares the zero frequency, zero
+    // momentum correlation function (which can be computed quickly
+    // also without an FFT)
+
+    ConfigParameters params;
+    params.L = 14;
+    params.N = params.L * params.L;
+    params.m = 350;
+    params.dtau = 0.1;
+    params.opdim = 2;
+    std::cout << "L: " << params.L << "\n";
+    std::cout << "m: " << params.m << "\n";
+    std::cout << "opdim: " << params.opdim << "\n";    
+
+    // random values from [0,1]
+    PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m);
+    // // shift, so we have random values from [-0.5, 0.5]
+    // config -= 0.5;
+    {
+        std::size_t sz = params.N * params.opdim * params.m;
+        VecNum values = arma::zeros<VecNum>(sz);
+        for (std::size_t i = 0; i < sz; ++i) {
+            values[i] = config[i];
+        }
+        std::cout << "mean: " << arma::mean(values) << "\n";
+    }
+
+    std::chrono::steady_clock::time_point start, end;
+
+    // run fft
+    PhiCorrelations corr_fft = arma::zeros<PhiCorrelations>(params.L, params.L, params.m);
+    FFT_workspace fft(params);
+
+    start = std::chrono::steady_clock::now();
+    computeCorrelations_fft(corr_fft, config, params, fft);
+    end = std::chrono::steady_clock::now();
+    std::cout << "corr_fft: "
+              << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+              << " microseconds" << std::endl;
+
+
+    // compute zero zero correlation function
+    start = std::chrono::steady_clock::now();
+    num corr00 =  computeCorrelations_00(config, params);
+    end = std::chrono::steady_clock::now();
+    std::cout << "computeCorrelations_00: "
+              << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
+              << " microseconds" << std::endl;
+
+    std::cout << "Zero-frequency, zero-momentum susceptibility:\n";
+    std::cout << "corr_fft(0, 0, 0): " << corr_fft(0, 0, 0) << "\n";
+    std::cout << "corr00: " << corr00 << "\n";
+}
 
 
 
@@ -751,7 +827,8 @@ int main(int argc, char *argv[]) {
     options.add_options()
         ("help", "print help on allowed options and exit")
         ("version,v", "print version information (git hash, build date) and exit")
-        ("test", "run a simple test routine")
+        ("test", "run a simple test routine (comparing full slow FT to FFT)")
+        ("test00", "run a very simple test routine (comparing zero-frequency, zero-momentum correlation function to FFT)")
         ("input", po::value< std::vector< std::string > >(&input_directories)->multitoken(),
          "list of directories cotaining input data (multiple simindex for the same data point)")
         ("output", po::value< std::string >(&output_directory),
@@ -778,6 +855,10 @@ int main(int argc, char *argv[]) {
     }
     if (vm.count("test")) {
         test_corr_ft();
+        return 0;
+    }
+    if (vm.count("test00")) {
+        test_corr_ft_00();
         return 0;
     }
 
