@@ -470,9 +470,11 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
 
 void test_corr_ft() {
     ConfigParameters params;
-    params.L = 10;
+    // params.L = 10;
+    params.L = 14;
     params.N = params.L * params.L;
-    params.m = 200;
+    // params.m = 200;
+    params.m = 350;
     params.dtau = 0.1;
     params.opdim = 2;
     PhiConfig config = arma::randu<PhiConfig>(params.N, params.opdim, params.m);
