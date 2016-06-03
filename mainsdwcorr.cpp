@@ -470,6 +470,8 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
             uint32_t x_index = site % conf_params.L;
             phi_ft.tube(y_index, x_index) = *(fft.vec_out);
         }
+        // normalization of FT
+        phi_ft /= num(conf_params.m);
 
         // spatial
         for (uint32_t nt = 0; nt < conf_params.m; ++nt) {
@@ -477,14 +479,22 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
             fft.fft_spatial.execute();
             phi_ft.slice(nt) = *(fft.mat_out);
         }
+        // normalization of FT
+        phi_ft /= num(conf_params.N);
+
 
         // the FT'ed correlation function is given by the squared modulus of the 
         // FT'ed spin correlation function
         corr_ft += arma::real(phi_ft % arma::conj(phi_ft));
     }
     
-    // normalization of Fourier transforms was missing, correct for that:
-    corr_ft /= (conf_params.N * conf_params.N * conf_params.m * conf_params.m); 
+    // This old code was no good. For N=14**2, m=350 the uint32_t in
+    // the divisor was very large, larger than 2**32, which lead to an
+    // integer overflow.
+    // 
+    // --
+    // // normalization of Fourier transforms was missing, correct for that:
+    // corr_ft /= (conf_params.N * conf_params.N * conf_params.m * conf_params.m); 
 }
 
 
