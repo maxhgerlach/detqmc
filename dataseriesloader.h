@@ -275,6 +275,7 @@ void DataSeriesLoader<double>::readFromFile(
     input.read(buffer, length);
     buffer[length] = '\0';              //add null termination
     char* tokenPointer = buffer;
+    char* newTokenPointer = tokenPointer;
 
 //  if (meta.count("samples")) {
 //      //time series file tells us how many samples are contained -> preallocate vector
@@ -301,7 +302,13 @@ void DataSeriesLoader<double>::readFromFile(
                 samples = 0;
             }
             for (int c = 0; c < columns; ++c) {
-                double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
+                //scans the double at tokenPointer, then sets newTokenPointer to point behind the double
+                double val = strtod(tokenPointer, &newTokenPointer);
+                if (tokenPointer == newTokenPointer) {
+                    // this means no conversion took place
+                    throw_GeneralError( "Could not convert token after value number" + numToString(valuesRead) );
+                }
+                tokenPointer = newTokenPointer; // next token will be after the current one
                 if (samples == 0) {
                     data[c]->push_back(val);
                 }
@@ -312,7 +319,13 @@ void DataSeriesLoader<double>::readFromFile(
     } else if (subsample == 1) {
         while (tokenPointer < buffer + length and (readMaxData == 0 or (valuesRead < readMaxData))) {
             for (int c = 0; c < columns; ++c) {
-                double val = strtod(tokenPointer, &tokenPointer);   //scans the double at tokenPointer, then sets tokenPointer to point behind the double
+                //scans the double at tokenPointer, then sets newTokenPointer to point behind the double
+                double val = strtod(tokenPointer, &newTokenPointer);
+                if (tokenPointer == newTokenPointer) {
+                    // this means no conversion took place
+                    throw_GeneralError( "Could not convert token after value number" + numToString(valuesRead) );
+                }
+                tokenPointer = newTokenPointer; // next token will be after the current one
                 data[c]->push_back(val);
             }
             ++valuesRead;
