@@ -306,7 +306,7 @@ void DataSeriesLoader<double>::readFromFile(
                 double val = strtod(tokenPointer, &newTokenPointer);
                 if (tokenPointer == newTokenPointer) {
                     // this means no conversion took place
-                    throw_GeneralError( "Could not convert token after value number" + numToString(valuesRead) );
+                    throw_GeneralError( "Could not convert token after value number " + numToString(valuesRead) );
                 }
                 tokenPointer = newTokenPointer; // next token will be after the current one
                 if (samples == 0) {
@@ -323,7 +323,7 @@ void DataSeriesLoader<double>::readFromFile(
                 double val = strtod(tokenPointer, &newTokenPointer);
                 if (tokenPointer == newTokenPointer) {
                     // this means no conversion took place
-                    throw_GeneralError( "Could not convert token after value number" + numToString(valuesRead) );
+                    throw_GeneralError( "Could not convert token after value number " + numToString(valuesRead) );
                 }
                 tokenPointer = newTokenPointer; // next token will be after the current one
                 data[c]->push_back(val);
