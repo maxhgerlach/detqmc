@@ -484,7 +484,7 @@ void computeCorrelations_fft(PhiCorrelations& corr_ft, const PhiConfig& conf,
 
 
         // the FT'ed correlation function is given by the squared modulus of the 
-        // FT'ed spin correlation function
+        // FT'ed spin configuration
         corr_ft += arma::real(phi_ft % arma::conj(phi_ft));
     }
     
