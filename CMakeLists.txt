@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 2.8.5)
 
+#############################################
+### Beginning of system specific settings ###
+#############################################
+
+
 # NOTE: For simplicity, this cmake script contains host-specific code
 # and needs to be adapted for new build hosts.  In principle, it would
 # be cleaner to adhere better to the CMake spirit and have these
@@ -321,6 +326,14 @@ else ()
 endif ()
 
 
+
+#######################################
+### End of system specific settings ###
+#######################################
+
+
+
+
 ## foreign code in subdirectories -> have a separate CMakeLists.txt for those
 # directly include needed boost source files to reduce linker woes
 # (debug-builts don't work unless exactly the same compiler options
@@ -361,7 +374,7 @@ execute_process(
 
 configure_file(
   git-revision.c.in             # in source tree
-  ${PROJECT_BINARY_DIR}/git-revision.c                # in binary tree - is this then found automatically?
+  ${PROJECT_BINARY_DIR}/git-revision.c                # in binary tree
 )
 
 
