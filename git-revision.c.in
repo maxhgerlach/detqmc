@@ -1,7 +1,0 @@
-// These entries are to be processed by cmake
-
-const char GIT_BRANCH[] = "@GIT_BRANCH@";
-const char GIT_REVISION_HASH[] = "@GIT_REVISION_HASH@";
-const char HOST_NAME[] = "@HOST_NAME@";
-const char BUILD_DATE[] = __DATE__;
-const char BUILD_TIME[] = __TIME__;
