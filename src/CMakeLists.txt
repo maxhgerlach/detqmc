@@ -565,7 +565,11 @@ target_link_libraries(testspheresampling general_common
   ${ARMADILLO_LIBRARIES} dsfmt ${EXTRA_LIBRARIES})
 
 
-add_executable(feedback feedback.cc)
+## Simon Trebst's code for feedback optimization of parallel
+## tempering control parameter value distributions, not included
+## in this distribution.
+
+# add_executable(feedback feedback.cc)
 
 
 set(mrpt_COMMON_SRC
