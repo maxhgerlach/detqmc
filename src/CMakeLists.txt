@@ -291,12 +291,6 @@ endif ()
 
 
 # FFTW3
-# if (${CHEOPS_FOUND})
-#   # ...
-# else ()
-#   set(FFTW3_LIBRARIES
-#     "-lfftw3")
-# endif ()
 if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
   # Use Intel's MKL FFTW3 compatibility wrapper
   set(FFTW3_LIBRARIES ${ARMADILLO_LIBRARIES})
