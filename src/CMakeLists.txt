@@ -42,14 +42,6 @@ else ()
   message("Building on l71.thp")
   set(L71_FOUND "TRUE")
 endif ()
-# some specific settings for the Thinkpad notebook:
-string(FIND "${HOST_NAME}" "max-ThinkPad-X220" MAX_THINKPAD_POSITION)
-if ("${MAX_THINKPAD_POSITION}" LESS 0)
-  set(MAX_THINKPAD_FOUND "FALSE")
-else ()
-  message("Building on Max's Thinkpad X220")
-  set(MAX_THINKPAD_FOUND "TRUE")
-endif ()
 # some specific settings for thp domain computers:
 execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
 string(TOLOWER "${DOMAIN_NAME}" DOMAIN_NAME_LOWER)
@@ -75,13 +67,13 @@ option(USE_CLANG_COMPILER
   "Use the clang compiler" OFF)
 
 if (${USE_CLANG_COMPILER})
-  message("Using clang/clang++-3.4 compilers")
+  message("Using clang/clang++ compilers")
   set(USE_GNU_COMPILER "FALSE")
   if (${USE_INTEL_COMPILER})
     message(FATAL_ERROR "Specify either clang or Intel compilers")
   endif()
-  set(CMAKE_C_COMPILER "clang-3.4")
-  set(CMAKE_CXX_COMPILER "clang++-3.4")
+  set(CMAKE_C_COMPILER "clang")
+  set(CMAKE_CXX_COMPILER "clang++")
 endif ()
 
 if (${USE_INTEL_COMPILER})
@@ -96,18 +88,9 @@ endif ()
 
 
 if (${USE_GNU_COMPILER})
-  if (${MAX_THINKPAD_FOUND})
-    # g++ 4.8 and 4.9 currently still have a bug preventing them to
-    # compile this code. So on the Thinkpad just use g++-4.7 manually
-    # unless we prefer Clang.
-    message("Using gcc/g++ 4.7 compilers")
-    set(CMAKE_C_COMPILER "gcc-4.7")
-    set(CMAKE_CXX_COMPILER "g++-4.7")
-  else ()
-    message("Using gcc/g++ compilers")
-    set(CMAKE_C_COMPILER "gcc")
-    set(CMAKE_CXX_COMPILER "g++")
-  endif ()
+  message("Using gcc/g++ compilers")
+  set(CMAKE_C_COMPILER "gcc")
+  set(CMAKE_CXX_COMPILER "g++")
 endif ()
 
 project (Det)
