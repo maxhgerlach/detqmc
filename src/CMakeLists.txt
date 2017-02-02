@@ -251,6 +251,9 @@ endif ()
 
 
 # External libraries -- Armadillo
+# This uses LAPACK and BLAS or a compatible implementation like the Intel MKL.
+# Armadillo can be used "header only" and for simplicity these headers are included.
+include_directories("${PROJECT_SOURCE_DIR}/armadillo")
 set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "$ENV{HOME}/lib" "$ENV{HOME}/opt/lib")
 if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
   # set(ARMADILLO_LIBRARIES
@@ -259,12 +262,10 @@ if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
       "-lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread")
   # do not link -lgfortran
 else ()
-  if (${L71_FOUND})
-    set(ARMADILLO_LIBRARIES
-      "-llapack -lblas -lgfortran")
-  else ()
-    set(ARMADILLO_LIBRARIES "-larmadillo")
-  endif ()
+  # set(ARMADILLO_LIBRARIES
+  #   "-llapack -lblas -lgfortran")
+  set(ARMADILLO_LIBRARIES
+    "-llapack -lblas")
   if (${THP_DOMAIN})
     # on thp machines: explicitly link to Lapack, not the Atlas implementation (which is not compatible to Openblas)
     set(EXTRA_LIBRARY_LOCATIONS "${EXTRA_LIBRARY_LOCATIONS}" "/usr/lib/lapack/")
