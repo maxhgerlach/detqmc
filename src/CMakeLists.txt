@@ -273,6 +273,9 @@ else ()
   endif ()
 endif ()
 
+# CNPY
+include_directories("${PROJECT_SOURCE_DIR}/cnpy")
+
 
 # FFTW3
 if (${CHEOPS_FOUND} OR ${JURECA_FOUND})
@@ -502,7 +505,7 @@ add_executable(extractfrombinarystream
   ${extractfrombinarystream_SRC})
 target_link_libraries(extractfrombinarystream general_common boost_program_options ${EXTRA_LIBRARIES})
 
-set(sdwcorr_SRC mainsdwcorr.cpp cnpy.cpp)
+set(sdwcorr_SRC mainsdwcorr.cpp cnpy/cnpy.cpp)
 add_executable(sdwcorr
   ${sdwcorr_SRC})
 target_link_libraries(sdwcorr general_common
