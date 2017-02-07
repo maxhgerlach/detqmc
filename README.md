@@ -46,5 +46,15 @@ For simplicity (portions of) these libraries are included with this package:
 
 License information is included within the respective subdirectories.
 
-## Building ##
+## Compilation ##
 
+To compile an optimized full build with default settings do:
+
+``` shell
+cd Release
+./runcmake.sh
+make -j
+```
+
+Go to the directory `Debug` instead of `Release` for a build with
+debug symbols, additional error checks, and no optimization.
