@@ -10,52 +10,56 @@ cmake_minimum_required (VERSION 2.8.5)
 # be cleaner to adhere better to the CMake spirit and have these
 # definitions outside this script (e.g. in a calling shell script).
 
-# host discrimination
+## host discrimination
 site_name(HOST_NAME)
-# some specific settings for the Cheops cluster.
-# this sets CHEOPS_POSITION to -1, if not found:
-string(FIND "${HOST_NAME}" "cheops" CHEOPS_POSITION)
-if ("${CHEOPS_POSITION}" LESS 0)
+
+## some specific settings for the Cheops cluster.
+## this sets CHEOPS_POSITION to -1, if not found:
+# string(FIND "${HOST_NAME}" "cheops" CHEOPS_POSITION)
+# if ("${CHEOPS_POSITION}" LESS 0)
   set(CHEOPS_FOUND "FALSE")
-else ()
-  message("Building on Cheops")
-  set(CHEOPS_FOUND "TRUE")
-endif ()
-# some specific settings for the Jureca cluster.
-set (FZ_JUELICH_ID_FILE "/etc/FZJ/systemname")
-if (EXISTS "${FZ_JUELICH_ID_FILE}")
-  file (STRINGS "${FZ_JUELICH_ID_FILE}" FZ_JUELICH_SYSTEMNAME)
-  if (${FZ_JUELICH_SYSTEMNAME} STREQUAL "jureca")
-    message("Building on Jureca")
-    set(JURECA_FOUND "TRUE")
-  else ()
+# else ()
+  # message("Building on Cheops")
+  # set(CHEOPS_FOUND "TRUE")
+# endif ()
+
+## some specific settings for the Jureca cluster.
+# set (FZ_JUELICH_ID_FILE "/etc/FZJ/systemname")
+# if (EXISTS "${FZ_JUELICH_ID_FILE}")
+# file (STRINGS "${FZ_JUELICH_ID_FILE}" FZ_JUELICH_SYSTEMNAME)
+# if (${FZ_JUELICH_SYSTEMNAME} STREQUAL "jureca")
+#   message("Building on Jureca")
+#   set(JURECA_FOUND "TRUE")
+# else ()
     set(JURECA_FOUND "FALSE")
-  endif ()
-else ()
-  set(JURECA_FOUND "FALSE")
-endif ()
-# some specific settings for the l71 work station:
-string(FIND "${HOST_NAME}" "l71" L71_POSITION)
-if ("${L71_POSITION}" LESS 0)
+#   endif ()
+# else ()
+#   set(JURECA_FOUND "FALSE")
+# endif ()
+
+## some specific settings for the l71 work station:
+# string(FIND "${HOST_NAME}" "l71" L71_POSITION)
+# if ("${L71_POSITION}" LESS 0)
   set(L71_FOUND "FALSE")
-else ()
-  message("Building on l71.thp")
-  set(L71_FOUND "TRUE")
-endif ()
-# some specific settings for thp domain computers:
-execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
-string(TOLOWER "${DOMAIN_NAME}" DOMAIN_NAME_LOWER)
-string(FIND "${DOMAIN_NAME_LOWER}" "thp" THP_POSITION)
-if ("${THP_POSITION}" LESS 0)
+# else ()
+#  message("Building on l71.thp")
+#  set(L71_FOUND "TRUE")
+# endif ()
+
+## some specific settings for thp domain computers:
+# execute_process(COMMAND dnsdomainname OUTPUT_VARIABLE DOMAIN_NAME)
+# string(TOLOWER "${DOMAIN_NAME}" DOMAIN_NAME_LOWER)
+# string(FIND "${DOMAIN_NAME_LOWER}" "thp" THP_POSITION)
+# if ("${THP_POSITION}" LESS 0)
   set(THP_DOMAIN "FALSE")
-else ()
-  message("Building in the .thp domain")
-  set(THP_DOMAIN "TRUE")
-endif ()
+# else ()
+#  message("Building in the .thp domain")
+#  set(THP_DOMAIN "TRUE")
+# endif ()
 
 
 
-# On the clusters use Intel compiler
+## On the clusters use Intel compiler
 
 option(USE_GNU_COMPILER
   "Use gcc and g++ (default)" ON)
