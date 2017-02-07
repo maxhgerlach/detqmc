@@ -56,5 +56,35 @@ cd Release
 make -j
 ```
 
+After having run CMake you can alternatively build only select
+targets.  For example, run `make -j detqmcptsdwo2` to build all
+requirements for the executable to run parallelized replica exchange
+DQMC simulations of the O(2) SDW model.
+
 Go to the directory `Debug` instead of `Release` for a build with
 debug symbols, additional error checks, and no optimization.
+
+If this does not work immediately, some tweaking may be necessary.
+
+You can change the invocation  of `cmake` in `Release/runcmake.sh`.  For
+instance, to use `clang` instead of `g++`, edit it to read
+
+``` shell
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DUSE_GNU_COMPILER=OFF -DUSE_CLANG_COMPILER=ON  ../src
+```
+There are a couple more options defined in `src/CMakeList.txt`.
+
+For more specific configuration you will have to directly edit the
+`src/CMakeList.txt` file.  Its inital section contains logic for
+system specific build settings.  It contains some example sections for
+the "Cheops" and "Jureca" HPC clusters, and for some machines running
+outdated system installations: the "l71" work station and the
+computers in a domain "thp".  The parts of the CMake script that
+enable these specific settings are currently commented out.  Use them
+as example guidelines to adapt the setup to your own machines.
+
+Depending on your BLAS and LAPACK installation you might also have to
+uncomment some preprocessor directives in the file
+`src/armadillo/armadillo_bits/config.hpp`.  Alternatively, you could
+just delete the entire directory `src/armadillo` and use your own,
+independent installation of [Armadillo](http://arma.sourceforge.net/).
