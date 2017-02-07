@@ -1,3 +1,5 @@
 .directory
 Release/*
 Debug/*
+/flymd.html
+/flymd.md
