@@ -41,7 +41,7 @@ For simplicity (portions of) these libraries are included with this package:
   * [dSFMT](http://www.math.sci.hiroshima-u.ac.jp/~m-mat/MT/SFMT/#dSFMT) 2.1
     for pseudo-random number generation
   * [Boost](http://www.boost.org/) 1.51
-  * [Dlib](http://dlib.net/), used only in the mrpt reweighting code
+  * [Dlib](http://dlib.net/), used in the mrpt reweighting code
   * [cnpy](https://github.com/rogersce/cnpy), used in sdwcorr
 
 License information is included within the respective subdirectories.
