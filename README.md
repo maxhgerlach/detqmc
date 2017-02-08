@@ -124,18 +124,6 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 
 # Overview over source code files in `src/` #
-  * Handling of DQMC simulations
-      * Handling of a single-replica DQMC simulation (thermalization,
-        production sweeps, measurements, saving of state) in class
-        `DetQMC`: [`detqmc.h`](src/detqmc.h),
-        [`detqmcparams.h`](src/detqmcparams.h),
-        [`detqmcparams.cpp`](src/detqmcparams.cpp)
-      * Handling of parallelized replica-exchange DQMC simulations in
-        class `DetQMCPT` (`DetQMC` on a parallelized scale, with
-        additional replica exchange moves):
-        [`detqmcpt.h`](src/detqmcpt.h),
-        [`detqmcptparams.h`](src/detqmcptparams.h),
-        [`detqmcptparams.cpp`](src/detqmcptparams.cpp)
   * Replica classes, implementing one instance of a model in a Monte Carlo simulation
       * Generic base class for a model, implementing the skeleton of a
         numerically stabilized Monte Carlo sweep:
@@ -162,6 +150,18 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dethubbard.cpp`](src/dethubbard.cpp),
         [`dethubbardparams.h`](src/dethubbardparams.h),
         [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
+  * Handling of DQMC simulations
+      * Handling of a single-replica DQMC simulation (thermalization,
+        production sweeps, measurements, saving of state) in class
+        `DetQMC`: [`detqmc.h`](src/detqmc.h),
+        [`detqmcparams.h`](src/detqmcparams.h),
+        [`detqmcparams.cpp`](src/detqmcparams.cpp)
+      * Handling of parallelized replica-exchange DQMC simulations in
+        class `DetQMCPT` (`DetQMC` on a parallelized scale, with
+        additional replica exchange moves):
+        [`detqmcpt.h`](src/detqmcpt.h),
+        [`detqmcptparams.h`](src/detqmcptparams.h),
+        [`detqmcptparams.cpp`](src/detqmcptparams.cpp)
   * Simulation main programs
       * Single-replica simulations:
         [`maindetqmcsdwopdim.cpp`](src/maindetqmcsdwopdim.cpp),
