@@ -23,7 +23,7 @@
 
 typedef double num;
 
-//share
+//share this between replica and observable handler classes
 
 template <typename ObsType>
 struct Observable {
