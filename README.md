@@ -168,7 +168,12 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`maindetqmcsdwo1.cpp`](src/maindetqmcsdwo1.cpp),
         [`maindetqmcsdwo2.cpp`](src/maindetqmcsdwo2.cpp),
         [`maindetqmcsdwo3.cpp`](src/maindetqmcsdwo3.cpp),
-        [`maindetqmchubbard.cpp`](src/maindetqmchubbard.cpp)        
+        [`maindetqmchubbard.cpp`](src/maindetqmchubbard.cpp)
+      * Replica-exchange simulations:
+        [`mpimaindetqmcptsdwopdim.cpp`](src/mpimaindetqmcptsdwopdim.cpp),
+        [`mpimaindetqmcptsdwo1.cpp`](src/mpimaindetqmcptsdwo1.cpp),
+        [`mpimaindetqmcptsdwo2.cpp`](src/mpimaindetqmcptsdwo2.cpp),
+        [`mpimaindetqmcptsdwo3.cpp`](src/mpimaindetqmcptsdwo3.cpp)
   * `mrpt`: Multiple histogram reweighting for parallel tempering / replica exchange simulations
       * Main programs: [`main-mrpt.cpp`](src/main-mrpt.cpp),
         [`main-mrptbc.cpp`](src/main-mrptbc.cpp),
@@ -195,6 +200,8 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
       * Histograms and related functions: [`histograms.h`](src/histograms.h)
       * Calcuations with internally logarithmic representation:
         [`logval.h`](src/logval.h)
+      * Metadata for stored data: [`metadata.h`](src/metadata.h),
+        [`metadata.cpp`](src/metadata.cpp)        
   * Tools for data evaluation
       * Expectation values from indivual time series:
         [`maindeteval.cpp`](src/maindeteval.cpp),
