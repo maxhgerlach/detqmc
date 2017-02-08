@@ -7,6 +7,10 @@
  * 
  * */
 
+// tests for sampling points in spherical coordinates; in the end we
+// settled for picking a new point from a box centered around the
+// previous point
+
 #if defined (MAX_DEBUG) && ! defined(DUMA_NO_DUMA)
 #include "dumapp.h"
 #endif
