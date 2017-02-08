@@ -146,7 +146,32 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`detmodelparams.h`](/src/detmodelparams.h),
         [`detmodelloggingparams.h`](/src/detmodelloggingparams.h),
         [`detmodelloggingparams.cpp`](/src/detmodelloggingparams.cpp)
+      * Metallic SDW model with O(1), O(2), or O(3) order parameter
+        dimension: [`detsdwopdim.h`](/src/detsdwopdim.h),
+        [`detsdwopdim.cpp`](/src/detsdwopdim.cpp),
+        [`detsdwo1.cpp`](/src/detsdwo1.cpp),
+        [`detsdwo2.cpp`](/src/detsdwo2.cpp),
+        [`detsdwo3.cpp`](/src/detsdwo3.cpp),
+        [`detsdwparams.h`](/src/detsdwparams.h),
+        [`detsdwparams.cpp`](/src/detsdwparams.cpp)
+      * Serializing and passing around SDW model system
+        configurations:
+        [`detsdwsystemconfig.h`](/src/detsdwsystemconfig.h),
+        [`detsdwsystemconfig.cpp`](/src/detsdwsystemconfig.cpp),
+        [`detsdwsystemconfigfilehandle.h`](/src/detsdwsystemconfigfilehandle.h)
       * Hubbard model: [`dethubbard.h`](src/dethubbard.h),
         [`dethubbard.cpp`](src/dethubbard.cpp),
         [`dethubbardparams.h`](src/dethubbardparams.h),
         [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
+  * Handling of DQMC simulations
+      * Handling of a single-replica DQMC simulation (thermalization,
+        production sweeps, measurements, saving of state) in class
+        `DetQMC`: [`detqmc.h`](/src/detqmc.h),
+        [`detqmcparams.h`](/src/detqmcparams.h),
+        [`detqmcparams.cpp`](/src/detqmcparams.cpp)
+      * Handling of parallelized replica-exchange DQMC simulations in
+        class `DetQMCPT` (`DetQMC` on a parallelized scale, with
+        additional replica exchange moves):
+        [`detqmcpt.h`](/src/detqmcpt.h),
+        [`detqmcptparams.h`](/src/detqmcptparams.h),
+        [`detqmcptparams.cpp`](/src/detqmcptparams.cpp)
