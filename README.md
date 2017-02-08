@@ -25,7 +25,7 @@ MPL 2.0
     - [Included libraries](#included-libraries)
     - [Compilation](#compilation)
 - [Usage](#usage)
-- [Overview over source code files](#overview-over-source-code-files)
+- [Overview over source code files in `src/`](#overview-over-source-code-files-in-src)
 
 <!-- markdown-toc end -->
 
