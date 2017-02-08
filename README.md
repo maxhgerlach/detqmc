@@ -162,14 +162,19 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dethubbard.cpp`](src/dethubbard.cpp),
         [`dethubbardparams.h`](src/dethubbardparams.h),
         [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
-  * Simulation main program
-      * single-replica simulations:
+  * Simulation main programs
+      * Single-replica simulations:
         [`maindetqmcsdwopdim.cpp`](src/maindetqmcsdwopdim.cpp),
         [`maindetqmcsdwo1.cpp`](src/maindetqmcsdwo1.cpp),
         [`maindetqmcsdwo2.cpp`](src/maindetqmcsdwo2.cpp),
         [`maindetqmcsdwo3.cpp`](src/maindetqmcsdwo3.cpp),
-        [`maindetqmchubbard.cpp`](src/maindetqmchubbard.cpp)
-        
+        [`maindetqmchubbard.cpp`](src/maindetqmchubbard.cpp)        
+  * `mrpt`: Multiple histogram reweighting for parallel tempering / replica exchange simulations
+      * Main programs: [`main-mrpt.cpp`](src/main-mrpt.cpp),
+        [`main-mrptbc.cpp`](src/main-mrptbc.cpp),
+        [`main-mrpt-find-intersect.cpp`](src/main-mrpt-find-intersect.cpp),
+        [`main-mrpt-binderratio-intersect.cpp`](src/main-mrpt-binderratio-intersect.cpp),
+        [`main-mrptbc-binderratio-intersect.cpp`](src/main-mrptbc-binderratio-intersect.cpp)
   * Utility classes and functions
       * Boost serialization support for additional classes:
       [`boost_serialize_armadillo.h`](src/boost_serialize_armadillo.h),
@@ -178,24 +183,31 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
       [`boost_serialize_vector_uniqueptr.h`](src/boost_serialize_vector_uniqueptr.h)
       * `checkarray` derived from `std::array`, providing a bound
         checked `operator[]` in debug builds: [`checkarray.h`](src/checkarray.h)
-      * data IO to/from text files:
+      * Data IO to/from text files:
         [`datamapwriter.h`](src/datamapwriter.h),
         [`dataseriesloader.h`](src/dataseriesloader.h),
         [`dataserieswriter.h`](src/dataserieswriter.h),
         [`dataserieswritersucc.h`](src/dataserieswritersucc.h)
-      * exception handling: [`exceptions.h`](src/exceptions.h)
+      * Exception handling: [`exceptions.h`](src/exceptions.h)
       * git revision and build information:
         [`git-revision.h`](src/git-revision.h),
         [`git-revision.c.in`](src/git-revision.c.in)
       * Histograms and related functions: [`histograms.h`](src/histograms.h)
       * Calcuations with internally logarithmic representation:
         [`logval.h`](src/logval.h)
-  * Data evaluation
+  * Tools for data evaluation
       * Expectation values from indivual time series:
         [`maindeteval.cpp`](src/maindeteval.cpp),
         [`maindetevalbc.cpp`](src/maindetevalbc.cpp)
+      * Bosonic observables from stored system configurations:
+        [`mainsdwcorr.cpp`](src/mainsdwcorr.cpp),
+        [`mainsdweqtimesusc.cpp`](src/mainsdweqtimesusc.cpp)
+      * Time series management:
+        [`mainjointimeseries.cpp`](src/mainjointimeseries.cpp)
+      * Autocorrelation times: [`maintauintsimple.cpp`](src/maintauintsimple.cpp)
       * Handling of stored streams of system configurations:
         [`mainbinarystreamtonormmeanseries.cpp`](src/mainbinarystreamtonormmeanseries.cpp),
         [`mainbinarystreamtonormmeanseriesrepeated.cpp`](src/mainbinarystreamtonormmeanseriesrepeated.cpp),
         [`mainbinarystreamtotext.cpp`](src/mainbinarystreamtotext.cpp),
         [`mainextractfrombinarystream.cpp`](src/mainextractfrombinarystream.cpp)
+
