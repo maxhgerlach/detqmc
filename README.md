@@ -7,10 +7,13 @@ implementing any suitable model and to use that in numerically
 stabilized finite temperature simulations with a replica exchange
 mechanism
 
-specifically implemented sdw o(n) model, n = 1,2,3; also includes some
-starter code for a Hubbard model replica
+specifically implemented metallic O(N) spin-density wave (SDW) model,
+N = 1,2,3; also includes some starter code for a Hubbard model replica
 
 refer to papers, thesis
+
+include in overview: mention multiple histogram reweighting for data
+analysis
 
 MPL 2.0
 
@@ -115,6 +118,9 @@ just delete the entire directory `src/armadillo` and use your own,
 independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 
+# Usage #
+
+
 # Overview over source code files #
   * Utility classes and functions
       * Boost serialization support for additional classes:
@@ -130,8 +136,15 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dataserieswriter.h`](src/dataserieswriter.h),
         [`dataserieswritersucc.h`](src/dataserieswritersucc.h)
   * Replica classes, implementing one instance of a model in a Monte Carlo simulation
-      * Generic base class for a model
-      * Hubbard model: [`dethubbard.cpp`](src/dethubbard.cpp),
-        [`dethubbard.h`](src/dethubbard.h),
-        [`dethubbardparams.cpp`](src/dethubbardparams.cpp),
-        [`dethubbardparams.h`](src/dethubbardparams.h)
+      * Generic base class for a model, implementing the skeleton of a
+        numerically stabilized Monte Carlo sweep:
+        [`detmodel.h`](/src/detmodel.h),
+        [`detmodel.cpp`](/src/detmodel.cpp)
+      * Generic model parameter handling:
+        [`detmodelparams.h`](/src/detmodelparams.h),
+        [`detmodelloggingparams.h`](/src/detmodelloggingparams.h),
+        [`detmodelloggingparams.cpp`](/src/detmodelloggingparams.cpp)
+      * Hubbard model: [`dethubbard.h`](src/dethubbard.h),
+        [`dethubbard.cpp`](src/dethubbard.cpp),
+        [`dethubbardparams.h`](src/dethubbardparams.h),
+        [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
