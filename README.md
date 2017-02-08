@@ -133,6 +133,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`detmodelparams.h`](src/detmodelparams.h),
         [`detmodelloggingparams.h`](src/detmodelloggingparams.h),
         [`detmodelloggingparams.cpp`](src/detmodelloggingparams.cpp)
+      * Helper struct: [`udv.h`](src/udv.h)
       * Metallic SDW model with O(1), O(2), or O(3) order parameter
         dimension: [`detsdwopdim.h`](src/detsdwopdim.h),
         [`detsdwopdim.cpp`](src/detsdwopdim.cpp),
@@ -162,6 +163,17 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`detqmcpt.h`](src/detqmcpt.h),
         [`detqmcptparams.h`](src/detqmcptparams.h),
         [`detqmcptparams.cpp`](src/detqmcptparams.cpp)
+      * Observable measurements
+          * Class shared between replica and observable handler
+            classes: [`observable.h`](src/observable.h)
+          * Classes to handle observable measurements in single replica
+            simulations:
+            [`observablehandler.h`](src/observablehandler.h),
+            [`observablehandler.cpp`](src/observablehandler.cpp)
+          * Classes to handle observable measurements in replica exchange
+            simulations:
+            [`mpiobservablehandlerpt.h`](src/mpiobservablehandlerpt.h),
+            [`mpiobservablehandlerpt.cpp`](src/mpiobservablehandlerpt.cpp)
   * Simulation main programs
       * Single-replica simulations:
         [`maindetqmcsdwopdim.cpp`](src/maindetqmcsdwopdim.cpp),
@@ -175,11 +187,27 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`mpimaindetqmcptsdwo2.cpp`](src/mpimaindetqmcptsdwo2.cpp),
         [`mpimaindetqmcptsdwo3.cpp`](src/mpimaindetqmcptsdwo3.cpp)
   * `mrpt`: Multiple histogram reweighting for parallel tempering / replica exchange simulations
-      * Main programs: [`main-mrpt.cpp`](src/main-mrpt.cpp),
+      * Core `mrpt` routines: [`mrpt.h`](src/mrpt.h),
+        [`mrpt.cpp`](src/mrpt.cpp)
+      * Core `mrpt` routines with jackknife error handling:
+        [`mrpt-jk.h`](src/mrpt-j.h), [`mrpt-jk.cpp`](src/mrpt-jk.cpp)
+      * Intersection points of observable measurement curves:
+        [`mrpt-find-intersect.h`](src/mrpt-find-intersect.h),
+        [`mrpt-find-intersect.cpp`](src/mrpt-find-intersect.cpp),
+        [`mrpt-binderratio-intersect.h`](src/mrpt-binderratio-intersect.h)
+        [`mrpt-binderratio-intersect.cpp`](src/mrpt-binderratio-intersect.cpp),
+      * High-level interface with SWIG Python bindings:
+        [`mrpt-highlevel.h`](src/mrpt-highlevel.h),
+        [`mrpt-highlevel.cpp`](src/mrpt-highlevel.cpp),
+        [`mrpt-highlevel.i`](src/mrpt-highlevel.i)
+      * Main `mrpt` programs: [`main-mrpt.cpp`](src/main-mrpt.cpp),
         [`main-mrptbc.cpp`](src/main-mrptbc.cpp),
         [`main-mrpt-find-intersect.cpp`](src/main-mrpt-find-intersect.cpp),
         [`main-mrpt-binderratio-intersect.cpp`](src/main-mrpt-binderratio-intersect.cpp),
         [`main-mrptbc-binderratio-intersect.cpp`](src/main-mrptbc-binderratio-intersect.cpp)
+      * Helper structs:
+        [`reweightingresult.h`](src/reweightingresult.h),
+        [`reweightedmomentsjk.h`](src/reweightedmomentsjk.h)
   * Utility classes and functions
       * Boost serialization support for additional classes:
       [`boost_serialize_armadillo.h`](src/boost_serialize_armadillo.h),
@@ -201,7 +229,30 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
       * Calcuations with internally logarithmic representation:
         [`logval.h`](src/logval.h)
       * Metadata for stored data: [`metadata.h`](src/metadata.h),
-        [`metadata.cpp`](src/metadata.cpp)        
+        [`metadata.cpp`](src/metadata.cpp)
+      * Neighbor table for hypercubic lattices:
+        [`neighbortable.h`](src/neighbortable.h)
+      * Normal distributed random numbers:
+        [`normaldistribution.h`](src/normaldistribution.h)
+      * Routines for minimization and determination of roots:
+        [`numerics.h`](src/numerics.h)
+      * Run a linked Python interpreter to plot internal data:
+        [`pytools.h`](src/pytools.h), [`pytools.cpp`](src/pytools.cpp)
+      * Wrapper around random number generator:
+        [`rngwrapper.h`](src/rngwrapper.h),
+        [`rngwrapper.cpp`](src/rngwrapper.cpp)
+      * Running averages: [`RunningAverage.h`](src/RunningAverage.h)
+      * Statistics on time series: [`statistics.h`](src/statistics.h),
+        [`statistics.cpp`](src/statistics.cpp)
+      * Data structures for symmetric matrices:
+        [`symmat.h`](src/symmat.h)
+      * Optional execution timing of repeatedly executed code regions:
+        [`timing.h`](src/timing.h), [`timing.cpp`](src/timing.cpp)
+      * Various helpers: [`tools.h`](src/tools.h),
+        [`tools.cpp`](src/tools.cpp)
+      * Macros useful in `gdb` debugging sessions:
+        [`toolsdebug.h`](src/toolsdebug.h)
+      * Python-like `zip()` function for arbitrary containers: [`zip.h`](src/zip.h)
   * Tools for data evaluation
       * Expectation values from indivual time series:
         [`maindeteval.cpp`](src/maindeteval.cpp),
