@@ -36,7 +36,7 @@ std::vector<std::string> glob(const std::string& path){
 
 
 
-// these can be called from the debugger)
+// these can be called from the debugger
 void printMatrixReal(const arma::Mat<num>& mat) {
     mat.print(std::cout);
 }
