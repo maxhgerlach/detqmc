@@ -113,3 +113,12 @@ uncomment some preprocessor directives in the file
 `src/armadillo/armadillo_bits/config.hpp`.  Alternatively, you could
 just delete the entire directory `src/armadillo` and use your own,
 independent installation of [Armadillo](http://arma.sourceforge.net/).
+
+
+# Overview over source code files #
+  * Utilities
+      * Boost serialization support for additional classes:
+      [`boost_serialize_armadillo.h`](/src/boost_serialize_armadillo.h),  `boost_serialize_array.h`,
+      `boost_serialize_uniqueptr.h`, `boost_serialize_vector_uniqueptr.h`
+      * `checkarray` derived from `std::array`, providing a bound
+        checked `operator[]` in debug builds: `checkarray.h`
