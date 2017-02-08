@@ -116,9 +116,16 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 
 # Overview over source code files #
-  * Utilities
+  * Utility classes and functions
       * Boost serialization support for additional classes:
-      [`boost_serialize_armadillo.h`](/src/boost_serialize_armadillo.h),  `boost_serialize_array.h`,
-      `boost_serialize_uniqueptr.h`, `boost_serialize_vector_uniqueptr.h`
+      [`boost_serialize_armadillo.h`](/src/boost_serialize_armadillo.h),
+      [`boost_serialize_array.h`](/src/boost_serialize_array.h),
+      [`boost_serialize_uniqueptr.h`](/src/boost_serialize_uniqueptr.h),
+      [`boost_serialize_vector_uniqueptr.h`](/src/boost_serialize_vector_uniqueptr.h)
       * `checkarray` derived from `std::array`, providing a bound
-        checked `operator[]` in debug builds: `checkarray.h`
+        checked `operator[]` in debug builds: [`checkarray.h`](/src/checkarray.h)
+      * data IO to/from text files:
+        [`datamapwriter.h`](/src/datamapwriter.h),
+        [`dataseriesloader.h`](/src/dataseriesloader.h),
+        [`dataserieswriter.h`](/src/dataserieswriter.h),
+        [`dataserieswritersucc.h`](/src/dataserieswritersucc.h)
