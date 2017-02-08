@@ -7,10 +7,6 @@
  * 
  * */
 
-//Code by Max Henner Gerlach, 2010--2012,
-//used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
-//contact: maxgerlach@gmail.com
-
 // generalized / adapted for SDW DQMC (2015-02-06 - )
 
 /*
