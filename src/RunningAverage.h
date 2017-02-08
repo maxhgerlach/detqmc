@@ -1,9 +1,11 @@
-//Code by Max Henner Gerlach, 2010--2012,
-//used for the diploma thesis "Directional Ordering in the Classical Compass Model in Two and Three Dimensions"
-//contact: maxgerlach@gmail.com
-
-//#include <deque>
-//#include <boost/serialization/deque.hpp>
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0.  See the enclosed file LICENSE for a copy or if
+ * that was not distributed with this file, You can obtain one at
+ * http://mozilla.org/MPL/2.0/.
+ *
+ * Copyright 2017 Max H. Gerlach
+ * 
+ * */
 
 #include <list>
 #pragma GCC diagnostic push
