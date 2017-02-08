@@ -21,7 +21,7 @@
 #include <iostream>
 #include <vector>
 
-//calculations with LogVal's internally use the natural logarithm of values
+//calculations with LogVal internally use the natural logarithm of values
 //to avoid overflows
 class LogVal {
 public:
