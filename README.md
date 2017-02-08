@@ -124,19 +124,18 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 
 # Overview over source code files #
-  * Utility classes and functions
-      * Boost serialization support for additional classes:
-      [`boost_serialize_armadillo.h`](src/boost_serialize_armadillo.h),
-      [`boost_serialize_array.h`](src/boost_serialize_array.h),
-      [`boost_serialize_uniqueptr.h`](src/boost_serialize_uniqueptr.h),
-      [`boost_serialize_vector_uniqueptr.h`](src/boost_serialize_vector_uniqueptr.h)
-      * `checkarray` derived from `std::array`, providing a bound
-        checked `operator[]` in debug builds: [`checkarray.h`](src/checkarray.h)
-      * data IO to/from text files:
-        [`datamapwriter.h`](src/datamapwriter.h),
-        [`dataseriesloader.h`](src/dataseriesloader.h),
-        [`dataserieswriter.h`](src/dataserieswriter.h),
-        [`dataserieswritersucc.h`](src/dataserieswritersucc.h)
+  * Handling of DQMC simulations
+      * Handling of a single-replica DQMC simulation (thermalization,
+        production sweeps, measurements, saving of state) in class
+        `DetQMC`: [`detqmc.h`](/src/detqmc.h),
+        [`detqmcparams.h`](/src/detqmcparams.h),
+        [`detqmcparams.cpp`](/src/detqmcparams.cpp)
+      * Handling of parallelized replica-exchange DQMC simulations in
+        class `DetQMCPT` (`DetQMC` on a parallelized scale, with
+        additional replica exchange moves):
+        [`detqmcpt.h`](/src/detqmcpt.h),
+        [`detqmcptparams.h`](/src/detqmcptparams.h),
+        [`detqmcptparams.cpp`](/src/detqmcptparams.cpp)
   * Replica classes, implementing one instance of a model in a Monte Carlo simulation
       * Generic base class for a model, implementing the skeleton of a
         numerically stabilized Monte Carlo sweep:
@@ -163,15 +162,16 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dethubbard.cpp`](src/dethubbard.cpp),
         [`dethubbardparams.h`](src/dethubbardparams.h),
         [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
-  * Handling of DQMC simulations
-      * Handling of a single-replica DQMC simulation (thermalization,
-        production sweeps, measurements, saving of state) in class
-        `DetQMC`: [`detqmc.h`](/src/detqmc.h),
-        [`detqmcparams.h`](/src/detqmcparams.h),
-        [`detqmcparams.cpp`](/src/detqmcparams.cpp)
-      * Handling of parallelized replica-exchange DQMC simulations in
-        class `DetQMCPT` (`DetQMC` on a parallelized scale, with
-        additional replica exchange moves):
-        [`detqmcpt.h`](/src/detqmcpt.h),
-        [`detqmcptparams.h`](/src/detqmcptparams.h),
-        [`detqmcptparams.cpp`](/src/detqmcptparams.cpp)
+  * Utility classes and functions
+      * Boost serialization support for additional classes:
+      [`boost_serialize_armadillo.h`](src/boost_serialize_armadillo.h),
+      [`boost_serialize_array.h`](src/boost_serialize_array.h),
+      [`boost_serialize_uniqueptr.h`](src/boost_serialize_uniqueptr.h),
+      [`boost_serialize_vector_uniqueptr.h`](src/boost_serialize_vector_uniqueptr.h)
+      * `checkarray` derived from `std::array`, providing a bound
+        checked `operator[]` in debug builds: [`checkarray.h`](src/checkarray.h)
+      * data IO to/from text files:
+        [`datamapwriter.h`](src/datamapwriter.h),
+        [`dataseriesloader.h`](src/dataseriesloader.h),
+        [`dataserieswriter.h`](src/dataserieswriter.h),
+        [`dataserieswritersucc.h`](src/dataserieswritersucc.h)
