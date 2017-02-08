@@ -24,6 +24,8 @@ MPL 2.0
     - [Prerequisites](#prerequisites)
     - [Included libraries](#included-libraries)
     - [Compilation](#compilation)
+- [Usage](#usage)
+- [Overview over source code files](#overview-over-source-code-files)
 
 <!-- markdown-toc end -->
 
