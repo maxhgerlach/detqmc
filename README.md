@@ -129,3 +129,8 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dataseriesloader.h`](/src/dataseriesloader.h),
         [`dataserieswriter.h`](/src/dataserieswriter.h),
         [`dataserieswritersucc.h`](/src/dataserieswritersucc.h)
+  * Replica classes, implementing one instance of a model in a Monte Carlo simulation
+      * Hubbard model: [`dethubbard.cpp`](src/dethubbard.cpp),
+        [`dethubbard.h`](/src/dethubbard.h),
+        [`dethubbardparams.cpp`](/src/dethubbardparams.cpp),
+        [`dethubbardparams.h`](/src/dethubbardparams.h)
