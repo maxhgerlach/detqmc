@@ -1,6 +1,31 @@
-# detqmc #
+detqmc title
+
+overview
+
+generic nature of the code, allows to plug in a replica class
+implementing any suitable model and to use that in numerically
+stabilized finite temperature simulations with a replica exchange
+mechanism
+
+specifically implemented sdw o(n) model, n = 1,2,3; also includes some
+starter code for a Hubbard model replica
+
+refer to papers, thesis
 
 MPL 2.0
+
+<!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-generate-toc again -->
+**Table of Contents**
+
+- [Setup](#setup)
+    - [Prerequisites](#prerequisites)
+    - [Included libraries](#included-libraries)
+    - [Compilation](#compilation)
+
+<!-- markdown-toc end -->
+
+
+# Setup #
 
 ## Prerequisites ##
 
