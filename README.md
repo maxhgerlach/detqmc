@@ -10,7 +10,7 @@ mechanism
 specifically implemented sdw o(n) model, n = 1,2,3; also includes some
 starter code for a Hubbard model replica
 
-refer to papers, thesis
+refer to paper
 
 MPL 2.0
 
