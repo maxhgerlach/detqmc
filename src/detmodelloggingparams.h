@@ -28,7 +28,7 @@
 
 
 
-// struct holding parameters concering the logging of specific data in DetModelGC derived classes
+// struct holding parameters concerning the logging of specific data in DetModelGC derived classes
 
 struct DetModelLoggingParams {
     bool logSV;                 // log Green's function singular value range, max, min

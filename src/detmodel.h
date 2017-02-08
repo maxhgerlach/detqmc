@@ -166,8 +166,9 @@ public:
 
 
 
-//GreenComponents is the number of independent sectors of the Green's function,
-//e.g. in the S=1/2-Hubbard model it is 2 for spin up and spin down
+//GreenComponents is the number of independent (block-diagonal)
+//sectors of the Green's function, e.g. in the S=1/2-Hubbard model it
+//is 2 for spin up and spin down
 //
 //ValueType can be a complex number if the Green function is not purely real
 //
