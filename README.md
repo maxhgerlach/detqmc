@@ -29,7 +29,7 @@ MPL 2.0
     - [Replica exchange simulation](#replica-exchange-simulation)
 - [Structure of DQMC code](#structure-of-dqmc-code)
 - [Executables](#executables)
-- [Overview of source code files in `src/`](#overview-of-source-code-files-in-src)
+- [Overview of source code files](#overview-of-source-code-files)
 
 <!-- markdown-toc end -->
 
@@ -213,7 +213,10 @@ line and configuration file options.
     `jointimeseries`
 
 
-# Overview of source code files in `src/` #
+# Overview of source code files #
+C++ source files are put in `src/`.  A number of Python scripts for
+job management and data evaluation are collected in `scripts/`.
+
   * **Replica classes**, implementing one instance of a model in a Monte Carlo simulation
       * Generic base class for a model, implementing the skeleton of a
         numerically stabilized Monte Carlo sweep:
