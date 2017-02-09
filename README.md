@@ -10,6 +10,10 @@ mechanism
 specifically implemented metallic O(N) spin-density wave (SDW) model,
 N = 1,2,3; also includes some starter code for a Hubbard model replica
 
+high - performance
+
+list of what is implemented
+
 refer to papers, thesis
 
 include in overview: mention multiple histogram reweighting for data
@@ -193,12 +197,30 @@ exchange simulations.  They depend on a template parameter `Model`,
 which should be filled with a class that implements the interface of
 the abstract class `DetModel` ([`detmodel.h`](src/detmodel.h)).
 
-Observable values measured in the model are shared via instances of
+Generally, you would want to use the class `DetModelGC`
+([`detmodel.h`](src/detmodel.h)), derived from `DetModel`, and further
+specialize that in a derived class.  It provides skeleton routines for
+the numerically stable computation of the Green's function in a DQMC
+sweep.  These skeleton routines are brought to life by the derived
+class implementing a mdoel, which provides the routines that depend on
+its fermion matrix structure.
+
+The best example for such a class is `DetSDW`
+([`detsdwopdim.h`](src/detsdwopdim.h)) for the metallic O(N)
+spin-density wave (SDW) model with N = `OPDIM` = 1, 2, 3.  It also
+implements the interface that's needed for the replica exchange scheme
+managed by `DetQMCPT`.
+
+A less complete and less optimized implementation of the half-filled
+repulsive Hubbard model is also available in `DetHubbard`
+([`dethubbard.h`](src/dethubbard.h)).
+
+Observable values measured in a model are shared via instances of
 `Observable` ([`observable.h`](src/observable.h)) such that the
 observable handler classes
 ([`observablehandler.h`](src/observablehandler.h) and
 [`mpiobservablehandlerpt.h`](src/mpiobservablehandlerpt.h)), managed
-by `DetQMC[PT]` can process them independently.
+by `DetQMC[PT]`, can process them independently.
 
 # Executables #
 
