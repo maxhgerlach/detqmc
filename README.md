@@ -184,9 +184,21 @@ See `scripts/detptsubmit.py` for some inspiration how to set up a
 number of large scale simulation jobs more easily, taking a file like
 `example/simulation.job` as input.
 
-
-
 # Structure of DQMC code #
+
+Non-model specific aspects of the simulation are handled by class
+`DetQMC` ([`detqmc.h`](src/detqmc.h)) for single replica simulations
+and class `DetQMCPT` ([`detqmcpt.h`](src/detqmcpt.h)) for replica
+exchange simulations.  They depend on a template parameter `Model`,
+which should be filled with a class that implements the interface of
+the abstract class `DetModel` ([`detmodel.h`](src/detmodel.h)).
+
+Observable values measured in the model are shared via instances of
+`Observable` ([`observable.h`](src/observable.h)) such that the
+observable handler classes
+([`observablehandler.h`](src/observablehandler.h) and
+[`mpiobservablehandlerpt.h`](src/mpiobservablehandlerpt.h)), managed
+by `DetQMC[PT]` can process them independently.
 
 # Executables #
 
