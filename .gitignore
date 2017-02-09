@@ -2,5 +2,6 @@
 Release/*
 Debug/*
 example/sdw-o2-single-replica/*
+example/sdw-o2-replica-exchange/*
 /flymd.html
 /flymd.md
