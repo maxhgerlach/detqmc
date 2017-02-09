@@ -1,5 +1,6 @@
 .directory
 Release/*
 Debug/*
+example/sdw-o2-single-replica/*
 /flymd.html
 /flymd.md
