@@ -1,6 +1,15 @@
-detqmc title
+           /$$             /$$
+          | $$            | $$
+      /$$$$$$$  /$$$$$$  /$$$$$$    /$$$$$$  /$$$$$$/$$$$   /$$$$$$$
+     /$$__  $$ /$$__  $$|_  $$_/   /$$__  $$| $$_  $$_  $$ /$$_____/
+    | $$  | $$| $$$$$$$$  | $$    | $$  \ $$| $$ \ $$ \ $$| $$
+    | $$  | $$| $$_____/  | $$ /$$| $$  | $$| $$ | $$ | $$| $$
+    |  $$$$$$$|  $$$$$$$  |  $$$$/|  $$$$$$$| $$ | $$ | $$|  $$$$$$$
+     \_______/ \_______/   \___/   \____  $$|__/ |__/ |__/ \_______/
+                                        | $$
+                                        | $$       generic replica exchange
+                                        |__/       determinantal quantum Monte Carlo
 
-overview
 
 generic nature of the code, allows to plug in a replica class
 implementing any suitable model and to use that in numerically
@@ -49,7 +58,7 @@ to get started:
       * g++ 4.9.4
       * Clang 3.4
       * Intel 15.0 in conjunction with the libraries coming with a recent g++
-      
+
     Earlier versions might do the job (Intel 13 should be fine; g++
     4.6 may compile with some tinkering to work around its C++11
     shortcomings, while some intermediate versions < 4.9.4 fail due to
@@ -144,7 +153,7 @@ $ ../../Release/detqmcsdwopdim
 This will set up the simulation according to the parameter values
 specified in `simulation.conf`.  You can get an annotated list of all
 possible command line or config file options with `detqmcsdwopdim
---help`.  
+--help`.
 
 Once the simulation has started, some information is printed to the
 screen.  After it has finished, you will find some new files in the
@@ -163,7 +172,7 @@ reached.
 ## Replica exchange simulation ##
 
 A slightly more involved example for a replica exchange simulation
-with eight different values of the tuning parameter r is prepared in 
+with eight different values of the tuning parameter r is prepared in
 `example/sdw-o2-replica-exchange/simulation.conf`.  Typically, you
 would run it like this:
 
@@ -395,4 +404,3 @@ job management and data evaluation are collected in `scripts/`.
         [`mainbinarystreamtonormmeanseriesrepeated.cpp`](src/mainbinarystreamtonormmeanseriesrepeated.cpp),
         [`mainbinarystreamtotext.cpp`](src/mainbinarystreamtotext.cpp),
         [`mainextractfrombinarystream.cpp`](src/mainextractfrombinarystream.cpp)
-
