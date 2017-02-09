@@ -158,6 +158,33 @@ reached.
 
 ## Replica exchange simulation ##
 
+A slightly more involved example for a replica exchange simulation
+with eight different values of the tuning parameter r is prepared in 
+`example/sdw-o2-replica-exchange/simulation.conf`.  Typically, you
+would run it like this:
+
+``` shell
+$ cd example/sdw-o2-replica-exchange
+$ mpirun -n 8 ../../Release/detqmcptsdwopdim
+```
+
+Depending on your environment, you may need to adapt the invocation of
+MPI, with the SLURM scheduler you would use `srun` instead of `mpirun`
+for instance.
+
+This will produce a common `info.dat` for all replicas, three files
+`exchange-*.values` with statistics on the replica exchange process,
+and a file `simulation.*.state` for each replica such that the
+entire simulation can be resumed again.  Also, a number of
+subdirectories has appeared, one for each value of the tuning
+parameter r.  In these subdirectories the measurements corresponding
+to that value of r are collected.
+
+See `scripts/detptsubmit.py` for some inspiration how to set up a
+number of large scale simulation jobs more easily, taking a file like
+`example/simulation.job` as input.
+
+
 
 # Structure of DQMC code #
 
