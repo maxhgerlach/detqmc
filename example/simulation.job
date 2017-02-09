@@ -1,0 +1,58 @@
+
+# technical, cluster
+jobprefix = sdw-o2-lambda1-c3-a
+executable = detqmcptsdwopdim-2016-01-07a
+onlynew = True
+walltime = 24:00:00
+ntasks = 24
+nodes = 2-24
+mem = 1024mb
+
+# physical model
+model = sdw
+opdim = 2
+bc = pbc
+weakZflux = true
+dtau = 0.1
+beta = 1,1.5,2
+L = 14,
+lambda = 1
+c = 3
+rMin = -1.9 
+rMax = 0.4 
+rCount = 24 
+
+
+
+# DQMC specific
+s = 10
+greenUpdate = stabilized
+checkerboard = true
+updateMethod = delayed
+delaySteps = 6
+
+# MC updates
+accRatio = 0.5
+repeatUpdateInSlice = 1
+spinProposalMethod = box
+exchangeInterval = 1
+globalUpdateInterval = 10
+globalShift = 1
+wolffClusterUpdate = 0
+wolffClusterShiftUpdate = 0
+repeatWolffPerSweep = 1
+overRelaxation = false
+
+# measurement settings
+turnoffFermionMeasurements = true
+timeseries = true
+saveConfigurationStreamBinary = true
+saveConfigurationStreamInterval = 10
+saveInterval = 500
+measureInterval = 1
+jkBlocks = 20
+
+# data targets
+simindex = 1,2
+sweeps = 20000
+thermalization = 1000
