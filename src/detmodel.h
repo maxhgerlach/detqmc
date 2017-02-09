@@ -93,7 +93,7 @@ typedef UdV<num> UdVnum;
 // currently only specialized for DetSDW -- it may be that this will
 // have to be generalized and redefined for other models where the
 // relevant terms in the action are not simply
-//   parameter * action_contributio
+//   parameter * action_contribution
 template<class Model>
 num get_replica_exchange_probability(
     num parameter_1, num action_contribution_1,
@@ -126,7 +126,7 @@ public:
     virtual MetadataMap prepareModelMetadataMap() const = 0;
 
     //get values of observables normalized by system size, the structures returned
-    //contain references to the current values measured by DetHubbard.
+    //contain references to the current values measured by this DetModel.
     //These values are valid after a sweep, in which measurements where taken
     virtual std::vector<ScalarObservable> getScalarObservables() = 0;
     virtual std::vector<VectorObservable> getVectorObservables() = 0;
