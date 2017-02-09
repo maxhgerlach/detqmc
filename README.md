@@ -25,7 +25,8 @@ MPL 2.0
     - [Included libraries](#included-libraries)
     - [Compilation](#compilation)
 - [Usage](#usage)
-- [Overview over source code files in `src/`](#overview-over-source-code-files-in-src)
+- [Generated executables](#generated-executables)
+- [Overview of source code files in `src/`](#overview-of-source-code-files-in-src)
 
 <!-- markdown-toc end -->
 
@@ -122,9 +123,33 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 # Usage #
 
+# Generated executables #
 
-# Overview over source code files in `src/` #
-  * Replica classes, implementing one instance of a model in a Monte Carlo simulation
+Most of these support an option `--help` to list supported command
+line and configuration file options.
+
+  * **Single replica DQMC simulations**
+      * SDW model: `detqmcsdwopdim` supports order parameter
+      dimensions N = 1, 2, and 3.  `detqmcsdwo1`, `detqmcsdwo2`, and
+      `detqmcsdwo3` only support one of those, for the benefit of
+      faster compilation.
+      * Hubbard model: `detqmchubbard`
+  * **Replica exchange (parallel tempering) DQMC simulations**
+      * SDW model: `detqmcptsdwopdim`, `detqmcptsdwo1`,
+        `detqmcptsdwo2`, `detqmcptsdwo3`
+  * **Data evaluation**: `deteval`, `detevalbc`, `sdwcorr`,
+    `sdweqtimesusc`, `tauintsimple`
+  * **Multiple historgram reweighting**: `mrpt`, `mrptbc`,
+    `mrpt_findIntersect`, `mrpt_binderRatioIntersect`,
+    `mrptbc-binderratio-intersect`
+  * **Utilities for data management**: `binarystreamtotext`,
+    `binarystreamtonormmeanseries`,
+    `binarystreamtonormmeanseriesrepeated`, `extractfrombinarystream`,
+    `jointimeseries`
+
+
+# Overview of source code files in `src/` #
+  * **Replica classes**, implementing one instance of a model in a Monte Carlo simulation
       * Generic base class for a model, implementing the skeleton of a
         numerically stabilized Monte Carlo sweep:
         [`detmodel.h`](src/detmodel.h),
@@ -151,7 +176,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`dethubbard.cpp`](src/dethubbard.cpp),
         [`dethubbardparams.h`](src/dethubbardparams.h),
         [`dethubbardparams.cpp`](src/dethubbardparams.cpp)
-  * Handling of DQMC simulations
+  * **Handling of DQMC simulations**
       * Handling of a single-replica DQMC simulation (thermalization,
         production sweeps, measurements, saving of state) in class
         `DetQMC`: [`detqmc.h`](src/detqmc.h),
@@ -174,7 +199,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
             simulations:
             [`mpiobservablehandlerpt.h`](src/mpiobservablehandlerpt.h),
             [`mpiobservablehandlerpt.cpp`](src/mpiobservablehandlerpt.cpp)
-  * Simulation main programs
+  * **Simulation main programs**
       * Single-replica simulations:
         [`maindetqmcsdwopdim.cpp`](src/maindetqmcsdwopdim.cpp),
         [`maindetqmcsdwo1.cpp`](src/maindetqmcsdwo1.cpp),
@@ -186,7 +211,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
         [`mpimaindetqmcptsdwo1.cpp`](src/mpimaindetqmcptsdwo1.cpp),
         [`mpimaindetqmcptsdwo2.cpp`](src/mpimaindetqmcptsdwo2.cpp),
         [`mpimaindetqmcptsdwo3.cpp`](src/mpimaindetqmcptsdwo3.cpp)
-  * `mrpt`: Multiple histogram reweighting for parallel tempering / replica exchange simulations
+  * `mrpt`: **Multiple histogram reweighting** for parallel tempering / replica exchange simulations
       * Core `mrpt` routines: [`mrpt.h`](src/mrpt.h),
         [`mrpt.cpp`](src/mrpt.cpp)
       * Core `mrpt` routines with jackknife error handling:
@@ -208,7 +233,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
       * Helper structs:
         [`reweightingresult.h`](src/reweightingresult.h),
         [`reweightedmomentsjk.h`](src/reweightedmomentsjk.h)
-  * Utility classes and functions
+  * **Utility classes and functions**
       * Boost serialization support for additional classes:
       [`boost_serialize_armadillo.h`](src/boost_serialize_armadillo.h),
       [`boost_serialize_array.h`](src/boost_serialize_array.h),
@@ -253,7 +278,7 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
       * Macros useful in `gdb` debugging sessions:
         [`toolsdebug.h`](src/toolsdebug.h)
       * Python-like `zip()` function for arbitrary containers: [`zip.h`](src/zip.h)
-  * Tools for data evaluation
+  * **Tools for data evaluation**
       * Expectation values from indivual time series:
         [`maindeteval.cpp`](src/maindeteval.cpp),
         [`maindetevalbc.cpp`](src/maindetevalbc.cpp)
