@@ -25,7 +25,10 @@ MPL 2.0
     - [Included libraries](#included-libraries)
     - [Compilation](#compilation)
 - [Usage](#usage)
-- [Generated executables](#generated-executables)
+    - [Single replica simulation](#single-replica-simulation)
+    - [Replica exchange simulation](#replica-exchange-simulation)
+- [Structure of DQMC code](#structure-of-dqmc-code)
+- [Executables](#executables)
 - [Overview of source code files in `src/`](#overview-of-source-code-files-in-src)
 
 <!-- markdown-toc end -->
@@ -123,7 +126,42 @@ independent installation of [Armadillo](http://arma.sourceforge.net/).
 
 # Usage #
 
-# Generated executables #
+## Single replica simulation ##
+
+An example single replica simulation run is prepared in
+`example/sdw-o2-single-replica/simulation.conf`.  From the project
+root do the following to execute it:
+
+``` shell
+$ cd example/sdw-o2-single-replica
+$ ../../Release/detqmcsdwopdim
+```
+
+This will set up the simulation according to the parameter values
+specified in `simulation.conf`.  You can get an annotated list of all
+possible command line or config file options with `detqmcsdwopdim
+--help`.  
+
+Once the simulation has started, some information is printed to the
+screen.  After it has finished, you will find some new files in the
+same directory: `info.dat` summarizes data about the simulation.
+`results.values` contains expectation values with error bars for some
+measured observables.  The time series of these observable
+measurements are contained in files `*.series`.  Then there is a file
+`configs-phi.binarystream` containing the raw system configurations
+sampled in the simulation to be evaluated subsequently.  Finally,
+`simulation.state` contains all the checkpointing information to
+resume a simulation that has been interrupted previously.  By running
+`detqmcsdwopdim --sweeps 200` it is also possible to continue a
+previously finished simulation until a higher target sweep count is
+reached.
+
+## Replica exchange simulation ##
+
+
+# Structure of DQMC code #
+
+# Executables #
 
 Most of these support an option `--help` to list supported command
 line and configuration file options.
