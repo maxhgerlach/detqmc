@@ -440,4 +440,5 @@ Currently, a few aspects have not been implemented fully in this code:
         *without* this fictitious field.  In this case it would be
         sufficient to run all computations with real numbers, but, at
         this point, only complex numbers are supported.
-  * 
+  * `DetModelGC` should not be used with the template parameter
+    `TimeDisplaced` set to true. It does not work.
