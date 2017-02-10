@@ -12,7 +12,6 @@
 
 [![DOI](https://zenodo.org/badge/76971125.svg)](https://zenodo.org/badge/latestdoi/76971125)
 
-
 The determinantal quantum Monte Carlo (DQMC) method, also known as
 auxiliary field QMC, is the premier method for the numerically exact,
 unbiased solution of strongly correlated itinerant electron systems in
