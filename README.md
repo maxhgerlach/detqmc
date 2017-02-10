@@ -37,7 +37,7 @@ Features:
   * effective model-independent numerical stabilization
   * efficient linear algebra using checkerboard break ups
   * delayed local updates
-  * several global updates
+  * several types of global updates
   * MPI-parallelized replica exchange mechanism
   * control of finite size effects via artificial magnetic fluxes
 
