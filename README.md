@@ -1,34 +1,53 @@
-           /$$             /$$
-          | $$            | $$
-      /$$$$$$$  /$$$$$$  /$$$$$$    /$$$$$$  /$$$$$$/$$$$   /$$$$$$$
-     /$$__  $$ /$$__  $$|_  $$_/   /$$__  $$| $$_  $$_  $$ /$$_____/
-    | $$  | $$| $$$$$$$$  | $$    | $$  \ $$| $$ \ $$ \ $$| $$
-    | $$  | $$| $$_____/  | $$ /$$| $$  | $$| $$ | $$ | $$| $$
-    |  $$$$$$$|  $$$$$$$  |  $$$$/|  $$$$$$$| $$ | $$ | $$|  $$$$$$$
-     \_______/ \_______/   \___/   \____  $$|__/ |__/ |__/ \_______/
-                                        | $$
-                                        | $$       generic C++ replica exchange
+           /§§             /§§
+          | §§            | §§
+      /§§§§§§§  /§§§§§§  /§§§§§§    /§§§§§§  /§§§§§§/§§§§   /§§§§§§§
+     /§§__  §§ /§§__  §§|_  §§_/   /§§__  §§| §§_  §§_  §§ /§§_____/
+    | §§  | §§| §§§§§§§§  | §§    | §§  \ §§| §§ \ §§ \ §§| §§
+    | §§  | §§| §§_____/  | §§ /§§| §§  | §§| §§ | §§ | §§| §§
+    |  §§§§§§§|  §§§§§§§  |  §§§§/|  §§§§§§§| §§ | §§ | §§|  §§§§§§§
+     \_______/ \_______/   \___/   \____  §§|__/ |__/ |__/ \_______/
+                                        | §§
+                                        | §§       generic C++ replica exchange
                                         |__/       determinantal quantum Monte Carlo code
 
+The determinantal quantum Monte Carlo (DQMC) method, also known as
+auxiliary field QMC, is the premier method for the numerically exact,
+unbiased solution of strongly correlated itinerant electron systems in
+condensed matter physics.
 
-generic nature of the code, allows to plug in a replica class
-implementing any suitable model and to use that in numerically
-stabilized finite temperature simulations with a replica exchange
-mechanism
+Here I present a quite generic high-performance code in modern C++
+that implements this method at finite temperatures.  While it is
+commented and this document provides some overview documentation,
+understanding it requires some engagement with physics and mathematical
+rigor.  A good starting point can be found in my
+[PhD thesis](http://maxgerlach.de/publications/doctoral_thesis_max_gerlach.pdf),
+particularly in chapters 4 and 5.
 
-specifically implemented metallic O(N) spin-density wave (SDW) model,
-N = 1,2,3; also includes some starter code for a Hubbard model replica
+The code has been used successfully for the simulation of a
+two-dimensional metal coupled to a spin-density wave (SDW) order
+parameter (publications:
+[[PRL]](http://maxgerlach.de/publications/Schattner et al. - 2016 - Competing Orders in a Nearly Antiferromagnetic Metal.pdf), 
+[[supplementary]](http://maxgerlach.de/publications/Schattner et al. - 2016 - Competing Orders in a Nearly Antiferromagnetic Metal - supplementary.pdf),
+[[PRB]](http://maxgerlach.de/publications/Gerlach et al. - 2017 - Quantum critical properties of a metallic spin-density-wave transition.pdf)).
+Correspondingly, the related class `DetSDW` is the most advanced, but
+there is also a more basic implementation for the repulsive
+half-filled Hubbard model in class `DetHubbard`.
 
-high - performance
+Features:
+  * effective model-independent numerical stabilization
+  * efficient linear algebra using checkerboard break ups
+  * delayed local updates
+  * several global updates
+  * MPI-parallelized replica exchange mechanism
+  * control of finite size effects via artificial magnetic fluxes
 
-list of what is implemented
+Also included is `mrpt`, an implementation of the powerful multiple
+histogram reweighting method for parallel tempering / replica exchange
+Monte Carlo data.  A detailed account of this method is given
+in my [diploma thesis](http://maxgerlach.de/publications/diploma_thesis_max_gerlach.pdf).
 
-refer to papers, thesis
-
-include in overview: mention multiple histogram reweighting for data
-analysis
-
-MPL 2.0
+All software provided here is published under the Mozilla Public
+License (MPL) 2.0 ([license](LICENSE), [TL;DR](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2))).
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-generate-toc again -->
 **Table of Contents**
