@@ -47,7 +47,9 @@ Monte Carlo data.  A detailed account of this method is given
 in my [diploma thesis](http://maxgerlach.de/publications/diploma_thesis_max_gerlach.pdf).
 
 All software provided here is published under the Mozilla Public
-License (MPL) 2.0 ([license](LICENSE), [TL;DR](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2))).
+License (MPL) 2.0 ([license](LICENSE),
+[TL;DR](https://tldrlegal.com/license/mozilla-public-license-2.0-(mpl-2))).
+Copyright 2017 Max H. Gerlach
 
 <!-- markdown-toc start - Don't edit this section. Run M-x markdown-toc-generate-toc again -->
 **Table of Contents**
