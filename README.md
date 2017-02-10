@@ -204,7 +204,10 @@ Non-model specific aspects of the simulation are handled by class
 and class `DetQMCPT` ([`detqmcpt.h`](src/detqmcpt.h)) for replica
 exchange simulations.  They depend on a template parameter `Model`,
 which should be filled with a class that implements the interface of
-the abstract class `DetModel` ([`detmodel.h`](src/detmodel.h)).
+the abstract class `DetModel` ([`detmodel.h`](src/detmodel.h)).  In
+this code, polymorphism is mainly achieved at compile time via
+template instantiation.  Here, the main benefit of this is that more
+logical errors can be detected during compilation.
 
 Generally, you would want to use the class `DetModelGC`
 ([`detmodel.h`](src/detmodel.h)), derived from `DetModel`, and further
