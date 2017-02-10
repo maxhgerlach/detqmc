@@ -7,8 +7,8 @@
     |  $$$$$$$|  $$$$$$$  |  $$$$/|  $$$$$$$| $$ | $$ | $$|  $$$$$$$
      \_______/ \_______/   \___/   \____  $$|__/ |__/ |__/ \_______/
                                         | $$
-                                        | $$       generic replica exchange
-                                        |__/       determinantal quantum Monte Carlo
+                                        | $$       generic C++ replica exchange
+                                        |__/       determinantal quantum Monte Carlo code
 
 
 generic nature of the code, allows to plug in a replica class
