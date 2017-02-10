@@ -62,6 +62,7 @@ License (MPL) 2.0 ([license](LICENSE), [TL;DR](https://tldrlegal.com/license/moz
 - [Structure of DQMC code](#structure-of-dqmc-code)
 - [Executables](#executables)
 - [Overview of source code files](#overview-of-source-code-files)
+- [Limitations](#limitations)
 
 <!-- markdown-toc end -->
 
@@ -426,3 +427,17 @@ job management and data evaluation are collected in `scripts/`.
         [`mainbinarystreamtonormmeanseriesrepeated.cpp`](src/mainbinarystreamtonormmeanseriesrepeated.cpp),
         [`mainbinarystreamtotext.cpp`](src/mainbinarystreamtotext.cpp),
         [`mainextractfrombinarystream.cpp`](src/mainextractfrombinarystream.cpp)
+
+# Limitations #
+
+Currently, a few aspects have not been implemented fully in this code:
+  * Focus was mainly on the O(2) SDW model, accordingly there are
+    these limitations:
+      * The fictitious "magnetic" field does not work correctly for
+        the O(3) model.  The "`PropK`" matrices would need to be
+        distinguished by both spin polarization and fermion flavor.
+      * Some performance is wasted if the O(1) model is simulated
+        *without* this fictitious field.  In this case it would be
+        sufficient to run all computations with real numbers, but, at
+        this point, only complex numbers are supported.
+  * 
