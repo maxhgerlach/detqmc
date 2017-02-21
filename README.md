@@ -121,7 +121,7 @@ License information is included within the respective subdirectories.
 
 ## Compilation ##
 
-To compile an optimized full build with default settings do:
+Download a relase of the code or clone the git repository.  To compile an optimized full build with default settings do:
 
 ``` shell
 cd Release
