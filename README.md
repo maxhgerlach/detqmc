@@ -28,9 +28,9 @@ particularly in chapters 4 and 5.
 The code has been used successfully for the simulation of a
 two-dimensional metal coupled to a spin-density wave (SDW) order
 parameter (publications:
-[[PRL]](http://maxgerlach.de/publications/Schattner et al. - 2016 - Competing Orders in a Nearly Antiferromagnetic Metal.pdf), 
-[[supplementary]](http://maxgerlach.de/publications/Schattner et al. - 2016 - Competing Orders in a Nearly Antiferromagnetic Metal - supplementary.pdf),
-[[PRB]](http://maxgerlach.de/publications/Gerlach et al. - 2017 - Quantum critical properties of a metallic spin-density-wave transition.pdf)).
+[[PRL]](http://maxgerlach.de/publications/Schattner%20et%20al.%20-%202016%20-%20Competing%20Orders%20in%20a%20Nearly%20Antiferromagnetic%20Metal.pdf), 
+[[supplementary]](http://maxgerlach.de/publications/Schattner%20et%20al.%20-%202016%20-%20Competing%20Orders%20in%20a%20Nearly%20Antiferromagnetic%20Metal%20-%20supplementary.pdf),
+[[PRB]](http://maxgerlach.de/publications/Gerlach%20et%20al.%20-%202017%20-%20Quantum%20critical%20properties%20of%20a%20metallic%20spin-density-wave%20transition.pdf)).
 Correspondingly, the related class `DetSDW` is the most advanced, but
 there is also a more basic implementation for the repulsive
 half-filled Hubbard model in class `DetHubbard`.
